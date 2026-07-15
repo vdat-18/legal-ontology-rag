@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Keep the distributable archive, but ignore its locally extracted contents.
+data/raw/road_traffic_legal_documents/
+# data/interim/
+# data/processed/
+# data/indexes/
