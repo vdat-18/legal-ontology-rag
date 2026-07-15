@@ -1,0 +1,46 @@
+[tool.ruff]
+line-length = 120
+extend-exclude = [".agents", "data"]
+
+[tool.ruff.lint]
+select = [
+    "A",
+    "ASYNC",
+    "B",
+    "C4",
+    "C90",
+    "D",
+    "DTZ",
+    "E4",
+    "E7",
+    "E9",
+    "ERA",
+    "F",
+    "I",
+    "LOG",
+    "N",
+    "PERF",
+    "PIE",
+    "PT",
+    "PTH",
+    "RET",
+    "RSE",
+    "RUF",
+    "S",
+    "SIM",
+    "T20",
+    "TRY",
+    "UP",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.format]
+docstring-code-format = true
