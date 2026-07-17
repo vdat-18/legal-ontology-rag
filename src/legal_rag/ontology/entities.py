@@ -20,29 +20,21 @@ class LegalDocument(BaseModel):
     """Một văn bản quy phạm pháp luật (Luật, Nghị định, Thông tư, VBHN)."""
 
     so_hieu: str | None = Field(default=None, description="Số hiệu văn bản, ví dụ '168/2024/NĐ-CP'.")
-    loai: str | None = Field(
-        default=None, description="Loại văn bản: Luật, Nghị định, Thông tư, Văn bản hợp nhất."
-    )
-    ngay_hieu_luc: str | None = Field(
-        default=None, description="Ngày có hiệu lực (ISO yyyy-mm-dd nếu xác định được)."
-    )
+    loai: str | None = Field(default=None, description="Loại văn bản: Luật, Nghị định, Thông tư, Văn bản hợp nhất.")
+    ngay_hieu_luc: str | None = Field(default=None, description="Ngày có hiệu lực (ISO yyyy-mm-dd nếu xác định được).")
 
 
 class TrafficViolation(BaseModel):
     """Một hành vi vi phạm hành chính về giao thông đường bộ bị xử phạt."""
 
     mo_ta: str = Field(description="Mô tả hành vi vi phạm, ví dụ 'vượt đèn đỏ'.")
-    linh_vuc: str | None = Field(
-        default=None, description="Lĩnh vực/nhóm hành vi (tốc độ, tín hiệu, nồng độ cồn...)."
-    )
+    linh_vuc: str | None = Field(default=None, description="Lĩnh vực/nhóm hành vi (tốc độ, tín hiệu, nồng độ cồn...).")
 
 
 class Vehicle(BaseModel):
     """Loại phương tiện áp dụng chế tài (xe máy, ô tô, xe tải...)."""
 
-    loai_phuong_tien: str = Field(
-        description="Tên loại phương tiện đã chuẩn hoá, ví dụ 'xe mô tô, xe gắn máy'."
-    )
+    loai_phuong_tien: str = Field(description="Tên loại phương tiện đã chuẩn hoá, ví dụ 'xe mô tô, xe gắn máy'.")
 
 
 class Penalty(BaseModel):
@@ -68,9 +60,7 @@ class LegalAuthority(BaseModel):
 class HasPenalty(BaseModel):
     """Hành vi vi phạm bị áp dụng một chế tài."""
 
-    provision: str | None = Field(
-        default=None, description="Điều/Khoản/Điểm quy định, ví dụ 'Điều 6 Khoản 3 điểm a'."
-    )
+    provision: str | None = Field(default=None, description="Điều/Khoản/Điểm quy định, ví dụ 'Điều 6 Khoản 3 điểm a'.")
 
 
 class AppliesTo(BaseModel):
@@ -86,9 +76,7 @@ class DefinedIn(BaseModel):
 class Amends(BaseModel):
     """Một văn bản sửa đổi, bổ sung hoặc thay thế văn bản khác."""
 
-    quan_he: str | None = Field(
-        default=None, description="Loại quan hệ: sửa đổi, bổ sung, thay thế, hợp nhất."
-    )
+    quan_he: str | None = Field(default=None, description="Loại quan hệ: sửa đổi, bổ sung, thay thế, hợp nhất.")
 
 
 ENTITY_TYPES: dict[str, type[BaseModel]] = {

@@ -21,12 +21,13 @@ import unicodedata
 import zipfile
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from xml.etree import ElementTree as ET
+from datetime import UTC, datetime
 
+from defusedxml.ElementTree import fromstring as xml_fromstring
 from loguru import logger
 
 from legal_rag.config import Settings
+from legal_rag.errors import ReferenceDateNotFoundError, UnsupportedDocumentError
 
 _W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 _ARTICLE = re.compile(r"^Điều\s+(\d+)\.\s*(.*)")
@@ -54,7 +55,7 @@ def _norm(text: str) -> str:
 def _docx_blocks(data: bytes) -> list[tuple[str, str]]:
     """Return ordered (kind, text) blocks preserving paragraph/table order."""
     with zipfile.ZipFile(io.BytesIO(data)) as zf:
-        root = ET.fromstring(zf.read("word/document.xml"))
+        root = xml_fromstring(zf.read("word/document.xml"))
     body = root.find(_W + "body")
     blocks: list[tuple[str, str]] = []
     if body is None:
@@ -67,10 +68,7 @@ def _docx_blocks(data: bytes) -> list[tuple[str, str]]:
         elif el.tag == _W + "tbl":
             rows = []
             for tr in el.iter(_W + "tr"):
-                cells = [
-                    _norm("".join(t.text or "" for t in tc.iter(_W + "t")))
-                    for tc in tr.findall(_W + "tc")
-                ]
+                cells = [_norm("".join(t.text or "" for t in tc.iter(_W + "t"))) for tc in tr.findall(_W + "tc")]
                 rows.append(" | ".join(c for c in cells if c))
             table_text = "\n".join(r for r in rows if r)
             if table_text:
@@ -99,7 +97,7 @@ def _load_blocks(filename: str, data: bytes) -> list[tuple[str, str]]:
         return _docx_blocks(data)
     if suffix == "pdf":
         return _pdf_blocks(data)
-    raise ValueError(f"Unsupported document type: {filename}")
+    raise UnsupportedDocumentError(filename)
 
 
 def _read_member(settings: Settings, filename: str) -> bytes | None:
@@ -121,7 +119,7 @@ def _vn_date_to_iso(text: str) -> str | None:
         return None
     day, month, year = (int(g) for g in match.groups())
     try:
-        return datetime(year, month, day, tzinfo=timezone.utc).date().isoformat()
+        return datetime(year, month, day, tzinfo=UTC).date().isoformat()
     except ValueError:
         return None
 
@@ -183,8 +181,8 @@ def _resolve_reference_time(doc: dict, blocks: list[tuple[str, str]]) -> datetim
             if iso:
                 break
     if iso is None:
-        raise ValueError(f"Cannot determine a reference date for {doc['file']}")
-    return datetime.fromisoformat(iso).replace(tzinfo=timezone.utc)
+        raise ReferenceDateNotFoundError(doc["file"])
+    return datetime.fromisoformat(iso).replace(tzinfo=UTC)
 
 
 def iter_episodes(settings: Settings) -> Iterator[LegalEpisode]:

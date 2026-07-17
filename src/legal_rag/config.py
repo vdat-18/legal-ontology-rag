@@ -30,7 +30,7 @@ class Settings:
     group_id: str
 
     @classmethod
-    def from_env(cls) -> "Settings":
+    def from_env(cls) -> Settings:
         """Build settings from environment variables."""
         return cls(
             neo4j_uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),

@@ -1,7 +1,7 @@
 """Command-line entry points for the legal-RAG pipeline.
 
-    legal-rag ingest [--reset]
-    legal-rag query "vượt đèn đỏ xe máy" 2025-02-01
+legal-rag ingest [--reset]
+legal-rag query "vượt đèn đỏ xe máy" 2025-02-01
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from loguru import logger
 
@@ -25,13 +25,13 @@ def _cmd_ingest(args: argparse.Namespace) -> None:
 
 def _cmd_query(args: argparse.Namespace) -> None:
     """Run a point-in-time query and print valid facts."""
-    moment = datetime.fromisoformat(args.date).replace(tzinfo=timezone.utc)
+    moment = datetime.fromisoformat(args.date).replace(tzinfo=UTC)
     facts = asyncio.run(query_at(Settings.from_env(), args.query, moment))
     logger.info("'{}' tại {}: {} fact còn hiệu lực", args.query, moment.date(), len(facts))
     for f in facts:
         start = f.valid_from.date() if f.valid_from else "—"
         end = f.valid_to.date() if f.valid_to else "nay"
-        print(f"• {f.fact}  [{start} → {end}]")
+        sys.stdout.write(f"• {f.fact}  [{start} → {end}]\n")
 
 
 def build_parser() -> argparse.ArgumentParser:

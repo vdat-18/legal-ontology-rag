@@ -31,9 +31,7 @@ class BGEM3Embedder(EmbedderClient):
         vectors = self._model.encode(texts, normalize_embeddings=True)
         return [vector.tolist() for vector in vectors]
 
-    async def create(
-        self, input_data: str | list[str] | Iterable[int] | Iterable[Iterable[int]]
-    ) -> list[float]:
+    async def create(self, input_data: str | list[str] | Iterable[int] | Iterable[Iterable[int]]) -> list[float]:
         """Return the embedding for a single input (first item if a list)."""
         texts = [input_data] if isinstance(input_data, str) else [str(x) for x in input_data]
         vectors = await asyncio.to_thread(self._encode, texts)

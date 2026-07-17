@@ -12,6 +12,7 @@ dependencies = [
     "graphiti-core[anthropic]>=0.29",
     "loguru>=0.7",
     "pypdf>=4.0",
+    "defusedxml>=0.7",
 ]
 
 [project.optional-dependencies]

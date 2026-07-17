@@ -14,6 +14,7 @@ from graphiti_core.llm_client.anthropic_client import AnthropicClient
 from graphiti_core.llm_client.config import LLMConfig
 
 from legal_rag.config import Settings
+from legal_rag.errors import MissingCredentialError
 
 
 def build_embedder(settings: Settings) -> EmbedderClient:
@@ -28,7 +29,7 @@ def build_embedder(settings: Settings) -> EmbedderClient:
 def build_graphiti(settings: Settings) -> Graphiti:
     """Construct a Graphiti client using Claude for extraction."""
     if not settings.anthropic_api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not set")
+        raise MissingCredentialError("ANTHROPIC_API_KEY")
     llm_client = AnthropicClient(
         config=LLMConfig(
             api_key=settings.anthropic_api_key,
