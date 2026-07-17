@@ -23,3 +23,6 @@ pre-commit run --all-files
 Keep changes focused, include tests for changed behavior, and explain any
 intentional exception to `AGENTS.md` or Ruff. Never commit secrets, unintended
 generated artifacts, or local environment files.
+
+## Data Raw
+Xem demo tại: [Drive](https://drive.google.com/drive/folders/1voxi753JGAzF7WfiKLxzIP2rJCLjuSmf)
