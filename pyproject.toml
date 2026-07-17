@@ -1,6 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "legal-rag"
+version = "0.1.0"
+description = "Temporal Ontology-Enhanced RAG for time-aware traffic-violation penalty retrieval"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "graphiti-core[anthropic]>=0.29",
+    "loguru>=0.7",
+    "pypdf>=4.0",
+]
+
+[project.optional-dependencies]
+vietnamese = ["sentence-transformers>=3.0"]
+openai = ["openai>=1.30"]
+dev = ["ruff==0.15.21", "pytest>=8.0"]
+
+[project.scripts]
+legal-rag = "legal_rag.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/legal_rag"]
+
 [tool.ruff]
 line-length = 120
-extend-exclude = [".agents", "data"]
+extend-exclude = [".agents", "data", "third_party"]
 
 [tool.ruff.lint]
 select = [
