@@ -13,6 +13,7 @@ dependencies = [
     "loguru>=0.7",
     "pypdf>=4.0",
     "defusedxml>=0.7",
+    "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]

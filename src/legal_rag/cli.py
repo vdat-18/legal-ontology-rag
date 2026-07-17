@@ -11,6 +11,7 @@ import asyncio
 import sys
 from datetime import UTC, datetime
 
+from dotenv import load_dotenv
 from loguru import logger
 
 from legal_rag.config import Settings
@@ -52,6 +53,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     """CLI entry point."""
+    load_dotenv()
     args = build_parser().parse_args()
     try:
         args.func(args)
