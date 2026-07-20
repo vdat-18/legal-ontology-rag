@@ -96,55 +96,9 @@ ruff check .
 pytest
 ```
 
-CI (`.github/workflows/code-quality.yml`) chạy `ruff check` + `ruff format --check`.
+Keep changes focused, include tests for changed behavior, and explain any
+intentional exception to `AGENTS.md` or Ruff. Never commit secrets, unintended
+generated artifacts, or local environment files.
 
----
-
-## Cấu trúc project
-
-```
-src/legal_rag/            # package ứng dụng (src layout)
-├── config.py             # cấu hình theo biến môi trường
-├── errors.py             # exception domain
-├── ingestion/            # DOCX/PDF -> episode theo Điều, gắn ngày hiệu lực
-├── ontology/             # entity/edge types cho LLM trích xuất
-├── embeddings/           # embedder tiếng Việt (BGE-M3)
-├── graph/                # dựng Graphiti client + orchestration nạp
-├── retrieval/            # truy vấn point-in-time (bi-temporal)
-└── cli.py                # lệnh `legal-rag ingest` / `legal-rag query`
-data/
-├── raw/                  # kho văn bản (.zip) — không giải nén vào git
-└── config/               # penalty_corpus.json (danh sách văn bản xử phạt đã lọc)
-tests/                    # test loader offline (đọc từ zip, không cần Neo4j)
-third_party/graphiti/     # graphiti-core vendored (git-ignored để dùng lib)
-docs/                     # kế hoạch & tài liệu tham khảo
-```
-
-Xem [AGENTS.md](AGENTS.md) cho chuẩn code của repo.
-
----
-
-## Điều chỉnh nhóm văn bản
-
-Thêm/bớt văn bản trong nhóm xử phạt bằng cách sửa
-`data/config/penalty_corpus.json` (không sửa code). Mỗi mục:
-
-```json
-{"file": "168_2024_ND-CP_619502.docx", "so_hieu": "168/2024/NĐ-CP",
- "loai": "Nghị định", "effective_date": "2025-01-01", "amends": null}
-```
-
-`effective_date: null` → loader tự trích ngày hiệu lực từ văn bản; điền tay để
-ghi đè khi bản tự trích chưa chuẩn (thường gặp ở văn bản sửa đổi/hợp nhất).
-
----
-
-## Xử lý sự cố
-
-| Triệu chứng | Nguyên nhân / cách xử lý |
-| --- | --- |
-| `ImportError: cannot import name 'UTC'` | Đang chạy Python < 3.11. Tạo venv bằng 3.11+. |
-| `ANTHROPIC_API_KEY is not set` | Chưa điền key trong `.env` (hoặc chạy ngoài thư mục chứa `.env`). |
-| Kết nối Neo4j lỗi | Container chưa chạy / sai `NEO4J_URI`/mật khẩu. Kiểm tra bước 3. |
-| Nạp báo *Missing document* | Thiếu `data/raw/road_traffic_legal_documents.zip`. |
-| Tải model BGE-M3 lâu lần đầu | Bình thường (~2GB). Hoặc đổi `GRAPHITI_EMBEDDER=openai`. |
+## Data Raw
+Xem demo tại: [Drive](https://drive.google.com/drive/folders/1voxi753JGAzF7WfiKLxzIP2rJCLjuSmf)
