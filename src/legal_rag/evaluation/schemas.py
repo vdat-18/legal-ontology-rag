@@ -43,3 +43,24 @@ class GroundTruthCandidate(BaseModel):
     query_length: str | None = None
     as_of_date: date | None = None
     approval_status: ApprovalStatus = ApprovalStatus.PENDING
+
+
+class CorpusArtifact(BaseModel):
+    """One immutable input artifact recorded in a corpus snapshot."""
+
+    model_config = ConfigDict(frozen=True)
+
+    name: str = Field(min_length=1)
+    sha256: str = Field(min_length=1)
+    size_bytes: int = Field(ge=0)
+
+
+class CorpusSnapshot(BaseModel):
+    """Deterministic provenance for a selected legal corpus."""
+
+    model_config = ConfigDict(frozen=True)
+
+    snapshot_id: str = Field(min_length=1)
+    archive: CorpusArtifact
+    selection: CorpusArtifact
+    selected_documents: tuple[str, ...] = Field(min_length=1)

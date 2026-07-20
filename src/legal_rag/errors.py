@@ -6,6 +6,8 @@ raise them with structured arguments only.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 
 class MissingCredentialError(RuntimeError):
     """A required credential or configuration value is absent."""
@@ -70,3 +72,27 @@ class EmptyReferenceContextBatchError(ValueError):
     def __init__(self) -> None:
         """Report the empty source boundary before invoking Ragas."""
         super().__init__("At least one reference context is required")
+
+
+class MissingCorpusArtifactError(FileNotFoundError):
+    """A required corpus archive or selection file does not exist."""
+
+    def __init__(self, path: Path) -> None:
+        """Record the missing path supplied by the caller."""
+        super().__init__(f"Corpus artifact does not exist: {path}")
+
+
+class DuplicateSelectedDocumentError(ValueError):
+    """A corpus selection contains the same document more than once."""
+
+    def __init__(self, filename: str) -> None:
+        """Record the duplicate filename."""
+        super().__init__(f"Selected document is duplicated: {filename}")
+
+
+class SelectedDocumentNotFoundError(ValueError):
+    """A selected document is absent from the canonical archive."""
+
+    def __init__(self, filename: str, archive_name: str) -> None:
+        """Record the missing document and archive name."""
+        super().__init__(f"Selected document {filename} is not present in {archive_name}")
