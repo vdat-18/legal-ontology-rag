@@ -29,7 +29,7 @@ packages = ["src/legal_rag"]
 
 [tool.ruff]
 line-length = 120
-extend-exclude = [".agents", "data", "third_party"]
+extend-exclude = [".agents", "data"]
 
 [tool.ruff.lint]
 select = [

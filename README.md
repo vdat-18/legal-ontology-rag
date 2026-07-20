@@ -1,94 +1,119 @@
 # legal-ontology-rag
 
-**Temporal Ontology-Enhanced RAG** cho tra cứu **mức phạt vi phạm giao thông
-đường bộ Việt Nam theo thời điểm hiệu lực** (time-aware). Xây trên
-[Graphiti](https://github.com/getzep/graphiti) (knowledge graph **bi-temporal**),
-dùng **Claude** để trích xuất và **BGE-M3** để nhúng tiếng Việt.
+Temporal legal RAG for Vietnamese road traffic penalties.
 
-> Ý tưởng cốt lõi: mỗi văn bản được nạp với `reference_time = ngày hiệu lực`.
-> Khi nghị định sửa đổi (vd 238/2026) được nạp muộn hơn, Graphiti **tự đóng**
-> hiệu lực của quy định cũ — nên cùng một câu hỏi ở hai mốc thời gian sẽ trả về
-> đúng mức phạt có hiệu lực tại mốc đó.
+This project uses [Graphiti](https://github.com/getzep/graphiti) as the graph
+memory layer. The code in this repository adds the legal-domain ingestion,
+ontology, and point-in-time retrieval logic.
 
----
+## Requirements
 
-## Yêu cầu (prerequisites)
+- Python 3.11+
+- Neo4j 5.26+
+- `ANTHROPIC_API_KEY` for extraction
+- `OPENAI_API_KEY` only when `GRAPHITI_EMBEDDER=openai`
 
-| Thành phần | Ghi chú |
-| --- | --- |
-| **Python 3.11+** | Bắt buộc (dùng `datetime.UTC`). ⚠️ `python3` mặc định của macOS thường là 3.9 — sẽ **không chạy được**. |
-| **Neo4j 5.26+** | Backend của Graphiti (chạy nhanh bằng Docker). |
-| **ANTHROPIC_API_KEY** | Claude, dùng cho trích xuất thực thể. |
-| **OPENAI_API_KEY** *(tuỳ chọn)* | Chỉ cần nếu embedder = `openai`. Dùng `bge` thì không cần. |
+## Setup
 
----
-
-## Các bước thực hiện
-
-### 1) Lấy code & tạo môi trường ảo (Python 3.11+)
+Create a virtual environment:
 
 ```bash
-git clone <repo-url> && cd OntologyRag
-python3.11 -m venv .venv && source .venv/bin/activate   # đảm bảo là 3.11+
-python -V                                               # phải >= 3.11
+python -m venv .venv
+.venv\Scripts\activate
+python -V
 ```
 
-### 2) Cài đặt
+Install the project:
 
 ```bash
-pip install -e ".[vietnamese]"     # embedder BGE-M3 cục bộ (khuyến nghị cho tiếng Việt)
-# hoặc:
-pip install -e ".[openai]"         # nếu muốn dùng embedding của OpenAI
+pip install -e ".[vietnamese]"
 ```
 
-Lệnh này kéo `graphiti-core`, `loguru`, `pypdf`, `defusedxml`, `python-dotenv`
-từ PyPI. (Bản graphiti đã vendor sẵn ở `third_party/graphiti` — nếu muốn dùng bản
-đó thay PyPI: `pip install -e third_party/graphiti`.)
-
-### 3) Chạy Neo4j (Docker)
+Use OpenAI embeddings instead of local BGE-M3:
 
 ```bash
-docker run -d --name neo4j \
-  -p 7474:7474 -p 7687:7687 \
-  -e NEO4J_AUTH=neo4j/password \
-  neo4j:5.26
+pip install -e ".[openai]"
 ```
 
-Kiểm tra: mở http://localhost:7474 (user `neo4j`, mật khẩu `password`).
+Graphiti is installed from PyPI through `graphiti-core`. We do not keep a copy
+of Graphiti source code in this repository.
 
-### 4) Cấu hình `.env`
+To read Graphiti code, use one of these:
+
+- `.venv/Lib/site-packages/graphiti_core/`
+- <https://github.com/getzep/graphiti>
+
+Do not edit files inside `.venv`. Those changes will be lost when dependencies
+are reinstalled. Put long-term custom code in `src/legal_rag/`, or use a
+separate Graphiti fork.
+
+## Neo4j
+
+Start Neo4j:
 
 ```bash
-cp .env.example .env
+docker compose up -d
 ```
 
-Mở `.env` và điền:
-- `ANTHROPIC_API_KEY=sk-ant-...`
-- `GRAPHITI_EMBEDDER=bge` (không cần key) **hoặc** `openai` + `OPENAI_API_KEY=...`
-- `NEO4J_URI/USER/PASSWORD` khớp với bước 3.
+Default local credentials:
 
-> CLI **tự nạp** `.env` (qua python-dotenv) nên không cần `export` thủ công.
+- User: `neo4j`
+- Password: `password`
+- Browser: <http://localhost:7474>
 
-### 5) Nạp dữ liệu vào graph (ingest)
+## Environment
+
+Copy the example file:
+
+```bash
+copy .env.example .env
+```
+
+Set these values in `.env`:
+
+```text
+ANTHROPIC_API_KEY=...
+GRAPHITI_EMBEDDER=bge
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=password
+```
+
+Use `GRAPHITI_EMBEDDER=openai` only when you also set `OPENAI_API_KEY`.
+
+## Data
+
+The loader reads documents from:
+
+```text
+data/raw/road_traffic_legal_documents.zip
+```
+
+The selected penalty documents are listed in:
+
+```text
+data/config/penalty_corpus.json
+```
+
+Data links are listed in [docs/references/references.md](docs/references/references.md).
+
+## Run
+
+Ingest the selected corpus:
 
 ```bash
 legal-rag ingest --reset
 ```
 
-- Đọc **trực tiếp từ** `data/raw/road_traffic_legal_documents.zip` (không cần giải nén).
-- Chỉ nạp **nhóm văn bản xử phạt** đã lọc trong `data/config/penalty_corpus.json`.
-- `--reset` xoá graph cũ trước khi nạp. Bỏ `--reset` để nạp thêm.
-
-### 6) Truy vấn point-in-time
+Query facts valid at a date:
 
 ```bash
-legal-rag query "vượt đèn đỏ xe máy" 2025-02-01
-legal-rag query "vượt đèn đỏ xe máy" 2024-06-01   # so sánh mốc khác
+legal-rag query "vuot den do xe may" 2025-02-01
 ```
 
-Chỉ in ra các fact **còn hiệu lực tại ngày** được hỏi, kèm khoảng hiệu lực.
+## Checks
 
-### 7) Kiểm tra chất lượng (trước khi commit)
+Run before committing:
 
 ```bash
 ruff format .
@@ -96,9 +121,12 @@ ruff check .
 pytest
 ```
 
-Keep changes focused, include tests for changed behavior, and explain any
-intentional exception to `AGENTS.md` or Ruff. Never commit secrets, unintended
-generated artifacts, or local environment files.
+## Project Layout
 
-## Data Raw
-Xem demo tại: [Drive](https://drive.google.com/drive/folders/1voxi753JGAzF7WfiKLxzIP2rJCLjuSmf)
+```text
+src/legal_rag/       Legal RAG package
+data/config/         Corpus selection config
+data/raw/            Raw legal document archive
+docs/references/     External data and research links
+tests/               Offline tests
+```
