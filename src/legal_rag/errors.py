@@ -66,6 +66,22 @@ class InvalidTestsetSizeError(ValueError):
         super().__init__("testset_size must be greater than zero")
 
 
+class UnsupportedRagasProviderError(ValueError):
+    """A configured Ragas provider is not supported by this integration."""
+
+    def __init__(self, setting_name: str, provider: str, supported: tuple[str, ...]) -> None:
+        """Record the unsupported provider and accepted values."""
+        super().__init__(f"{setting_name}={provider} is not supported; expected one of: {', '.join(supported)}")
+
+
+class InvalidRagasComponentError(ValueError):
+    """The caller provided an incomplete Ragas component override."""
+
+    def __init__(self) -> None:
+        """Report that generation components must be injected together."""
+        super().__init__("generator and query_synthesizer must be provided together")
+
+
 class EmptyReferenceContextBatchError(ValueError):
     """No legal source contexts were provided for synthesis."""
 

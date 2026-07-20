@@ -21,6 +21,7 @@ class Settings:
     neo4j_user: str
     neo4j_password: str
     anthropic_api_key: str | None
+    openai_api_key: str | None
     llm_model: str
     small_llm_model: str
     embedder: str  # 'openai' | 'bge'
@@ -43,6 +44,7 @@ class Settings:
             neo4j_user=os.getenv("NEO4J_USER", "neo4j"),
             neo4j_password=os.getenv("NEO4J_PASSWORD", "password"),
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
+            openai_api_key=os.getenv("OPENAI_API_KEY"),
             llm_model=os.getenv("GRAPHITI_LLM_MODEL", "claude-sonnet-4-5"),
             small_llm_model=os.getenv("GRAPHITI_SMALL_LLM_MODEL", "claude-haiku-4-5-latest"),
             embedder=os.getenv("GRAPHITI_EMBEDDER", "openai"),

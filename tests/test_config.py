@@ -16,6 +16,7 @@ def test_groundtruth_defaults_point_to_versioned_files(monkeypatch) -> None:
         "RAGAS_EMBEDDING_PROVIDER",
         "RAGAS_EMBEDDING_MODEL",
         "RAGAS_CANDIDATES_OUTPUT",
+        "OPENAI_API_KEY",
     ):
         monkeypatch.delenv(name, raising=False)
 
@@ -27,6 +28,7 @@ def test_groundtruth_defaults_point_to_versioned_files(monkeypatch) -> None:
     assert settings.ragas_llm_model is None
     assert settings.ragas_embedding_provider is None
     assert settings.ragas_embedding_model is None
+    assert settings.openai_api_key is None
 
 
 def test_groundtruth_settings_support_environment_overrides(monkeypatch, tmp_path: Path) -> None:
@@ -39,6 +41,7 @@ def test_groundtruth_settings_support_environment_overrides(monkeypatch, tmp_pat
     monkeypatch.setenv("RAGAS_EMBEDDING_PROVIDER", "openai")
     monkeypatch.setenv("RAGAS_EMBEDDING_MODEL", "example-embedding")
     monkeypatch.setenv("RAGAS_CANDIDATES_OUTPUT", str(output_path))
+    monkeypatch.setenv("OPENAI_API_KEY", "example-key")
 
     settings = Settings.from_env()
 
@@ -48,3 +51,4 @@ def test_groundtruth_settings_support_environment_overrides(monkeypatch, tmp_pat
     assert settings.ragas_embedding_provider == "openai"
     assert settings.ragas_embedding_model == "example-embedding"
     assert settings.ragas_candidates_output == output_path
+    assert settings.openai_api_key == "example-key"

@@ -22,6 +22,7 @@ import zipfile
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 
 from defusedxml.ElementTree import fromstring as xml_fromstring
 from loguru import logger
@@ -100,10 +101,10 @@ def _load_blocks(filename: str, data: bytes) -> list[tuple[str, str]]:
     raise UnsupportedDocumentError(filename)
 
 
-def _read_member(settings: Settings, filename: str) -> bytes | None:
-    """Read a document's bytes from the extracted dir, else from the zip archive."""
+def _read_member(settings: Settings, filename: str, *, archive_only: bool = False) -> bytes | None:
+    """Read a document's bytes from the selected corpus source."""
     extracted = settings.corpus_dir / filename
-    if extracted.exists():
+    if not archive_only and extracted.exists():
         return extracted.read_bytes()
     if settings.corpus_zip.exists():
         with zipfile.ZipFile(settings.corpus_zip) as zf:
@@ -185,12 +186,20 @@ def _resolve_reference_time(doc: dict, blocks: list[tuple[str, str]]) -> datetim
     return datetime.fromisoformat(iso).replace(tzinfo=UTC)
 
 
-def iter_episodes(settings: Settings) -> Iterator[LegalEpisode]:
-    """Yield article-level episodes for every in-scope penalty document."""
-    corpus = json.loads(settings.penalty_config.read_text(encoding="utf-8"))
+def iter_episodes_from_config(
+    settings: Settings,
+    selection_path: Path,
+    *,
+    archive_only: bool = False,
+    skip_missing: bool = True,
+) -> Iterator[LegalEpisode]:
+    """Yield article-level episodes for documents selected by one config file."""
+    corpus = json.loads(selection_path.read_text(encoding="utf-8"))
     for doc in corpus["documents"]:
-        data = _read_member(settings, doc["file"])
+        data = _read_member(settings, doc["file"], archive_only=archive_only)
         if data is None:
+            if not skip_missing:
+                raise FileNotFoundError(doc["file"])
             logger.warning("Missing document, skipping: {}", doc["file"])
             continue
         blocks = _load_blocks(doc["file"], data)
@@ -208,3 +217,8 @@ def iter_episodes(settings: Settings) -> Iterator[LegalEpisode]:
                 )
                 count += 1
         logger.info("{}: {} episode(s), reference_time={}", so_hieu, count, reference_time.date())
+
+
+def iter_episodes(settings: Settings) -> Iterator[LegalEpisode]:
+    """Yield article-level episodes for every in-scope penalty document."""
+    yield from iter_episodes_from_config(settings, settings.penalty_config)

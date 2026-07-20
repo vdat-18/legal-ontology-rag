@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from legal_rag.evaluation.groundtruth import build_ragas_generation_components, generate_groundtruth_candidates
 from legal_rag.evaluation.schemas import (
     ApprovalStatus,
     CorpusArtifact,
@@ -24,7 +25,9 @@ __all__ = [
     "GroundTruthCandidate",
     "ReferenceContext",
     "build_corpus_snapshot",
+    "build_ragas_generation_components",
     "candidates_from_testset",
+    "generate_groundtruth_candidates",
     "prepare_ragas_documents",
     "synthesize_single_hop_candidates",
     "write_candidates_jsonl",
