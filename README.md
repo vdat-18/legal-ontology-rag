@@ -35,6 +35,12 @@ Use OpenAI embeddings instead of local BGE-M3:
 pip install -e ".[openai]"
 ```
 
+Install Ragas and DeepEval for dataset generation and evaluation:
+
+```bash
+pip install -e ".[evaluation]"
+```
+
 Graphiti is installed from PyPI through `graphiti-core`. We do not keep a copy
 of Graphiti source code in this repository.
 
