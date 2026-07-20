@@ -29,3 +29,44 @@ class ReferenceDateNotFoundError(ValueError):
     def __init__(self, filename: str) -> None:
         """Record the document whose reference date could not be resolved."""
         super().__init__(f"Cannot determine a reference date for {filename}")
+
+
+class DuplicateReferenceContextError(ValueError):
+    """A source batch contains an ambiguous context identifier or text."""
+
+    def __init__(self, first_context_id: str, second_context_id: str | None = None) -> None:
+        """Record the context identifiers that cannot be mapped uniquely."""
+        context_ids = first_context_id if second_context_id is None else f"{first_context_id}, {second_context_id}"
+        super().__init__(f"Reference context must be unique: {context_ids}")
+
+
+class InvalidSyntheticSampleError(ValueError):
+    """A generated sample is missing a required field or supported shape."""
+
+    def __init__(self, field_name: str) -> None:
+        """Record the invalid field without exposing generated content."""
+        super().__init__(f"Synthetic sample has an invalid {field_name}")
+
+
+class UnknownReferenceContextError(ValueError):
+    """A generated sample references content outside the source batch."""
+
+    def __init__(self) -> None:
+        """Report provenance loss without logging the source text."""
+        super().__init__("Synthetic sample references an unknown source context")
+
+
+class InvalidTestsetSizeError(ValueError):
+    """The requested synthetic testset size is not positive."""
+
+    def __init__(self) -> None:
+        """Report the invalid size without embedding policy in the caller."""
+        super().__init__("testset_size must be greater than zero")
+
+
+class EmptyReferenceContextBatchError(ValueError):
+    """No legal source contexts were provided for synthesis."""
+
+    def __init__(self) -> None:
+        """Report the empty source boundary before invoking Ragas."""
+        super().__init__("At least one reference context is required")
