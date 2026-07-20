@@ -3,7 +3,7 @@
 A professional, function-oriented package built on top of ``graphiti-core``:
 
 - ``config``      : environment-driven settings.
-- ``ingestion``   : DOCX/PDF loader → article-level, time-stamped episodes.
+- ``ingestion``   : Docling document chunks -> time-stamped episodes.
 - ``ontology``    : custom legal entity/edge types for LLM extraction.
 - ``embeddings``  : Vietnamese (BGE-M3) embedder.
 - ``evaluation``  : synthetic ground-truth candidates and evaluation support.

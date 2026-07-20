@@ -7,7 +7,7 @@ data/raw/road_traffic_legal_documents.zip
 ```
 
 The ingestion code can read directly from this archive. Manual extraction is not
-required.
+required. Document parsing and chunking are handled by Docling.
 
 The source Drive folder is:
 

@@ -9,10 +9,9 @@ description = "Temporal Ontology-Enhanced RAG for time-aware traffic-violation p
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "docling==2.114.0",
     "graphiti-core[anthropic]>=0.29",
     "loguru>=0.7",
-    "pypdf>=4.0",
-    "defusedxml>=0.7",
     "python-dotenv>=1.0",
 ]
 

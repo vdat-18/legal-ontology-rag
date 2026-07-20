@@ -17,14 +17,6 @@ class MissingCredentialError(RuntimeError):
         super().__init__(f"{name} is not set")
 
 
-class UnsupportedDocumentError(ValueError):
-    """A source document type is not supported by the loader."""
-
-    def __init__(self, filename: str) -> None:
-        """Record the offending file name."""
-        super().__init__(f"Unsupported document type: {filename}")
-
-
 class ReferenceDateNotFoundError(ValueError):
     """No effective/reference date could be determined for a document."""
 
