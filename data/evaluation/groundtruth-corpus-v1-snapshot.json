@@ -1,0 +1,25 @@
+{
+  "snapshot_id": "cb1fe93d7f56ea44b0ff7853733e55010be760eba324ca24dc5744fa50b63a7e",
+  "archive": {
+    "name": "road_traffic_legal_documents.zip",
+    "sha256": "94c417c1a751eff6dcc785f9d29e140ae328b4e7296da3e4817cf0e58055369b",
+    "size_bytes": 63620496
+  },
+  "selection": {
+    "name": "groundtruth_corpus_v1.json",
+    "sha256": "62eefb24bb9c7ee376799b08ddae04cbdb1e220e880d709babf24f409944f735",
+    "size_bytes": 3633
+  },
+  "selected_documents": [
+    "168_2024_ND-CP_619502.docx",
+    "238_2026_ND-CP_712521.docx",
+    "336_2025_ND-CP_670893.docx",
+    "73_2024_TT-BCA_633438.docx",
+    "65_2024_TT-BCA_m_632409.docx",
+    "105_2026_TT-BCA_m_713073.docx",
+    "9303_QD-BCA_m_637615.docx",
+    "36_2024_QH15_444251.docx",
+    "90_VBHN-VPQH_699548.docx",
+    "189_2025_ND-CP_664429.docx"
+  ]
+}

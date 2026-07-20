@@ -27,6 +27,12 @@ class Settings:
     corpus_dir: Path
     corpus_zip: Path
     penalty_config: Path
+    groundtruth_config: Path
+    ragas_llm_provider: str | None
+    ragas_llm_model: str | None
+    ragas_embedding_provider: str | None
+    ragas_embedding_model: str | None
+    ragas_candidates_output: Path
     group_id: str
 
     @classmethod
@@ -49,6 +55,22 @@ class Settings:
             ),
             penalty_config=Path(
                 os.getenv("PENALTY_CONFIG", str(_REPO_ROOT / "data" / "config" / "penalty_corpus.json"))
+            ),
+            groundtruth_config=Path(
+                os.getenv(
+                    "GROUNDTRUTH_CONFIG",
+                    str(_REPO_ROOT / "data" / "config" / "groundtruth_corpus_v1.json"),
+                )
+            ),
+            ragas_llm_provider=os.getenv("RAGAS_LLM_PROVIDER"),
+            ragas_llm_model=os.getenv("RAGAS_LLM_MODEL"),
+            ragas_embedding_provider=os.getenv("RAGAS_EMBEDDING_PROVIDER"),
+            ragas_embedding_model=os.getenv("RAGAS_EMBEDDING_MODEL"),
+            ragas_candidates_output=Path(
+                os.getenv(
+                    "RAGAS_CANDIDATES_OUTPUT",
+                    str(_REPO_ROOT / "data" / "evaluation" / "candidates.jsonl"),
+                )
             ),
             group_id=os.getenv("GRAPHITI_GROUP_ID", "traffic_penalty_vn"),
         )

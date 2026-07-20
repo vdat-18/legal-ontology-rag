@@ -1,0 +1,98 @@
+{
+  "_comment": "First focused source corpus for ground-truth candidate generation. It is selected from road_traffic_penalty_scope.json and should stay smaller than the broad in_scope set.",
+  "group_id": "traffic_penalty_groundtruth_v1",
+  "scope_source": "data/config/road_traffic_penalty_scope.json",
+  "selection_policy": "Start with core road traffic penalty, driver license point, enforcement, administrative violation, and direct framework documents. Add broader road traffic documents only after the first review batch is stable.",
+  "documents": [
+    {
+      "file": "168_2024_ND-CP_619502.docx",
+      "so_hieu": "168/2024/NĐ-CP",
+      "loai": "Nghị định",
+      "role": "core_penalty",
+      "effective_date": "2025-01-01",
+      "amends": null,
+      "selection_reason": "Core decree on administrative penalties for road traffic violations and driver license points."
+    },
+    {
+      "file": "238_2026_ND-CP_712521.docx",
+      "so_hieu": "238/2026/NĐ-CP",
+      "loai": "Nghị định",
+      "role": "core_penalty_amendment",
+      "effective_date": null,
+      "amends": "168/2024/NĐ-CP",
+      "selection_reason": "Amends the core road traffic penalty decree."
+    },
+    {
+      "file": "336_2025_ND-CP_670893.docx",
+      "so_hieu": "336/2025/NĐ-CP",
+      "loai": "Nghị định",
+      "role": "road_activity_penalty",
+      "effective_date": null,
+      "amends": null,
+      "selection_reason": "Regulates administrative penalties in road activities."
+    },
+    {
+      "file": "73_2024_TT-BCA_633438.docx",
+      "so_hieu": "73/2024/TT-BCA",
+      "loai": "Thông tư",
+      "role": "enforcement",
+      "effective_date": null,
+      "amends": null,
+      "selection_reason": "Regulates traffic police patrol, control, and violation handling."
+    },
+    {
+      "file": "65_2024_TT-BCA_m_632409.docx",
+      "so_hieu": "65/2024/TT-BCA",
+      "loai": "Thông tư",
+      "role": "point_restoration",
+      "effective_date": null,
+      "amends": null,
+      "selection_reason": "Regulates legal knowledge testing for restoring driver license points."
+    },
+    {
+      "file": "105_2026_TT-BCA_m_713073.docx",
+      "so_hieu": "105/2026/TT-BCA",
+      "loai": "Thông tư",
+      "role": "point_restoration_amendment",
+      "effective_date": null,
+      "amends": "65/2024/TT-BCA",
+      "selection_reason": "Amends the driver license point restoration rules."
+    },
+    {
+      "file": "9303_QD-BCA_m_637615.docx",
+      "so_hieu": "9303/QĐ-BCA",
+      "loai": "Quyết định",
+      "role": "procedure",
+      "effective_date": null,
+      "amends": null,
+      "selection_reason": "Publishes administrative procedures for restoring driver license points."
+    },
+    {
+      "file": "36_2024_QH15_444251.docx",
+      "so_hieu": "36/2024/QH15",
+      "loai": "Luật",
+      "role": "direct_framework_law",
+      "effective_date": null,
+      "amends": null,
+      "selection_reason": "Defines road traffic rules and obligations used to decide whether conduct is a violation."
+    },
+    {
+      "file": "90_VBHN-VPQH_699548.docx",
+      "so_hieu": "90/VBHN-VPQH",
+      "loai": "Văn bản hợp nhất",
+      "role": "administrative_violation_law",
+      "effective_date": null,
+      "amends": null,
+      "selection_reason": "Consolidated Law on Handling Administrative Violations."
+    },
+    {
+      "file": "189_2025_ND-CP_664429.docx",
+      "so_hieu": "189/2025/NĐ-CP",
+      "loai": "Nghị định",
+      "role": "sanction_authority",
+      "effective_date": null,
+      "amends": null,
+      "selection_reason": "Details administrative penalty authority."
+    }
+  ]
+}
