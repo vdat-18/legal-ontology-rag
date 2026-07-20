@@ -1,0 +1,17 @@
+{
+  "_comment": "Nhóm văn bản 'xử phạt vi phạm giao thông' đã lọc theo trích yếu thật của từng DOCX. effective_date=null => loader tự trích từ điều 'Hiệu lực thi hành'; nếu có giá trị thì dùng làm nguồn chuẩn (override).",
+  "group_id": "traffic_penalty_vn",
+  "documents": [
+    {"file": "168_2024_ND-CP_619502.docx", "so_hieu": "168/2024/NĐ-CP", "loai": "Nghị định", "role": "core_penalty", "effective_date": "2025-01-01", "amends": null},
+    {"file": "238_2026_ND-CP_712521.docx", "so_hieu": "238/2026/NĐ-CP", "loai": "Nghị định", "role": "amendment", "effective_date": null, "amends": "168/2024/NĐ-CP"},
+    {"file": "336_2025_ND-CP_670893.docx", "so_hieu": "336/2025/NĐ-CP", "loai": "Nghị định", "role": "penalty_road_ops", "effective_date": null, "amends": null},
+    {"file": "189_2025_ND-CP_664429.docx", "so_hieu": "189/2025/NĐ-CP", "loai": "Nghị định", "role": "sanction_authority", "effective_date": null, "amends": null},
+    {"file": "73_2024_TT-BCA_633438.docx", "so_hieu": "73/2024/TT-BCA", "loai": "Thông tư", "role": "enforcement", "effective_date": null, "amends": null},
+    {"file": "65_2024_TT-BCA_m_632409.docx", "so_hieu": "65/2024/TT-BCA", "loai": "Thông tư", "role": "point_restoration", "effective_date": null, "amends": null},
+    {"file": "105_2026_TT-BCA_m_713073.docx", "so_hieu": "105/2026/TT-BCA", "loai": "Thông tư", "role": "amendment", "effective_date": null, "amends": "65/2024/TT-BCA"},
+    {"file": "9303_QD-BCA_m_637615.docx", "so_hieu": "9303/QĐ-BCA", "loai": "Quyết định", "role": "procedure", "effective_date": null, "amends": null},
+    {"file": "36_2024_QH15_444251.docx", "so_hieu": "36/2024/QH15", "loai": "Luật", "role": "framework_law", "effective_date": null, "amends": null},
+    {"file": "35_2024_QH15_588811.docx", "so_hieu": "35/2024/QH15", "loai": "Luật", "role": "framework_law", "effective_date": null, "amends": null},
+    {"file": "90_VBHN-VPQH_699548.docx", "so_hieu": "90/VBHN-VPQH", "loai": "Văn bản hợp nhất", "role": "framework_law", "effective_date": null, "amends": null}
+  ]
+}
