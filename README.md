@@ -97,6 +97,14 @@ data/config/penalty_corpus.json
 
 Data links are listed in [docs/references/references.md](docs/references/references.md).
 
+Main data Drive folder:
+
+<https://drive.google.com/drive/folders/1RhVMqDr98r5IBqArSrzUYBvoNZTjtLxE>
+
+Demo/data Drive folder:
+
+<https://drive.google.com/drive/folders/1voxi753JGAzF7WfiKLxzIP2rJCLjuSmf>
+
 ## Run
 
 Ingest the selected corpus:
