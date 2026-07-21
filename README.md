@@ -51,6 +51,11 @@ its provenance without regex, keyword matching, or legal interpretation. Raw
 blocks remain unchanged; the optional normalized output excludes only empty
 text items and records those references in the manifest.
 
+Source-block schema `1.1.0` adds an explicit zero-based `sequence_index` in
+Docling traversal order. Regenerate older JSONL outputs from their hashed DOCX
+source; normalized outputs preserve the original indices and do not renumber
+after skipping empty text items.
+
 ## Checks
 
 Run before committing:

@@ -12,7 +12,12 @@ from docling_core.types.doc import DocItemLabel, DoclingDocument
 from docling_core.types.io import DocumentStream
 
 from legal_rag import source_blocks
-from legal_rag.source_blocks import build_source_blocks, extract_source_blocks, write_source_blocks
+from legal_rag.source_blocks import (
+    SOURCE_BLOCK_SCHEMA_VERSION,
+    build_source_blocks,
+    extract_source_blocks,
+    write_source_blocks,
+)
 
 
 def _document() -> DoclingDocument:
@@ -30,6 +35,8 @@ def test_build_source_blocks_preserves_docling_items_deterministically() -> None
 
     assert first == second
     assert len({block.block_id for block in first}) == len(first)
+    assert [block.sequence_index for block in first] == list(range(len(first)))
+    assert {block.schema_version for block in first} == {SOURCE_BLOCK_SCHEMA_VERSION}
     text_block = next(block for block in first if block.docling_ref == "#/texts/0")
     assert text_block.docling_item_type == "TextItem"
     assert text_block.docling_label == "text"

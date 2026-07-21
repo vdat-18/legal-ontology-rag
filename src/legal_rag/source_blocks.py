@@ -15,7 +15,8 @@ from docling.document_converter import DocumentConverter
 from docling_core.types.doc import DoclingDocument
 from docling_core.types.io import DocumentStream
 
-SOURCE_BLOCK_SCHEMA_VERSION = "1.0.0"
+SOURCE_BLOCK_SCHEMA_VERSION = "1.1.0"
+SEQUENCE_INDEX_ORIGIN = 0
 
 
 class SourceDocumentNotFoundError(FileNotFoundError):
@@ -72,6 +73,7 @@ class SourceBlock:
     docling_ref: str
     docling_item_type: str
     docling_label: str
+    sequence_index: int
     depth: int
     payload_sha256: str
     payload: dict[str, Any]
@@ -89,6 +91,7 @@ class SourceBlock:
             "docling_ref": self.docling_ref,
             "docling_item_type": self.docling_item_type,
             "docling_label": self.docling_label,
+            "sequence_index": self.sequence_index,
             "depth": self.depth,
             "payload_sha256": self.payload_sha256,
             "payload": self.payload,
@@ -122,7 +125,8 @@ def build_source_blocks(
     blocks: list[SourceBlock] = []
     seen_refs: set[str] = set()
 
-    for item, depth in document.iterate_items(with_groups=True, traverse_pictures=True):
+    items = document.iterate_items(with_groups=True, traverse_pictures=True)
+    for sequence_index, (item, depth) in enumerate(items, start=SEQUENCE_INDEX_ORIGIN):
         docling_ref = str(item.self_ref)
         if docling_ref in seen_refs:
             raise SourceBlockValidationError.duplicate_docling_ref(docling_ref)
@@ -151,6 +155,7 @@ def build_source_blocks(
                 docling_ref=docling_ref,
                 docling_item_type=type(item).__name__,
                 docling_label=str(item.label),
+                sequence_index=sequence_index,
                 depth=depth,
                 payload_sha256=payload_sha256,
                 payload=payload,

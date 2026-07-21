@@ -18,6 +18,7 @@ def _blocks():
     document.add_text(label=DocItemLabel.TEXT, text="Nội dung nguồn", parent=group)
     document.add_text(label=DocItemLabel.TEXT, text="", parent=document.body)
     document.add_text(label=DocItemLabel.TEXT, text="   \n", parent=document.body)
+    document.add_text(label=DocItemLabel.TEXT, text="Sau khoảng trống", parent=document.body)
     return build_source_blocks(document, source_name="source.docx", source_sha256="source-hash")
 
 
@@ -31,7 +32,8 @@ def test_select_content_blocks_keeps_raw_blocks_unchanged() -> None:
     assert [block.to_dict() for block in raw_blocks] == raw_records
     assert selection.raw_block_count == len(raw_blocks)
     assert selection.skipped_empty_text_refs == ("#/texts/1", "#/texts/2")
-    assert {block.docling_ref for block in selection.blocks} == {"#/body", "#/groups/0", "#/texts/0"}
+    assert {block.docling_ref for block in selection.blocks} == {"#/body", "#/groups/0", "#/texts/0", "#/texts/3"}
+    assert [block.sequence_index for block in selection.blocks] == [0, 1, 2, 5]
 
 
 def test_write_normalized_source_blocks_writes_manifest(tmp_path: Path) -> None:
