@@ -8,6 +8,7 @@ from pathlib import Path
 from loguru import logger
 
 from legal_rag.docx_paragraphs import extract_docx_paragraphs, write_docx_paragraphs
+from legal_rag.docx_tables import extract_docx_tables, write_docx_tables
 from legal_rag.normalization import select_content_blocks, write_normalized_source_blocks
 from legal_rag.source_blocks import extract_source_blocks, write_source_blocks
 
@@ -21,6 +22,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--normalization-manifest", type=Path, help="JSON path recording skipped empty text items")
     parser.add_argument("--paragraph-output", type=Path, help="JSONL path for native DOCX paragraph units")
     parser.add_argument("--paragraph-manifest", type=Path, help="JSON path for the paragraph extraction audit")
+    parser.add_argument("--table-output", type=Path, help="JSONL path for native DOCX table units")
+    parser.add_argument("--table-manifest", type=Path, help="JSON path for the table extraction audit")
     return parser
 
 
@@ -32,6 +35,8 @@ def main() -> None:
         parser.error("--normalized-output and --normalization-manifest must be provided together")
     if (arguments.paragraph_output is None) != (arguments.paragraph_manifest is None):
         parser.error("--paragraph-output and --paragraph-manifest must be provided together")
+    if (arguments.table_output is None) != (arguments.table_manifest is None):
+        parser.error("--table-output and --table-manifest must be provided together")
 
     blocks = extract_source_blocks(arguments.input_path)
     write_source_blocks(arguments.output_path, blocks)
@@ -60,6 +65,14 @@ def main() -> None:
             "Wrote {} native DOCX paragraph units; skipped {} empty paragraphs",
             len(paragraphs.units),
             len(paragraphs.skipped_empty_paragraph_refs),
+        )
+    if arguments.table_output is not None and arguments.table_manifest is not None:
+        tables = extract_docx_tables(arguments.input_path)
+        write_docx_tables(arguments.table_output, arguments.table_manifest, tables)
+        logger.info(
+            "Wrote {} native DOCX table units with {} cells",
+            len(tables.units),
+            tables.cell_count,
         )
 
 

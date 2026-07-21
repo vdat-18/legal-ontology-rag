@@ -45,7 +45,9 @@ legal-groundtruth `
   --normalized-output data/processed/groundtruth/168_2024_ND-CP_619502.normalized-blocks.jsonl `
   --normalization-manifest data/processed/groundtruth/168_2024_ND-CP_619502.normalization.json `
   --paragraph-output data/processed/groundtruth/168_2024_ND-CP_619502.paragraphs.jsonl `
-  --paragraph-manifest data/processed/groundtruth/168_2024_ND-CP_619502.paragraphs.manifest.json
+  --paragraph-manifest data/processed/groundtruth/168_2024_ND-CP_619502.paragraphs.manifest.json `
+  --table-output data/processed/groundtruth/168_2024_ND-CP_619502.tables.jsonl `
+  --table-manifest data/processed/groundtruth/168_2024_ND-CP_619502.tables.manifest.json
 ```
 
 Docling performs structural parsing. The project stores each Docling item and
@@ -63,6 +65,10 @@ visible runs from one top-level Word paragraph together, including vertical
 alignment such as superscript, without guessing from text content. Table cells
 remain outside this paragraph view and will be handled by a dedicated table
 normalization layer.
+
+Native table output preserves top-level rows, cells, cell paragraphs, runs,
+and OOXML merge metadata. Nested tables fail explicitly until their recursive
+schema is defined; they are never silently flattened.
 
 ## Checks
 

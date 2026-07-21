@@ -178,7 +178,7 @@ def extract_docx_paragraphs(input_path: Path) -> ParagraphExtraction:
         sequence_index = paragraph_count
         paragraph_count += 1
         source_ref = f"{_DOCUMENT_PART}#/body/{body_index}"
-        runs = tuple(_extract_runs(element))
+        runs = tuple(extract_paragraph_runs(element))
         text = "".join(run.text for run in runs)
         if not text.strip():
             skipped_refs.append(source_ref)
@@ -249,7 +249,7 @@ def _read_document_part(input_path: Path, source_bytes: bytes) -> bytes:
         raise DocxParagraphExtractionError.invalid_archive(input_path) from error
 
 
-def _extract_runs(paragraph: ElementTree.Element) -> list[ParagraphRun]:
+def extract_paragraph_runs(paragraph: ElementTree.Element) -> list[ParagraphRun]:
     """Return visible runs in their native OOXML order."""
     runs: list[ParagraphRun] = []
     for run_index, run in enumerate(paragraph.iter(_RUN_TAG)):
