@@ -41,11 +41,15 @@ Convert one source document into deterministic JSONL blocks:
 ```powershell
 legal-groundtruth `
   data/raw/road_traffic_legal_documents/168_2024_ND-CP_619502.docx `
-  data/processed/groundtruth/168_2024_ND-CP_619502.source-blocks.jsonl
+  data/processed/groundtruth/168_2024_ND-CP_619502.source-blocks.jsonl `
+  --normalized-output data/processed/groundtruth/168_2024_ND-CP_619502.normalized-blocks.jsonl `
+  --normalization-manifest data/processed/groundtruth/168_2024_ND-CP_619502.normalization.json
 ```
 
 Docling performs structural parsing. The project stores each Docling item and
-its provenance without regex, keyword matching, or legal interpretation.
+its provenance without regex, keyword matching, or legal interpretation. Raw
+blocks remain unchanged; the optional normalized output excludes only empty
+text items and records those references in the manifest.
 
 ## Checks
 
