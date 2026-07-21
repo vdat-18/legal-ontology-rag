@@ -10,6 +10,7 @@ from loguru import logger
 from legal_rag.docx_paragraphs import extract_docx_paragraphs, write_docx_paragraphs
 from legal_rag.docx_tables import extract_docx_tables, write_docx_tables
 from legal_rag.normalization import select_content_blocks, write_normalized_source_blocks
+from legal_rag.pdf_sidecar import PdfSidecar, extract_pdf_blocks, render_docx_pdf, write_pdf_sidecar
 from legal_rag.source_blocks import extract_source_blocks, write_source_blocks
 
 
@@ -24,6 +25,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--paragraph-manifest", type=Path, help="JSON path for the paragraph extraction audit")
     parser.add_argument("--table-output", type=Path, help="JSONL path for native DOCX table units")
     parser.add_argument("--table-manifest", type=Path, help="JSON path for the table extraction audit")
+    parser.add_argument("--pdf-output", type=Path, help="Rendered PDF sidecar path")
+    parser.add_argument("--pdf-block-output", type=Path, help="JSONL path for page-aware PDF blocks")
+    parser.add_argument("--pdf-manifest", type=Path, help="JSON path for DOCX-to-PDF provenance")
+    parser.add_argument("--renderer-executable", type=Path, help="LibreOffice console executable path")
+    parser.add_argument("--render-timeout-seconds", type=float, help="Positive renderer process timeout")
     return parser
 
 
@@ -37,6 +43,18 @@ def main() -> None:
         parser.error("--paragraph-output and --paragraph-manifest must be provided together")
     if (arguments.table_output is None) != (arguments.table_manifest is None):
         parser.error("--table-output and --table-manifest must be provided together")
+    pdf_arguments = (
+        arguments.pdf_output,
+        arguments.pdf_block_output,
+        arguments.pdf_manifest,
+        arguments.renderer_executable,
+        arguments.render_timeout_seconds,
+    )
+    if any(value is not None for value in pdf_arguments) and any(value is None for value in pdf_arguments):
+        parser.error(
+            "--pdf-output, --pdf-block-output, --pdf-manifest, --renderer-executable, "
+            "and --render-timeout-seconds must be provided together"
+        )
 
     blocks = extract_source_blocks(arguments.input_path)
     write_source_blocks(arguments.output_path, blocks)
@@ -73,6 +91,24 @@ def main() -> None:
             "Wrote {} native DOCX table units with {} cells",
             len(tables.units),
             tables.cell_count,
+        )
+    if all(value is not None for value in pdf_arguments):
+        rendered = render_docx_pdf(
+            arguments.input_path,
+            arguments.pdf_output,
+            renderer_executable=arguments.renderer_executable,
+            timeout_seconds=arguments.render_timeout_seconds,
+        )
+        parsed = extract_pdf_blocks(arguments.pdf_output)
+        write_pdf_sidecar(
+            arguments.pdf_block_output,
+            arguments.pdf_manifest,
+            PdfSidecar(rendered=rendered, parsed=parsed),
+        )
+        logger.info(
+            "Wrote {} page-aware PDF blocks across {} pages",
+            len(parsed.blocks),
+            parsed.page_count,
         )
 
 
