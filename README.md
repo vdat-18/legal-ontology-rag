@@ -43,7 +43,9 @@ legal-groundtruth `
   data/raw/road_traffic_legal_documents/168_2024_ND-CP_619502.docx `
   data/processed/groundtruth/168_2024_ND-CP_619502.source-blocks.jsonl `
   --normalized-output data/processed/groundtruth/168_2024_ND-CP_619502.normalized-blocks.jsonl `
-  --normalization-manifest data/processed/groundtruth/168_2024_ND-CP_619502.normalization.json
+  --normalization-manifest data/processed/groundtruth/168_2024_ND-CP_619502.normalization.json `
+  --paragraph-output data/processed/groundtruth/168_2024_ND-CP_619502.paragraphs.jsonl `
+  --paragraph-manifest data/processed/groundtruth/168_2024_ND-CP_619502.paragraphs.manifest.json
 ```
 
 Docling performs structural parsing. The project stores each Docling item and
@@ -55,6 +57,12 @@ Source-block schema `1.1.0` adds an explicit zero-based `sequence_index` in
 Docling traversal order. Regenerate older JSONL outputs from their hashed DOCX
 source; normalized outputs preserve the original indices and do not renumber
 after skipping empty text items.
+
+Native paragraph output is read directly from `word/document.xml`. It keeps all
+visible runs from one top-level Word paragraph together, including vertical
+alignment such as superscript, without guessing from text content. Table cells
+remain outside this paragraph view and will be handled by a dedicated table
+normalization layer.
 
 ## Checks
 
