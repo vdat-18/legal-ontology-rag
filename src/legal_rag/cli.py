@@ -7,6 +7,7 @@ from pathlib import Path
 
 from loguru import logger
 
+from legal_rag.document_source import extract_document_source, write_document_source
 from legal_rag.docx_paragraphs import extract_docx_paragraphs, write_docx_paragraphs
 from legal_rag.docx_tables import extract_docx_tables, write_docx_tables
 from legal_rag.normalization import select_content_blocks, write_normalized_source_blocks
@@ -110,6 +111,34 @@ def main() -> None:
             len(parsed.blocks),
             parsed.page_count,
         )
+
+
+def _document_source_parser() -> argparse.ArgumentParser:
+    """Build the command-line parser for the merged source view."""
+    parser = argparse.ArgumentParser(
+        description="Merge native DOCX paragraphs and tables into one ordered source view."
+    )
+    parser.add_argument("input_path", type=Path, help="Source DOCX path")
+    parser.add_argument("output_path", type=Path, help="Destination JSONL path for merged source units")
+    parser.add_argument("--manifest", type=Path, help="Optional JSON path for an audit manifest")
+    return parser
+
+
+def parse_document_main() -> None:
+    """Extract one DOCX into a single native-order source view."""
+    parser = _document_source_parser()
+    arguments = parser.parse_args()
+
+    source = extract_document_source(arguments.input_path)
+    write_document_source(arguments.output_path, source, manifest_path=arguments.manifest)
+    logger.info(
+        "Wrote {} source units ({} paragraphs, {} tables) from {} to {}",
+        len(source.units),
+        source.paragraph_count,
+        source.table_count,
+        arguments.input_path.name,
+        arguments.output_path,
+    )
 
 
 if __name__ == "__main__":

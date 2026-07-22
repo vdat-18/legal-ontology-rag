@@ -25,6 +25,7 @@ dev = ["ruff==0.15.21", "pytest>=8.0"]
 [project.scripts]
 legal-rag = "legal_rag.cli:main"
 legal-groundtruth = "legal_rag.cli:main"
+legal-parse = "legal_rag.cli:parse_document_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/legal_rag"]

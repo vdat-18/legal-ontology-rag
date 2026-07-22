@@ -91,6 +91,25 @@ LibreOffice includes render-time metadata in each PDF, so a later render may
 have a different PDF hash. Page citations always belong to the exact immutable
 PDF hash recorded in its manifest.
 
+## Unified Source View
+
+Merge the native DOCX paragraphs and tables into one ordered source file:
+
+```powershell
+legal-parse `
+  data/raw/road_traffic_legal_documents/168_2024_ND-CP_619502.docx `
+  data/processed/groundtruth/168_2024_ND-CP_619502.source.jsonl
+```
+
+Each JSONL record is one native paragraph or table in native document order,
+carrying its exact OOXML source reference and content hash. The command reads
+`word/document.xml` directly, so tables keep their native row, cell, and merge
+structure without Docling. By default it writes only this single file; pass
+`--manifest <path>` to also write an audit sidecar that records skipped empty
+paragraphs and unit counts. This merged view is the deterministic source for
+downstream ground-truth synthesis; page provenance stays in the optional PDF
+sidecar and is never matched back into this view.
+
 ## Checks
 
 Run before committing:
