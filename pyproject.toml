@@ -26,7 +26,6 @@ dev = ["ruff==0.15.21", "pytest>=8.0"]
 legal-rag = "legal_rag.cli:main"
 legal-groundtruth = "legal_rag.cli:main"
 legal-parse = "legal_rag.cli:parse_document_main"
-legal-caption-docx = "legal_rag.cli:caption_document_images_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/legal_rag"]

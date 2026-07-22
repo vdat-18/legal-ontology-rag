@@ -6,7 +6,7 @@ import json
 import zipfile
 from pathlib import Path
 
-from legal_rag.document_source import (
+from legal_rag.parser.document_source import (
     KIND_PARAGRAPH,
     KIND_TABLE,
     extract_document_source,

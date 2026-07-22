@@ -2,25 +2,21 @@
 
 from __future__ import annotations
 
-import json
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from legal_rag import image_captioning
-from legal_rag.document_source import KIND_PARAGRAPH, DocumentSource, DocumentSourceUnit
-from legal_rag.docx_images import DocxImage, DocxImageExtraction
-from legal_rag.image_captioning import (
-    CaptionModelResponse,
-    ImageCaptionConfigurationError,
+from legal_rag.parser import image_captioner
+from legal_rag.parser.config import ParserConfigurationError, ParserSettings
+from legal_rag.parser.document_source import KIND_PARAGRAPH, DocumentSource, DocumentSourceUnit
+from legal_rag.parser.image_captioner import (
     ImageCaptionError,
-    ImageCaptionSettings,
-    caption_docx_document,
-    caption_docx_images,
-    write_image_captions,
+    caption_images,
 )
-from legal_rag.image_context import ImageContext
+from legal_rag.parser.image_context import ImageContext
+from legal_rag.parser.images import DocxImage, DocxImageExtraction
+from legal_rag.parser.models import CaptionModelResponse
 
 
 class FakeCaptionClient:
@@ -47,9 +43,9 @@ class FakeCaptionClient:
         )
 
 
-def _settings() -> ImageCaptionSettings:
+def _settings() -> ParserSettings:
     """Build bounded settings without reading the process environment."""
-    return ImageCaptionSettings(
+    return ParserSettings(
         base_url="http://localhost:20128/v1",
         api_key="test-router-key",
         model="gemini/test-model",
@@ -120,7 +116,7 @@ def test_settings_require_typed_environment_values() -> None:
         "IMAGE_CAPTION_TEMPERATURE": "0",
     }
 
-    settings = ImageCaptionSettings.from_environment(environment)
+    settings = ParserSettings.from_environment(environment)
 
     assert settings.base_url == "http://localhost:20128/v1"
     assert settings.max_concurrency == 4
@@ -130,8 +126,8 @@ def test_settings_require_typed_environment_values() -> None:
 
 def test_settings_reject_missing_limits() -> None:
     """Incomplete execution configuration fails before creating an API client."""
-    with pytest.raises(ImageCaptionConfigurationError, match="LLM_TIMEOUT_SECONDS"):
-        ImageCaptionSettings.from_environment(
+    with pytest.raises(ParserConfigurationError, match="LLM_TIMEOUT_SECONDS"):
+        ParserSettings.from_environment(
             {
                 "LLM_BASE_URL": "http://localhost:20128/v1",
                 "LLM_API_KEY": "router-key",
@@ -147,7 +143,7 @@ def test_caption_docx_images_preserves_order_and_supplies_context() -> None:
     extraction = DocxImageExtraction("source.docx", "source-hash", images)
     client = FakeCaptionClient()
 
-    captions = caption_docx_images(extraction, _source(images), _settings(), client)
+    captions = caption_images(extraction, _source(images), _settings(), client)
 
     assert [caption.image_id for caption in captions] == ["image-0", "image-1"]
     assert [caption.description_vi for caption in captions] == ["Mô tả 1", "Mô tả 2"]
@@ -157,28 +153,6 @@ def test_caption_docx_images_preserves_order_and_supplies_context() -> None:
     ]
     assert [context.entries[0].text for context in client.contexts] == ["Ngữ cảnh 0", "Ngữ cảnh 1"]
     assert client.images == [(b"first", "image/png"), (b"second", "image/png")]
-
-
-def test_caption_docx_document_runs_without_intermediate_assets(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    """The user-facing operation extracts source and images directly from one DOCX."""
-    image = _image(sequence_index=0)
-    extraction = DocxImageExtraction("source.docx", "source-hash", (image,))
-    source = _source((image,))
-    monkeypatch.setattr(image_captioning, "extract_docx_images", lambda path: extraction)
-    monkeypatch.setattr(image_captioning, "extract_document_source", lambda path: source)
-    client = FakeCaptionClient()
-
-    captions = caption_docx_document(
-        tmp_path / "source.docx",
-        _settings(),
-        client,
-    )
-
-    assert [caption.image_id for caption in captions] == ["image-0"]
-    assert client.contexts[0].source_refs == ("word/document.xml#/body/0",)
 
 
 def test_legacy_media_requires_or_uses_explicit_renderer(
@@ -191,7 +165,7 @@ def test_legacy_media_requires_or_uses_explicit_renderer(
     source = _source((image,))
 
     with pytest.raises(ImageCaptionError, match="renderer-executable"):
-        caption_docx_images(extraction, source, _settings(), FakeCaptionClient())
+        caption_images(extraction, source, _settings(), FakeCaptionClient())
 
     renderer = tmp_path / "soffice.com"
     renderer.write_bytes(b"renderer")
@@ -202,10 +176,10 @@ def test_legacy_media_requires_or_uses_explicit_renderer(
         output_directory.joinpath(f"{input_path.stem}.png").write_bytes(b"png")
         return subprocess.CompletedProcess(command, 0, "converted", "")
 
-    monkeypatch.setattr(image_captioning.subprocess, "run", fake_run)
+    monkeypatch.setattr(image_captioner.subprocess, "run", fake_run)
     client = FakeCaptionClient()
 
-    captions = caption_docx_images(
+    captions = caption_images(
         extraction,
         source,
         _settings(),
@@ -215,20 +189,3 @@ def test_legacy_media_requires_or_uses_explicit_renderer(
 
     assert captions[0].caption_mime_type == "image/png"
     assert client.images[0] == (b"png", "image/png")
-
-
-def test_write_image_captions_writes_only_jsonl(tmp_path: Path) -> None:
-    """The simplified user-facing pipeline persists one caption sidecar."""
-    image = _image(sequence_index=0)
-    captions = caption_docx_images(
-        DocxImageExtraction("source.docx", "source-hash", (image,)),
-        _source((image,)),
-        _settings(),
-        FakeCaptionClient(),
-    )
-    output_path = tmp_path / "captions.jsonl"
-
-    write_image_captions(output_path, captions)
-
-    records = [json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()]
-    assert records == [caption.to_dict() for caption in captions]

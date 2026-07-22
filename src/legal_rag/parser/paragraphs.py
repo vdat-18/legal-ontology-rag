@@ -58,11 +58,6 @@ class DocxParagraphExtractionError(ValueError):
         """Build an error for a DOCX without a document body."""
         return cls(f"DOCX main document has no body: {path}")
 
-    @classmethod
-    def no_content(cls, path: Path) -> DocxParagraphExtractionError:
-        """Build an error for a DOCX without content-bearing body paragraphs."""
-        return cls(f"DOCX contains no content-bearing body paragraphs: {path}")
-
 
 class ParagraphUnitValidationError(ValueError):
     """Raised when paragraph units cannot satisfy their persisted contract."""
@@ -214,8 +209,6 @@ def extract_docx_paragraphs(input_path: Path) -> ParagraphExtraction:
             )
         )
 
-    if not units:
-        raise DocxParagraphExtractionError.no_content(input_path)
     return ParagraphExtraction(
         source_name=input_path.name,
         source_sha256=source_sha256,

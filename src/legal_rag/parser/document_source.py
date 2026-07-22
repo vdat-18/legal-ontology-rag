@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from legal_rag.docx_paragraphs import ParagraphRun, ParagraphUnit, extract_docx_paragraphs
-from legal_rag.docx_tables import TableRow, TableUnit, extract_docx_tables
+from legal_rag.parser.paragraphs import ParagraphRun, ParagraphUnit, extract_docx_paragraphs
+from legal_rag.parser.tables import TableRow, TableUnit, extract_docx_tables
 
 DOCUMENT_SOURCE_SCHEMA_VERSION = "1.1.0"
 DOCUMENT_SOURCE_MANIFEST_SCHEMA_VERSION = "1.0.0"

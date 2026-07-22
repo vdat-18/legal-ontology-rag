@@ -6,7 +6,7 @@ import json
 import zipfile
 from pathlib import Path
 
-from legal_rag.docx_paragraphs import extract_docx_paragraphs, write_docx_paragraphs
+from legal_rag.parser.paragraphs import extract_docx_paragraphs, write_docx_paragraphs
 
 _DOCUMENT_XML = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">

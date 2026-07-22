@@ -7,19 +7,6 @@ from pathlib import Path
 
 from loguru import logger
 
-from legal_rag.document_source import extract_document_source, write_document_source
-from legal_rag.docx_paragraphs import extract_docx_paragraphs, write_docx_paragraphs
-from legal_rag.docx_tables import extract_docx_tables, write_docx_tables
-from legal_rag.image_captioning import (
-    BamlCaptionClient,
-    ImageCaptionSettings,
-    caption_docx_document,
-    write_image_captions,
-)
-from legal_rag.normalization import select_content_blocks, write_normalized_source_blocks
-from legal_rag.pdf_sidecar import PdfSidecar, extract_pdf_blocks, render_docx_pdf, write_pdf_sidecar
-from legal_rag.source_blocks import extract_source_blocks, write_source_blocks
-
 
 def _parser() -> argparse.ArgumentParser:
     """Build the command-line parser."""
@@ -42,6 +29,12 @@ def _parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     """Extract one source document into JSONL source blocks."""
+    from legal_rag.parser.normalization import select_content_blocks, write_normalized_source_blocks
+    from legal_rag.parser.paragraphs import extract_docx_paragraphs, write_docx_paragraphs
+    from legal_rag.parser.pdf_sidecar import PdfSidecar, extract_pdf_blocks, render_docx_pdf, write_pdf_sidecar
+    from legal_rag.parser.source_blocks import extract_source_blocks, write_source_blocks
+    from legal_rag.parser.tables import extract_docx_tables, write_docx_tables
+
     parser = _parser()
     arguments = parser.parse_args()
     if (arguments.normalized_output is None) != (arguments.normalization_manifest is None):
@@ -119,39 +112,11 @@ def main() -> None:
         )
 
 
-def _document_source_parser() -> argparse.ArgumentParser:
-    """Build the command-line parser for the merged source view."""
-    parser = argparse.ArgumentParser(
-        description="Merge native DOCX paragraphs and tables into one ordered source view."
-    )
+def _document_parser() -> argparse.ArgumentParser:
+    """Build the command-line parser for the enriched document pipeline."""
+    parser = argparse.ArgumentParser(description="Parse and enrich one DOCX into the final source view.")
     parser.add_argument("input_path", type=Path, help="Source DOCX path")
-    parser.add_argument("output_path", type=Path, help="Destination JSONL path for merged source units")
-    parser.add_argument("--manifest", type=Path, help="Optional JSON path for an audit manifest")
-    return parser
-
-
-def parse_document_main() -> None:
-    """Extract one DOCX into a single native-order source view."""
-    parser = _document_source_parser()
-    arguments = parser.parse_args()
-
-    source = extract_document_source(arguments.input_path)
-    write_document_source(arguments.output_path, source, manifest_path=arguments.manifest)
-    logger.info(
-        "Wrote {} source units ({} paragraphs, {} tables) from {} to {}",
-        len(source.units),
-        source.paragraph_count,
-        source.table_count,
-        arguments.input_path.name,
-        arguments.output_path,
-    )
-
-
-def _image_caption_parser() -> argparse.ArgumentParser:
-    """Build the command-line parser for direct DOCX image captioning."""
-    parser = argparse.ArgumentParser(description="Caption one DOCX through the configured multimodal LLM API.")
-    parser.add_argument("input_path", type=Path, help="Source DOCX path")
-    parser.add_argument("output_path", type=Path, help="Destination JSONL path for validated captions")
+    parser.add_argument("output_path", type=Path, help="Destination JSONL path for enriched source units")
     parser.add_argument(
         "--renderer-executable",
         type=Path,
@@ -160,28 +125,32 @@ def _image_caption_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def caption_document_images_main() -> None:
-    """Extract and caption one DOCX through 9Router without intermediate files."""
+def parse_document_main() -> None:
+    """Run the complete parser pipeline and write one enriched output."""
     from dotenv import find_dotenv, load_dotenv
 
-    arguments = _image_caption_parser().parse_args()
+    from legal_rag.parser.config import ParserSettings
+    from legal_rag.parser.image_captioner import BamlCaptionClient
+    from legal_rag.parser.pipeline import ParserPipeline
+    from legal_rag.parser.writer import write_parsed_document
+
+    arguments = _document_parser().parse_args()
     dotenv_path = find_dotenv(usecwd=True)
     if dotenv_path:
         load_dotenv(dotenv_path)
-    settings = ImageCaptionSettings.from_environment()
-    client = BamlCaptionClient(settings)
-    captions = caption_docx_document(
+    settings = ParserSettings.from_environment()
+    pipeline = ParserPipeline(settings, BamlCaptionClient(settings))
+    document = pipeline.parse(
         arguments.input_path,
-        settings,
-        client,
         renderer_executable=arguments.renderer_executable,
     )
-    write_image_captions(arguments.output_path, captions)
+    write_parsed_document(arguments.output_path, document)
     logger.info(
-        "Wrote {} validated image captions for {} using requested model {}",
-        len(captions),
+        "Wrote {} enriched source units with {} image captions from {} to {}",
+        len(document.units),
+        document.image_count,
         arguments.input_path.name,
-        settings.model,
+        arguments.output_path,
     )
 
 

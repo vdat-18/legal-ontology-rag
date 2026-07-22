@@ -11,8 +11,8 @@ import pytest
 from docling_core.types.doc import DocItemLabel, DoclingDocument
 from docling_core.types.io import DocumentStream
 
-from legal_rag import source_blocks
-from legal_rag.source_blocks import (
+from legal_rag.parser import source_blocks
+from legal_rag.parser.source_blocks import (
     SOURCE_BLOCK_SCHEMA_VERSION,
     build_source_blocks,
     extract_source_blocks,

@@ -10,7 +10,7 @@ import pytest
 from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
 from docling.datamodel.base_models import InputFormat
 
-from legal_rag.pdf_sidecar import (
+from legal_rag.parser.pdf_sidecar import (
     ParsedPdf,
     PdfSidecar,
     RenderedPdf,
@@ -18,7 +18,7 @@ from legal_rag.pdf_sidecar import (
     render_docx_pdf,
     write_pdf_sidecar,
 )
-from legal_rag.source_blocks import SOURCE_BLOCK_SCHEMA_VERSION, SourceBlock
+from legal_rag.parser.source_blocks import SOURCE_BLOCK_SCHEMA_VERSION, SourceBlock
 
 
 def _block(*, sequence_index: int, page_number: int | None) -> SourceBlock:
@@ -64,7 +64,7 @@ def test_render_docx_pdf_uses_explicit_renderer_and_isolated_profile(
         output_directory.joinpath("source.pdf").write_bytes(b"pdf bytes")
         return subprocess.CompletedProcess(command, 0, "converted", "")
 
-    monkeypatch.setattr("legal_rag.pdf_sidecar.subprocess.run", fake_run)
+    monkeypatch.setattr("legal_rag.parser.pdf_sidecar.subprocess.run", fake_run)
 
     rendered = render_docx_pdf(
         source_path,
@@ -128,9 +128,10 @@ def test_extract_pdf_blocks_uses_pdfium_without_ocr(monkeypatch: pytest.MonkeyPa
             captured["source_name"] = source.name
             return type("Result", (), {"document": type("Document", (), {"pages": {1: object()}})()})()
 
-    monkeypatch.setattr("legal_rag.pdf_sidecar.DocumentConverter", FakeConverter)
+    monkeypatch.setattr("legal_rag.parser.pdf_sidecar.DocumentConverter", FakeConverter)
     monkeypatch.setattr(
-        "legal_rag.pdf_sidecar.build_source_blocks", lambda *args, **kwargs: [_block(sequence_index=0, page_number=1)]
+        "legal_rag.parser.pdf_sidecar.build_source_blocks",
+        lambda *args, **kwargs: [_block(sequence_index=0, page_number=1)],
     )
 
     parsed = extract_pdf_blocks(pdf_path)

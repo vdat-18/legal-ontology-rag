@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from legal_rag.docx_images import (
+from legal_rag.parser.images import (
     DocxImageExtractionError,
     extract_docx_images,
 )

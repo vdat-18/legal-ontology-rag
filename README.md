@@ -103,49 +103,35 @@ LibreOffice includes render-time metadata in each PDF, so a later render may
 have a different PDF hash. Page citations always belong to the exact immutable
 PDF hash recorded in its manifest.
 
-## Unified Source View
+## Parser Pipeline
 
-Merge the native DOCX paragraphs and tables into one ordered source file:
+Configure the `LLM_*` and `IMAGE_CAPTION_*` variables shown in `.env.example`,
+then parse one DOCX into the final enriched source file:
 
 ```powershell
 legal-parse `
   data/raw/road_traffic_legal_documents/168_2024_ND-CP_619502.docx `
-  data/processed/groundtruth/168_2024_ND-CP_619502.source.jsonl
-```
-
-Each JSONL record is one native paragraph or table in native document order,
-carrying its exact OOXML source reference and content hash. The command reads
-`word/document.xml` directly, so tables keep their native row, cell, and merge
-structure without Docling. By default it writes only this single file; pass
-`--manifest <path>` to also write an audit sidecar that records skipped empty
-paragraphs and unit counts. This merged view is the deterministic source for
-downstream ground-truth synthesis; page provenance stays in the optional PDF
-sidecar and is never matched back into this view.
-
-## Image Captioning
-
-Configure the `LLM_*` and `IMAGE_CAPTION_*` variables shown in `.env.example`.
-
-Caption one DOCX directly without changing the deterministic source view:
-
-```powershell
-legal-caption-docx `
-  data/raw/road_traffic_legal_documents/14_2025_TT-BXD_m_664151.docx `
-  data/processed/groundtruth/14_2025_TT-BXD_m_664151.image-captions.jsonl `
+  data/processed/groundtruth/168_2024_ND-CP_619502.parsed.jsonl `
   --renderer-executable "$env:LOCALAPPDATA/legal-rag-tools/libreoffice-26.2.4.2/app/program/soffice.com"
 ```
 
-The command extracts images in memory, joins each occurrence to structural
-context, calls the BAML `CaptionImage` function through 9Router, and writes only
-the typed caption sidecar. Table images receive text from their native row. Paragraph images use
-the same paragraph, or adjacent source units when the paragraph contains no
-text. Context is bounded by `IMAGE_CAPTION_MAX_CONTEXT_CHARACTERS` and every
-caption records the exact source references disclosed to the model.
+Each JSONL record is one native paragraph or table in native document order,
+carrying its exact OOXML source reference and content hash. Its `images` field
+contains the typed captions for image occurrences at that body position. The
+pipeline reads native paragraphs, tables, and images, builds structural context,
+calls the BAML `CaptionImage` function through 9Router, and writes only this one
+final JSONL file. Table images receive text from their native row. Paragraph
+images use the same paragraph, or adjacent source units when the paragraph
+contains no text. Context is bounded by
+`IMAGE_CAPTION_MAX_CONTEXT_CHARACTERS`, and every caption records the exact
+source references disclosed to the model.
 
 PNG/JPEG assets are sent directly. Legacy EMF/WMF assets require the explicit
 LibreOffice renderer and are converted to PNG in an isolated temporary
-profile. Captions are model-derived enrichment and never modify source hashes
-or native source records.
+profile. The `--renderer-executable` option may be omitted when the document
+contains only directly supported image formats. Captions are model-derived
+enrichment and never modify source hashes or native source records. Any parser
+stage failure aborts the output instead of silently producing a partial result.
 
 The prompt, multimodal input, and typed output schema live in `baml_src/`.
 Regenerate the local Python client after changing BAML files:
@@ -168,9 +154,11 @@ pytest
 ## Project Layout
 
 ```text
-src/legal_rag/       Ground-truth synthesis package
-data/config/         Corpus selection config
-data/raw/            Raw legal document archive
-docs/references/     External data and research links
-tests/               Offline tests
+baml_src/                    Versioned BAML definitions
+src/legal_rag/parser/        Document parser and enrichment pipeline
+src/legal_rag/baml_client/   Generated BAML Python client (Git-ignored)
+data/config/                 Corpus selection config
+data/raw/                    Raw legal document archive
+docs/references/             External data and research links
+tests/parser/                Offline parser tests
 ```

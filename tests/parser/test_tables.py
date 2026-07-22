@@ -6,7 +6,7 @@ import json
 import zipfile
 from pathlib import Path
 
-from legal_rag.docx_tables import (
+from legal_rag.parser.tables import (
     CELL_BLOCK_PARAGRAPH_KIND,
     CELL_BLOCK_TABLE_KIND,
     TableCellTable,

@@ -7,8 +7,8 @@ from pathlib import Path
 
 from docling_core.types.doc import DocItemLabel, DoclingDocument
 
-from legal_rag.normalization import select_content_blocks, write_normalized_source_blocks
-from legal_rag.source_blocks import build_source_blocks
+from legal_rag.parser.normalization import select_content_blocks, write_normalized_source_blocks
+from legal_rag.parser.source_blocks import build_source_blocks
 
 
 def _blocks():

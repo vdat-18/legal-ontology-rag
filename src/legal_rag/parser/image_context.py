@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from legal_rag.document_source import KIND_PARAGRAPH, DocumentSource, DocumentSourceUnit
-from legal_rag.docx_images import DocxImage
-from legal_rag.docx_tables import TableCellTable, TableRow
+from legal_rag.parser.document_source import KIND_PARAGRAPH, DocumentSource, DocumentSourceUnit
+from legal_rag.parser.images import DocxImage
+from legal_rag.parser.tables import TableCellTable, TableRow
 
 
 class ImageContextError(ValueError):

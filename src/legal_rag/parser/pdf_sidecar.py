@@ -17,7 +17,7 @@ from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.types.io import DocumentStream
 
-from legal_rag.source_blocks import SourceBlock, build_source_blocks, write_source_blocks
+from legal_rag.parser.source_blocks import SourceBlock, build_source_blocks, write_source_blocks
 
 PDF_SIDECAR_MANIFEST_SCHEMA_VERSION = "1.0.0"
 _PDF_EXPORT_FILTER = "pdf:writer_pdf_Export"

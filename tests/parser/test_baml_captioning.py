@@ -6,12 +6,13 @@ from baml_py import Image
 
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import StructuralContextEntry
-from legal_rag.image_captioning import BamlCaptionClient, ImageCaptionSettings
+from legal_rag.parser.config import ParserSettings
+from legal_rag.parser.image_captioner import BamlCaptionClient
 
 
-def _settings() -> ImageCaptionSettings:
+def _settings() -> ParserSettings:
     """Build runtime settings for an offline BAML request."""
-    return ImageCaptionSettings(
+    return ParserSettings(
         base_url="http://localhost:20128/v1",
         api_key="router-test-key",
         model="gemini/test-model",

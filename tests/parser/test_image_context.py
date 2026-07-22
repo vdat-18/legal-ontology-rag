@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from legal_rag.document_source import KIND_PARAGRAPH, KIND_TABLE, DocumentSource, DocumentSourceUnit
-from legal_rag.docx_images import DocxImage
-from legal_rag.docx_tables import TableCell, TableCellTable, TableRow
-from legal_rag.image_context import build_image_context
+from legal_rag.parser.document_source import KIND_PARAGRAPH, KIND_TABLE, DocumentSource, DocumentSourceUnit
+from legal_rag.parser.image_context import build_image_context
+from legal_rag.parser.images import DocxImage
+from legal_rag.parser.tables import TableCell, TableCellTable, TableRow
 
 
 def _image(*, body_index: int, parent_source_ref: str) -> DocxImage:

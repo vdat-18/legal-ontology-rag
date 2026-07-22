@@ -15,7 +15,7 @@ from xml.etree import ElementTree
 
 from defusedxml import ElementTree as SafeElementTree
 
-from legal_rag.docx_paragraphs import ParagraphRun, extract_paragraph_runs
+from legal_rag.parser.paragraphs import ParagraphRun, extract_paragraph_runs
 
 TABLE_UNIT_SCHEMA_VERSION = "1.1.0"
 TABLE_MANIFEST_SCHEMA_VERSION = "1.0.0"

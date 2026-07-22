@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from legal_rag.source_blocks import SourceBlock, SourceBlockValidationError, write_source_blocks
+from legal_rag.parser.source_blocks import SourceBlock, SourceBlockValidationError, write_source_blocks
 
 NORMALIZATION_MANIFEST_SCHEMA_VERSION = "1.0.0"
 
