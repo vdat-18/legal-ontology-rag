@@ -28,6 +28,17 @@ uv pip install -e ".[dev]"
 repository is inside OneDrive. Pass the LibreOffice console executable through
 `--renderer-executable`; the application path is never embedded in source code.
 
+Generate the local BAML client from the versioned definitions:
+
+```powershell
+baml-cli check --from baml_src
+baml-cli generate --from baml_src --no-tests
+```
+
+`src/legal_rag/baml_client/` is generated code and is intentionally excluded
+from Git. Run these commands after cloning the repository and whenever a file
+in `baml_src/` changes.
+
 ## Data
 
 Data links are listed in [docs/references/references.md](docs/references/references.md).
@@ -110,6 +121,39 @@ structure without Docling. By default it writes only this single file; pass
 paragraphs and unit counts. This merged view is the deterministic source for
 downstream ground-truth synthesis; page provenance stays in the optional PDF
 sidecar and is never matched back into this view.
+
+## Image Captioning
+
+Configure the `LLM_*` and `IMAGE_CAPTION_*` variables shown in `.env.example`.
+
+Caption one DOCX directly without changing the deterministic source view:
+
+```powershell
+legal-caption-docx `
+  data/raw/road_traffic_legal_documents/14_2025_TT-BXD_m_664151.docx `
+  data/processed/groundtruth/14_2025_TT-BXD_m_664151.image-captions.jsonl `
+  --renderer-executable "$env:LOCALAPPDATA/legal-rag-tools/libreoffice-26.2.4.2/app/program/soffice.com"
+```
+
+The command extracts images in memory, joins each occurrence to structural
+context, calls the BAML `CaptionImage` function through 9Router, and writes only
+the typed caption sidecar. Table images receive text from their native row. Paragraph images use
+the same paragraph, or adjacent source units when the paragraph contains no
+text. Context is bounded by `IMAGE_CAPTION_MAX_CONTEXT_CHARACTERS` and every
+caption records the exact source references disclosed to the model.
+
+PNG/JPEG assets are sent directly. Legacy EMF/WMF assets require the explicit
+LibreOffice renderer and are converted to PNG in an isolated temporary
+profile. Captions are model-derived enrichment and never modify source hashes
+or native source records.
+
+The prompt, multimodal input, and typed output schema live in `baml_src/`.
+Regenerate the local Python client after changing BAML files:
+
+```powershell
+baml-cli check --from baml_src
+baml-cli generate --from baml_src --no-tests
+```
 
 ## Checks
 

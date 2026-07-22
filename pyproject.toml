@@ -9,6 +9,7 @@ description = "Temporal Ontology-Enhanced RAG for time-aware traffic-violation p
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "baml-py==0.223.0",
     "defusedxml==0.7.1",
     "docling==2.114.0",
     "graphiti-core[anthropic]>=0.29",
@@ -18,7 +19,6 @@ dependencies = [
 
 [project.optional-dependencies]
 vietnamese = ["sentence-transformers>=3.0"]
-openai = ["openai>=1.30"]
 evaluation = ["deepeval==4.1.1", "langchain-community==0.3.31", "langchain-openai==1.3.5", "ragas==0.4.3"]
 dev = ["ruff==0.15.21", "pytest>=8.0"]
 
@@ -26,13 +26,14 @@ dev = ["ruff==0.15.21", "pytest>=8.0"]
 legal-rag = "legal_rag.cli:main"
 legal-groundtruth = "legal_rag.cli:main"
 legal-parse = "legal_rag.cli:parse_document_main"
+legal-caption-docx = "legal_rag.cli:caption_document_images_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/legal_rag"]
 
 [tool.ruff]
 line-length = 120
-extend-exclude = [".agents", "data"]
+extend-exclude = [".agents", "data", "src/legal_rag/baml_client"]
 
 [tool.ruff.lint]
 select = [

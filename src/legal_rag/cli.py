@@ -10,6 +10,12 @@ from loguru import logger
 from legal_rag.document_source import extract_document_source, write_document_source
 from legal_rag.docx_paragraphs import extract_docx_paragraphs, write_docx_paragraphs
 from legal_rag.docx_tables import extract_docx_tables, write_docx_tables
+from legal_rag.image_captioning import (
+    BamlCaptionClient,
+    ImageCaptionSettings,
+    caption_docx_document,
+    write_image_captions,
+)
 from legal_rag.normalization import select_content_blocks, write_normalized_source_blocks
 from legal_rag.pdf_sidecar import PdfSidecar, extract_pdf_blocks, render_docx_pdf, write_pdf_sidecar
 from legal_rag.source_blocks import extract_source_blocks, write_source_blocks
@@ -138,6 +144,44 @@ def parse_document_main() -> None:
         source.table_count,
         arguments.input_path.name,
         arguments.output_path,
+    )
+
+
+def _image_caption_parser() -> argparse.ArgumentParser:
+    """Build the command-line parser for direct DOCX image captioning."""
+    parser = argparse.ArgumentParser(description="Caption one DOCX through the configured multimodal LLM API.")
+    parser.add_argument("input_path", type=Path, help="Source DOCX path")
+    parser.add_argument("output_path", type=Path, help="Destination JSONL path for validated captions")
+    parser.add_argument(
+        "--renderer-executable",
+        type=Path,
+        help="LibreOffice console executable used to rasterize legacy EMF/WMF assets",
+    )
+    return parser
+
+
+def caption_document_images_main() -> None:
+    """Extract and caption one DOCX through 9Router without intermediate files."""
+    from dotenv import find_dotenv, load_dotenv
+
+    arguments = _image_caption_parser().parse_args()
+    dotenv_path = find_dotenv(usecwd=True)
+    if dotenv_path:
+        load_dotenv(dotenv_path)
+    settings = ImageCaptionSettings.from_environment()
+    client = BamlCaptionClient(settings)
+    captions = caption_docx_document(
+        arguments.input_path,
+        settings,
+        client,
+        renderer_executable=arguments.renderer_executable,
+    )
+    write_image_captions(arguments.output_path, captions)
+    logger.info(
+        "Wrote {} validated image captions for {} using requested model {}",
+        len(captions),
+        arguments.input_path.name,
+        settings.model,
     )
 
 

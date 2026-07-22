@@ -206,6 +206,9 @@ tempCodeRunnerFile.py
 # Ruff stuff:
 .ruff_cache/
 
+# Generated locally from versioned baml_src/ definitions.
+src/legal_rag/baml_client/
+
 # PyPI configuration file
 .pypirc
 
