@@ -17,8 +17,11 @@ from defusedxml import ElementTree as SafeElementTree
 
 from legal_rag.docx_paragraphs import ParagraphRun, extract_paragraph_runs
 
-TABLE_UNIT_SCHEMA_VERSION = "1.0.0"
+TABLE_UNIT_SCHEMA_VERSION = "1.1.0"
 TABLE_MANIFEST_SCHEMA_VERSION = "1.0.0"
+
+CELL_BLOCK_PARAGRAPH_KIND = "paragraph"
+CELL_BLOCK_TABLE_KIND = "table"
 
 _DOCUMENT_PART = "word/document.xml"
 _WORDPROCESSINGML_NAMESPACE = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -60,11 +63,6 @@ class DocxTableExtractionError(ValueError):
         return cls(f"DOCX main document has no body: {path}")
 
     @classmethod
-    def nested_table(cls, source_ref: str) -> DocxTableExtractionError:
-        """Build an error for a nested table that needs an explicit schema."""
-        return cls(f"Nested DOCX table is not supported: {source_ref}")
-
-    @classmethod
     def invalid_grid_span(cls, source_ref: str) -> DocxTableExtractionError:
         """Build an error for a malformed OOXML grid span."""
         return cls(f"DOCX table cell has an invalid grid span: {source_ref}")
@@ -99,8 +97,9 @@ class TableCellParagraph:
     runs: tuple[ParagraphRun, ...]
 
     def to_dict(self) -> dict[str, Any]:
-        """Return a JSON-serializable table-cell paragraph."""
+        """Return a JSON-serializable table-cell paragraph block."""
         return {
+            "kind": CELL_BLOCK_PARAGRAPH_KIND,
             "paragraph_index": self.paragraph_index,
             "source_ref": self.source_ref,
             "text": self.text,
@@ -109,15 +108,33 @@ class TableCellParagraph:
 
 
 @dataclass(frozen=True, slots=True)
+class TableCellTable:
+    """One nested DOCX table placed inside a table cell in source order."""
+
+    table_index: int
+    source_ref: str
+    rows: tuple[TableRow, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable nested-table block."""
+        return {
+            "kind": CELL_BLOCK_TABLE_KIND,
+            "table_index": self.table_index,
+            "source_ref": self.source_ref,
+            "rows": [row.to_dict() for row in self.rows],
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class TableCell:
-    """One native DOCX table cell with merge metadata and paragraphs."""
+    """One native DOCX table cell with merge metadata and ordered content blocks."""
 
     cell_index: int
     source_ref: str
     grid_span: int
     vertical_merge: str | None
     text: str
-    paragraphs: tuple[TableCellParagraph, ...]
+    blocks: tuple[TableCellParagraph | TableCellTable, ...]
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable table cell."""
@@ -127,7 +144,7 @@ class TableCell:
             "grid_span": self.grid_span,
             "vertical_merge": self.vertical_merge,
             "text": self.text,
-            "paragraphs": [paragraph.to_dict() for paragraph in self.paragraphs],
+            "blocks": [block.to_dict() for block in self.blocks],
         }
 
 
@@ -281,22 +298,18 @@ def _extract_rows(
     table_ref: str,
     skipped_refs: list[str],
 ) -> tuple[tuple[TableRow, ...], int, int]:
-    """Extract rows and return their cell and paragraph counts."""
-    nested_tables = [element for element in table.iter(_TABLE_TAG) if element is not table]
-    if nested_tables:
-        raise DocxTableExtractionError.nested_table(table_ref)
-
+    """Extract rows and return their total cell and raw paragraph counts."""
     rows: list[TableRow] = []
     cell_count = 0
     paragraph_count = 0
-    for row_index, row in enumerate(table.iter(_ROW_TAG)):
+    for row_index, row in enumerate(child for child in table if child.tag == _ROW_TAG):
         row_ref = f"{table_ref}/row/{row_index}"
         cells: list[TableCell] = []
-        for cell_index, cell in enumerate(row.iter(_CELL_TAG)):
+        for cell_index, cell in enumerate(child for child in row if child.tag == _CELL_TAG):
             cell_ref = f"{row_ref}/cell/{cell_index}"
-            paragraphs, raw_count = _extract_cell_paragraphs(cell, cell_ref, skipped_refs)
-            paragraph_count += raw_count
-            cell_count += 1
+            blocks, text, nested_cell_count, cell_paragraph_count = _extract_cell_blocks(cell, cell_ref, skipped_refs)
+            cell_count += 1 + nested_cell_count
+            paragraph_count += cell_paragraph_count
             grid_span, vertical_merge = _cell_merge_metadata(cell, cell_ref)
             cells.append(
                 TableCell(
@@ -304,39 +317,61 @@ def _extract_rows(
                     source_ref=cell_ref,
                     grid_span=grid_span,
                     vertical_merge=vertical_merge,
-                    text="\n".join(paragraph.text for paragraph in paragraphs),
-                    paragraphs=paragraphs,
+                    text=text,
+                    blocks=blocks,
                 )
             )
         rows.append(TableRow(row_index=row_index, source_ref=row_ref, cells=tuple(cells)))
     return tuple(rows), cell_count, paragraph_count
 
 
-def _extract_cell_paragraphs(
+def _extract_cell_blocks(
     cell: ElementTree.Element,
     cell_ref: str,
     skipped_refs: list[str],
-) -> tuple[tuple[TableCellParagraph, ...], int]:
-    """Extract content-bearing paragraphs from one table cell."""
-    paragraphs: list[TableCellParagraph] = []
-    raw_count = 0
-    for paragraph_index, paragraph in enumerate(cell.iter(_PARAGRAPH_TAG)):
-        raw_count += 1
-        paragraph_ref = f"{cell_ref}/paragraph/{paragraph_index}"
-        runs = tuple(extract_paragraph_runs(paragraph))
-        text = "".join(run.text for run in runs)
-        if not text.strip():
-            skipped_refs.append(paragraph_ref)
-            continue
-        paragraphs.append(
-            TableCellParagraph(
-                paragraph_index=paragraph_index,
-                source_ref=paragraph_ref,
-                text=text,
-                runs=runs,
+) -> tuple[tuple[TableCellParagraph | TableCellTable, ...], str, int, int]:
+    """Extract ordered paragraph and nested-table blocks from one table cell."""
+    blocks: list[TableCellParagraph | TableCellTable] = []
+    paragraph_texts: list[str] = []
+    nested_cell_count = 0
+    paragraph_count = 0
+    paragraph_ordinal = 0
+    table_ordinal = 0
+    for child in cell:
+        if child.tag == _PARAGRAPH_TAG:
+            paragraph_ref = f"{cell_ref}/paragraph/{paragraph_ordinal}"
+            paragraph_index = paragraph_ordinal
+            paragraph_ordinal += 1
+            paragraph_count += 1
+            runs = tuple(extract_paragraph_runs(child))
+            text = "".join(run.text for run in runs)
+            if not text.strip():
+                skipped_refs.append(paragraph_ref)
+                continue
+            paragraph_texts.append(text)
+            blocks.append(
+                TableCellParagraph(
+                    paragraph_index=paragraph_index,
+                    source_ref=paragraph_ref,
+                    text=text,
+                    runs=runs,
+                )
             )
-        )
-    return tuple(paragraphs), raw_count
+        elif child.tag == _TABLE_TAG:
+            nested_ref = f"{cell_ref}/table/{table_ordinal}"
+            table_index = table_ordinal
+            table_ordinal += 1
+            nested_rows, sub_cell_count, sub_paragraph_count = _extract_rows(child, nested_ref, skipped_refs)
+            nested_cell_count += sub_cell_count
+            paragraph_count += sub_paragraph_count
+            blocks.append(
+                TableCellTable(
+                    table_index=table_index,
+                    source_ref=nested_ref,
+                    rows=nested_rows,
+                )
+            )
+    return tuple(blocks), "\n".join(paragraph_texts), nested_cell_count, paragraph_count
 
 
 def _cell_merge_metadata(cell: ElementTree.Element, cell_ref: str) -> tuple[int, str | None]:

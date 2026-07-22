@@ -77,9 +77,10 @@ alignment such as superscript, without guessing from text content. Table cells
 remain outside this paragraph view and will be handled by a dedicated table
 normalization layer.
 
-Native table output preserves top-level rows, cells, cell paragraphs, runs,
-and OOXML merge metadata. Nested tables fail explicitly until their recursive
-schema is defined; they are never silently flattened.
+Native table output preserves top-level rows, cells, runs, and OOXML merge
+metadata. Each cell holds an ordered list of content blocks, where a block is
+either a paragraph or a nested table, so nested tables keep their own rows,
+cells, and merge structure in document order instead of being flattened.
 
 The optional PDF sidecar is rendered by an explicit LibreOffice executable,
 then parsed with Docling's `PyPdfiumDocumentBackend` and OCR disabled. PDF
