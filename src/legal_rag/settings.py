@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True, slots=True)
 class Settings:
-    """LLM connection and bounded image-caption execution settings."""
+    """LLM connection and bounded parser execution settings."""
 
     llm_base_url: str
     llm_api_key: str = field(repr=False)
@@ -23,6 +23,10 @@ class Settings:
     image_caption_max_rate_limit_retries: int = 3
     image_caption_rate_limit_retry_delay_seconds: float = 60.0
     image_caption_max_response_bytes: int = 1_048_576
+    attachment_archive_max_members: int = 100
+    attachment_archive_max_member_bytes: int = 67_108_864
+    attachment_archive_max_total_bytes: int = 268_435_456
+    office_conversion_timeout_seconds: float = 120.0
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] | None = None) -> Settings:

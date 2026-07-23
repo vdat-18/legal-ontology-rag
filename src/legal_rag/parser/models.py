@@ -7,8 +7,9 @@ from typing import Any
 
 from legal_rag.parser.attachments import DocxAttachment
 from legal_rag.parser.document_source import DocumentSource, DocumentSourceUnit
+from legal_rag.parser.hashing import sha256_json
 
-PARSER_OUTPUT_SCHEMA_VERSION = "1.1.0"
+PARSER_OUTPUT_SCHEMA_VERSION = "1.2.0"
 IMAGE_CAPTION_SCHEMA_VERSION = "1.2.0"
 KIND_IMAGE = "image"
 KIND_ATTACHMENT = "attachment"
@@ -97,12 +98,64 @@ class ParsedDocumentUnit:
 
 
 @dataclass(frozen=True, slots=True)
+class AttachmentChildDocument:
+    """Parsed records from one supported document inside an attachment."""
+
+    parent_attachment_id: str
+    member_index: int
+    member_path: str
+    member_sha256: str
+    source_format: str
+    converted_from_format: str | None
+    native_records: tuple[dict[str, Any], ...]
+    attachments: tuple[DocxAttachment, ...] = ()
+
+    def records(self, root_source_name: str, root_source_sha256: str) -> tuple[dict[str, Any], ...]:
+        """Add immutable attachment provenance to each native child record."""
+        records: list[dict[str, Any]] = []
+        for child_sequence_index, native_record in enumerate(self.native_records):
+            record = dict(native_record)
+            native_unit_id = record["unit_id"]
+            native_source_name = record["source_name"]
+            native_source_sha256 = record["source_sha256"]
+            child_parser_schema_version = record["schema_version"]
+            record.setdefault("source_schema_version", child_parser_schema_version)
+            record["schema_version"] = PARSER_OUTPUT_SCHEMA_VERSION
+            record["unit_id"] = sha256_json(
+                {
+                    "member_sha256": self.member_sha256,
+                    "native_unit_id": native_unit_id,
+                    "parent_attachment_id": self.parent_attachment_id,
+                }
+            )
+            record["native_unit_id"] = native_unit_id
+            record["child_parser_schema_version"] = child_parser_schema_version
+            record["native_source_name"] = native_source_name
+            record["native_source_sha256"] = native_source_sha256
+            record["source_name"] = self.member_path
+            record["source_sha256"] = self.member_sha256
+            record["record_scope"] = "attachment_child"
+            record["root_source_name"] = root_source_name
+            record["root_source_sha256"] = root_source_sha256
+            record["parent_attachment_id"] = self.parent_attachment_id
+            record["attachment_member_index"] = self.member_index
+            record["attachment_member_path"] = self.member_path
+            record["attachment_member_sha256"] = self.member_sha256
+            record["child_sequence_index"] = child_sequence_index
+            record["source_format"] = self.source_format
+            record["converted_from_format"] = self.converted_from_format
+            records.append(record)
+        return tuple(records)
+
+
+@dataclass(frozen=True, slots=True)
 class ParsedDocument:
     """One ordered source document after all parser enrichment stages."""
 
     source_name: str
     source_sha256: str
     units: tuple[ParsedDocumentUnit, ...]
+    child_documents: tuple[AttachmentChildDocument, ...] = ()
 
     @property
     def image_count(self) -> int:
@@ -114,12 +167,23 @@ class ParsedDocument:
         """Return the number of extracted attachment occurrences."""
         return sum(len(unit.attachments) for unit in self.units)
 
+    @property
+    def child_document_count(self) -> int:
+        """Return the number of supported child documents parsed from attachments."""
+        return len(self.child_documents)
+
+    @property
+    def child_record_count(self) -> int:
+        """Return the number of searchable records produced from child documents."""
+        return sum(len(document.native_records) for document in self.child_documents)
+
     @classmethod
     def from_source(
         cls,
         source: DocumentSource,
         captions: tuple[ImageCaption, ...],
         attachments: tuple[DocxAttachment, ...] = (),
+        child_documents: tuple[AttachmentChildDocument, ...] = (),
     ) -> ParsedDocument:
         """Attach captions and attachments to their exact source positions."""
         captions_by_body_index: dict[int, list[ImageCaption]] = {}
@@ -145,4 +209,4 @@ class ParsedDocument:
                     attachments=tuple(attachments_by_body_index.get(body_index, ())),
                 )
             )
-        return cls(source.source_name, source.source_sha256, tuple(units))
+        return cls(source.source_name, source.source_sha256, tuple(units), child_documents)

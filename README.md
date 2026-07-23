@@ -5,7 +5,7 @@ Ground-truth synthesis from Vietnamese road traffic legal documents.
 ## Requirements
 
 - Python 3.11+
-- LibreOffice console executable when DOCX files contain legacy EMF/WMF images
+- LibreOffice console executable when DOCX files contain legacy EMF/WMF images or DOC/XLS attachments
 
 ## Setup
 
@@ -69,7 +69,13 @@ contains the typed captions for image occurrences at that body position. Its
 `attachments` field contains metadata and provenance for embedded OLE packages.
 Attachment payloads are written under the sibling `assets/` directory using
 their SHA-256 hashes, while their display icons are excluded from image
-captioning. The pipeline reads native paragraphs, tables, images, and attachments, builds structural context,
+captioning. Supported DOC, DOCX and XLS documents inside attachments are parsed
+into child records immediately after their owning parent record. Child records
+carry the parent attachment ID, archive member path and hash, source format and
+conversion provenance. ZIP members are read with bounded count and byte limits
+without extracting source paths to disk. Legacy DOC and XLS members are converted
+in LibreOffice batches; XLSX rows retain sheet, cell reference, value and formula.
+The pipeline reads native paragraphs, tables, images, and attachments, builds structural context,
 calls the BAML `CaptionImage` function through the configured OpenAI-compatible
 provider, and writes the final JSONL plus attachment assets when present. Table images receive text from their native row. Paragraph
 images use the same paragraph when available. Every image also receives up to
@@ -80,8 +86,9 @@ Every caption records the exact source references disclosed to the model.
 
 PNG/JPEG assets are sent directly. Legacy EMF/WMF assets require the explicit
 LibreOffice renderer and are converted to PNG in an isolated temporary
-profile. The `--renderer-executable` option may be omitted when the document
-contains only directly supported image formats. Captions are model-derived
+profile. The same executable converts legacy DOC/XLS attachment members. The
+`--renderer-executable` option may be omitted only when the document contains
+neither legacy image formats nor legacy Office attachments. Captions are model-derived
 enrichment and never modify source hashes or native source records. Any parser
 stage failure aborts the output instead of silently producing a partial result.
 

@@ -16,7 +16,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--renderer-executable",
         type=Path,
-        help="LibreOffice console executable used to rasterize legacy EMF/WMF assets",
+        help="LibreOffice console executable used for legacy image and attachment conversion",
     )
     return parser
 
@@ -42,8 +42,9 @@ def main() -> None:
     )
     write_parsed_document(arguments.output_path, document)
     logger.info(
-        "Wrote {} enriched source units with {} image captions and {} attachments from {} to {}",
+        "Wrote {} source units, {} child records, {} image captions, and {} attachments from {} to {}",
         len(document.units),
+        document.child_record_count,
         document.image_count,
         document.attachment_count,
         arguments.input_path.name,

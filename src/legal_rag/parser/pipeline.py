@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from legal_rag.parser.attachment_documents import ingest_attachment_documents
 from legal_rag.parser.attachments import DocxAttachmentExtraction, extract_package_attachments
 from legal_rag.parser.document_source import DocumentSource, extract_package_document_source
 from legal_rag.parser.docx_package import DocxPackage
@@ -37,6 +38,16 @@ class ParserPipeline:
         renderer_executable: Path | None = None,
     ) -> ParsedDocument:
         """Run native extraction and image captioning without intermediate files."""
+        return self._parse(input_path, renderer_executable=renderer_executable, ingest_children=True)
+
+    def _parse(
+        self,
+        input_path: Path,
+        *,
+        renderer_executable: Path | None,
+        ingest_children: bool,
+    ) -> ParsedDocument:
+        """Parse one DOCX, optionally ingesting one attachment-child level."""
         source, images, attachments = _extract_parser_inputs(input_path)
         if not source.units and not images.images and not attachments.attachments:
             raise ParserPipelineError.no_content()
@@ -47,7 +58,24 @@ class ParserPipeline:
             self.caption_client,
             renderer_executable=renderer_executable,
         )
-        return ParsedDocument.from_source(source, captions, attachments.attachments)
+        child_documents = ()
+        if ingest_children:
+            child_documents = ingest_attachment_documents(
+                attachments.attachments,
+                self.settings,
+                lambda child_path: self._parse(
+                    child_path,
+                    renderer_executable=renderer_executable,
+                    ingest_children=False,
+                ),
+                renderer_executable=renderer_executable,
+            )
+        return ParsedDocument.from_source(
+            source,
+            captions,
+            attachments.attachments,
+            child_documents,
+        )
 
 
 def _extract_parser_inputs(

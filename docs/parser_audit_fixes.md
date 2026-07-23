@@ -4,15 +4,15 @@
 
 Parser hiện tại **đủ tốt cho RAG dựa trên văn bản, bảng và caption ảnh**. Đối chiếu 35 DOCX với 22.307 record và 171 ảnh không phát hiện nội dung nào bị sai trong phạm vi schema đang hỗ trợ.
 
-Điểm còn thiếu chủ yếu là nội dung tài liệu con trong attachment chưa được parse cho RAG, cùng với quan hệ trích dẫn/liên kết, cấp heading, OCR/QR chính xác và một số metadata. Vì vậy, kết quả “khớp” không có nghĩa là toàn bộ nội dung đã sẵn sàng để tìm kiếm.
+Nội dung DOC, DOCX và XLS trong attachment đã được đưa vào cùng JSONL với provenance cha–con. Các điểm còn thiếu chủ yếu là quan hệ trích dẫn/liên kết, cấp heading, OCR/QR chính xác và một số metadata. Vì vậy, kết quả “khớp” không có nghĩa là toàn bộ nội dung đã sẵn sàng để tìm kiếm.
 
 ## Thứ tự ưu tiên
 
 | Ưu tiên | Hạng mục | Trạng thái | Ảnh hưởng |
 | --- | --- | --- | --- |
-| P0 | Trích xuất file đính kèm OLE | Đã hoàn thành | Payload được bảo toàn nhưng nội dung tài liệu con chưa được parse |
+| P0 | Trích xuất file đính kèm OLE | Đã hoàn thành | Payload và provenance được bảo toàn |
 | P0 | Chuẩn hóa ký tự điều khiển khi ghi JSONL | Đã hoàn thành | Một số consumer có thể đọc sai số dòng/record |
-| P1 | Parse tài liệu con trong attachment | Chưa làm | Nội dung DOC, DOCX và XLS nhúng chưa thể tìm kiếm trong RAG |
+| P1 | Parse tài liệu con trong attachment | Đã hoàn thành | DOC, DOCX và XLS nhúng đã có record tìm kiếm được |
 | P1 | Bảo toàn field, hyperlink và bookmark | Chưa làm | Mất quan hệ giữa ký hiệu trích dẫn và đích được tham chiếu |
 | P1 | Bảo toàn cấp heading gốc | Chưa làm | Mất cấu trúc chương/mục dù text vẫn còn |
 | P1 | Tách caption, OCR và QR decoding | Chưa làm | Caption đúng ý nhưng không đủ chính xác cho công thức, biểu mẫu và QR |
@@ -46,12 +46,26 @@ Bằng chứng:
 
 - [x] Sáu nhóm attachment trên đều xuất hiện trong output và hash khớp payload gốc.
 - [x] Attachment giữ đúng vị trí/quan hệ với icon hoặc đoạn văn chứa nó.
-- [x] Parser không tự động giải nén archive, nên không mở thêm bề mặt ZIP bomb hoặc path traversal ở bước này.
+- [x] Archive chỉ được đọc trong bộ nhớ với giới hạn member/byte và không ghi đường dẫn nguồn ra filesystem.
 - [x] Test bao phủ OLE Package, payload ZIP, relationship ngoài, stream lỗi và icon không được caption.
 
-### Phần còn lại
+### Ingestion tài liệu con
 
-Payload đã không còn bị mất, nhưng nội dung `.doc`, `.docx` và `.xls` bên trong ZIP chưa được đưa trở lại parser. Cần một bước ingestion riêng theo MIME, giữ `parent_attachment_id` và giới hạn tài nguyên khi giải nén/chuyển đổi.
+**Trạng thái:** Đã hoàn thành. Parser nhận diện container từ cấu trúc ZIP/OLE, đọc ZIP trong bộ nhớ với giới hạn tài nguyên, chuyển DOC→DOCX và XLS→XLSX bằng LibreOffice theo batch, rồi đưa record con vào ngay sau record cha chứa attachment.
+
+- DOCX dùng lại toàn bộ parser hiện có, gồm paragraph, table, image caption và attachment metadata.
+- XLSX được đọc trực tiếp từ OOXML, giữ sheet, row, cell reference, giá trị và công thức; không biến bảng tính thành text phẳng.
+- Mỗi record con giữ `parent_attachment_id`, `attachment_member_index`, `attachment_member_path`, hash member, định dạng nguồn và thông tin chuyển đổi.
+- ZIP member không được giải nén theo đường dẫn nguồn; parser chặn path traversal, member mã hóa, quá số lượng và quá giới hạn byte.
+- Parser chỉ đi sâu một cấp attachment. Attachment lồng trong tài liệu con vẫn được bảo toàn nhưng không tiếp tục parse đệ quy.
+
+### Tiêu chí hoàn thành tài liệu con
+
+- [x] Sáu DOCX có attachment đều parse thành công trong smoke test thực tế.
+- [x] `13_2025_TT-BCA_m_645302.docx` tạo đủ 28 tài liệu con: 9 DOCX, 18 DOC chuyển sang DOCX và 1 XLS chuyển sang XLSX.
+- [x] `51_2024_TT-BGTVT_m_633562.docx` tạo 3.925 record từ `Quy chuan.doc`.
+- [x] Batch conversion giảm case 28 file từ khoảng 235 giây xuống khoảng 19 giây trên máy kiểm thử.
+- [x] Test bao phủ provenance, XLSX row/cell/formula, ZIP traversal, giới hạn member và nhận diện OLE trước ZIP signature nhúng.
 
 ## 2. Ghi JSONL an toàn — P0
 
@@ -190,7 +204,7 @@ Rows, cells, nested tables, `gridSpan` và `vMerge` đang khớp nguồn. Các t
 
 1. [x] Sửa writer để mỗi record JSONL luôn nằm trên một physical line.
 2. [x] Trích xuất attachment và lưu asset sidecar.
-3. [ ] Parse tài liệu con trong attachment cho RAG.
+3. [x] Parse tài liệu con trong attachment cho RAG.
 4. [ ] Bảo toàn field/hyperlink/bookmark.
 5. [ ] Bổ sung `style_id` và `outline_level`.
 6. [ ] Thêm OCR/QR như dữ liệu riêng với caption.
