@@ -42,9 +42,10 @@ def main() -> None:
     )
     write_parsed_document(arguments.output_path, document)
     logger.info(
-        "Wrote {} enriched source units with {} image captions from {} to {}",
+        "Wrote {} enriched source units with {} image captions and {} attachments from {} to {}",
         len(document.units),
         document.image_count,
+        document.attachment_count,
         arguments.input_path.name,
         arguments.output_path,
     )

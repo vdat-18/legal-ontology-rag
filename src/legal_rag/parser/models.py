@@ -5,11 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from legal_rag.parser.attachments import DocxAttachment
 from legal_rag.parser.document_source import DocumentSource, DocumentSourceUnit
 
-PARSER_OUTPUT_SCHEMA_VERSION = "1.0.0"
+PARSER_OUTPUT_SCHEMA_VERSION = "1.1.0"
 IMAGE_CAPTION_SCHEMA_VERSION = "1.2.0"
 KIND_IMAGE = "image"
+KIND_ATTACHMENT = "attachment"
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,11 +63,12 @@ class ImageCaption:
 
 @dataclass(frozen=True, slots=True)
 class ParsedDocumentUnit:
-    """One source unit or image-only position in final document order."""
+    """One source unit or media-only position in final document order."""
 
     sequence_index: int
     source: DocumentSourceUnit | None
     images: tuple[ImageCaption, ...]
+    attachments: tuple[DocxAttachment, ...]
 
     def to_dict(self) -> dict[str, Any]:
         """Return one final parser-output record."""
@@ -75,19 +78,21 @@ class ParsedDocumentUnit:
             record["schema_version"] = PARSER_OUTPUT_SCHEMA_VERSION
             record["sequence_index"] = self.sequence_index
             record["images"] = [image.to_dict() for image in self.images]
+            record["attachments"] = [attachment.to_dict() for attachment in self.attachments]
             return record
 
-        image = self.images[0]
+        media = self.images[0] if self.images else self.attachments[0]
         return {
             "schema_version": PARSER_OUTPUT_SCHEMA_VERSION,
-            "unit_id": image.image_id,
-            "source_name": image.source_name,
-            "source_sha256": image.source_sha256,
+            "unit_id": media.image_id if isinstance(media, ImageCaption) else media.attachment_id,
+            "source_name": media.source_name,
+            "source_sha256": media.source_sha256,
             "sequence_index": self.sequence_index,
-            "body_index": image.body_index,
-            "source_ref": image.parent_source_ref,
-            "kind": KIND_IMAGE,
-            "images": [image.to_dict()],
+            "body_index": media.body_index,
+            "source_ref": media.parent_source_ref,
+            "kind": KIND_IMAGE if self.images else KIND_ATTACHMENT,
+            "images": [image.to_dict() for image in self.images],
+            "attachments": [attachment.to_dict() for attachment in self.attachments],
         }
 
 
@@ -104,27 +109,40 @@ class ParsedDocument:
         """Return the number of captioned image occurrences."""
         return sum(len(unit.images) for unit in self.units)
 
+    @property
+    def attachment_count(self) -> int:
+        """Return the number of extracted attachment occurrences."""
+        return sum(len(unit.attachments) for unit in self.units)
+
     @classmethod
     def from_source(
         cls,
         source: DocumentSource,
         captions: tuple[ImageCaption, ...],
+        attachments: tuple[DocxAttachment, ...] = (),
     ) -> ParsedDocument:
-        """Attach captions to their exact top-level source units."""
+        """Attach captions and attachments to their exact source positions."""
         captions_by_body_index: dict[int, list[ImageCaption]] = {}
         for caption in captions:
             captions_by_body_index.setdefault(caption.body_index, []).append(caption)
 
-        source_body_indices = {unit.body_index for unit in source.units}
-        ordered_items: list[DocumentSourceUnit | ImageCaption] = [*source.units]
-        ordered_items.extend(caption for caption in captions if caption.body_index not in source_body_indices)
-        ordered_items.sort(key=lambda item: item.body_index)
+        attachments_by_body_index: dict[int, list[DocxAttachment]] = {}
+        for attachment in attachments:
+            attachments_by_body_index.setdefault(attachment.body_index, []).append(attachment)
+
+        source_by_body_index = {unit.body_index: unit for unit in source.units}
+        body_indices = sorted(
+            source_by_body_index.keys() | captions_by_body_index.keys() | attachments_by_body_index.keys()
+        )
 
         units: list[ParsedDocumentUnit] = []
-        for sequence_index, item in enumerate(ordered_items):
-            if isinstance(item, DocumentSourceUnit):
-                unit_images = tuple(captions_by_body_index.get(item.body_index, ()))
-                units.append(ParsedDocumentUnit(sequence_index, item, unit_images))
-            else:
-                units.append(ParsedDocumentUnit(sequence_index, None, (item,)))
+        for sequence_index, body_index in enumerate(body_indices):
+            units.append(
+                ParsedDocumentUnit(
+                    sequence_index=sequence_index,
+                    source=source_by_body_index.get(body_index),
+                    images=tuple(captions_by_body_index.get(body_index, ())),
+                    attachments=tuple(attachments_by_body_index.get(body_index, ())),
+                )
+            )
         return cls(source.source_name, source.source_sha256, tuple(units))

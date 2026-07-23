@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from legal_rag.parser.attachments import DocxAttachmentExtraction, extract_docx_attachments
 from legal_rag.parser.docx_package import (
     DOCUMENT_PART,
     DocxPackage,
@@ -31,11 +32,14 @@ def test_open_rejects_invalid_archive(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     "extractor",
-    [extract_docx_paragraphs, extract_docx_tables, extract_docx_images],
+    [extract_docx_paragraphs, extract_docx_tables, extract_docx_images, extract_docx_attachments],
 )
 def test_extractors_preserve_package_errors(
     tmp_path: Path,
-    extractor: Callable[[Path], ParagraphExtraction | TableExtraction | DocxImageExtraction],
+    extractor: Callable[
+        [Path],
+        ParagraphExtraction | TableExtraction | DocxImageExtraction | DocxAttachmentExtraction,
+    ],
 ) -> None:
     """Standalone extractors do not rename package boundary errors."""
     input_path = tmp_path / "invalid.docx"

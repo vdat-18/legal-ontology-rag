@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from legal_rag.parser.attachments import DocxAttachmentExtraction, extract_package_attachments
 from legal_rag.parser.document_source import DocumentSource, extract_package_document_source
 from legal_rag.parser.docx_package import DocxPackage
 from legal_rag.parser.image_captioner import CaptionClient, caption_images
@@ -18,8 +19,8 @@ class ParserPipelineError(ValueError):
 
     @classmethod
     def no_content(cls) -> ParserPipelineError:
-        """Build an error for a document without parseable text, tables, or images."""
-        return cls("Document parser found no text, tables, or images")
+        """Build an error for a document without parseable content."""
+        return cls("Document parser found no text, tables, images, or attachments")
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,8 +37,8 @@ class ParserPipeline:
         renderer_executable: Path | None = None,
     ) -> ParsedDocument:
         """Run native extraction and image captioning without intermediate files."""
-        source, images = _extract_source_and_images(input_path)
-        if not source.units and not images.images:
+        source, images, attachments = _extract_parser_inputs(input_path)
+        if not source.units and not images.images and not attachments.attachments:
             raise ParserPipelineError.no_content()
         captions = caption_images(
             images,
@@ -46,10 +47,16 @@ class ParserPipeline:
             self.caption_client,
             renderer_executable=renderer_executable,
         )
-        return ParsedDocument.from_source(source, captions)
+        return ParsedDocument.from_source(source, captions, attachments.attachments)
 
 
-def _extract_source_and_images(input_path: Path) -> tuple[DocumentSource, DocxImageExtraction]:
+def _extract_parser_inputs(
+    input_path: Path,
+) -> tuple[DocumentSource, DocxImageExtraction, DocxAttachmentExtraction]:
     """Extract all native parser inputs from one shared DOCX package."""
     with DocxPackage.open(input_path) as package:
-        return extract_package_document_source(package), extract_package_images(package)
+        return (
+            extract_package_document_source(package),
+            extract_package_images(package),
+            extract_package_attachments(package),
+        )

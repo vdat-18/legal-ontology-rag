@@ -4,23 +4,26 @@
 
 Parser hiện tại **đủ tốt cho RAG dựa trên văn bản, bảng và caption ảnh**. Đối chiếu 35 DOCX với 22.307 record và 171 ảnh không phát hiện nội dung nào bị sai trong phạm vi schema đang hỗ trợ.
 
-Điểm còn thiếu chủ yếu là dữ liệu DOCX chưa được đưa vào output: file đính kèm, quan hệ trích dẫn/liên kết, cấp heading, OCR/QR chính xác và một số metadata. Vì vậy, kết quả “khớp” không có nghĩa là DOCX đã được bảo toàn toàn bộ.
+Điểm còn thiếu chủ yếu là nội dung tài liệu con trong attachment chưa được parse cho RAG, cùng với quan hệ trích dẫn/liên kết, cấp heading, OCR/QR chính xác và một số metadata. Vì vậy, kết quả “khớp” không có nghĩa là toàn bộ nội dung đã sẵn sàng để tìm kiếm.
 
 ## Thứ tự ưu tiên
 
-| Ưu tiên | Hạng mục | Ảnh hưởng |
-| --- | --- | --- |
-| P0 | Trích xuất file đính kèm OLE | Đang mất hoàn toàn nội dung phụ lục/quy chuẩn nhúng trong DOCX |
-| P0 | Chuẩn hóa ký tự điều khiển khi ghi JSONL | Một số consumer có thể đọc sai số dòng/record |
-| P1 | Bảo toàn field, hyperlink và bookmark | Mất quan hệ giữa ký hiệu trích dẫn và đích được tham chiếu |
-| P1 | Bảo toàn cấp heading gốc | Mất cấu trúc chương/mục dù text vẫn còn |
-| P1 | Tách caption, OCR và QR decoding | Caption đúng ý nhưng không đủ chính xác cho công thức, biểu mẫu và QR |
-| P2 | Bổ sung metadata tài liệu và section | Thiếu thông tin nguồn; metadata kỹ thuật có thể không đáng tin |
-| P2 | Bổ sung layout bảng khi có nhu cầu | Nội dung bảng đúng nhưng chưa đủ để tái dựng hình thức Word |
+| Ưu tiên | Hạng mục | Trạng thái | Ảnh hưởng |
+| --- | --- | --- | --- |
+| P0 | Trích xuất file đính kèm OLE | Đã hoàn thành | Payload được bảo toàn nhưng nội dung tài liệu con chưa được parse |
+| P0 | Chuẩn hóa ký tự điều khiển khi ghi JSONL | Đã hoàn thành | Một số consumer có thể đọc sai số dòng/record |
+| P1 | Parse tài liệu con trong attachment | Chưa làm | Nội dung DOC, DOCX và XLS nhúng chưa thể tìm kiếm trong RAG |
+| P1 | Bảo toàn field, hyperlink và bookmark | Chưa làm | Mất quan hệ giữa ký hiệu trích dẫn và đích được tham chiếu |
+| P1 | Bảo toàn cấp heading gốc | Chưa làm | Mất cấu trúc chương/mục dù text vẫn còn |
+| P1 | Tách caption, OCR và QR decoding | Chưa làm | Caption đúng ý nhưng không đủ chính xác cho công thức, biểu mẫu và QR |
+| P2 | Bổ sung metadata tài liệu và section | Chưa làm | Thiếu thông tin nguồn; metadata kỹ thuật có thể không đáng tin |
+| P2 | Bổ sung layout bảng khi có nhu cầu | Chưa làm | Nội dung bảng đúng nhưng chưa đủ để tái dựng hình thức Word |
 
 ## 1. Trích xuất file đính kèm OLE — P0
 
-### Hiện trạng
+**Trạng thái:** Đã hoàn thành phần trích xuất và bảo toàn payload. Parser đọc `o:OLEObject` và relationship gốc, lấy file từ stream `Ole10Native`, lưu dưới `assets/` theo SHA-256, ghi provenance vào JSONL và không gửi icon attachment cho LLM.
+
+### Hiện trạng trước khi sửa
 
 Parser chỉ thấy ảnh biểu tượng của file đính kèm và tạo caption cho biểu tượng. Payload thật bên trong DOCX không xuất hiện trong JSONL.
 
@@ -41,12 +44,18 @@ Bằng chứng:
 
 ### Tiêu chí hoàn thành
 
-- Sáu nhóm attachment trên đều xuất hiện trong output và hash khớp payload gốc.
-- Attachment giữ đúng vị trí/quan hệ với icon hoặc đoạn văn chứa nó.
-- Có giới hạn kích thước, số file và độ sâu khi giải nén archive.
-- Test bao phủ embedded ZIP, DOCX và file không hỗ trợ.
+- [x] Sáu nhóm attachment trên đều xuất hiện trong output và hash khớp payload gốc.
+- [x] Attachment giữ đúng vị trí/quan hệ với icon hoặc đoạn văn chứa nó.
+- [x] Parser không tự động giải nén archive, nên không mở thêm bề mặt ZIP bomb hoặc path traversal ở bước này.
+- [x] Test bao phủ OLE Package, payload ZIP, relationship ngoài, stream lỗi và icon không được caption.
+
+### Phần còn lại
+
+Payload đã không còn bị mất, nhưng nội dung `.doc`, `.docx` và `.xls` bên trong ZIP chưa được đưa trở lại parser. Cần một bước ingestion riêng theo MIME, giữ `parent_attachment_id` và giới hạn tài nguyên khi giải nén/chuyển đổi.
 
 ## 2. Ghi JSONL an toàn — P0
+
+**Trạng thái:** Đã hoàn thành. Writer escape `U+0085`, `U+2028` và `U+2029`; regression test xác nhận mỗi record vẫn nằm trên một physical line và nội dung được khôi phục đúng khi đọc JSON.
 
 ### Hiện trạng
 
@@ -179,12 +188,13 @@ Rows, cells, nested tables, `gridSpan` và `vMerge` đang khớp nguồn. Các t
 
 ## Trình tự triển khai đề xuất
 
-1. Sửa writer để mỗi record JSONL luôn nằm trên một physical line.
-2. Trích xuất attachment và lưu asset sidecar.
-3. Bảo toàn field/hyperlink/bookmark.
-4. Bổ sung `style_id` và `outline_level`.
-5. Thêm OCR/QR như dữ liệu riêng với caption.
-6. Chỉ thêm metadata, section và layout bảng khi downstream xác nhận cần.
+1. [x] Sửa writer để mỗi record JSONL luôn nằm trên một physical line.
+2. [x] Trích xuất attachment và lưu asset sidecar.
+3. [ ] Parse tài liệu con trong attachment cho RAG.
+4. [ ] Bảo toàn field/hyperlink/bookmark.
+5. [ ] Bổ sung `style_id` và `outline_level`.
+6. [ ] Thêm OCR/QR như dữ liệu riêng với caption.
+7. [ ] Chỉ thêm metadata, section và layout bảng khi downstream xác nhận cần.
 
 ## Ngoài phạm vi
 

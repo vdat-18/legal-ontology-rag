@@ -65,10 +65,13 @@ legal-parse `
 
 Each JSONL record is one native paragraph or table in native document order,
 carrying its exact OOXML source reference and content hash. Its `images` field
-contains the typed captions for image occurrences at that body position. The
-pipeline reads native paragraphs, tables, and images, builds structural context,
+contains the typed captions for image occurrences at that body position. Its
+`attachments` field contains metadata and provenance for embedded OLE packages.
+Attachment payloads are written under the sibling `assets/` directory using
+their SHA-256 hashes, while their display icons are excluded from image
+captioning. The pipeline reads native paragraphs, tables, images, and attachments, builds structural context,
 calls the BAML `CaptionImage` function through the configured OpenAI-compatible
-provider, and writes only this one final JSONL file. Table images receive text from their native row. Paragraph
+provider, and writes the final JSONL plus attachment assets when present. Table images receive text from their native row. Paragraph
 images use the same paragraph when available. Every image also receives up to
 three source units before and after its body position, labeled by structural
 relation and distance. Parser defaults bound captioning to four concurrent

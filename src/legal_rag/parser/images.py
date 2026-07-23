@@ -37,6 +37,8 @@ _ROW_TAG = f"{_WORDPROCESSINGML_PREFIX}tr"
 _CELL_TAG = f"{_WORDPROCESSINGML_PREFIX}tc"
 _BLIP_TAG = f"{_DRAWINGML_PREFIX}blip"
 _IMAGE_DATA_TAG = f"{_VML_PREFIX}imagedata"
+_SHAPE_TAG = f"{_VML_PREFIX}shape"
+_OLE_OBJECT_TAG = f"{_OFFICE_PREFIX}OLEObject"
 _RELATIONSHIP_TAG = f"{_PACKAGE_RELATIONSHIPS_PREFIX}Relationship"
 _CONTENT_TYPE_DEFAULT_TAG = f"{_CONTENT_TYPES_PREFIX}Default"
 _CONTENT_TYPE_OVERRIDE_TAG = f"{_CONTENT_TYPES_PREFIX}Override"
@@ -247,8 +249,13 @@ def _append_paragraph_images(
 ) -> None:
     """Append VML and DrawingML images from one native paragraph."""
     for run_index, run in enumerate(paragraph.iter(_RUN_TAG)):
+        attachment_shape_ids = {
+            element.get("ShapeID")
+            for element in run.iter(_OLE_OBJECT_TAG)
+            if element.get("Type") == "Embed" and element.get("ShapeID") is not None
+        }
         image_index = 0
-        for element in _iter_run_image_elements(run):
+        for element in _iter_run_image_elements(run, attachment_shape_ids):
             relationship_id = _image_relationship_id(element)
             if relationship_id is None:  # pragma: no cover - iterator yields only supported elements
                 continue
@@ -275,12 +282,15 @@ def _append_paragraph_images(
 
 def _iter_run_image_elements(
     run: ElementTree.Element,
+    excluded_shape_ids: set[str],
 ) -> Iterable[ElementTree.Element]:
-    """Yield images owned by one run without re-reading images from nested runs."""
+    """Yield non-attachment images owned by one run."""
 
     def walk(element: ElementTree.Element) -> Iterable[ElementTree.Element]:
         for child in element:
             if child.tag == _RUN_TAG:
+                continue
+            if child.tag == _SHAPE_TAG and child.get("id") in excluded_shape_ids:
                 continue
             if child.tag in {_IMAGE_DATA_TAG, _BLIP_TAG}:
                 yield child

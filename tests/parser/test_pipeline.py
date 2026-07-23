@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from legal_rag.parser import pipeline
+from legal_rag.parser.attachments import DocxAttachmentExtraction
 from legal_rag.parser.document_source import KIND_PARAGRAPH, DocumentSource, DocumentSourceUnit
 from legal_rag.parser.image_context import ImageContext
 from legal_rag.parser.images import DocxImage, DocxImageExtraction
@@ -121,11 +122,12 @@ def test_native_extraction_reads_docx_once(monkeypatch: pytest.MonkeyPatch, tmp_
 
     monkeypatch.setattr(Path, "read_bytes", counted_read_bytes)
 
-    source, images = pipeline._extract_source_and_images(input_path)
+    source, images, attachments = pipeline._extract_parser_inputs(input_path)
 
     assert read_count == 1
     assert [unit.text for unit in source.units] == ["Nội dung"]
     assert images.images == ()
+    assert attachments.attachments == ()
 
 
 def test_pipeline_attaches_caption_to_final_source_unit(
@@ -133,7 +135,8 @@ def test_pipeline_attaches_caption_to_final_source_unit(
     tmp_path: Path,
 ) -> None:
     """One pipeline call produces one enriched JSONL output without a caption sidecar."""
-    monkeypatch.setattr(pipeline, "_extract_source_and_images", lambda path: (_source(), _images()))
+    empty_attachments = DocxAttachmentExtraction("source.docx", "source-hash", ())
+    monkeypatch.setattr(pipeline, "_extract_parser_inputs", lambda path: (_source(), _images(), empty_attachments))
     client = FakeCaptionClient()
     parser = ParserPipeline(_settings(), client)
 
@@ -144,7 +147,7 @@ def test_pipeline_attaches_caption_to_final_source_unit(
     records = [json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()]
     assert document.image_count == 1
     assert records == [unit.to_dict() for unit in document.units]
-    assert records[0]["schema_version"] == "1.0.0"
+    assert records[0]["schema_version"] == "1.1.0"
     assert records[0]["source_schema_version"] == "1.1.0"
     assert records[0]["images"][0]["description_vi"] == "Biển báo giao thông."
     assert records[0]["images"][0]["body_index"] == 0
@@ -157,7 +160,12 @@ def test_pipeline_preserves_an_image_only_paragraph(
 ) -> None:
     """An image-only paragraph becomes an explicit final record at its native position."""
     empty_source = DocumentSource("source.docx", "source-hash", ())
-    monkeypatch.setattr(pipeline, "_extract_source_and_images", lambda path: (empty_source, _images()))
+    empty_attachments = DocxAttachmentExtraction("source.docx", "source-hash", ())
+    monkeypatch.setattr(
+        pipeline,
+        "_extract_parser_inputs",
+        lambda path: (empty_source, _images(), empty_attachments),
+    )
     client = FakeCaptionClient()
 
     document = ParserPipeline(_settings(), client).parse(tmp_path / "source.docx")
@@ -175,7 +183,12 @@ def test_pipeline_rejects_a_document_without_parseable_content(
     """An empty extraction fails instead of writing an empty success artifact."""
     empty_source = DocumentSource("source.docx", "source-hash", ())
     empty_images = DocxImageExtraction("source.docx", "source-hash", ())
-    monkeypatch.setattr(pipeline, "_extract_source_and_images", lambda path: (empty_source, empty_images))
+    empty_attachments = DocxAttachmentExtraction("source.docx", "source-hash", ())
+    monkeypatch.setattr(
+        pipeline,
+        "_extract_parser_inputs",
+        lambda path: (empty_source, empty_images, empty_attachments),
+    )
 
-    with pytest.raises(ParserPipelineError, match="no text, tables, or images"):
+    with pytest.raises(ParserPipelineError, match="no text, tables, images, or attachments"):
         ParserPipeline(_settings(), FakeCaptionClient()).parse(tmp_path / "source.docx")
