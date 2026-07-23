@@ -8,6 +8,12 @@ from pathlib import Path
 
 from legal_rag.parser.models import ParsedDocument
 
+_JSONL_LINE_SEPARATOR_ESCAPES = {
+    ord("\u0085"): "\\u0085",
+    ord("\u2028"): "\\u2028",
+    ord("\u2029"): "\\u2029",
+}
+
 
 def write_parsed_document(output_path: Path, document: ParsedDocument) -> None:
     """Atomically write enriched source units as UTF-8 JSON Lines."""
@@ -23,9 +29,8 @@ def write_parsed_document(output_path: Path, document: ParsedDocument) -> None:
         ) as temporary_file:
             temporary_path = Path(temporary_file.name)
             for unit in document.units:
-                temporary_file.write(
-                    json.dumps(unit.to_dict(), ensure_ascii=False, separators=(",", ":"), sort_keys=True) + "\n"
-                )
+                record = json.dumps(unit.to_dict(), ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+                temporary_file.write(record.translate(_JSONL_LINE_SEPARATOR_ESCAPES) + "\n")
         temporary_path.replace(output_path)
         temporary_path = None
     finally:
