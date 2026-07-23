@@ -2,16 +2,25 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
 
+from legal_rag.parser.docx_annotations import (
+    DocumentRelationship,
+    DocxBookmark,
+    DocxField,
+    DocxHyperlink,
+    extract_paragraph_annotations,
+    read_document_relationships,
+)
 from legal_rag.parser.docx_package import DocxPackage
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.parser.paragraphs import ParagraphRun, extract_paragraph_runs
 
-TABLE_UNIT_SCHEMA_VERSION = "1.1.0"
+TABLE_UNIT_SCHEMA_VERSION = "1.2.0"
 
 CELL_BLOCK_PARAGRAPH_KIND = "paragraph"
 CELL_BLOCK_TABLE_KIND = "table"
@@ -54,6 +63,9 @@ class TableCellParagraph:
     source_ref: str
     text: str
     runs: tuple[ParagraphRun, ...]
+    fields: tuple[DocxField, ...]
+    hyperlinks: tuple[DocxHyperlink, ...]
+    bookmarks: tuple[DocxBookmark, ...]
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable table-cell paragraph block."""
@@ -63,6 +75,9 @@ class TableCellParagraph:
             "source_ref": self.source_ref,
             "text": self.text,
             "runs": [run.to_dict() for run in self.runs],
+            "fields": [field.to_dict() for field in self.fields],
+            "hyperlinks": [hyperlink.to_dict() for hyperlink in self.hyperlinks],
+            "bookmarks": [bookmark.to_dict() for bookmark in self.bookmarks],
         }
 
 
@@ -176,6 +191,7 @@ def extract_package_tables(package: DocxPackage) -> TableExtraction:
     if body is None:
         raise DocxTableExtractionError.missing_body(input_path)
 
+    relationships = read_document_relationships(package.archive)
     units: list[TableUnit] = []
     for body_index, element in enumerate(body):
         if element.tag != _TABLE_TAG:
@@ -183,7 +199,7 @@ def extract_package_tables(package: DocxPackage) -> TableExtraction:
 
         table_index = len(units)
         source_ref = f"{_DOCUMENT_PART}#/body/{body_index}"
-        rows = _extract_rows(element, source_ref)
+        rows = _extract_rows(element, source_ref, relationships)
         payload = {
             "body_index": body_index,
             "rows": [row.to_dict() for row in rows],
@@ -222,6 +238,7 @@ def extract_package_tables(package: DocxPackage) -> TableExtraction:
 def _extract_rows(
     table: ElementTree.Element,
     table_ref: str,
+    relationships: Mapping[str, DocumentRelationship],
 ) -> tuple[TableRow, ...]:
     """Extract native rows from one table."""
     rows: list[TableRow] = []
@@ -230,7 +247,7 @@ def _extract_rows(
         cells: list[TableCell] = []
         for cell_index, cell in enumerate(child for child in row if child.tag == _CELL_TAG):
             cell_ref = f"{row_ref}/cell/{cell_index}"
-            blocks, text = _extract_cell_blocks(cell, cell_ref)
+            blocks, text = _extract_cell_blocks(cell, cell_ref, relationships)
             grid_span, vertical_merge = _cell_merge_metadata(cell, cell_ref)
             cells.append(
                 TableCell(
@@ -249,6 +266,7 @@ def _extract_rows(
 def _extract_cell_blocks(
     cell: ElementTree.Element,
     cell_ref: str,
+    relationships: Mapping[str, DocumentRelationship],
 ) -> tuple[tuple[TableCellParagraph | TableCellTable, ...], str]:
     """Extract ordered paragraph and nested-table blocks from one table cell."""
     blocks: list[TableCellParagraph | TableCellTable] = []
@@ -262,22 +280,27 @@ def _extract_cell_blocks(
             paragraph_ordinal += 1
             runs = tuple(extract_paragraph_runs(child))
             text = "".join(run.text for run in runs)
-            if not text.strip():
+            annotations = extract_paragraph_annotations(child, paragraph_ref, relationships)
+            if not text.strip() and not annotations.present:
                 continue
-            paragraph_texts.append(text)
+            if text.strip():
+                paragraph_texts.append(text)
             blocks.append(
                 TableCellParagraph(
                     paragraph_index=paragraph_index,
                     source_ref=paragraph_ref,
                     text=text,
                     runs=runs,
+                    fields=annotations.fields,
+                    hyperlinks=annotations.hyperlinks,
+                    bookmarks=annotations.bookmarks,
                 )
             )
         elif child.tag == _TABLE_TAG:
             nested_ref = f"{cell_ref}/table/{table_ordinal}"
             table_index = table_ordinal
             table_ordinal += 1
-            nested_rows = _extract_rows(child, nested_ref)
+            nested_rows = _extract_rows(child, nested_ref, relationships)
             blocks.append(
                 TableCellTable(
                     table_index=table_index,

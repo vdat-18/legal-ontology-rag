@@ -147,7 +147,7 @@ def test_pipeline_attaches_caption_to_final_source_unit(
     records = [json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()]
     assert document.image_count == 1
     assert records == [unit.to_dict() for unit in document.units]
-    assert records[0]["schema_version"] == "1.2.0"
+    assert records[0]["schema_version"] == "1.3.0"
     assert records[0]["source_schema_version"] == "1.1.0"
     assert records[0]["images"][0]["description_vi"] == "Biển báo giao thông."
     assert records[0]["images"][0]["body_index"] == 0

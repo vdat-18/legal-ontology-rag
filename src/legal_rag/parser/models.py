@@ -9,7 +9,7 @@ from legal_rag.parser.attachments import DocxAttachment
 from legal_rag.parser.document_source import DocumentSource, DocumentSourceUnit
 from legal_rag.parser.hashing import sha256_json
 
-PARSER_OUTPUT_SCHEMA_VERSION = "1.2.0"
+PARSER_OUTPUT_SCHEMA_VERSION = "1.3.0"
 IMAGE_CAPTION_SCHEMA_VERSION = "1.2.0"
 KIND_IMAGE = "image"
 KIND_ATTACHMENT = "attachment"

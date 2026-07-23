@@ -7,10 +7,17 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
 
+from legal_rag.parser.docx_annotations import (
+    DocxBookmark,
+    DocxField,
+    DocxHyperlink,
+    extract_paragraph_annotations,
+    read_document_relationships,
+)
 from legal_rag.parser.docx_package import DocxPackage
 from legal_rag.parser.hashing import sha256_json
 
-PARAGRAPH_UNIT_SCHEMA_VERSION = "1.0.0"
+PARAGRAPH_UNIT_SCHEMA_VERSION = "1.1.0"
 
 _DOCUMENT_PART = "word/document.xml"
 _WORDPROCESSINGML_NAMESPACE = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -67,6 +74,9 @@ class ParagraphUnit:
     source_ref: str
     text: str
     runs: tuple[ParagraphRun, ...]
+    fields: tuple[DocxField, ...]
+    hyperlinks: tuple[DocxHyperlink, ...]
+    bookmarks: tuple[DocxBookmark, ...]
     payload_sha256: str
 
     def to_dict(self) -> dict[str, Any]:
@@ -81,6 +91,9 @@ class ParagraphUnit:
             "source_ref": self.source_ref,
             "text": self.text,
             "runs": [run.to_dict() for run in self.runs],
+            "fields": [field.to_dict() for field in self.fields],
+            "hyperlinks": [hyperlink.to_dict() for hyperlink in self.hyperlinks],
+            "bookmarks": [bookmark.to_dict() for bookmark in self.bookmarks],
             "payload_sha256": self.payload_sha256,
         }
 
@@ -108,6 +121,7 @@ def extract_package_paragraphs(package: DocxPackage) -> ParagraphExtraction:
     if body is None:
         raise DocxParagraphExtractionError(input_path)
 
+    relationships = read_document_relationships(package.archive)
     units: list[ParagraphUnit] = []
     paragraph_count = 0
     for body_index, element in enumerate(body):
@@ -119,11 +133,15 @@ def extract_package_paragraphs(package: DocxPackage) -> ParagraphExtraction:
         source_ref = f"{_DOCUMENT_PART}#/body/{body_index}"
         runs = tuple(extract_paragraph_runs(element))
         text = "".join(run.text for run in runs)
-        if not text.strip():
+        annotations = extract_paragraph_annotations(element, source_ref, relationships)
+        if not text.strip() and not annotations.present:
             continue
 
         payload = {
             "body_index": body_index,
+            "bookmarks": [bookmark.to_dict() for bookmark in annotations.bookmarks],
+            "fields": [field.to_dict() for field in annotations.fields],
+            "hyperlinks": [hyperlink.to_dict() for hyperlink in annotations.hyperlinks],
             "runs": [run.to_dict() for run in runs],
             "sequence_index": sequence_index,
             "source_ref": source_ref,
@@ -148,6 +166,9 @@ def extract_package_paragraphs(package: DocxPackage) -> ParagraphExtraction:
                 source_ref=source_ref,
                 text=text,
                 runs=runs,
+                fields=annotations.fields,
+                hyperlinks=annotations.hyperlinks,
+                bookmarks=annotations.bookmarks,
                 payload_sha256=payload_sha256,
             )
         )

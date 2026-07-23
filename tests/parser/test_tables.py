@@ -60,6 +60,27 @@ _NESTED_DOCUMENT_XML = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?
 </w:document>
 """
 
+_ANNOTATED_TABLE_XML = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:tbl>
+      <w:tr>
+        <w:tc>
+          <w:p>
+            <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+            <w:r><w:instrText xml:space="preserve"> HYPERLINK \\l "table_target" </w:instrText></w:r>
+            <w:r><w:fldChar w:fldCharType="separate"/></w:r>
+            <w:r><w:t>Xem mục</w:t></w:r>
+            <w:r><w:fldChar w:fldCharType="end"/></w:r>
+          </w:p>
+          <w:p><w:bookmarkStart w:id="12" w:name="table_target"/><w:bookmarkEnd w:id="12"/></w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+  </w:body>
+</w:document>
+"""
+
 
 def _write_docx(path: Path, document_xml: str = _DOCUMENT_XML) -> None:
     """Write the minimal OOXML part required by the table extractor."""
@@ -108,6 +129,22 @@ def test_extract_docx_tables_preserves_nested_table_blocks(tmp_path: Path) -> No
     assert nested.rows[0].cells[0].blocks[0].source_ref == (
         "word/document.xml#/body/0/row/0/cell/0/table/0/row/0/cell/0/paragraph/0"
     )
+
+
+def test_extract_docx_tables_preserves_annotations_in_cell_paragraphs(tmp_path: Path) -> None:
+    """Fields and empty bookmark targets survive inside table cells."""
+    input_path = tmp_path / "annotated-table.docx"
+    _write_docx(input_path, _ANNOTATED_TABLE_XML)
+
+    extraction = extract_docx_tables(input_path)
+
+    blocks = extraction.units[0].rows[0].cells[0].blocks
+    assert len(blocks) == 2
+    assert blocks[0].text == "Xem mục"
+    assert blocks[0].fields[0].result_text == "Xem mục"
+    assert blocks[0].fields[0].anchor == "table_target"
+    assert blocks[1].text == ""
+    assert blocks[1].bookmarks[0].name == "table_target"
 
 
 def test_extract_docx_tables_preserves_native_grid_span_errors(tmp_path: Path) -> None:

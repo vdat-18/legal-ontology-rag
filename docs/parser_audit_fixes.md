@@ -4,7 +4,7 @@
 
 Parser hiện tại **đủ tốt cho RAG dựa trên văn bản, bảng và caption ảnh**. Đối chiếu 35 DOCX với 22.307 record và 171 ảnh không phát hiện nội dung nào bị sai trong phạm vi schema đang hỗ trợ.
 
-Nội dung DOC, DOCX và XLS trong attachment đã được đưa vào cùng JSONL với provenance cha–con. Các điểm còn thiếu chủ yếu là quan hệ trích dẫn/liên kết, cấp heading, OCR/QR chính xác và một số metadata. Vì vậy, kết quả “khớp” không có nghĩa là toàn bộ nội dung đã sẵn sàng để tìm kiếm.
+Nội dung DOC, DOCX và XLS trong attachment đã được đưa vào cùng JSONL với provenance cha–con. Field, hyperlink và bookmark cũng đã giữ được target cùng vị trí text gốc. Các điểm còn thiếu chủ yếu là cấp heading, OCR/QR chính xác và một số metadata. Vì vậy, kết quả “khớp” không có nghĩa là toàn bộ nội dung đã sẵn sàng để tìm kiếm.
 
 ## Thứ tự ưu tiên
 
@@ -13,7 +13,7 @@ Nội dung DOC, DOCX và XLS trong attachment đã được đưa vào cùng JSO
 | P0 | Trích xuất file đính kèm OLE | Đã hoàn thành | Payload và provenance được bảo toàn |
 | P0 | Chuẩn hóa ký tự điều khiển khi ghi JSONL | Đã hoàn thành | Một số consumer có thể đọc sai số dòng/record |
 | P1 | Parse tài liệu con trong attachment | Đã hoàn thành | DOC, DOCX và XLS nhúng đã có record tìm kiếm được |
-| P1 | Bảo toàn field, hyperlink và bookmark | Chưa làm | Mất quan hệ giữa ký hiệu trích dẫn và đích được tham chiếu |
+| P1 | Bảo toàn field, hyperlink và bookmark | Đã hoàn thành | Ký hiệu trích dẫn truy được đúng bookmark hoặc URL đích |
 | P1 | Bảo toàn cấp heading gốc | Chưa làm | Mất cấu trúc chương/mục dù text vẫn còn |
 | P1 | Tách caption, OCR và QR decoding | Chưa làm | Caption đúng ý nhưng không đủ chính xác cho công thức, biểu mẫu và QR |
 | P2 | Bổ sung metadata tài liệu và section | Chưa làm | Thiếu thông tin nguồn; metadata kỹ thuật có thể không đáng tin |
@@ -88,6 +88,8 @@ Bằng chứng:
 
 ## 3. Bảo toàn field, hyperlink và bookmark — P1
 
+**Trạng thái:** Đã hoàn thành. Parser output schema `1.3.0` giữ field instruction, field result, hyperlink relationship, bookmark ID/name, `source_ref` và character offset ngay trên paragraph tương ứng, kể cả paragraph trong bảng và bookmark không có text.
+
 ### Hiện trạng
 
 Text hiển thị vẫn còn nhưng quan hệ liên kết bị mất.
@@ -106,9 +108,11 @@ Bằng chứng:
 
 ### Tiêu chí hoàn thành
 
-- Từ record `[1]` có thể truy ngược đúng bookmark `_ftn1` và nội dung đích.
-- URL field giữ được target độc lập với text hiển thị.
-- Test bao phủ internal hyperlink, external hyperlink và bookmark không có text.
+- [x] Từ record `[1]` có thể truy ngược đúng bookmark `_ftn1` và nội dung đích.
+- [x] URL field giữ được target độc lập với text hiển thị.
+- [x] Test bao phủ internal hyperlink, external hyperlink và bookmark không có text.
+- [x] `90_VBHN-VPQH_699548.docx` giữ đủ 556 field và 878 bookmark; `_ftn1` trỏ đúng paragraph chú thích.
+- [x] `17_2026_TT-BXD_704696.docx` giữ đủ hai field URL và target gốc dù Word chia visible URL thành hai field.
 
 ## 4. Bảo toàn hierarchy của heading — P1
 
@@ -205,7 +209,7 @@ Rows, cells, nested tables, `gridSpan` và `vMerge` đang khớp nguồn. Các t
 1. [x] Sửa writer để mỗi record JSONL luôn nằm trên một physical line.
 2. [x] Trích xuất attachment và lưu asset sidecar.
 3. [x] Parse tài liệu con trong attachment cho RAG.
-4. [ ] Bảo toàn field/hyperlink/bookmark.
+4. [x] Bảo toàn field/hyperlink/bookmark.
 5. [ ] Bổ sung `style_id` và `outline_level`.
 6. [ ] Thêm OCR/QR như dữ liệu riêng với caption.
 7. [ ] Chỉ thêm metadata, section và layout bảng khi downstream xác nhận cần.

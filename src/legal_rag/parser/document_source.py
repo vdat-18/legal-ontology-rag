@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from legal_rag.parser.docx_annotations import DocxBookmark, DocxField, DocxHyperlink
 from legal_rag.parser.docx_package import DocxPackage
 from legal_rag.parser.paragraphs import (
     ParagraphRun,
@@ -14,7 +15,7 @@ from legal_rag.parser.paragraphs import (
 )
 from legal_rag.parser.tables import TableRow, TableUnit, extract_package_tables
 
-DOCUMENT_SOURCE_SCHEMA_VERSION = "1.1.0"
+DOCUMENT_SOURCE_SCHEMA_VERSION = "1.2.0"
 
 KIND_PARAGRAPH = "paragraph"
 KIND_TABLE = "table"
@@ -36,6 +37,9 @@ class DocumentSourceUnit:
     text: str | None
     runs: tuple[ParagraphRun, ...] | None
     rows: tuple[TableRow, ...] | None
+    fields: tuple[DocxField, ...] = ()
+    hyperlinks: tuple[DocxHyperlink, ...] = ()
+    bookmarks: tuple[DocxBookmark, ...] = ()
 
     @classmethod
     def from_paragraph(cls, unit: ParagraphUnit, *, sequence_index: int) -> DocumentSourceUnit:
@@ -53,6 +57,9 @@ class DocumentSourceUnit:
             text=unit.text,
             runs=unit.runs,
             rows=None,
+            fields=unit.fields,
+            hyperlinks=unit.hyperlinks,
+            bookmarks=unit.bookmarks,
         )
 
     @classmethod
@@ -89,6 +96,9 @@ class DocumentSourceUnit:
         if self.kind == KIND_PARAGRAPH:
             record["text"] = self.text
             record["runs"] = [run.to_dict() for run in self.runs or ()]
+            record["fields"] = [field.to_dict() for field in self.fields]
+            record["hyperlinks"] = [hyperlink.to_dict() for hyperlink in self.hyperlinks]
+            record["bookmarks"] = [bookmark.to_dict() for bookmark in self.bookmarks]
         else:
             record["rows"] = [row.to_dict() for row in self.rows or ()]
         return record
