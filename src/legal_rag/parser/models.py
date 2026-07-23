@@ -12,23 +12,9 @@ IMAGE_CAPTION_SCHEMA_VERSION = "1.2.0"
 KIND_IMAGE = "image"
 
 
-class ParsedDocumentValidationError(ValueError):
-    """Raised when parser stages produce inconsistent source provenance."""
-
-    @classmethod
-    def caption_source_mismatch(cls) -> ParsedDocumentValidationError:
-        """Build an error for captions from another source document."""
-        return cls("Image captions do not match the parsed source document")
-
-    @classmethod
-    def duplicate_image_ids(cls) -> ParsedDocumentValidationError:
-        """Build an error for repeated image identities."""
-        return cls("Parsed document contains duplicate image IDs")
-
-
 @dataclass(frozen=True, slots=True)
 class CaptionModelResponse:
-    """Validated semantic fields returned by the caption model."""
+    """Typed semantic fields returned by the caption model."""
 
     description_vi: str
     visible_text: str | None
@@ -125,15 +111,6 @@ class ParsedDocument:
         captions: tuple[ImageCaption, ...],
     ) -> ParsedDocument:
         """Attach captions to their exact top-level source units."""
-        if any(
-            caption.source_name != source.source_name or caption.source_sha256 != source.source_sha256
-            for caption in captions
-        ):
-            raise ParsedDocumentValidationError.caption_source_mismatch()
-        image_ids = [caption.image_id for caption in captions]
-        if len(image_ids) != len(set(image_ids)):
-            raise ParsedDocumentValidationError.duplicate_image_ids()
-
         captions_by_body_index: dict[int, list[ImageCaption]] = {}
         for caption in captions:
             captions_by_body_index.setdefault(caption.body_index, []).append(caption)

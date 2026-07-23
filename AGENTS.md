@@ -24,13 +24,15 @@ This file is the main coding guide for this repository.
 
 - Prefer simple code over flexible code that is not needed yet.
 - Prefer explicit data flow over hidden global state.
+- Prefer direct code over helper functions. Add a helper only when it is reused or encapsulates a cohesive, non-trivial operation.
+- Rely on native exceptions for configuration and trusted internal data. Do not add custom validation or error wrappers for values produced by the same code path.
 - Do not add dependencies unless the standard library or current dependencies are not enough.
 - Do not break public APIs, file formats, or persisted schemas without a migration plan.
 - Do not add fallback paths, caches, retries, feature flags, or compatibility shims unless the task needs them.
 
 ## Data And Security
 
-- Validate untrusted input at system boundaries.
+- Validate only genuinely untrusted input at external system boundaries.
 - Keep secrets out of code, docs, tests, logs, and committed config.
 - Do not log credentials, personal data, or full document contents.
 - Do not build shell commands or SQL queries with string interpolation.

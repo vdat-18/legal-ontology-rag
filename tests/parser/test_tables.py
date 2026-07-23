@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import json
 import zipfile
 from pathlib import Path
+
+import pytest
 
 from legal_rag.parser.tables import (
     CELL_BLOCK_PARAGRAPH_KIND,
     CELL_BLOCK_TABLE_KIND,
     TableCellTable,
     extract_docx_tables,
-    write_docx_tables,
 )
 
 _DOCUMENT_XML = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -75,9 +75,6 @@ def test_extract_docx_tables_preserves_rows_cells_and_runs(tmp_path: Path) -> No
     extraction = extract_docx_tables(input_path)
 
     assert len(extraction.units) == 1
-    assert extraction.cell_count == 3
-    assert extraction.raw_cell_paragraph_count == 4
-    assert extraction.skipped_empty_paragraph_refs == ("word/document.xml#/body/1/row/0/cell/0/paragraph/1",)
     table = extraction.units[0]
     assert table.body_index == 1
     assert len(table.rows) == 2
@@ -97,7 +94,6 @@ def test_extract_docx_tables_preserves_nested_table_blocks(tmp_path: Path) -> No
     extraction = extract_docx_tables(input_path)
 
     assert len(extraction.units) == 1
-    assert extraction.cell_count == 3
     cell = extraction.units[0].rows[0].cells[0]
     assert cell.text == "Above\nBelow"
     assert [block.to_dict()["kind"] for block in cell.blocks] == [
@@ -114,17 +110,11 @@ def test_extract_docx_tables_preserves_nested_table_blocks(tmp_path: Path) -> No
     )
 
 
-def test_write_docx_tables_writes_jsonl_and_manifest(tmp_path: Path) -> None:
-    """Table output and manifest describe the same extraction."""
-    input_path = tmp_path / "source.docx"
-    output_path = tmp_path / "tables.jsonl"
-    manifest_path = tmp_path / "tables.manifest.json"
-    _write_docx(input_path)
-    extraction = extract_docx_tables(input_path)
+def test_extract_docx_tables_preserves_native_grid_span_errors(tmp_path: Path) -> None:
+    """Malformed numeric OOXML attributes expose their native conversion error."""
+    input_path = tmp_path / "invalid-grid-span.docx"
+    document_xml = _DOCUMENT_XML.replace('<w:gridSpan w:val="2"/>', '<w:gridSpan w:val="invalid"/>')
+    _write_docx(input_path, document_xml)
 
-    write_docx_tables(output_path, manifest_path, extraction)
-
-    records = [json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()]
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    assert records == [unit.to_dict() for unit in extraction.units]
-    assert manifest == extraction.manifest()
+    with pytest.raises(ValueError, match="invalid literal for int"):
+        extract_docx_tables(input_path)

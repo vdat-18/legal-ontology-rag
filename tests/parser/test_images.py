@@ -96,7 +96,6 @@ def test_extract_docx_images_preserves_native_order_and_provenance(tmp_path: Pat
 
     assert [image.sequence_index for image in extraction.images] == [0, 1]
     assert [image.mime_type for image in extraction.images] == ["image/png", "image/jpeg"]
-    assert [image.alt_text for image in extraction.images] == ["Biển báo", "Xe minh họa"]
     assert extraction.images[0].source_ref == "word/document.xml#/body/0/run/0/image/0"
     assert extraction.images[1].source_ref == (
         "word/document.xml#/body/1/row/0/cell/0/table/0/row/0/cell/0/paragraph/0/run/0/image/0"

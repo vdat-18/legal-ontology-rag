@@ -8,15 +8,16 @@ from pathlib import Path
 import pytest
 
 from legal_rag.parser import image_captioner
-from legal_rag.parser.config import ParserConfigurationError, ParserSettings
 from legal_rag.parser.document_source import KIND_PARAGRAPH, DocumentSource, DocumentSourceUnit
 from legal_rag.parser.image_captioner import (
     ImageCaptionError,
+    ImageCaptionRateLimitError,
     caption_images,
 )
 from legal_rag.parser.image_context import ImageContext
 from legal_rag.parser.images import DocxImage, DocxImageExtraction
 from legal_rag.parser.models import CaptionModelResponse
+from legal_rag.settings import Settings
 
 
 class FakeCaptionClient:
@@ -43,17 +44,57 @@ class FakeCaptionClient:
         )
 
 
-def _settings() -> ParserSettings:
+class RateLimitedCaptionClient:
+    """Fail repeatedly with provider rate limits before returning a caption."""
+
+    def __init__(self) -> None:
+        """Initialize the request counter."""
+        self.call_count = 0
+
+    def caption(
+        self,
+        *,
+        image_bytes: bytes,
+        mime_type: str,
+        context: ImageContext,
+    ) -> CaptionModelResponse:
+        """Return a caption after two simulated HTTP 429 responses."""
+        self.call_count += 1
+        if self.call_count <= 2:
+            raise ImageCaptionRateLimitError.provider_rate_limited()
+        return CaptionModelResponse(description_vi="Mô tả sau retry", visible_text=None)
+
+
+class AlwaysRateLimitedCaptionClient:
+    """Return a provider rate limit for every caption request."""
+
+    def __init__(self) -> None:
+        """Initialize the request counter."""
+        self.call_count = 0
+
+    def caption(
+        self,
+        *,
+        image_bytes: bytes,
+        mime_type: str,
+        context: ImageContext,
+    ) -> CaptionModelResponse:
+        """Raise a rate-limit error for every request."""
+        self.call_count += 1
+        raise ImageCaptionRateLimitError.provider_rate_limited()
+
+
+def _settings() -> Settings:
     """Build bounded settings without reading the process environment."""
-    return ParserSettings(
-        base_url="http://localhost:20128/v1",
-        api_key="test-router-key",
-        model="gemini/test-model",
-        timeout_seconds=30,
-        max_concurrency=1,
-        max_output_tokens=256,
-        max_context_characters=1000,
-        temperature=0,
+    return Settings(
+        llm_base_url="http://localhost:20128/v1",
+        llm_api_key="test-provider-key",
+        llm_model="provider/test-model",
+        llm_timeout_seconds=30,
+        image_caption_max_concurrency=1,
+        image_caption_max_output_tokens=256,
+        image_caption_max_context_characters=1000,
+        image_caption_temperature=0,
     )
 
 
@@ -76,7 +117,6 @@ def _image(*, sequence_index: int, mime_type: str = "image/png", media_bytes: by
         media_sha256=f"media-{sequence_index}",
         mime_type=mime_type,
         asset_name=f"media-{sequence_index}.png",
-        alt_text=None,
         media_bytes=media_bytes,
     )
 
@@ -100,41 +140,29 @@ def _source(images: tuple[DocxImage, ...]) -> DocumentSource:
         )
         for index, image in enumerate(images)
     )
-    return DocumentSource("source.docx", "source-hash", units, len(units), 0, 0, (), ())
+    return DocumentSource("source.docx", "source-hash", units)
 
 
-def test_settings_require_typed_environment_values() -> None:
-    """Service and context limits come from typed configuration."""
+def test_settings_use_code_defaults_for_image_captioning() -> None:
+    """Image-caption execution limits do not depend on environment variables."""
     environment = {
         "LLM_BASE_URL": "http://localhost:20128/v1/",
-        "LLM_API_KEY": "router-key",
-        "LLM_MODEL": "gemini/model",
+        "LLM_API_KEY": "provider-key",
+        "LLM_MODEL": "provider/model",
         "LLM_TIMEOUT_SECONDS": "60",
-        "IMAGE_CAPTION_MAX_CONCURRENCY": "4",
-        "IMAGE_CAPTION_MAX_OUTPUT_TOKENS": "2048",
-        "IMAGE_CAPTION_MAX_CONTEXT_CHARACTERS": "4000",
-        "IMAGE_CAPTION_TEMPERATURE": "0",
     }
 
-    settings = ParserSettings.from_environment(environment)
+    settings = Settings.from_environment(environment)
 
-    assert settings.base_url == "http://localhost:20128/v1"
-    assert settings.max_concurrency == 4
-    assert settings.max_output_tokens == 2048
-    assert settings.max_context_characters == 4000
-
-
-def test_settings_reject_missing_limits() -> None:
-    """Incomplete execution configuration fails before creating an API client."""
-    with pytest.raises(ParserConfigurationError, match="LLM_TIMEOUT_SECONDS"):
-        ParserSettings.from_environment(
-            {
-                "LLM_BASE_URL": "http://localhost:20128/v1",
-                "LLM_API_KEY": "router-key",
-                "LLM_MODEL": "gemini/model",
-                "IMAGE_CAPTION_TEMPERATURE": "0",
-            }
-        )
+    assert settings.llm_base_url == "http://localhost:20128/v1"
+    assert settings.image_caption_max_concurrency == 4
+    assert settings.image_caption_max_output_tokens == 2048
+    assert settings.image_caption_max_context_characters == 4000
+    assert settings.image_caption_temperature == 0
+    assert settings.image_caption_surrounding_context_units == 3
+    assert settings.image_caption_max_rate_limit_retries == 3
+    assert settings.image_caption_rate_limit_retry_delay_seconds == 60
+    assert settings.image_caption_max_response_bytes == 1_048_576
 
 
 def test_caption_docx_images_preserves_order_and_supplies_context() -> None:
@@ -148,11 +176,42 @@ def test_caption_docx_images_preserves_order_and_supplies_context() -> None:
     assert [caption.image_id for caption in captions] == ["image-0", "image-1"]
     assert [caption.description_vi for caption in captions] == ["Mô tả 1", "Mô tả 2"]
     assert [caption.context_source_refs for caption in captions] == [
-        ("word/document.xml#/body/0",),
-        ("word/document.xml#/body/1",),
+        ("word/document.xml#/body/0", "word/document.xml#/body/1"),
+        ("word/document.xml#/body/1", "word/document.xml#/body/0"),
     ]
-    assert [context.entries[0].text for context in client.contexts] == ["Ngữ cảnh 0", "Ngữ cảnh 1"]
+    assert [[entry.text for entry in context.entries] for context in client.contexts] == [
+        ["Ngữ cảnh 0", "Ngữ cảnh 1"],
+        ["Ngữ cảnh 1", "Ngữ cảnh 0"],
+    ]
     assert client.images == [(b"first", "image/png"), (b"second", "image/png")]
+
+
+def test_caption_retries_until_provider_recovers() -> None:
+    """Repeated HTTP 429 responses pause until the same image succeeds."""
+    image = _image(sequence_index=0)
+    extraction = DocxImageExtraction("source.docx", "source-hash", (image,))
+    client = RateLimitedCaptionClient()
+    delays: list[float] = []
+
+    captions = caption_images(extraction, _source((image,)), _settings(), client, sleep=delays.append)
+
+    assert client.call_count == 3
+    assert delays == [60, 60]
+    assert captions[0].description_vi == "Mô tả sau retry"
+
+
+def test_caption_stops_after_three_rate_limit_retries() -> None:
+    """Persistent HTTP 429 responses fail after the configured retry limit."""
+    image = _image(sequence_index=0)
+    extraction = DocxImageExtraction("source.docx", "source-hash", (image,))
+    client = AlwaysRateLimitedCaptionClient()
+    delays: list[float] = []
+
+    with pytest.raises(ImageCaptionRateLimitError, match="rate limited"):
+        caption_images(extraction, _source((image,)), _settings(), client, sleep=delays.append)
+
+    assert client.call_count == 4
+    assert delays == [60, 60, 60]
 
 
 def test_legacy_media_requires_or_uses_explicit_renderer(

@@ -5,20 +5,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from legal_rag.parser.config import ParserSettings
-from legal_rag.parser.document_source import extract_document_source
+from legal_rag.parser.document_source import DocumentSource, extract_package_document_source
+from legal_rag.parser.docx_package import DocxPackage
 from legal_rag.parser.image_captioner import CaptionClient, caption_images
-from legal_rag.parser.images import extract_docx_images
+from legal_rag.parser.images import DocxImageExtraction, extract_package_images
 from legal_rag.parser.models import ParsedDocument
+from legal_rag.settings import Settings
 
 
 class ParserPipelineError(ValueError):
-    """Raised when parser stages disagree about source provenance."""
-
-    @classmethod
-    def source_mismatch(cls) -> ParserPipelineError:
-        """Build an error for extraction stages reading different source bytes."""
-        return cls("Document and image extraction stages read different source bytes")
+    """Raised when the parser cannot produce a valid output document."""
 
     @classmethod
     def no_content(cls) -> ParserPipelineError:
@@ -30,7 +26,7 @@ class ParserPipelineError(ValueError):
 class ParserPipeline:
     """Parse and enrich one document into the final persisted model."""
 
-    settings: ParserSettings
+    settings: Settings
     caption_client: CaptionClient
 
     def parse(
@@ -40,10 +36,7 @@ class ParserPipeline:
         renderer_executable: Path | None = None,
     ) -> ParsedDocument:
         """Run native extraction and image captioning without intermediate files."""
-        source = extract_document_source(input_path)
-        images = extract_docx_images(input_path)
-        if images.source_sha256 != source.source_sha256:
-            raise ParserPipelineError.source_mismatch()
+        source, images = _extract_source_and_images(input_path)
         if not source.units and not images.images:
             raise ParserPipelineError.no_content()
         captions = caption_images(
@@ -54,3 +47,9 @@ class ParserPipeline:
             renderer_executable=renderer_executable,
         )
         return ParsedDocument.from_source(source, captions)
+
+
+def _extract_source_and_images(input_path: Path) -> tuple[DocumentSource, DocxImageExtraction]:
+    """Extract all native parser inputs from one shared DOCX package."""
+    with DocxPackage.open(input_path) as package:
+        return extract_package_document_source(package), extract_package_images(package)

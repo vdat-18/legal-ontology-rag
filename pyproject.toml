@@ -11,7 +11,6 @@ requires-python = ">=3.11"
 dependencies = [
     "baml-py==0.223.0",
     "defusedxml==0.7.1",
-    "docling==2.114.0",
     "graphiti-core[anthropic]>=0.29",
     "loguru>=0.7",
     "python-dotenv>=1.0",
@@ -23,9 +22,7 @@ evaluation = ["deepeval==4.1.1", "langchain-community==0.3.31", "langchain-opena
 dev = ["ruff==0.15.21", "pytest>=8.0"]
 
 [project.scripts]
-legal-rag = "legal_rag.cli:main"
-legal-groundtruth = "legal_rag.cli:main"
-legal-parse = "legal_rag.cli:parse_document_main"
+legal-parse = "legal_rag.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/legal_rag"]

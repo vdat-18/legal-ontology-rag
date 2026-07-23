@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import io
-import json
 import posixpath
 import zipfile
 from collections.abc import Iterable, Mapping
@@ -13,6 +11,9 @@ from pathlib import Path, PurePosixPath
 from xml.etree import ElementTree
 
 from defusedxml import ElementTree as SafeElementTree
+
+from legal_rag.parser.docx_package import DocxPackage
+from legal_rag.parser.hashing import sha256_json
 
 IMAGE_SCHEMA_VERSION = "1.0.0"
 
@@ -36,33 +37,16 @@ _ROW_TAG = f"{_WORDPROCESSINGML_PREFIX}tr"
 _CELL_TAG = f"{_WORDPROCESSINGML_PREFIX}tc"
 _BLIP_TAG = f"{_DRAWINGML_PREFIX}blip"
 _IMAGE_DATA_TAG = f"{_VML_PREFIX}imagedata"
-_DOCUMENT_PROPERTIES_TAG = "{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}docPr"
 _RELATIONSHIP_TAG = f"{_PACKAGE_RELATIONSHIPS_PREFIX}Relationship"
 _CONTENT_TYPE_DEFAULT_TAG = f"{_CONTENT_TYPES_PREFIX}Default"
 _CONTENT_TYPE_OVERRIDE_TAG = f"{_CONTENT_TYPES_PREFIX}Override"
 
 _RELATIONSHIP_ID_ATTRIBUTE = f"{_RELATIONSHIP_ATTRIBUTE_PREFIX}id"
 _RELATIONSHIP_EMBED_ATTRIBUTE = f"{_RELATIONSHIP_ATTRIBUTE_PREFIX}embed"
-_OFFICE_TITLE_ATTRIBUTE = f"{_OFFICE_PREFIX}title"
 
 
 class DocxImageExtractionError(ValueError):
     """Raised when embedded DOCX images cannot be extracted safely."""
-
-    @classmethod
-    def invalid_archive(cls, path: Path) -> DocxImageExtractionError:
-        """Build an error for an invalid DOCX archive."""
-        return cls(f"Source document is not a valid DOCX archive: {path}")
-
-    @classmethod
-    def missing_part(cls, path: Path, part_name: str) -> DocxImageExtractionError:
-        """Build an error for a required package part that is absent."""
-        return cls(f"DOCX is missing {part_name}: {path}")
-
-    @classmethod
-    def malformed_part(cls, path: Path, part_name: str) -> DocxImageExtractionError:
-        """Build an error for malformed package XML."""
-        return cls(f"Malformed DOCX package part {part_name}: {path}")
 
     @classmethod
     def missing_body(cls, path: Path) -> DocxImageExtractionError:
@@ -83,11 +67,6 @@ class DocxImageExtractionError(ValueError):
     def unsafe_target(cls, relationship_id: str, target: str) -> DocxImageExtractionError:
         """Build an error for a relationship target outside the package."""
         return cls(f"DOCX image relationship has an unsafe target ({relationship_id}): {target}")
-
-    @classmethod
-    def missing_media(cls, package_path: str) -> DocxImageExtractionError:
-        """Build an error for referenced media absent from the archive."""
-        return cls(f"DOCX image media is missing from the archive: {package_path}")
 
     @classmethod
     def unknown_content_type(cls, package_path: str) -> DocxImageExtractionError:
@@ -127,7 +106,6 @@ class DocxImage:
     media_sha256: str
     mime_type: str
     asset_name: str
-    alt_text: str | None
     media_bytes: bytes
 
 
@@ -142,27 +120,30 @@ class DocxImageExtraction:
 
 def extract_docx_images(input_path: Path) -> DocxImageExtraction:
     """Extract main-document images with native paragraph and table provenance."""
-    source_bytes = input_path.read_bytes()
-    source_sha256 = hashlib.sha256(source_bytes).hexdigest()
-    try:
-        with zipfile.ZipFile(io.BytesIO(source_bytes)) as archive:
-            document = _read_xml_part(archive, input_path, _DOCUMENT_PART)
-            relationships = _read_relationships(archive, input_path)
-            content_types = _read_content_types(archive, input_path)
-            body = document.find(_BODY_TAG)
-            if body is None:
-                raise DocxImageExtractionError.missing_body(input_path)
-            images = _extract_body_images(
-                archive,
-                body,
-                input_path.name,
-                source_sha256,
-                relationships,
-                content_types,
-            )
-    except zipfile.BadZipFile as error:
-        raise DocxImageExtractionError.invalid_archive(input_path) from error
-    return DocxImageExtraction(source_name=input_path.name, source_sha256=source_sha256, images=tuple(images))
+    with DocxPackage.open(input_path) as package:
+        return extract_package_images(package)
+
+
+def extract_package_images(package: DocxPackage) -> DocxImageExtraction:
+    """Extract images from an already loaded DOCX package."""
+    relationships = _read_relationships(package.archive)
+    content_types = _read_content_types(package.archive)
+    body = package.document.find(_BODY_TAG)
+    if body is None:
+        raise DocxImageExtractionError.missing_body(package.input_path)
+    images = _extract_body_images(
+        package.archive,
+        body,
+        package.source_name,
+        package.source_sha256,
+        relationships,
+        content_types,
+    )
+    return DocxImageExtraction(
+        source_name=package.source_name,
+        source_sha256=package.source_sha256,
+        images=tuple(images),
+    )
 
 
 def _extract_body_images(
@@ -267,7 +248,7 @@ def _append_paragraph_images(
     """Append VML and DrawingML images from one native paragraph."""
     for run_index, run in enumerate(paragraph.iter(_RUN_TAG)):
         image_index = 0
-        for element, container in _iter_run_image_elements(run):
+        for element in _iter_run_image_elements(run):
             relationship_id = _image_relationship_id(element)
             if relationship_id is None:  # pragma: no cover - iterator yields only supported elements
                 continue
@@ -277,8 +258,6 @@ def _append_paragraph_images(
             images.append(
                 _build_image(
                     archive,
-                    element,
-                    container,
                     relationship_id,
                     source_name,
                     source_sha256,
@@ -296,25 +275,18 @@ def _append_paragraph_images(
 
 def _iter_run_image_elements(
     run: ElementTree.Element,
-) -> Iterable[tuple[ElementTree.Element, ElementTree.Element]]:
+) -> Iterable[ElementTree.Element]:
     """Yield images owned by one run without re-reading images from nested runs."""
 
-    def walk(
-        element: ElementTree.Element, container: ElementTree.Element
-    ) -> Iterable[tuple[ElementTree.Element, ElementTree.Element]]:
+    def walk(element: ElementTree.Element) -> Iterable[ElementTree.Element]:
         for child in element:
             if child.tag == _RUN_TAG:
                 continue
             if child.tag in {_IMAGE_DATA_TAG, _BLIP_TAG}:
-                yield child, container
-            yield from walk(child, container)
+                yield child
+            yield from walk(child)
 
-    for child in run:
-        if child.tag == _RUN_TAG:
-            continue
-        if child.tag in {_IMAGE_DATA_TAG, _BLIP_TAG}:
-            yield child, child
-        yield from walk(child, child)
+    yield from walk(run)
 
 
 def _image_relationship_id(element: ElementTree.Element) -> str | None:
@@ -328,8 +300,6 @@ def _image_relationship_id(element: ElementTree.Element) -> str | None:
 
 def _build_image(
     archive: zipfile.ZipFile,
-    image_element: ElementTree.Element,
-    image_container: ElementTree.Element,
     relationship_id: str,
     source_name: str,
     source_sha256: str,
@@ -350,16 +320,12 @@ def _build_image(
         raise DocxImageExtractionError.external_relationship(relationship_id)
 
     package_path = _resolve_package_path(relationship_id, relationship.target)
-    try:
-        media_bytes = archive.read(package_path)
-    except KeyError as error:
-        raise DocxImageExtractionError.missing_media(package_path) from error
+    media_bytes = archive.read(package_path)
     mime_type = _content_type(package_path, content_types)
     media_sha256 = hashlib.sha256(media_bytes).hexdigest()
     suffix = PurePosixPath(package_path).suffix.lower()
     asset_name = f"{media_sha256}{suffix}"
-    alt_text = _image_alt_text(image_element, image_container)
-    image_id = _sha256_json(
+    image_id = sha256_json(
         {
             "media_sha256": media_sha256,
             "source_ref": source_ref,
@@ -382,21 +348,17 @@ def _build_image(
         media_sha256=media_sha256,
         mime_type=mime_type,
         asset_name=asset_name,
-        alt_text=alt_text,
         media_bytes=media_bytes,
     )
 
 
-def _read_relationships(archive: zipfile.ZipFile, input_path: Path) -> dict[str, _Relationship]:
+def _read_relationships(archive: zipfile.ZipFile) -> dict[str, _Relationship]:
     """Read main-document relationships keyed by relationship ID."""
     try:
         relationship_bytes = archive.read(_RELATIONSHIPS_PART)
     except KeyError:
         return {}
-    try:
-        root = SafeElementTree.fromstring(relationship_bytes)
-    except ElementTree.ParseError as error:
-        raise DocxImageExtractionError.malformed_part(input_path, _RELATIONSHIPS_PART) from error
+    root = SafeElementTree.fromstring(relationship_bytes)
     relationships: dict[str, _Relationship] = {}
     for element in root.findall(_RELATIONSHIP_TAG):
         relationship_id = element.get("Id")
@@ -410,9 +372,9 @@ def _read_relationships(archive: zipfile.ZipFile, input_path: Path) -> dict[str,
     return relationships
 
 
-def _read_content_types(archive: zipfile.ZipFile, input_path: Path) -> dict[str, str]:
+def _read_content_types(archive: zipfile.ZipFile) -> dict[str, str]:
     """Read OOXML default and override content-type declarations."""
-    root = _read_xml_part(archive, input_path, _CONTENT_TYPES_PART)
+    root = SafeElementTree.fromstring(archive.read(_CONTENT_TYPES_PART))
     content_types: dict[str, str] = {}
     for element in root.findall(_CONTENT_TYPE_DEFAULT_TAG):
         extension = element.get("Extension")
@@ -425,18 +387,6 @@ def _read_content_types(archive: zipfile.ZipFile, input_path: Path) -> dict[str,
         if part_name and content_type:
             content_types[part_name.removeprefix("/")] = content_type
     return content_types
-
-
-def _read_xml_part(archive: zipfile.ZipFile, input_path: Path, part_name: str) -> ElementTree.Element:
-    """Read and safely parse one required OOXML package part."""
-    try:
-        part_bytes = archive.read(part_name)
-    except KeyError as error:
-        raise DocxImageExtractionError.missing_part(input_path, part_name) from error
-    try:
-        return SafeElementTree.fromstring(part_bytes)
-    except ElementTree.ParseError as error:
-        raise DocxImageExtractionError.malformed_part(input_path, part_name) from error
 
 
 def _resolve_package_path(relationship_id: str, target: str) -> str:
@@ -457,22 +407,3 @@ def _content_type(package_path: str, content_types: Mapping[str, str]) -> str:
     if not content_type.startswith("image/"):
         raise DocxImageExtractionError.invalid_content_type(package_path, content_type)
     return content_type
-
-
-def _image_alt_text(image_element: ElementTree.Element, image_container: ElementTree.Element) -> str | None:
-    """Return native alternative text without deriving semantic labels."""
-    if image_element.tag == _IMAGE_DATA_TAG:
-        title = image_element.get(_OFFICE_TITLE_ATTRIBUTE)
-        return title.strip() if title and title.strip() else None
-    for properties in image_container.iter(_DOCUMENT_PROPERTIES_TAG):
-        for attribute in ("descr", "title", "name"):
-            value = properties.get(attribute)
-            if value and value.strip():
-                return value.strip()
-    return None
-
-
-def _sha256_json(value: object) -> str:
-    """Hash a value using canonical UTF-8 JSON serialization."""
-    serialized = json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
-    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()

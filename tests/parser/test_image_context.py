@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from legal_rag.parser.document_source import KIND_PARAGRAPH, KIND_TABLE, DocumentSource, DocumentSourceUnit
-from legal_rag.parser.image_context import build_image_context
+from legal_rag.parser.image_context import ImageContextRelation, build_image_context
 from legal_rag.parser.images import DocxImage
 from legal_rag.parser.tables import TableCell, TableCellTable, TableRow
 
@@ -26,7 +26,6 @@ def _image(*, body_index: int, parent_source_ref: str) -> DocxImage:
         media_sha256="media-hash",
         mime_type="image/png",
         asset_name="media-hash.png",
-        alt_text=None,
         media_bytes=b"image",
     )
 
@@ -56,11 +55,6 @@ def _source(units: tuple[DocumentSourceUnit, ...]) -> DocumentSource:
         source_name="source.docx",
         source_sha256="source-hash",
         units=units,
-        paragraph_count=sum(unit.kind == KIND_PARAGRAPH for unit in units),
-        table_count=sum(unit.kind == KIND_TABLE for unit in units),
-        cell_count=0,
-        skipped_empty_paragraph_refs=(),
-        skipped_empty_table_paragraph_refs=(),
     )
 
 
@@ -89,9 +83,14 @@ def test_table_image_uses_text_from_its_native_row() -> None:
     )
     image = _image(body_index=4, parent_source_ref=f"{row_ref}/cell/2/paragraph/0")
 
-    context = build_image_context(image, _source((table,)), max_characters=1000)
+    context = build_image_context(image, _source((table,)), max_characters=1000, surrounding_units=3)
 
     assert [entry.text for entry in context.entries] == ["Ô tô tải tự đổ", "Thùng hàng có cơ cấu nâng"]
+    assert [entry.relation for entry in context.entries] == [
+        ImageContextRelation.SAME_TABLE_ROW,
+        ImageContextRelation.SAME_TABLE_ROW,
+    ]
+    assert [entry.distance for entry in context.entries] == [0, 0]
     assert context.source_refs == (f"{row_ref}/cell/0", f"{row_ref}/cell/1")
 
 
@@ -105,9 +104,11 @@ def test_image_only_paragraph_uses_immediate_surrounding_units() -> None:
     )
     image = _image(body_index=2, parent_source_ref="word/document.xml#/body/2")
 
-    context = build_image_context(image, source, max_characters=1000)
+    context = build_image_context(image, source, max_characters=1000, surrounding_units=3)
 
     assert [entry.text for entry in context.entries] == ["Nội dung trước ảnh", "Nội dung sau ảnh"]
+    assert [entry.relation for entry in context.entries] == [ImageContextRelation.BEFORE, ImageContextRelation.AFTER]
+    assert [entry.distance for entry in context.entries] == [1, 1]
 
 
 def test_nested_table_image_uses_the_innermost_row() -> None:
@@ -139,14 +140,14 @@ def test_nested_table_image_uses_the_innermost_row() -> None:
     )
     image = _image(body_index=4, parent_source_ref=f"{nested_row_ref}/cell/1/paragraph/0")
 
-    context = build_image_context(image, _source((table,)), max_characters=1000)
+    context = build_image_context(image, _source((table,)), max_characters=1000, surrounding_units=3)
 
     assert [entry.text for entry in context.entries] == ["Nhãn trong bảng lồng"]
     assert context.source_refs == (f"{nested_row_ref}/cell/0",)
 
 
-def test_text_bearing_image_paragraph_uses_only_its_own_text() -> None:
-    """Text in the image paragraph is more local than adjacent document units."""
+def test_text_bearing_image_paragraph_prioritizes_its_own_text() -> None:
+    """Direct paragraph text precedes supplemental surrounding context."""
     source = _source(
         (
             _paragraph_unit(body_index=1, text="Trước"),
@@ -156,13 +157,47 @@ def test_text_bearing_image_paragraph_uses_only_its_own_text() -> None:
     )
     image = _image(body_index=2, parent_source_ref="word/document.xml#/body/2")
 
-    context = build_image_context(image, source, max_characters=1000)
+    context = build_image_context(image, source, max_characters=1000, surrounding_units=3)
 
-    assert [entry.text for entry in context.entries] == ["Chú thích cùng đoạn"]
+    assert [entry.text for entry in context.entries] == ["Chú thích cùng đoạn", "Trước", "Sau"]
+    assert [entry.relation for entry in context.entries] == [
+        ImageContextRelation.SAME_PARAGRAPH,
+        ImageContextRelation.BEFORE,
+        ImageContextRelation.AFTER,
+    ]
+    assert [entry.distance for entry in context.entries] == [0, 1, 1]
 
 
-def test_context_limit_preserves_source_order() -> None:
-    """Configured character limits truncate deterministically without reordering context."""
+def test_image_only_paragraph_uses_three_units_on_each_side() -> None:
+    """A wider structural window includes captions beyond the immediate neighbor."""
+    source = _source(
+        tuple(_paragraph_unit(body_index=index, text=f"Đoạn {index}") for index in (*range(1, 4), *range(5, 8)))
+    )
+    image = _image(body_index=4, parent_source_ref="word/document.xml#/body/4")
+
+    context = build_image_context(image, source, max_characters=1000, surrounding_units=3)
+
+    assert [entry.text for entry in context.entries] == [
+        "Đoạn 3",
+        "Đoạn 5",
+        "Đoạn 2",
+        "Đoạn 6",
+        "Đoạn 1",
+        "Đoạn 7",
+    ]
+    assert [entry.relation for entry in context.entries] == [
+        ImageContextRelation.BEFORE,
+        ImageContextRelation.AFTER,
+        ImageContextRelation.BEFORE,
+        ImageContextRelation.AFTER,
+        ImageContextRelation.BEFORE,
+        ImageContextRelation.AFTER,
+    ]
+    assert [entry.distance for entry in context.entries] == [1, 1, 2, 2, 3, 3]
+
+
+def test_context_limit_preserves_structural_priority() -> None:
+    """Character limits truncate deterministically after nearest entries are prioritized."""
     source = _source(
         (
             _paragraph_unit(body_index=1, text="abcdef"),
@@ -171,6 +206,8 @@ def test_context_limit_preserves_source_order() -> None:
     )
     image = _image(body_index=2, parent_source_ref="word/document.xml#/body/2")
 
-    context = build_image_context(image, source, max_characters=8)
+    context = build_image_context(image, source, max_characters=8, surrounding_units=3)
 
     assert [entry.text for entry in context.entries] == ["abcdef", "gh"]
+    assert [entry.relation for entry in context.entries] == [ImageContextRelation.BEFORE, ImageContextRelation.AFTER]
+    assert [entry.distance for entry in context.entries] == [1, 1]

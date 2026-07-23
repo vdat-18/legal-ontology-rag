@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-import json
 import zipfile
 from pathlib import Path
+
+import pytest
 
 from legal_rag.parser.document_source import (
     KIND_PARAGRAPH,
     KIND_TABLE,
     extract_document_source,
-    write_document_source,
 )
+from legal_rag.parser.docx_package import InvalidDocxPackageError
 
 _DOCUMENT_XML = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -50,10 +51,6 @@ def test_extract_document_source_interleaves_paragraphs_and_tables(tmp_path: Pat
     assert source.units[0].text == "Điều 1. Phạm vi điều chỉnh"
     assert source.units[2].text == "Sau bảng"
     assert source.units[1].rows[0].cells[1].text == "Mức phạt"
-    assert source.paragraph_count == 2
-    assert source.table_count == 1
-    assert source.cell_count == 2
-    assert source.skipped_empty_paragraph_refs == ("word/document.xml#/body/1",)
 
 
 def test_document_source_unit_ids_match_native_extractors(tmp_path: Path) -> None:
@@ -72,33 +69,10 @@ def test_document_source_unit_ids_match_native_extractors(tmp_path: Path) -> Non
     assert "text" not in table.to_dict()
 
 
-def test_write_document_source_defaults_to_a_single_file(tmp_path: Path) -> None:
-    """Without a manifest path, only the merged source view is written."""
-    input_path = tmp_path / "source.docx"
-    output_path = tmp_path / "source.jsonl"
-    manifest_path = tmp_path / "source.manifest.json"
-    _write_docx(input_path)
-    source = extract_document_source(input_path)
+def test_extract_document_source_preserves_package_errors(tmp_path: Path) -> None:
+    """Invalid DOCX input exposes the package boundary error unchanged."""
+    input_path = tmp_path / "invalid.docx"
+    input_path.write_bytes(b"not a DOCX archive")
 
-    write_document_source(output_path, source)
-
-    records = [json.loads(line) for line in output_path.read_text(encoding="utf-8").splitlines()]
-    assert records == [unit.to_dict() for unit in source.units]
-    assert {record["kind"] for record in records} == {KIND_PARAGRAPH, KIND_TABLE}
-    assert not manifest_path.exists()
-
-
-def test_write_document_source_writes_manifest_when_requested(tmp_path: Path) -> None:
-    """A manifest path opts into the audit sidecar describing the same extraction."""
-    input_path = tmp_path / "source.docx"
-    output_path = tmp_path / "source.jsonl"
-    manifest_path = tmp_path / "source.manifest.json"
-    _write_docx(input_path)
-    source = extract_document_source(input_path)
-
-    write_document_source(output_path, source, manifest_path=manifest_path)
-
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    assert manifest == source.manifest()
-    assert manifest["unit_count"] == 3
-    assert manifest["table_count"] == 1
+    with pytest.raises(InvalidDocxPackageError):
+        extract_document_source(input_path)
