@@ -65,7 +65,8 @@ legal-parse `
 
 Each JSONL record is one native paragraph or table in native document order,
 carrying its exact OOXML source reference and content hash. Its `images` field
-contains the typed captions for image occurrences at that body position. Its
+contains typed captions for image occurrences at that body position; each
+caption exposes only the Vietnamese semantic description under `description_vi`. Its
 `attachments` field contains metadata and provenance for embedded OLE packages.
 Attachment payloads are written under the sibling `assets/` directory using
 their SHA-256 hashes, while their display icons are excluded from image

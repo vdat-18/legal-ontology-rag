@@ -96,7 +96,7 @@ def test_ingest_attachment_documents_parses_docx_members_with_provenance() -> No
     assert records[0]["parent_attachment_id"] == "attachment-0"
     assert records[0]["source_name"] == "forms/report.docx"
     assert records[0]["source_schema_version"] == "1.2.0"
-    assert records[0]["child_parser_schema_version"] == "1.3.0"
+    assert records[0]["child_parser_schema_version"] == "2.0.0"
 
 
 def test_ingest_attachment_documents_rejects_unsafe_member_paths() -> None:

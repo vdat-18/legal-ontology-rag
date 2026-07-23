@@ -18,10 +18,6 @@ class ImageCaptionResult {
     Có thể dùng ngữ cảnh cấu trúc để định danh hoặc làm rõ đối tượng, nhưng không trình bày
     nội dung ngữ cảnh như thể nó xuất hiện trực tiếp trong ảnh.
   "#)
-  visible_text string? @description(#"
-    Chép lại nguyên văn chữ nhìn thấy được trong ảnh. Trả về null nếu không có chữ hoặc
-    không đọc được.
-  "#)
 }
 
 function CaptionImage(structural_context: StructuralContextEntry[], img: image) -> ImageCaptionResult {

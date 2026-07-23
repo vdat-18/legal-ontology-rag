@@ -151,7 +151,7 @@ class BamlCaptionClient:
         except BamlError:
             # BAML exceptions may contain prompts and raw model output, so do not preserve them in logs.
             raise ImageCaptionError.model_call_failed() from None
-        return CaptionModelResponse(result.description_vi, result.visible_text)
+        return CaptionModelResponse(result.description_vi)
 
 
 def _execute_baml_request(request: HTTPRequest, timeout_seconds: float, max_response_bytes: int) -> str:
@@ -250,7 +250,6 @@ def caption_images(
             context_source_refs=context.source_refs,
             requested_model=settings.llm_model,
             description_vi=response.description_vi,
-            visible_text=response.visible_text,
         )
 
     with ThreadPoolExecutor(max_workers=settings.image_caption_max_concurrency) as executor:

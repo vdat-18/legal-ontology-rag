@@ -9,18 +9,17 @@ from legal_rag.parser.attachments import DocxAttachment
 from legal_rag.parser.document_source import DocumentSource, DocumentSourceUnit
 from legal_rag.parser.hashing import sha256_json
 
-PARSER_OUTPUT_SCHEMA_VERSION = "1.3.0"
-IMAGE_CAPTION_SCHEMA_VERSION = "1.2.0"
+PARSER_OUTPUT_SCHEMA_VERSION = "2.0.0"
+IMAGE_CAPTION_SCHEMA_VERSION = "2.0.0"
 KIND_IMAGE = "image"
 KIND_ATTACHMENT = "attachment"
 
 
 @dataclass(frozen=True, slots=True)
 class CaptionModelResponse:
-    """Typed semantic fields returned by the caption model."""
+    """Typed Vietnamese description returned by the caption model."""
 
     description_vi: str
-    visible_text: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,7 +39,6 @@ class ImageCaption:
     context_source_refs: tuple[str, ...]
     requested_model: str
     description_vi: str
-    visible_text: str | None
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable caption record."""
@@ -58,7 +56,6 @@ class ImageCaption:
             "context_source_refs": list(self.context_source_refs),
             "requested_model": self.requested_model,
             "description_vi": self.description_vi,
-            "visible_text": self.visible_text,
         }
 
 

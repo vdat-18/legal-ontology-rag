@@ -62,7 +62,7 @@ def test_baml_contract_builds_provider_multimodal_request() -> None:
     assert "SameTableRow" in prompt_text
     assert "distance=0" in prompt_text
     assert "description_vi" in prompt_text
-    assert "visible_text" in prompt_text
+    assert "visible_text" not in prompt_text
 
 
 def test_baml_client_exposes_provider_rate_limit_without_sensitive_details(
@@ -88,13 +88,12 @@ def test_baml_client_returns_typed_non_stream_result(
     monkeypatch.setattr(
         image_captioner,
         "_execute_baml_request",
-        lambda *args, **kwargs: '{"description_vi":"Biển báo","visible_text":null}',
+        lambda *args, **kwargs: '{"description_vi":"Biển báo"}',
     )
 
     result = client.caption(image_bytes=b"image", mime_type="image/png", context=ImageContext(()))
 
     assert result.description_vi == "Biển báo"
-    assert result.visible_text is None
 
 
 def test_non_stream_transport_forces_json_response(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -108,9 +107,7 @@ def test_non_stream_transport_forces_json_response(monkeypatch: pytest.MonkeyPat
 
         def read(self, amount: int) -> bytes:
             assert amount == 1025
-            return json.dumps(
-                {"choices": [{"message": {"content": '{"description_vi":"Biển báo","visible_text":null}'}}]}
-            ).encode()
+            return json.dumps({"choices": [{"message": {"content": '{"description_vi":"Biển báo"}'}}]}).encode()
 
     class JsonConnection:
         """Capture the request body without external I/O."""
@@ -139,7 +136,7 @@ def test_non_stream_transport_forces_json_response(monkeypatch: pytest.MonkeyPat
 
     assert captured_body["stream"] is False
     assert captured_body["response_format"] == {"type": "json_object"}
-    assert content == '{"description_vi":"Biển báo","visible_text":null}'
+    assert content == '{"description_vi":"Biển báo"}'
 
 
 @pytest.mark.parametrize(

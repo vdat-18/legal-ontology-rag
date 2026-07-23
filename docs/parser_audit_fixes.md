@@ -4,7 +4,7 @@
 
 Parser hiện tại **đủ tốt cho RAG dựa trên văn bản, bảng và caption ảnh**. Đối chiếu 35 DOCX với 22.307 record và 171 ảnh không phát hiện nội dung nào bị sai trong phạm vi schema đang hỗ trợ.
 
-Nội dung DOC, DOCX và XLS trong attachment đã được đưa vào cùng JSONL với provenance cha–con. Field, hyperlink và bookmark cũng đã giữ được target cùng vị trí text gốc. Các điểm còn thiếu chủ yếu là cấp heading, OCR/QR chính xác và một số metadata. Vì vậy, kết quả “khớp” không có nghĩa là toàn bộ nội dung đã sẵn sàng để tìm kiếm.
+Nội dung DOC, DOCX và XLS trong attachment đã được đưa vào cùng JSONL với provenance cha–con. Field, hyperlink và bookmark cũng đã giữ được target cùng vị trí text gốc. Metadata heading không đủ tin cậy để dựng hierarchy, còn OCR/QR chuyên dụng không cần cho phạm vi semantic RAG hiện tại, nên hai hạng mục này được chủ động không triển khai.
 
 ## Thứ tự ưu tiên
 
@@ -14,8 +14,8 @@ Nội dung DOC, DOCX và XLS trong attachment đã được đưa vào cùng JSO
 | P0 | Chuẩn hóa ký tự điều khiển khi ghi JSONL | Đã hoàn thành | Một số consumer có thể đọc sai số dòng/record |
 | P1 | Parse tài liệu con trong attachment | Đã hoàn thành | DOC, DOCX và XLS nhúng đã có record tìm kiếm được |
 | P1 | Bảo toàn field, hyperlink và bookmark | Đã hoàn thành | Ký hiệu trích dẫn truy được đúng bookmark hoặc URL đích |
-| P1 | Bảo toàn cấp heading gốc | Chưa làm | Mất cấu trúc chương/mục dù text vẫn còn |
-| P1 | Tách caption, OCR và QR decoding | Chưa làm | Caption đúng ý nhưng không đủ chính xác cho công thức, biểu mẫu và QR |
+| P1 | Bảo toàn cấp heading gốc | Không triển khai | Style Word được gán thiếu nhất quán và không đủ tin cậy cho hierarchy |
+| P1 | Tách caption, OCR và QR decoding | Không triển khai | `description_vi` từ LLM đã đủ cho semantic retrieval hiện tại |
 | P2 | Bổ sung metadata tài liệu và section | Chưa làm | Thiếu thông tin nguồn; metadata kỹ thuật có thể không đáng tin |
 | P2 | Bổ sung layout bảng khi có nhu cầu | Chưa làm | Nội dung bảng đúng nhưng chưa đủ để tái dựng hình thức Word |
 
@@ -88,7 +88,7 @@ Bằng chứng:
 
 ## 3. Bảo toàn field, hyperlink và bookmark — P1
 
-**Trạng thái:** Đã hoàn thành. Parser output schema `1.3.0` giữ field instruction, field result, hyperlink relationship, bookmark ID/name, `source_ref` và character offset ngay trên paragraph tương ứng, kể cả paragraph trong bảng và bookmark không có text.
+**Trạng thái:** Đã hoàn thành. Parser output schema `2.0.0` giữ field instruction, field result, hyperlink relationship, bookmark ID/name, `source_ref` và character offset ngay trên paragraph tương ứng, kể cả paragraph trong bảng và bookmark không có text.
 
 ### Hiện trạng
 
@@ -116,6 +116,8 @@ Bằng chứng:
 
 ## 4. Bảo toàn hierarchy của heading — P1
 
+**Trạng thái:** Không triển khai. Phần lớn paragraph không có Heading Style; các style còn lại bị gán cho cả paragraph rỗng, tên biểu mẫu và nội dung như `Kính gửi`, nên không được coi là hierarchy pháp lý đáng tin cậy.
+
 ### Hiện trạng
 
 Nội dung heading được giữ như paragraph thường, nhưng cấp heading gốc bị mất.
@@ -126,19 +128,23 @@ Bằng chứng:
 - `53_2024_TT-BGTVT_m_624420.docx`: 15 heading có cấu trúc.
 - Ví dụ `word/document.xml#/body/409` có style `heading 3`, outline level `3`, text `II. Môn học kỹ thuật lái xe`.
 
-### Cần sửa
+### Hướng đã cân nhắc
 
 - Bổ sung `style_id` và `outline_level` lấy trực tiếp từ OOXML/style definitions.
 - Dùng hierarchy gốc để hỗ trợ chunking hoặc dựng cây tài liệu ở bước sau.
 - Không suy luận heading từ chữ in hoa, số thứ tự, font hoặc regex.
 
-### Tiêu chí hoàn thành
+### Lý do không triển khai
 
-- 75 heading đã phát hiện trong corpus giữ đúng style và outline level.
-- Paragraph thường không bị tự động nâng thành heading.
-- Test bao phủ heading trực tiếp và heading kế thừa từ style.
+- Metadata style chỉ phản ánh cách file Word được soạn, không xác nhận cấu trúc pháp lý.
+- Gắn hierarchy theo style gốc có thể nâng paragraph thường hoặc paragraph rỗng thành heading sai.
+- Text hiện tại đã được bảo toàn và downstream chưa cần metadata layout này.
 
 ## 5. Tách caption, OCR và QR decoding — P1
+
+**Trạng thái:** Không triển khai. Image caption chỉ giữ `description_vi` do LLM sinh; không chép OCR riêng, không decode QR/barcode và không coi caption là bản chép ký tự chính xác.
+
+**Schema migration:** Parser output và image-caption schema chuyển sang `2.0.0`. Field `visible_text` bị xóa; consumer chỉ đọc `description_vi` từ mỗi image caption.
 
 ### Hiện trạng
 
@@ -150,18 +156,18 @@ Bằng chứng:
 - `47...`, ảnh 4: ký hiệu `№/No` bị đọc thành `Nợ`.
 - `184...`: nhận ra có QR nhưng không giải mã payload.
 
-### Cần sửa
+### Hướng đã cân nhắc
 
 - Giữ LLM cho `semantic_caption`.
 - Dùng OCR chuyên dụng cho `ocr_text` và công cụ QR/barcode cho `machine_readable_codes`.
 - Lưu ảnh gốc vào sidecar theo content hash để có thể audit và xử lý lại mà không cần mở DOCX.
 - Không trộn text OCR vào caption như thể đó là nội dung đã được xác minh.
 
-### Tiêu chí hoàn thành
+### Phạm vi được chấp nhận
 
-- Output phân biệt rõ caption suy luận, OCR và payload QR.
-- Công thức/ký hiệu trong bộ test được giữ chính xác hơn caption hiện tại.
-- Hash và asset path cho phép truy lại đúng ảnh gốc.
+- `description_vi` phục vụ semantic retrieval và có thể chứa mô tả chữ quan trọng khi LLM nhìn thấy.
+- Không cam kết sao chép chính xác công thức, ký hiệu, QR hoặc barcode.
+- Không thêm dependency hay service OCR/QR chuyên dụng khi downstream chưa cần.
 
 ## 6. Metadata tài liệu và section — P2
 
@@ -200,7 +206,7 @@ Rows, cells, nested tables, `gridSpan` và `vMerge` đang khớp nguồn. Các t
 ## Những phần không cần sửa lúc này
 
 - Text, thứ tự paragraph/table, run text, nested table, merge cell, image hash, MIME và source reference đang khớp trong 35 tài liệu đã kiểm tra.
-- Caption ảnh hiện tại dùng được cho semantic retrieval; chỉ không nên coi là OCR chính xác tuyệt đối.
+- `description_vi` hiện tại dùng được cho semantic retrieval; không coi đó là OCR chính xác.
 - Không cần bảo toàn toàn bộ font, màu, spacing và layout Word nếu downstream chỉ là RAG.
 - Header trong `118_2021_ND-CP_477969.docx` không phải lỗi parser: đó là even-page header nhưng tài liệu tắt `evenAndOddHeaders`, nên Word không hiển thị.
 
@@ -210,8 +216,8 @@ Rows, cells, nested tables, `gridSpan` và `vMerge` đang khớp nguồn. Các t
 2. [x] Trích xuất attachment và lưu asset sidecar.
 3. [x] Parse tài liệu con trong attachment cho RAG.
 4. [x] Bảo toàn field/hyperlink/bookmark.
-5. [ ] Bổ sung `style_id` và `outline_level`.
-6. [ ] Thêm OCR/QR như dữ liệu riêng với caption.
+5. Không triển khai `style_id` và `outline_level` vì metadata nguồn không đủ tin cậy.
+6. Không triển khai OCR/QR; caption chỉ giữ `description_vi`.
 7. [ ] Chỉ thêm metadata, section và layout bảng khi downstream xác nhận cần.
 
 ## Ngoài phạm vi

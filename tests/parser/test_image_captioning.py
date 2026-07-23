@@ -38,10 +38,7 @@ class FakeCaptionClient:
         """Return a valid response derived only from request order."""
         self.images.append((image_bytes, mime_type))
         self.contexts.append(context)
-        return CaptionModelResponse(
-            description_vi=f"Mô tả {len(self.images)}",
-            visible_text=None,
-        )
+        return CaptionModelResponse(description_vi=f"Mô tả {len(self.images)}")
 
 
 class RateLimitedCaptionClient:
@@ -62,7 +59,7 @@ class RateLimitedCaptionClient:
         self.call_count += 1
         if self.call_count <= 2:
             raise ImageCaptionRateLimitError.provider_rate_limited()
-        return CaptionModelResponse(description_vi="Mô tả sau retry", visible_text=None)
+        return CaptionModelResponse(description_vi="Mô tả sau retry")
 
 
 class AlwaysRateLimitedCaptionClient:
