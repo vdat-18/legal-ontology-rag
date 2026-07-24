@@ -65,10 +65,10 @@ def test_baml_contract_builds_provider_multimodal_request() -> None:
     assert "visible_text" not in prompt_text
 
 
-def test_baml_client_exposes_provider_rate_limit_without_sensitive_details(
+def test_baml_client_exposes_provider_rate_limit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """HTTP 429 becomes a sanitized retryable parser error."""
+    """HTTP 429 remains a retryable parser error."""
 
     def raise_rate_limit(*args: object, **kwargs: object) -> str:
         raise ImageCaptionRateLimitError.provider_rate_limited()
@@ -104,6 +104,7 @@ def test_non_stream_transport_forces_json_response(monkeypatch: pytest.MonkeyPat
         """Return one bounded OpenAI-compatible JSON response."""
 
         status = 200
+        reason = "OK"
 
         def read(self, amount: int) -> bytes:
             assert amount == 1025
@@ -139,6 +140,48 @@ def test_non_stream_transport_forces_json_response(monkeypatch: pytest.MonkeyPat
     assert content == '{"description_vi":"Biển báo"}'
 
 
+def test_non_stream_transport_exposes_http_error_body(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Non-successful HTTP responses preserve provider status and body."""
+
+    class ErrorResponse:
+        """Return one provider failure response."""
+
+        status = 503
+        reason = "Service Unavailable"
+
+        def read(self, amount: int) -> bytes:
+            assert amount == 1025
+            return b'{"error":{"message":"Upstream model unavailable"}}'
+
+    class ErrorConnection:
+        """Provide the failed response without external I/O."""
+
+        def __init__(self, host: str, port: int | None, timeout: float) -> None:
+            return None
+
+        def request(self, method: str, path: str, *, body: bytes, headers: dict[str, str]) -> None:
+            return None
+
+        def getresponse(self) -> ErrorResponse:
+            return ErrorResponse()
+
+        def close(self) -> None:
+            return None
+
+    client = BamlCaptionClient(_settings())
+    request = b.request.CaptionImage(
+        [],
+        Image.from_base64("image/png", "aW1hZ2U="),
+        baml_options={"client_registry": client._registry},
+    )
+    monkeypatch.setattr(image_captioner.http.client, "HTTPConnection", ErrorConnection)
+
+    with pytest.raises(image_captioner.http.client.HTTPException) as error:
+        image_captioner._execute_baml_request(request, 30, 1024)
+
+    assert str(error.value) == '503 Service Unavailable: {"error":{"message":"Upstream model unavailable"}}'
+
+
 @pytest.mark.parametrize(
     ("response_bytes", "error_type"),
     [
@@ -163,3 +206,23 @@ def test_openai_response_exposes_embedded_rate_limit() -> None:
 
     with pytest.raises(ImageCaptionRateLimitError, match="rate limited"):
         image_captioner._openai_response_content(response_bytes)
+
+
+def test_openai_response_exposes_full_provider_error() -> None:
+    """Provider error details remain visible to the caller."""
+    response_bytes = json.dumps(
+        {
+            "error": {
+                "code": "upstream_error",
+                "type": "server_error",
+                "message": "Upstream model unavailable",
+            }
+        }
+    ).encode()
+
+    with pytest.raises(image_captioner.ImageCaptionError) as error:
+        image_captioner._openai_response_content(response_bytes)
+
+    assert '"code": "upstream_error"' in str(error.value)
+    assert '"type": "server_error"' in str(error.value)
+    assert '"message": "Upstream model unavailable"' in str(error.value)

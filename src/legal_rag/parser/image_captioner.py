@@ -17,7 +17,6 @@ from typing import Protocol
 from urllib.parse import urlsplit
 
 from baml_py import ClientRegistry, HTTPRequest, Image
-from baml_py.errors import BamlError
 from baml_py.logging import set_log_level
 from loguru import logger
 
@@ -37,11 +36,6 @@ class ImageCaptionError(ValueError):
     """Raised when an image cannot produce a valid caption record."""
 
     @classmethod
-    def model_call_failed(cls) -> ImageCaptionError:
-        """Build a sanitized error for a failed BAML model call."""
-        return cls("BAML image-caption call failed; inspect service availability without logging document content")
-
-    @classmethod
     def unsupported_media(cls, mime_type: str) -> ImageCaptionError:
         """Build an error when legacy media requires an explicit rasterizer."""
         return cls(f"Image media requires --renderer-executable before captioning: {mime_type}")
@@ -56,9 +50,10 @@ class ImageCaptionRateLimitError(ImageCaptionError):
     """Raised when the caption provider rejects a request due to quota limits."""
 
     @classmethod
-    def provider_rate_limited(cls) -> ImageCaptionRateLimitError:
-        """Build a sanitized error for an HTTP 429 response."""
-        return cls("BAML image-caption call was rate limited by the provider")
+    def provider_rate_limited(cls, details: str | None = None) -> ImageCaptionRateLimitError:
+        """Build a retryable error containing the provider's response details."""
+        message = "BAML image-caption call was rate limited by the provider"
+        return cls(f"{message}: {details}" if details else message)
 
 
 class CaptionClient(Protocol):
@@ -140,17 +135,13 @@ class BamlCaptionClient:
             for entry in context.entries
         ]
         image = Image.from_base64(mime_type, base64.b64encode(image_bytes).decode("ascii"))
-        try:
-            request = b.request.CaptionImage(
-                entries,
-                image,
-                baml_options={"client_registry": self._registry},
-            )
-            raw_output = _execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-            result = b.parse.CaptionImage(raw_output, baml_options={"client_registry": self._registry})
-        except BamlError:
-            # BAML exceptions may contain prompts and raw model output, so do not preserve them in logs.
-            raise ImageCaptionError.model_call_failed() from None
+        request = b.request.CaptionImage(
+            entries,
+            image,
+            baml_options={"client_registry": self._registry},
+        )
+        raw_output = _execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
+        result = b.parse.CaptionImage(raw_output, baml_options={"client_registry": self._registry})
         return CaptionModelResponse(result.description_vi)
 
 
@@ -174,15 +165,19 @@ def _execute_baml_request(request: HTTPRequest, timeout_seconds: float, max_resp
             headers=headers,
         )
         response = connection.getresponse()
-        if response.status == HTTPStatus.TOO_MANY_REQUESTS:
-            raise ImageCaptionRateLimitError.provider_rate_limited()
-        if response.status != HTTPStatus.OK:
-            raise ImageCaptionError.model_call_failed()
+        response_status = response.status
+        response_reason = response.reason
         response_bytes = response.read(max_response_bytes + 1)
     finally:
         connection.close()
     if len(response_bytes) > max_response_bytes:
         raise ImageCaptionError.response_too_large(max_response_bytes)
+    response_text = response_bytes.decode("utf-8", errors="replace")
+    if response_status == HTTPStatus.TOO_MANY_REQUESTS:
+        raise ImageCaptionRateLimitError.provider_rate_limited(response_text)
+    if response_status != HTTPStatus.OK:
+        message = f"{response_status} {response_reason}: {response_text}"
+        raise http.client.HTTPException(message)
     return _openai_response_content(response_bytes)
 
 
@@ -192,8 +187,8 @@ def _openai_response_content(response_bytes: bytes) -> str:
     provider_error = response.get("error")
     if provider_error is not None:
         if isinstance(provider_error, dict) and provider_error.get("code") == HTTPStatus.TOO_MANY_REQUESTS:
-            raise ImageCaptionRateLimitError.provider_rate_limited()
-        raise ImageCaptionError.model_call_failed()
+            raise ImageCaptionRateLimitError.provider_rate_limited(json.dumps(provider_error, ensure_ascii=False))
+        raise ImageCaptionError(json.dumps(provider_error, ensure_ascii=False))
     return response["choices"][0]["message"]["content"]
 
 
@@ -294,8 +289,6 @@ def _rasterize_to_png(image: DocxImage, renderer_executable: Path, timeout_secon
         subprocess.run(  # noqa: S603
             command,
             check=True,
-            capture_output=True,
-            text=True,
             timeout=timeout_seconds,
         )
         output_path = output_directory / f"{input_path.stem}.png"

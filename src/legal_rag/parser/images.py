@@ -66,6 +66,11 @@ class DocxImageExtractionError(ValueError):
         return cls(f"DOCX image relationship is external and cannot be archived: {relationship_id}")
 
     @classmethod
+    def missing_relationship_id(cls, source_ref: str) -> DocxImageExtractionError:
+        """Build an error for image markup without an embedded relationship ID."""
+        return cls(f"DOCX image has no embedded relationship ID: {source_ref}")
+
+    @classmethod
     def unsafe_target(cls, relationship_id: str, target: str) -> DocxImageExtractionError:
         """Build an error for a relationship target outside the package."""
         return cls(f"DOCX image relationship has an unsafe target ({relationship_id}): {target}")
@@ -254,14 +259,12 @@ def _append_paragraph_images(
             for element in run.iter(_OLE_OBJECT_TAG)
             if element.get("Type") == "Embed" and element.get("ShapeID") is not None
         }
-        image_index = 0
-        for element in _iter_run_image_elements(run, attachment_shape_ids):
+        for image_index, element in enumerate(_iter_run_image_elements(run, attachment_shape_ids)):
             relationship_id = _image_relationship_id(element)
-            if relationship_id is None:  # pragma: no cover - iterator yields only supported elements
-                continue
-            sequence_index = len(images)
             source_ref = f"{parent_ref}/run/{run_index}/image/{image_index}"
-            image_index += 1
+            if relationship_id is None:
+                raise DocxImageExtractionError.missing_relationship_id(source_ref)
+            sequence_index = len(images)
             images.append(
                 _build_image(
                     archive,
@@ -273,7 +276,7 @@ def _append_paragraph_images(
                     source_ref,
                     parent_ref,
                     run_index,
-                    image_index - 1,
+                    image_index,
                     relationships,
                     content_types,
                 )

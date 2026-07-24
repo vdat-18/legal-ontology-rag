@@ -176,7 +176,6 @@ def _run_office_conversion(
         subprocess.run(  # noqa: S603
             command,
             check=True,
-            capture_output=True,
             timeout=timeout_seconds,
         )
     except subprocess.TimeoutExpired as error:

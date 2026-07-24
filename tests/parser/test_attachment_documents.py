@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import subprocess
 import zipfile
 from pathlib import Path
 
@@ -190,3 +191,32 @@ def test_legacy_documents_are_converted_in_one_batch_per_format(
 
     assert batches == [2]
     assert set(converted) == {0, 1}
+
+
+def test_office_conversion_streams_process_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """LibreOffice inherits stdout and stderr so conversion failures remain visible."""
+    captured_kwargs: dict[str, object] = {}
+
+    def fake_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        captured_kwargs.update(kwargs)
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(attachment_documents.subprocess, "run", fake_run)
+    profile_directory = tmp_path / "profile"
+    output_directory = tmp_path / "output"
+    input_path = tmp_path / "source.doc"
+    profile_directory.mkdir()
+    output_directory.mkdir()
+    input_path.write_bytes(b"doc")
+
+    attachment_documents._run_office_conversion(
+        tmp_path / "soffice.com",
+        profile_directory,
+        output_directory,
+        [input_path],
+        "doc",
+        "docx",
+        120,
+    )
+
+    assert captured_kwargs == {"check": True, "timeout": 120}

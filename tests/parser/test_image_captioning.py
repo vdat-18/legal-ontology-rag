@@ -227,6 +227,9 @@ def test_legacy_media_requires_or_uses_explicit_renderer(
     renderer.write_bytes(b"renderer")
 
     def fake_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        assert "capture_output" not in kwargs
+        assert "stdout" not in kwargs
+        assert "stderr" not in kwargs
         output_directory = Path(command[command.index("--outdir") + 1])
         input_path = Path(command[-1])
         output_directory.joinpath(f"{input_path.stem}.png").write_bytes(b"png")

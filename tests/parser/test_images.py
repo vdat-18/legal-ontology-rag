@@ -117,6 +117,21 @@ def test_extract_docx_images_rejects_external_media(tmp_path: Path) -> None:
         extract_docx_images(input_path)
 
 
+def test_extract_docx_images_rejects_missing_relationship_ids(tmp_path: Path) -> None:
+    """Image markup without a relationship ID fails instead of being skipped."""
+    document_xml = _DOCUMENT_XML.replace(' r:id="rIdVml"', "")
+    input_path = tmp_path / "missing-relationship.docx"
+    with zipfile.ZipFile(input_path, mode="w") as archive:
+        archive.writestr("word/document.xml", document_xml)
+        archive.writestr("word/_rels/document.xml.rels", _RELATIONSHIPS_XML)
+        archive.writestr("[Content_Types].xml", _CONTENT_TYPES_XML)
+        archive.writestr("word/media/sign.png", _SIGN_BYTES)
+        archive.writestr("word/media/vehicle.jpeg", _VEHICLE_BYTES)
+
+    with pytest.raises(DocxImageExtractionError, match="no embedded relationship ID"):
+        extract_docx_images(input_path)
+
+
 def test_asset_names_are_content_addressed(tmp_path: Path) -> None:
     """Asset filenames derive only from exact bytes and their package extension."""
     input_path = tmp_path / "source.docx"
