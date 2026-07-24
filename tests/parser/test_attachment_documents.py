@@ -17,7 +17,7 @@ from legal_rag.parser.attachment_documents import (
 )
 from legal_rag.parser.attachments import ATTACHMENT_SCHEMA_VERSION, DocxAttachment
 from legal_rag.parser.document_source import extract_document_source
-from legal_rag.parser.models import ParsedDocument
+from legal_rag.parser.models import AttachmentChildDocument, ParsedDocument
 from legal_rag.settings import Settings
 
 
@@ -98,6 +98,83 @@ def test_ingest_attachment_documents_parses_docx_members_with_provenance() -> No
     assert records[0]["source_name"] == "forms/report.docx"
     assert records[0]["source_schema_version"] == "1.2.0"
     assert records[0]["child_parser_schema_version"] == "2.0.0"
+
+
+def test_converted_child_ids_ignore_temporary_docx_identity() -> None:
+    """Legacy conversion metadata cannot change persisted child identities."""
+    native_records = [
+        {
+            "schema_version": "2.0.0",
+            "unit_id": f"unit-{temporary_identity}",
+            "source_name": "source.docx",
+            "source_sha256": f"sha-{temporary_identity}",
+            "sequence_index": 0,
+            "source_ref": "word/document.xml#/body/0",
+            "kind": "image",
+            "images": [
+                {
+                    "image_id": f"image-{temporary_identity}",
+                    "source_name": "source.docx",
+                    "source_sha256": f"sha-{temporary_identity}",
+                    "source_ref": "word/document.xml#/body/0/run/0/image/0",
+                    "parent_source_ref": "word/document.xml#/body/0",
+                    "media_sha256": "media-hash",
+                    "description_vi": "Bien bao giao thong.",
+                }
+            ],
+            "attachments": [
+                {
+                    "attachment_id": f"nested-{temporary_identity}",
+                    "source_name": "source.docx",
+                    "source_sha256": f"sha-{temporary_identity}",
+                    "source_ref": "word/document.xml#/body/0/run/1/attachment/0",
+                    "payload_sha256": "nested-payload-hash",
+                }
+            ],
+        }
+        for temporary_identity in ("temporary-a", "temporary-b")
+    ]
+
+    records = [
+        AttachmentChildDocument(
+            parent_attachment_id="attachment-0",
+            member_index=1,
+            member_path="forms/report.doc",
+            member_sha256="member-hash",
+            source_format="docx",
+            converted_from_format="doc",
+            native_records=(native_record,),
+        ).records("parent.docx", "parent-hash")[0]
+        for native_record in native_records
+    ]
+
+    assert records[0]["unit_id"] == records[1]["unit_id"]
+    assert records[0]["native_unit_id"] == records[1]["native_unit_id"]
+    assert records[0]["native_source_sha256"] == records[1]["native_source_sha256"] == "member-hash"
+    assert records[0]["images"][0]["image_id"] == records[1]["images"][0]["image_id"]
+    assert records[0]["attachments"][0]["attachment_id"] == records[1]["attachments"][0]["attachment_id"]
+
+    spreadsheet_record = {
+        "schema_version": "1.0.0",
+        "unit_id": "temporary-row-id",
+        "source_name": "source.xlsx",
+        "source_sha256": "temporary-xlsx-sha",
+        "sequence_index": 0,
+        "source_ref": "workbook.xlsx#/sheet/0/row/0",
+        "kind": "spreadsheet_row",
+    }
+    normalized_spreadsheet = AttachmentChildDocument(
+        parent_attachment_id="attachment-0",
+        member_index=2,
+        member_path="forms/report.xls",
+        member_sha256="spreadsheet-member-hash",
+        source_format="xlsx",
+        converted_from_format="xls",
+        native_records=(spreadsheet_record,),
+    ).records("parent.docx", "parent-hash")[0]
+
+    assert "images" not in normalized_spreadsheet
+    assert "attachments" not in normalized_spreadsheet
 
 
 def test_ingest_attachment_documents_rejects_unsafe_member_paths() -> None:

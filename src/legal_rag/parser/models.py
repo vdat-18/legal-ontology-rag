@@ -112,9 +112,57 @@ class AttachmentChildDocument:
         records: list[dict[str, Any]] = []
         for child_sequence_index, native_record in enumerate(self.native_records):
             record = dict(native_record)
-            native_unit_id = record["unit_id"]
-            native_source_name = record["source_name"]
-            native_source_sha256 = record["source_sha256"]
+            if self.converted_from_format is None:
+                native_unit_id = record["unit_id"]
+                native_source_name = record["source_name"]
+                native_source_sha256 = record["source_sha256"]
+            else:
+                native_unit_id = sha256_json(
+                    {
+                        "kind": record["kind"],
+                        "member_index": self.member_index,
+                        "member_path": self.member_path,
+                        "member_sha256": self.member_sha256,
+                        "source_ref": record["source_ref"],
+                    }
+                )
+                native_source_name = self.member_path
+                native_source_sha256 = self.member_sha256
+                if "images" in record:
+                    images: list[dict[str, Any]] = []
+                    for native_image in record["images"]:
+                        image = dict(native_image)
+                        image["image_id"] = sha256_json(
+                            {
+                                "media_sha256": image["media_sha256"],
+                                "member_index": self.member_index,
+                                "member_path": self.member_path,
+                                "member_sha256": self.member_sha256,
+                                "source_ref": image["source_ref"],
+                            }
+                        )
+                        image["source_name"] = self.member_path
+                        image["source_sha256"] = self.member_sha256
+                        images.append(image)
+                    record["images"] = images
+
+                if "attachments" in record:
+                    attachments: list[dict[str, Any]] = []
+                    for native_attachment in record["attachments"]:
+                        attachment = dict(native_attachment)
+                        attachment["attachment_id"] = sha256_json(
+                            {
+                                "member_index": self.member_index,
+                                "member_path": self.member_path,
+                                "member_sha256": self.member_sha256,
+                                "payload_sha256": attachment["payload_sha256"],
+                                "source_ref": attachment["source_ref"],
+                            }
+                        )
+                        attachment["source_name"] = self.member_path
+                        attachment["source_sha256"] = self.member_sha256
+                        attachments.append(attachment)
+                    record["attachments"] = attachments
             child_parser_schema_version = record["schema_version"]
             record.setdefault("source_schema_version", child_parser_schema_version)
             record["schema_version"] = PARSER_OUTPUT_SCHEMA_VERSION
