@@ -347,12 +347,12 @@ token đo lại không vượt giới hạn.
 
 ### Phase 3 — Rendering source units
 
-- [ ] Render paragraph nguyên văn.
-- [ ] Render table row/cell/nested blocks theo format ổn định.
-- [ ] Render image từ `description_vi`.
-- [ ] Render spreadsheet row/cell/value/formula.
-- [ ] Bỏ qua record không có searchable content mà không bỏ image/child document.
-- [ ] Test round-trip provenance cho từng kind.
+- [x] ✅ DONE — Render paragraph nguyên văn.
+- [x] ✅ DONE — Render table row/cell/nested blocks theo format versioned, ổn định.
+- [x] ✅ DONE — Render mỗi image occurrence từ `description_vi` thành unit độc lập.
+- [x] ✅ DONE — Render spreadsheet row với sheet, cell reference, value và formula.
+- [x] ✅ DONE — Bỏ qua base record không có searchable content mà không bỏ image/child document.
+- [x] ✅ DONE — Test ordering và round-trip provenance cho từng kind.
 
 **Hoàn thành khi:** mỗi loại record trong corpus tạo representation ổn định, dễ đọc
 và source refs khớp parser output.
