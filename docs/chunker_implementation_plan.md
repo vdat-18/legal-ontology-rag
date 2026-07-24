@@ -121,7 +121,7 @@ wrapper hoặc helper chỉ được gọi một lần.
 
 Thêm `ChunkerSettings` trong `src/legal_rag/settings.py`, tách khỏi các biến LLM
 để chạy chunker không yêu cầu image-caption credentials. Model, tokenizer, revision,
-dimensions và input limit nằm trong `data/config/embedding_models.json`; environment
+dimensions và input limit nằm trong `src/legal_rag/embedding/embedding_models.json`; environment
 chỉ chọn profile và các budget của chunker:
 
 ```text
@@ -318,7 +318,7 @@ document content hoặc credentials.
 - [x] ✅ DONE — Chốt body budget `512`, overlap forced-split `64` trong environment;
   embedding input limit nằm trong profile versioned, không hardcode trong Python.
 - [x] ✅ DONE — Ghi model, tokenizer, immutable revision, dimensions và input limit
-  của ba profile vào `data/config/embedding_models.json`.
+  của ba profile vào `src/legal_rag/embedding/embedding_models.json`.
 
 **Hoàn thành khi:** có thể encode/decode tiếng Việt và lấy offset mapping ổn định
 trên paragraph, ký hiệu pháp luật và Unicode trong corpus.
@@ -380,12 +380,12 @@ và source refs khớp parser output.
 
 ### Phase 6 — Writer và CLI
 
-- [ ] Implement atomic JSONL writer.
-- [ ] Thêm `legal-chunk` CLI và `.env.example` settings.
-- [ ] Ghi đè output cũ khi thành công.
-- [ ] Giữ output cũ nếu pipeline lỗi giữa chừng.
-- [ ] Không che stack trace hoặc original exception.
-- [ ] Test CLI success, overwrite và failure behavior.
+- [x] ✅ DONE — Implement atomic JSONL writer.
+- [x] ✅ DONE — Thêm `legal-chunk` CLI và `.env.example` settings.
+- [x] ✅ DONE — Ghi đè output cũ khi thành công.
+- [x] ✅ DONE — Giữ output cũ nếu pipeline lỗi giữa chừng.
+- [x] ✅ DONE — Không che stack trace hoặc original exception.
+- [x] ✅ DONE — Test CLI success, overwrite và failure behavior.
 
 **Hoàn thành khi:** command một file chạy end-to-end và lỗi có đầy đủ nguyên nhân.
 

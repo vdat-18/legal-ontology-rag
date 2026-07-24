@@ -7,12 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from legal_rag.embedding.profiles import load_embedding_profile
+from legal_rag.embedding.profiles import load_configured_embedding_profile, load_embedding_profile
 
 
 def test_load_embedding_profile_reads_versioned_model_configuration() -> None:
     """The selected profile exposes pinned model and tokenizer metadata."""
-    profile = load_embedding_profile(Path("data/config/embedding_models.json"), "qwen3_0_6b")
+    profile = load_configured_embedding_profile("qwen3_0_6b")
 
     assert profile.model_id == "Qwen/Qwen3-Embedding-0.6B"
     assert profile.tokenizer_id == profile.model_id
@@ -25,7 +25,7 @@ def test_load_embedding_profile_reads_versioned_model_configuration() -> None:
 def test_load_embedding_profile_raises_for_unknown_profile() -> None:
     """An unknown profile preserves the native mapping error."""
     with pytest.raises(KeyError):
-        load_embedding_profile(Path("data/config/embedding_models.json"), "missing")
+        load_configured_embedding_profile("missing")
 
 
 def test_load_embedding_profile_rejects_unsupported_schema(tmp_path: Path) -> None:

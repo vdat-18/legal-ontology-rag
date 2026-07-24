@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from importlib.resources import files
+from importlib.resources.abc import Traversable
 from pathlib import Path
 
 EMBEDDING_PROFILE_SCHEMA_VERSION = "1.0.0"
+EMBEDDING_PROFILES_RESOURCE = "embedding_models.json"
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,7 +26,13 @@ class EmbeddingProfile:
     query_instruction: str | None
 
 
-def load_embedding_profile(config_path: Path, profile_id: str) -> EmbeddingProfile:
+def load_configured_embedding_profile(profile_id: str) -> EmbeddingProfile:
+    """Load one profile from the versioned configuration bundled with the package."""
+    config_path = files("legal_rag.embedding").joinpath(EMBEDDING_PROFILES_RESOURCE)
+    return load_embedding_profile(config_path, profile_id)
+
+
+def load_embedding_profile(config_path: Path | Traversable, profile_id: str) -> EmbeddingProfile:
     """Load one embedding profile from a versioned JSON configuration file."""
     config = json.loads(config_path.read_text(encoding="utf-8"))
     if config["schema_version"] != EMBEDDING_PROFILE_SCHEMA_VERSION:

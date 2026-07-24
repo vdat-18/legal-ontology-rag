@@ -5,13 +5,44 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Sequence
 from dataclasses import replace
+from pathlib import Path
 
 from legal_rag.chunker.models import CHUNK_SCHEMA_VERSION, Chunk, ChunkFragment, SourceScope
-from legal_rag.chunker.rendering import SPREADSHEET_RENDERING_VERSION, TABLE_RENDERING_VERSION
+from legal_rag.chunker.reader import read_source_scopes
+from legal_rag.chunker.rendering import SPREADSHEET_RENDERING_VERSION, TABLE_RENDERING_VERSION, render_source_scope
+from legal_rag.chunker.splitting import split_units
 from legal_rag.embedding.tokenizer import EmbeddingTokenizer
 from legal_rag.parser.hashing import sha256_json
+from legal_rag.settings import ChunkerSettings
 
 CHUNKING_ALGORITHM_VERSION = "1.0.0"
+
+
+def chunk_source_file(
+    input_path: Path,
+    tokenizer: EmbeddingTokenizer,
+    settings: ChunkerSettings,
+) -> tuple[Chunk, ...]:
+    """Run the complete in-memory chunking pipeline for one parser JSONL file."""
+    chunks: list[Chunk] = []
+    for scope in read_source_scopes(input_path):
+        units = render_source_scope(scope)
+        fragments = split_units(
+            units,
+            tokenizer,
+            max_tokens=settings.max_tokens,
+            overlap_tokens=settings.split_overlap_tokens,
+        )
+        chunks.extend(
+            pack_scope_fragments(
+                scope,
+                fragments,
+                tokenizer,
+                max_tokens=settings.max_tokens,
+                split_overlap_tokens=settings.split_overlap_tokens,
+            )
+        )
+    return tuple(chunks)
 
 
 def pack_scope_fragments(
