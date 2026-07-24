@@ -65,6 +65,7 @@ class ChunkFragment:
 
     scope_id: str
     kind: ChunkKind
+    packing_key: tuple[str, ...]
     sequence_start: int
     sequence_end: int
     unit_ids: tuple[str, ...]

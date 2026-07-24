@@ -369,12 +369,12 @@ và source refs khớp parser output.
 
 ### Phase 5 — Packing và output chunks
 
-- [ ] Greedily pack paragraph liền kề.
-- [ ] Greedily pack table rows và spreadsheet rows tương thích.
-- [ ] Giữ image chunk độc lập.
-- [ ] Sinh scope/config/content/chunk hashes.
-- [ ] Gắn chunk index và previous/next links trong cùng scope.
-- [ ] Test deterministic IDs, scope isolation và boundary flushing.
+- [x] ✅ DONE — Greedily pack paragraph liền kề.
+- [x] ✅ DONE — Greedily pack table rows và spreadsheet rows tương thích.
+- [x] ✅ DONE — Giữ image chunk độc lập.
+- [x] ✅ DONE — Sinh scope/config/content/chunk hashes.
+- [x] ✅ DONE — Gắn chunk index và previous/next links trong cùng scope.
+- [x] ✅ DONE — Test deterministic IDs, scope isolation và boundary flushing.
 
 **Hoàn thành khi:** chạy hai lần cho cùng fixture tạo output byte-for-byte giống nhau.
 

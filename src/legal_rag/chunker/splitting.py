@@ -306,6 +306,7 @@ def _fragment(unit: NormalizedUnit, content: RenderedContent, token_count: int) 
     return ChunkFragment(
         scope_id=unit.scope_id,
         kind=_chunk_kind(unit.kind),
+        packing_key=_packing_key(unit),
         sequence_start=unit.sequence_index,
         sequence_end=unit.sequence_index,
         unit_ids=unit.unit_ids,
@@ -313,6 +314,15 @@ def _fragment(unit: NormalizedUnit, content: RenderedContent, token_count: int) 
         text=content.text,
         token_count=token_count,
     )
+
+
+def _packing_key(unit: NormalizedUnit) -> tuple[str, ...]:
+    """Identify fragments that may share one structure-preserving chunk."""
+    if unit.kind == "table":
+        return unit.unit_ids
+    if unit.kind == "spreadsheet_row":
+        return (cast(str, unit.source_payload["sheet_name"]),)
+    return ()
 
 
 def _chunk_kind(kind: SourceKind) -> ChunkKind:
