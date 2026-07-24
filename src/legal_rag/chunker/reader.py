@@ -61,11 +61,8 @@ def read_source_scopes(input_path: Path) -> tuple[SourceScope, ...]:
             grouped_records.setdefault(scope_key, []).append(
                 SourceRecord(
                     unit_id=payload["unit_id"],
-                    source_name=payload["source_name"],
-                    source_sha256=payload["source_sha256"],
                     source_ref=payload["source_ref"],
                     kind=payload["kind"],
-                    record_scope=record_scope,
                     order_index=order_index,
                     payload=payload,
                 )
@@ -76,8 +73,6 @@ def read_source_scopes(input_path: Path) -> tuple[SourceScope, ...]:
                     "source_name": payload["source_name"],
                     "source_sha256": payload["source_sha256"],
                     "record_scope": record_scope,
-                    "root_source_name": root_source_name,
-                    "root_source_sha256": root_source_sha256,
                     "parent_attachment_id": parent_attachment_id,
                     "attachment_member_path": attachment_member_path,
                     "attachment_member_sha256": attachment_member_sha256,
@@ -93,8 +88,6 @@ def read_source_scopes(input_path: Path) -> tuple[SourceScope, ...]:
                 source_name=metadata["source_name"],
                 source_sha256=metadata["source_sha256"],
                 record_scope=metadata["record_scope"],
-                root_source_name=metadata["root_source_name"],
-                root_source_sha256=metadata["root_source_sha256"],
                 parent_attachment_id=metadata["parent_attachment_id"],
                 attachment_member_path=metadata["attachment_member_path"],
                 attachment_member_sha256=metadata["attachment_member_sha256"],

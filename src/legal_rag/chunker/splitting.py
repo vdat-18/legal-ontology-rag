@@ -43,8 +43,7 @@ def split_unit(
     """Split one normalized unit only when its rendered input exceeds the token limit."""
     tokenizer.validate_window_settings(max_tokens=max_tokens, overlap_tokens=overlap_tokens)
     if tokenizer.fits_within(unit.text, max_tokens=max_tokens):
-        token_count = tokenizer.count_tokens(unit.text)
-        return (_fragment(unit, RenderedContent(unit.text, unit.source_refs), token_count),)
+        return (_fragment(unit, RenderedContent(unit.text, unit.source_refs)),)
 
     if unit.kind in ("paragraph", "image"):
         contents = _force_split_content(
@@ -70,7 +69,7 @@ def split_unit(
     else:
         msg = f"Unsupported normalized unit kind: {unit.kind}"
         raise ValueError(msg)
-    return tuple(_fragment(unit, content, tokenizer.count_tokens(content.text)) for content in contents)
+    return tuple(_fragment(unit, content) for content in contents)
 
 
 def _split_table(
@@ -301,10 +300,9 @@ def _force_split_content(
     ]
 
 
-def _fragment(unit: NormalizedUnit, content: RenderedContent, token_count: int) -> ChunkFragment:
+def _fragment(unit: NormalizedUnit, content: RenderedContent) -> ChunkFragment:
     """Build one bounded fragment with its normalized-unit provenance."""
     return ChunkFragment(
-        scope_id=unit.scope_id,
         kind=_chunk_kind(unit.kind),
         packing_key=_packing_key(unit),
         sequence_start=unit.sequence_index,
@@ -312,7 +310,6 @@ def _fragment(unit: NormalizedUnit, content: RenderedContent, token_count: int) 
         unit_ids=unit.unit_ids,
         source_refs=content.source_refs,
         text=content.text,
-        token_count=token_count,
     )
 
 

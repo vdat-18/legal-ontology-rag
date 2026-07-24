@@ -54,8 +54,6 @@ def _scope(scope_id: str = "scope-root", *, child: bool = False) -> SourceScope:
         source_name="appendix.docx" if child else "source.docx",
         source_sha256="member-hash" if child else "source-hash",
         record_scope="attachment_child" if child else "root",
-        root_source_name="source.docx",
-        root_source_sha256="source-hash",
         parent_attachment_id="attachment-id" if child else None,
         attachment_member_path="appendix.docx" if child else None,
         attachment_member_sha256="member-hash" if child else None,
@@ -69,11 +67,9 @@ def _fragment(
     *,
     kind: ChunkKind = "paragraph_group",
     packing_key: tuple[str, ...] = (),
-    scope_id: str = "scope-root",
 ) -> ChunkFragment:
     """Build one bounded fragment with stable provenance."""
     return ChunkFragment(
-        scope_id=scope_id,
         kind=kind,
         packing_key=packing_key,
         sequence_start=index,
@@ -81,7 +77,6 @@ def _fragment(
         unit_ids=(f"unit-{index}",),
         source_refs=(f"source/{index}",),
         text=text,
-        token_count=len(text) + 2,
     )
 
 
@@ -170,7 +165,7 @@ def test_scopes_have_distinct_ids_metadata_and_neighbor_chains() -> None:
     """Identical content in root and attachment streams never shares identity or links."""
     root_chunks = _pack(_scope(), (_fragment(0, "Nội dung"),))
     child_scope = _scope("scope-child", child=True)
-    child_chunks = _pack(child_scope, (_fragment(0, "Nội dung", scope_id="scope-child"),))
+    child_chunks = _pack(child_scope, (_fragment(0, "Nội dung"),))
 
     assert root_chunks[0].chunk_id != child_chunks[0].chunk_id
     assert root_chunks[0].scope_id == "scope-root"

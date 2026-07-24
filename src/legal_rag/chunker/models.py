@@ -21,11 +21,8 @@ class SourceRecord:
     """One parser record with normalized scope and ordering fields."""
 
     unit_id: str
-    source_name: str
-    source_sha256: str
     source_ref: str
     kind: SourceKind
-    record_scope: RecordScope
     order_index: int
     payload: dict[str, Any]
 
@@ -38,8 +35,6 @@ class SourceScope:
     source_name: str
     source_sha256: str
     record_scope: RecordScope
-    root_source_name: str
-    root_source_sha256: str
     parent_attachment_id: str | None
     attachment_member_path: str | None
     attachment_member_sha256: str | None
@@ -50,7 +45,6 @@ class SourceScope:
 class NormalizedUnit:
     """One searchable source unit before token-aware splitting."""
 
-    scope_id: str
     kind: SourceKind
     sequence_index: int
     unit_ids: tuple[str, ...]
@@ -63,7 +57,6 @@ class NormalizedUnit:
 class ChunkFragment:
     """One token-bounded fragment ready for chunk packing."""
 
-    scope_id: str
     kind: ChunkKind
     packing_key: tuple[str, ...]
     sequence_start: int
@@ -71,7 +64,6 @@ class ChunkFragment:
     unit_ids: tuple[str, ...]
     source_refs: tuple[str, ...]
     text: str
-    token_count: int
 
 
 @dataclass(frozen=True, slots=True)

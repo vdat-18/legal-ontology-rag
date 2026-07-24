@@ -85,7 +85,6 @@ def _tokenizer() -> EmbeddingTokenizer:
 def _unit(kind: SourceKind, text: str) -> NormalizedUnit:
     """Build one text-only normalized unit."""
     return NormalizedUnit(
-        scope_id="scope-id",
         kind=kind,
         sequence_index=2,
         unit_ids=("unit-id",),
@@ -99,11 +98,8 @@ def _record(kind: SourceKind, payload: dict[str, Any]) -> SourceRecord:
     """Build one structural parser record."""
     return SourceRecord(
         unit_id="unit-id",
-        source_name="source.docx",
-        source_sha256="source-hash",
         source_ref="source/0",
         kind=kind,
-        record_scope="root",
         order_index=0,
         payload=payload,
     )
@@ -116,8 +112,6 @@ def _render(record: SourceRecord) -> NormalizedUnit:
         source_name="source.docx",
         source_sha256="source-hash",
         record_scope="root",
-        root_source_name="source.docx",
-        root_source_sha256="source-hash",
         parent_attachment_id=None,
         attachment_member_path=None,
         attachment_member_sha256=None,
@@ -151,7 +145,7 @@ def test_unit_within_limit_remains_one_exact_fragment() -> None:
     assert len(fragments) == 1
     assert fragments[0].text == unit.text
     assert fragments[0].source_refs == unit.source_refs
-    assert fragments[0].token_count == tokenizer.count_tokens(unit.text)
+    assert tokenizer.count_tokens(fragments[0].text) == tokenizer.count_tokens(unit.text)
 
 
 @pytest.mark.parametrize(
@@ -168,7 +162,7 @@ def test_split_text_unit_uses_exact_offsets_and_overlap(kind: SourceKind, fragme
     assert [fragment.text for fragment in fragments] == ["abcdef", "efghij"]
     assert fragments[0].text[-2:] == fragments[1].text[:2]
     assert all(fragment.kind == fragment_kind for fragment in fragments)
-    assert all(fragment.token_count <= 8 for fragment in fragments)
+    assert all(tokenizer.count_tokens(fragment.text) <= 8 for fragment in fragments)
     assert all(fragment.sequence_start == fragment.sequence_end == 2 for fragment in fragments)
 
 
@@ -243,7 +237,7 @@ def test_split_oversized_cell_prefers_blocks_then_forces_token_windows() -> None
 
     assert "SHORT" in fragments[0].text
     assert len(fragments) > 2
-    assert all(fragment.token_count <= 50 for fragment in fragments)
+    assert all(tokenizer.count_tokens(fragment.text) <= 50 for fragment in fragments)
     assert any("NNNN" in fragment.text for fragment in fragments[1:])
     assert fragments[1].text[-5:] == fragments[2].text[:5]
     assert all("block/1" in fragment.source_refs for fragment in fragments[1:])
@@ -295,5 +289,5 @@ def test_split_spreadsheet_prefers_cells_and_forces_only_oversized_cell() -> Non
 
     assert "SHORT" in fragments[0].text
     assert len(fragments) > 2
-    assert all(fragment.token_count <= max_tokens for fragment in fragments)
+    assert all(tokenizer.count_tokens(fragment.text) <= max_tokens for fragment in fragments)
     assert any("[FORMULA]" in fragment.text or "1+1" in fragment.text for fragment in fragments[1:])

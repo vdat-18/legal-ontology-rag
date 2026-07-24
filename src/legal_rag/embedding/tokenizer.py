@@ -48,7 +48,6 @@ class TokenWindow:
 
     start_character: int
     end_character: int
-    token_count: int
 
     def text_from(self, source_text: str) -> str:
         """Return this window as an exact slice of its source text."""
@@ -146,5 +145,5 @@ class EmbeddingTokenizer:
             if token_count > max_tokens:
                 msg = f"Tokenizer produced a {token_count}-token source slice for a {max_tokens}-token window"
                 raise ValueError(msg)
-            windows.append(TokenWindow(start_character, end_character, token_count))
+            windows.append(TokenWindow(start_character, end_character))
         return tuple(windows)

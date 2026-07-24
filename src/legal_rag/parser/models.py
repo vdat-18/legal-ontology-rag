@@ -165,11 +165,6 @@ class ParsedDocument:
         return sum(len(unit.attachments) for unit in self.units)
 
     @property
-    def child_document_count(self) -> int:
-        """Return the number of supported child documents parsed from attachments."""
-        return len(self.child_documents)
-
-    @property
     def child_record_count(self) -> int:
         """Return the number of searchable records produced from child documents."""
         return sum(len(document.native_records) for document in self.child_documents)

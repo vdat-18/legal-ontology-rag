@@ -123,8 +123,7 @@ def test_window_offsets_preserve_vietnamese_unicode_and_bound_token_counts() -> 
         window.text_from(source_text) == source_text[window.start_character : window.end_character]
         for window in windows
     )
-    assert all(window.token_count == tokenizer.count_tokens(window.text_from(source_text)) for window in windows)
-    assert all(window.token_count <= 12 for window in windows)
+    assert all(tokenizer.count_tokens(window.text_from(source_text)) <= 12 for window in windows)
 
 
 @pytest.mark.parametrize(

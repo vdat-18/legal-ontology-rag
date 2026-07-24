@@ -29,7 +29,6 @@ def render_source_scope(scope: SourceScope) -> tuple[NormalizedUnit, ...]:
             if text.strip():
                 units.append(
                     NormalizedUnit(
-                        scope_id=scope.scope_id,
                         kind="paragraph",
                         sequence_index=record.order_index,
                         unit_ids=(record.unit_id,),
@@ -43,7 +42,6 @@ def render_source_scope(scope: SourceScope) -> tuple[NormalizedUnit, ...]:
             if table is not None:
                 units.append(
                     NormalizedUnit(
-                        scope_id=scope.scope_id,
                         kind="table",
                         sequence_index=record.order_index,
                         unit_ids=(record.unit_id,),
@@ -62,7 +60,6 @@ def render_source_scope(scope: SourceScope) -> tuple[NormalizedUnit, ...]:
             if spreadsheet_row is not None:
                 units.append(
                     NormalizedUnit(
-                        scope_id=scope.scope_id,
                         kind="spreadsheet_row",
                         sequence_index=record.order_index,
                         unit_ids=(record.unit_id,),
@@ -75,7 +72,7 @@ def render_source_scope(scope: SourceScope) -> tuple[NormalizedUnit, ...]:
             msg = f"Unsupported normalized source kind: {record.kind}"
             raise ValueError(msg)
 
-        units.extend(_render_images(scope.scope_id, record))
+        units.extend(_render_images(record))
     return tuple(units)
 
 
@@ -145,7 +142,7 @@ def render_spreadsheet_row(
     return RenderedContent("\n".join(lines), (source_ref,)) if has_content else None
 
 
-def _render_images(scope_id: str, record: SourceRecord) -> tuple[NormalizedUnit, ...]:
+def _render_images(record: SourceRecord) -> tuple[NormalizedUnit, ...]:
     """Render every captioned image occurrence attached to one parser record."""
     units: list[NormalizedUnit] = []
     for image in record.payload.get("images", ()):
@@ -153,7 +150,6 @@ def _render_images(scope_id: str, record: SourceRecord) -> tuple[NormalizedUnit,
         if description.strip():
             units.append(
                 NormalizedUnit(
-                    scope_id=scope_id,
                     kind="image",
                     sequence_index=record.order_index,
                     unit_ids=tuple(dict.fromkeys((record.unit_id, image["image_id"]))),

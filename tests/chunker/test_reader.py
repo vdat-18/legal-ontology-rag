@@ -58,7 +58,6 @@ def test_read_source_scopes_separates_and_orders_root_and_attachment_records(tmp
     assert scopes[0].parent_attachment_id is None
     assert scopes[1].record_scope == "attachment_child"
     assert [record.unit_id for record in scopes[1].records] == ["child-0", "child-1"]
-    assert scopes[1].root_source_name == "source.docx"
     assert scopes[1].parent_attachment_id == "attachment-id"
     assert scopes[1].attachment_member_path == "appendix.docx"
     assert scopes[1].attachment_member_sha256 == "member-hash"

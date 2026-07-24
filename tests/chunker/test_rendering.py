@@ -13,8 +13,6 @@ def _scope(*records: SourceRecord) -> SourceScope:
         source_name="source.docx",
         source_sha256="source-hash",
         record_scope="root",
-        root_source_name="source.docx",
-        root_source_sha256="source-hash",
         parent_attachment_id=None,
         attachment_member_path=None,
         attachment_member_sha256=None,
@@ -26,11 +24,8 @@ def _record(kind: SourceKind, payload: dict[str, object], *, order_index: int = 
     """Build one parser record with shared provenance."""
     return SourceRecord(
         unit_id=f"{kind}-unit",
-        source_name="source.docx",
-        source_sha256="source-hash",
         source_ref=f"source/{order_index}",
         kind=kind,
-        record_scope="root",
         order_index=order_index,
         payload=payload,
     )
