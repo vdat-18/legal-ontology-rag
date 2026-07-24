@@ -15,10 +15,19 @@ class CharacterTokenizer:
 
     is_fast = True
 
-    def encode(self, text: str, *, add_special_tokens: bool) -> list[int]:
+    def encode(
+        self,
+        text: str,
+        *,
+        add_special_tokens: bool,
+        truncation: bool = False,
+        max_length: int | None = None,
+    ) -> list[int]:
         """Represent every non-whitespace character as one token."""
         token_ids = [index for index, character in enumerate(text) if not character.isspace()]
-        return [0, *token_ids, 1] if add_special_tokens else token_ids
+        if add_special_tokens:
+            token_ids = [0, *token_ids, 1]
+        return token_ids[:max_length] if truncation and max_length is not None else token_ids
 
     def num_special_tokens_to_add(self, pair: bool = False) -> int:
         """Return the two wrapper tokens used by this test tokenizer."""
@@ -84,6 +93,14 @@ def test_count_tokens_includes_model_special_tokens() -> None:
     tokenizer = EmbeddingTokenizer(_profile(), CharacterTokenizer())
 
     assert tokenizer.count_tokens("Điều 5") == 7
+
+
+def test_fits_within_stops_at_the_token_decision_boundary() -> None:
+    """Bounded fit checks distinguish exact limits from oversized input."""
+    tokenizer = EmbeddingTokenizer(_profile(), CharacterTokenizer())
+
+    assert tokenizer.fits_within("abc", max_tokens=5)
+    assert not tokenizer.fits_within("abcd", max_tokens=5)
 
 
 def test_embedding_tokenizer_requires_character_offsets() -> None:

@@ -359,11 +359,11 @@ và source refs khớp parser output.
 
 ### Phase 4 — Oversized-unit splitting
 
-- [ ] Chia paragraph/image bằng tokenizer offsets.
-- [ ] Chia table theo row -> cell -> block -> token window.
-- [ ] Chia spreadsheet theo row -> cell -> token window.
-- [ ] Áp dụng overlap chỉ tại forced token split.
-- [ ] Test nested table, một row rất lớn và một cell rất lớn.
+- [x] ✅ DONE — Chia paragraph/image bằng tokenizer character offsets.
+- [x] ✅ DONE — Chia table theo row → cell → block → token window.
+- [x] ✅ DONE — Chia spreadsheet theo cell → token window khi một row quá lớn.
+- [x] ✅ DONE — Áp dụng overlap chỉ tại forced token split; unit/group bình thường không overlap.
+- [x] ✅ DONE — Test nested table, oversized row, oversized cell/block và spreadsheet cell.
 
 **Hoàn thành khi:** không fragment nào vượt max tokens và không thay đổi thứ tự text.
 

@@ -15,7 +15,14 @@ class _TokenizerBackend(Protocol):
 
     is_fast: bool
 
-    def encode(self, text: str, *, add_special_tokens: bool) -> list[int]:
+    def encode(
+        self,
+        text: str,
+        *,
+        add_special_tokens: bool,
+        truncation: bool = False,
+        max_length: int | None = None,
+    ) -> list[int]:
         """Encode text into model token IDs."""
 
     def num_special_tokens_to_add(self, pair: bool = False) -> int:
@@ -73,14 +80,19 @@ class EmbeddingTokenizer:
         """Count the complete model input, including required special tokens."""
         return len(self._tokenizer.encode(text, add_special_tokens=True))
 
-    def window_offsets(
-        self,
-        text: str,
-        *,
-        max_tokens: int,
-        overlap_tokens: int = 0,
-    ) -> tuple[TokenWindow, ...]:
-        """Return token-bounded character windows without decoding or changing source text."""
+    def fits_within(self, text: str, *, max_tokens: int) -> bool:
+        """Return whether model input fits without encoding beyond the decision boundary."""
+        self.validate_window_settings(max_tokens=max_tokens, overlap_tokens=0)
+        token_ids = self._tokenizer.encode(
+            text,
+            add_special_tokens=True,
+            truncation=True,
+            max_length=max_tokens + 1,
+        )
+        return len(token_ids) <= max_tokens
+
+    def validate_window_settings(self, *, max_tokens: int, overlap_tokens: int) -> None:
+        """Validate external token-window settings against the active profile."""
         special_token_count = self._tokenizer.num_special_tokens_to_add(pair=False)
         content_token_budget = max_tokens - special_token_count
         if max_tokens > self.profile.max_input_tokens:
@@ -92,6 +104,16 @@ class EmbeddingTokenizer:
         if overlap_tokens < 0 or overlap_tokens >= content_token_budget:
             msg = f"Token overlap must be between 0 and {content_token_budget - 1}"
             raise ValueError(msg)
+
+    def window_offsets(
+        self,
+        text: str,
+        *,
+        max_tokens: int,
+        overlap_tokens: int = 0,
+    ) -> tuple[TokenWindow, ...]:
+        """Return token-bounded character windows without decoding or changing source text."""
+        self.validate_window_settings(max_tokens=max_tokens, overlap_tokens=overlap_tokens)
         encoded = self._tokenizer(
             text,
             add_special_tokens=True,

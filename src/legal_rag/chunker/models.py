@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -55,6 +56,7 @@ class NormalizedUnit:
     unit_ids: tuple[str, ...]
     source_refs: tuple[str, ...]
     text: str
+    source_payload: Mapping[str, Any]
 
 
 @dataclass(frozen=True, slots=True)
