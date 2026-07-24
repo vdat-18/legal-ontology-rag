@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0.0",
+  "profiles": {
+    "qwen3_0_6b": {
+      "model_id": "Qwen/Qwen3-Embedding-0.6B",
+      "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+      "tokenizer_id": "Qwen/Qwen3-Embedding-0.6B",
+      "tokenizer_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+      "dimensions": 1024,
+      "max_input_tokens": 32768,
+      "query_instruction": "Instruct: Given a Vietnamese legal query, retrieve relevant Vietnamese legal passages that answer the query\nQuery: "
+    },
+    "vietnamese_embedding": {
+      "model_id": "AITeamVN/Vietnamese_Embedding",
+      "model_revision": "dea33aa1ab339f38d66ae0a40e6c40e0a9249568",
+      "tokenizer_id": "AITeamVN/Vietnamese_Embedding",
+      "tokenizer_revision": "dea33aa1ab339f38d66ae0a40e6c40e0a9249568",
+      "dimensions": 1024,
+      "max_input_tokens": 8192,
+      "query_instruction": null
+    },
+    "bge_m3": {
+      "model_id": "BAAI/bge-m3",
+      "model_revision": "5617a9f61b028005a4858fdac845db406aefb181",
+      "tokenizer_id": "BAAI/bge-m3",
+      "tokenizer_revision": "5617a9f61b028005a4858fdac845db406aefb181",
+      "dimensions": 1024,
+      "max_input_tokens": 8192,
+      "query_instruction": null
+    }
+  }
+}

@@ -38,3 +38,22 @@ class Settings:
             llm_model=values["LLM_MODEL"].strip(),
             llm_timeout_seconds=float(values["LLM_TIMEOUT_SECONDS"]),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class ChunkerSettings:
+    """Embedding profile selection and token budgets for chunking."""
+
+    embedding_profile: str
+    max_tokens: int
+    split_overlap_tokens: int
+
+    @classmethod
+    def from_environment(cls, environment: Mapping[str, str] | None = None) -> ChunkerSettings:
+        """Load chunker settings from process environment variables."""
+        values = os.environ if environment is None else environment
+        return cls(
+            embedding_profile=values["EMBEDDING_PROFILE"].strip(),
+            max_tokens=int(values["CHUNK_MAX_TOKENS"]),
+            split_overlap_tokens=int(values["CHUNK_SPLIT_OVERLAP_TOKENS"]),
+        )
