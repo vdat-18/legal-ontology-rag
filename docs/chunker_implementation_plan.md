@@ -313,7 +313,8 @@ document content hoặc credentials.
 ### Phase 0 — Chốt embedding boundary
 
 - [x] ✅ DONE — Chọn `Qwen/Qwen3-Embedding-0.6B` làm embedding profile mặc định.
-- [ ] Chọn tokenizer chính thức và xác nhận offset mapping.
+- [x] ✅ DONE — Dùng tokenizer chính thức tại revision đã pin; cả ba profile đều
+  là fast tokenizer và đã xác nhận offset mapping trên tiếng Việt/Unicode.
 - [x] ✅ DONE — Chốt body budget `512`, overlap forced-split `64` trong environment;
   embedding input limit nằm trong profile versioned, không hardcode trong Python.
 - [x] ✅ DONE — Ghi model, tokenizer, immutable revision, dimensions và input limit
@@ -336,10 +337,10 @@ trên paragraph, ký hiệu pháp luật và Unicode trong corpus.
 
 ### Phase 2 — Tokenizer adapter
 
-- [ ] Thêm/pin tokenizer dependency cần thiết.
-- [ ] Implement token count và token-window character offsets.
-- [ ] Test tiếng Việt, xuống dòng, ký hiệu `§`, superscript text và chuỗi dài.
-- [ ] Cập nhật `uv.lock`.
+- [x] ✅ DONE — Thêm direct dependency `transformers==5.14.1` và kiểm tra security audit.
+- [x] ✅ DONE — Implement token count có special tokens và token-window character offsets.
+- [x] ✅ DONE — Test tiếng Việt, xuống dòng, ký hiệu `§`, superscript text và chuỗi dài.
+- [x] ✅ DONE — Regenerate `uv.lock` cục bộ; file tiếp tục được gitignore theo policy hiện tại.
 
 **Hoàn thành khi:** mọi substring sau split đều là slice của chuỗi đầu vào và số
 token đo lại không vượt giới hạn.
