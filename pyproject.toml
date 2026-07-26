@@ -26,6 +26,8 @@ dev = ["ruff==0.15.21", "pytest>=8.0"]
 [project.scripts]
 legal-parse = "legal_rag.cli:main"
 legal-chunk = "legal_rag.chunk_cli:main"
+legal-extract-facts = "legal_rag.evaluation_cli:main"
+legal-review-facts = "legal_rag.fact_review_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/legal_rag"]
@@ -67,6 +69,7 @@ select = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101"]
+"src/legal_rag/fact_review_cli.py" = ["T20"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

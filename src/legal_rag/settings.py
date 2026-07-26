@@ -70,6 +70,11 @@ class EvaluationSettings:
     dedup_cosine_threshold: float
     max_quality_retries: int
     max_simulator_turns: int
+    chunk_quality_max_output_tokens: int = 256
+    chunk_quality_temperature: float = 0.0
+    fact_extraction_max_output_tokens: int = 4096
+    fact_extraction_temperature: float = 0.0
+    max_response_bytes: int = 1_048_576
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] | None = None) -> EvaluationSettings:

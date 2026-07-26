@@ -8,36 +8,38 @@ from pathlib import Path
 import pytest
 
 from legal_rag.chunker.models import Chunk
-from legal_rag.chunker.writer import write_chunks
+from legal_rag.chunker.writer import read_chunks, write_chunks
 
 
-def _chunk(text: str) -> Chunk:
+def _chunk(text: str, **overrides: object) -> Chunk:
     """Build one final chunk for persistence tests."""
-    return Chunk(
-        chunk_id="chunk-id",
-        content_sha256="content-hash",
-        chunker_config_sha256="config-hash",
-        scope_id="scope-id",
-        chunk_index=0,
-        kind="paragraph_group",
-        source_name="source.docx",
-        source_sha256="source-hash",
-        record_scope="root",
-        parent_attachment_id=None,
-        attachment_member_path=None,
-        attachment_member_sha256=None,
-        unit_ids=("unit-0",),
-        source_refs=("word/document.xml#/body/0",),
-        sequence_start=0,
-        sequence_end=0,
-        text=text,
-        context_text="",
-        embedding_text=text,
-        text_token_count=5,
-        embedding_token_count=5,
-        previous_chunk_id=None,
-        next_chunk_id=None,
-    )
+    defaults: dict[str, object] = {
+        "chunk_id": "chunk-id",
+        "content_sha256": "content-hash",
+        "chunker_config_sha256": "config-hash",
+        "scope_id": "scope-id",
+        "chunk_index": 0,
+        "kind": "paragraph_group",
+        "source_name": "source.docx",
+        "source_sha256": "source-hash",
+        "record_scope": "root",
+        "parent_attachment_id": None,
+        "attachment_member_path": None,
+        "attachment_member_sha256": None,
+        "unit_ids": ("unit-0",),
+        "source_refs": ("word/document.xml#/body/0",),
+        "sequence_start": 0,
+        "sequence_end": 0,
+        "text": text,
+        "context_text": "",
+        "embedding_text": text,
+        "text_token_count": 5,
+        "embedding_token_count": 5,
+        "previous_chunk_id": None,
+        "next_chunk_id": None,
+    }
+    defaults.update(overrides)
+    return Chunk(**defaults)
 
 
 @pytest.mark.parametrize("separator", ["\u0085", "\u2028", "\u2029"])
@@ -76,3 +78,25 @@ def test_write_chunks_preserves_old_output_and_original_error(
     assert raised.value is expected_error
     assert output_path.read_text(encoding="utf-8") == "previous output"
     assert list(tmp_path.iterdir()) == [output_path]
+
+
+def test_chunks_round_trip_through_jsonl(tmp_path: Path) -> None:
+    """A written chunk, including neighbor links, reads back with identical field values."""
+    output_path = tmp_path / "chunks.jsonl"
+    chunk = _chunk("Nội dung pháp luật.", previous_chunk_id="chunk-before", next_chunk_id="chunk-after")
+
+    write_chunks(output_path, (chunk,))
+    chunks = read_chunks(output_path)
+
+    assert chunks == (chunk,)
+
+
+def test_read_chunks_rejects_unsupported_schema_version(tmp_path: Path) -> None:
+    """A chunk file written by an incompatible schema version is rejected, not silently read."""
+    output_path = tmp_path / "chunks.jsonl"
+    record = _chunk("Nội dung.").to_dict()
+    record["schema_version"] = "0.0.1"
+    output_path.write_text(json.dumps(record), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Unsupported chunk schema"):
+        read_chunks(output_path)

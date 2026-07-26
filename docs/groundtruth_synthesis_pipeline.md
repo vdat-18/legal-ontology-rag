@@ -854,15 +854,22 @@ Các quyết định thiết kế trong tài liệu này chắt lọc từ nhữ
 
 Các mục 1 tới 8 không cần retriever và nên hoàn thành trước.
 
-1. Hoàn thiện temporal metadata cho corpus.
-2. Định nghĩa typed schema cho `LegalFact`, `EvidenceReference`, `Scenario`,
-   `GroundTruthCandidate`, `Conversation` và `ConversationTurn`, trong đó
-   `fact_id` và `fact_content_sha256` tách bạch.
+1. Hoàn thiện temporal metadata cho corpus. **Chưa làm** — việc rà soát dữ
+   liệu, không phải code.
+2. Định nghĩa typed schema cho `LegalFact`, `EvidenceReference`, trong đó
+   `fact_id` và `fact_content_sha256` tách bạch. **Đã xong** cho
+   `LegalFact`/`EvidenceReference`; `Scenario`, `GroundTruthCandidate`,
+   `Conversation`, `ConversationTurn` còn lại cho Phase 2-3.
 3. Implement lọc chất lượng chunk và legal-fact extraction kèm `quoted_span`.
+   **Đã xong.**
 4. Implement ràng buộc căn cứ tất định. Chạy nó ngay trên output trích xuất để
    loại các fact có span không khớp trước khi tốn thời gian chuyên gia.
+   **Đã xong**, ở mức fact — `fact_ledger.verify_spans`. Cổng 1 ở mức
+   candidate (mục 7) vẫn thuộc Phase 3.
 5. Xây fact ledger và quy trình phê duyệt. Chạy pilot trên một văn bản duy
-   nhất, ưu tiên 168/2024/NĐ-CP, cho tới khi schema fact ổn định.
+   nhất, ưu tiên 168/2024/NĐ-CP, cho tới khi schema fact ổn định. **Máy trạng
+   thái đã xong**; pilot thật trên 168/2024/NĐ-CP còn chờ vì cần LLM call
+   thật và người duyệt.
 6. Tạo file cấu hình versioned cho query taxonomy, persona, evolution và phân
    bố scenario.
 7. Implement evidence graph có lưu `bridge` và ràng buộc cấu trúc bundle.
@@ -944,9 +951,9 @@ Danh sách persona, query taxonomy, phân bố scenario và evolution nằm ở 
 JSON versioned dưới `data/config/groundtruth/`, đọc bằng cùng cơ chế
 `importlib.resources` như `embedding/profiles.py`.
 
-### Phase 1 — Trích xuất fact và fact ledger (mục 2, 3 ở trên)
+### Phase 1 — Trích xuất fact và fact ledger (mục 2, 3 ở trên) — Đã triển khai
 
-Module mới trong `evaluation/`:
+Module trong `evaluation/`:
 
 - `models.py` — `LegalFact`, `EvidenceReference` dạng
   `@dataclass(frozen=True, slots=True)` với `to_dict()`, hằng
@@ -954,35 +961,57 @@ Module mới trong `evaluation/`:
 - `chunk_quality.py` — gọi BAML chấm 4 tiêu chí, lọc theo
   `chunk_quality_threshold`, ghi danh sách chunk bị loại kèm lý do.
 - `fact_extraction.py` — dựng cửa sổ đọc theo ba nguồn ở mục "Gộp chunk khi
-  một fact cần nhiều nguồn" (liền kề, trích dẫn chéo bằng regex, tương đồng
-  embedding cùng văn bản), gọi BAML trích fact, gán `fact_id` và
-  `fact_content_sha256`.
+  một fact cần nhiều nguồn" (liền kề qua `previous_chunk_id`/`next_chunk_id`,
+  trích dẫn chéo bằng regex "Điều N" tra theo `build_provision_index`, tương
+  đồng embedding cùng `source_name` qua `find_embedding_candidates`), gọi BAML
+  trích fact, đối chiếu `evidence.chunk_id` với chunk thật để tự điền
+  `unit_ids`/`source_refs` — không tin trực tiếp giá trị LLM trả về — rồi gán
+  `fact_id` và `fact_content_sha256` qua `sha256_json`.
 - `fact_ledger.py` — máy trạng thái `extracted → span_verified →
-  needs_expert_review → approved | rejected`, phát hiện `stale` khi
-  `fact_content_sha256` đổi so với bản đã duyệt.
+  needs_expert_review → approved | rejected`, cộng thêm `stale` khi
+  `fact_content_sha256` đổi so với bản đã duyệt. `verify_spans` dùng
+  `rapidfuzz.fuzz.partial_ratio` giữa `quoted_span` và text chunk thật —
+  cùng cơ chế văn bản với Cổng 1 ở mục 7, áp dụng sớm ngay tại fact thay vì
+  đợi tới candidate.
+- `writer.py` — đọc/ghi JSONL nguyên tử cho `legal_facts.jsonl` và
+  `fact_ledger.jsonl`, dùng lại `io_utils.write_jsonl_atomic`.
 
-BAML mới trong `baml_src/`:
+BAML trong `baml_src/`:
 
 - `chunk_quality.baml` — class `ChunkQualityResult` (clarity, depth,
   structure, relevance), function `EvaluateChunkQuality(chunk_text: string)`.
-- `legal_fact_extraction.baml` — các class khớp JSON ở mục 2 của tài liệu này
-  (`LegalFact`, `EvidenceEntry`), function
-  `ExtractLegalFacts(window_chunks: ChunkWindowEntry[]) -> LegalFact[]`.
+- `legal_fact_extraction.baml` — enum `ChunkWindowRole`, class
+  `ChunkWindowEntry`, `EvidenceEntry`, `LegalFact` khớp JSON ở mục 2, function
+  `ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[]`.
 
-CLI: `legal-extract-facts` (console script mới trong `pyproject.toml`), theo
-mẫu `chunk_cli.py` — nhận thư mục chunk đầu vào, ghi
-`data/evaluation/legal_facts.jsonl`.
+CLI: `legal-extract-facts` (`evaluation_cli.py`) chạy nối tiếp cổng chất
+lượng chunk, trích xuất, đối chiếu ledger, `verify_spans`, và
+`queue_for_expert_review` cho mọi fact mới trong một lần gọi; nhận đường dẫn
+chunk JSONL của một văn bản, ghi `legal_facts.jsonl` và `fact_ledger.jsonl`.
 
-Không có CLI cho phần phê duyệt fact ledger ở giai đoạn này — phê duyệt là
-thao tác thủ công của chuyên gia, không phải batch job; một script nhỏ đọc
-`legal_facts.jsonl` + `fact_ledger.jsonl` và in ra từng fact để duyệt tuần
-tự là đủ, không cần giao diện.
+`legal-review-facts` (`fact_review_cli.py`) là script duyệt tương tác dùng
+`print`/`input` trực tiếp — không qua `loguru`, vì đây là giao diện người
+dùng thật của công cụ, không phải log chẩn đoán; có ngoại lệ ruff T20 riêng
+cho file này trong `pyproject.toml`.
 
-Test: `tests/evaluation/test_fact_extraction.py` (windowing thuần Python,
-không gọi LLM thật — theo mẫu mock `_execute_baml_request` trong
-`tests/parser/test_baml_captioning.py`), `test_fact_ledger.py` (máy trạng
-thái và phát hiện stale là logic thuần, test trực tiếp không cần mock),
-`test_chunk_quality.py`.
+Hạ tầng dùng chung mới phát sinh khi triển khai, ngoài phạm vi ban đầu của
+Phase 1 nhưng cần thiết để nó chạy được:
+
+- `baml_transport.py` — tách phần gọi HTTP non-streaming và dựng
+  `ClientRegistry` ra khỏi `parser/image_captioner.py`, vì đây đã là lần
+  dùng thứ ba (chunk quality, fact extraction, image caption) của cùng một
+  khối logic.
+- `chunker/writer.py` bổ sung `read_chunks` — trước đó chunker chỉ ghi output
+  cuối, chưa có gì đọc lại `*.chunks.jsonl`, nhưng CLI trích xuất fact cần
+  đọc đúng file đó làm đầu vào.
+
+Test: `tests/evaluation/test_fact_extraction.py`, `test_fact_ledger.py`,
+`test_chunk_quality.py`, `test_evaluation_models.py`,
+`test_evaluation_writer.py`, `tests/test_baml_transport.py`,
+`tests/test_evaluation_cli.py` (tích hợp CLI đầu-cuối với client và encoder
+giả). Windowing và máy trạng thái test trực tiếp không cần mock; các BAML
+client wrapper test theo mẫu mock `execute_baml_request` trong
+`tests/parser/test_baml_captioning.py`.
 
 ### Phase 2 — Evidence graph và scenario sampling (mục 6, 7)
 

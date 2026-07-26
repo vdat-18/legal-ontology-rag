@@ -3,25 +3,22 @@
 from __future__ import annotations
 
 import base64
-import http.client
-import json
 import subprocess
 import tempfile
 import threading
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from http import HTTPStatus
 from pathlib import Path
 from typing import Protocol
-from urllib.parse import urlsplit
 
-from baml_py import ClientRegistry, HTTPRequest, Image
+from baml_py import Image
 from baml_py.logging import set_log_level
 from loguru import logger
 
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import StructuralContextEntry, StructuralContextRelation
+from legal_rag.baml_transport import BamlRateLimitError, BamlTransportError, build_client_registry, execute_baml_request
 from legal_rag.parser.document_source import DocumentSource
 from legal_rag.parser.image_context import ImageContext, build_image_context
 from legal_rag.parser.images import DocxImage, DocxImageExtraction
@@ -40,19 +37,14 @@ class ImageCaptionError(ValueError):
         """Build an error when legacy media requires an explicit rasterizer."""
         return cls(f"Image media requires --renderer-executable before captioning: {mime_type}")
 
-    @classmethod
-    def response_too_large(cls, max_response_bytes: int) -> ImageCaptionError:
-        """Build an error for a response exceeding its configured byte limit."""
-        return cls(f"LLM provider image-caption response exceeded {max_response_bytes} bytes")
-
 
 class ImageCaptionRateLimitError(ImageCaptionError):
     """Raised when the caption provider rejects a request due to quota limits."""
 
     @classmethod
     def provider_rate_limited(cls, details: str | None = None) -> ImageCaptionRateLimitError:
-        """Build a retryable error containing the provider's response details."""
-        message = "BAML image-caption call was rate limited by the provider"
+        """Build a retryable error for any CaptionClient implementation, not only BAML."""
+        message = "Image-caption request was rate limited by the provider"
         return cls(f"{message}: {details}" if details else message)
 
 
@@ -99,21 +91,14 @@ class BamlCaptionClient:
     def __init__(self, settings: Settings) -> None:
         """Create a runtime BAML client from typed, secret-safe configuration."""
         set_log_level("OFF")
-        self._registry = ClientRegistry()
-        self._registry.add_llm_client(
-            "RuntimeLLMProvider",
-            "openai-generic",
-            {
-                "base_url": settings.llm_base_url,
-                "api_key": settings.llm_api_key,
-                "model": settings.llm_model,
-                "max_tokens": settings.image_caption_max_output_tokens,
-                "temperature": settings.image_caption_temperature,
-                "supports_streaming": False,
-                "http": {"request_timeout_ms": int(settings.llm_timeout_seconds * 1000)},
-            },
+        self._registry = build_client_registry(
+            base_url=settings.llm_base_url,
+            api_key=settings.llm_api_key,
+            model=settings.llm_model,
+            max_output_tokens=settings.image_caption_max_output_tokens,
+            temperature=settings.image_caption_temperature,
+            timeout_seconds=settings.llm_timeout_seconds,
         )
-        self._registry.set_primary("RuntimeLLMProvider")
         self._timeout_seconds = settings.llm_timeout_seconds
         self._max_response_bytes = settings.image_caption_max_response_bytes
 
@@ -140,56 +125,14 @@ class BamlCaptionClient:
             image,
             baml_options={"client_registry": self._registry},
         )
-        raw_output = _execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
+        try:
+            raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
+        except BamlRateLimitError as error:
+            raise ImageCaptionRateLimitError(str(error)) from error
+        except BamlTransportError as error:
+            raise ImageCaptionError(str(error)) from error
         result = b.parse.CaptionImage(raw_output, baml_options={"client_registry": self._registry})
         return CaptionModelResponse(result.description_vi)
-
-
-def _execute_baml_request(request: HTTPRequest, timeout_seconds: float, max_response_bytes: int) -> str:
-    """Execute one non-streaming OpenAI-compatible request and return assistant content."""
-    parsed_url = urlsplit(request.url)
-    connection_type = http.client.HTTPSConnection if parsed_url.scheme == "https" else http.client.HTTPConnection
-    connection = connection_type(parsed_url.hostname, parsed_url.port, timeout=timeout_seconds)
-    request_path = parsed_url.path or "/"
-    if parsed_url.query:
-        request_path = f"{request_path}?{parsed_url.query}"
-    headers = {name: value for name, value in request.headers.items() if name.lower() != "baml-original-url"}
-    request_body = request.body.json()
-    request_body["stream"] = False
-    request_body["response_format"] = {"type": "json_object"}
-    try:
-        connection.request(
-            request.method,
-            request_path,
-            body=json.dumps(request_body).encode("utf-8"),
-            headers=headers,
-        )
-        response = connection.getresponse()
-        response_status = response.status
-        response_reason = response.reason
-        response_bytes = response.read(max_response_bytes + 1)
-    finally:
-        connection.close()
-    if len(response_bytes) > max_response_bytes:
-        raise ImageCaptionError.response_too_large(max_response_bytes)
-    response_text = response_bytes.decode("utf-8", errors="replace")
-    if response_status == HTTPStatus.TOO_MANY_REQUESTS:
-        raise ImageCaptionRateLimitError.provider_rate_limited(response_text)
-    if response_status != HTTPStatus.OK:
-        message = f"{response_status} {response_reason}: {response_text}"
-        raise http.client.HTTPException(message)
-    return _openai_response_content(response_bytes)
-
-
-def _openai_response_content(response_bytes: bytes) -> str:
-    """Return assistant content from one OpenAI-compatible JSON response."""
-    response = json.loads(response_bytes)
-    provider_error = response.get("error")
-    if provider_error is not None:
-        if isinstance(provider_error, dict) and provider_error.get("code") == HTTPStatus.TOO_MANY_REQUESTS:
-            raise ImageCaptionRateLimitError.provider_rate_limited(json.dumps(provider_error, ensure_ascii=False))
-        raise ImageCaptionError(json.dumps(provider_error, ensure_ascii=False))
-    return response["choices"][0]["message"]["content"]
 
 
 def caption_images(
