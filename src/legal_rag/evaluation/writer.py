@@ -7,8 +7,10 @@ from collections.abc import Sequence
 from datetime import date, datetime
 from pathlib import Path
 
+from legal_rag.evaluation.evidence_graph import EVIDENCE_RELATION_SCHEMA_VERSION, EvidenceRelation
 from legal_rag.evaluation.fact_ledger import FACT_LEDGER_SCHEMA_VERSION, FactLedgerEntry
 from legal_rag.evaluation.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
+from legal_rag.evaluation.scenario_sampling import SCENARIO_SCHEMA_VERSION, Scenario
 from legal_rag.io_utils import write_jsonl_atomic
 
 
@@ -85,6 +87,66 @@ def read_fact_ledger(input_path: Path) -> tuple[FactLedgerEntry, ...]:
                 )
             )
     return tuple(entries)
+
+
+def write_evidence_relations(output_path: Path, relations: Sequence[EvidenceRelation]) -> None:
+    """Atomically replace one UTF-8 JSONL output with evidence-relation records."""
+    write_jsonl_atomic(output_path, (relation.to_dict() for relation in relations))
+
+
+def read_evidence_relations(input_path: Path) -> tuple[EvidenceRelation, ...]:
+    """Read an evidence-relations JSONL file back into typed records."""
+    relations: list[EvidenceRelation] = []
+    with input_path.open(encoding="utf-8") as source_file:
+        for line in source_file:
+            payload = json.loads(line)
+            if payload["schema_version"] != EVIDENCE_RELATION_SCHEMA_VERSION:
+                msg = f"Unsupported evidence-relation schema: {payload['schema_version']}"
+                raise ValueError(msg)
+            relations.append(
+                EvidenceRelation(
+                    relation_id=payload["relation_id"],
+                    relation_type=payload["relation_type"],
+                    from_fact_id=payload["from_fact_id"],
+                    to_fact_id=payload["to_fact_id"],
+                    bridge=tuple(payload["bridge"]),
+                    confirmed_by_model=payload["confirmed_by_model"],
+                )
+            )
+    return tuple(relations)
+
+
+def write_scenarios(output_path: Path, scenarios: Sequence[Scenario]) -> None:
+    """Atomically replace one UTF-8 JSONL output with scenario records."""
+    write_jsonl_atomic(output_path, (scenario.to_dict() for scenario in scenarios))
+
+
+def read_scenarios(input_path: Path) -> tuple[Scenario, ...]:
+    """Read a scenarios JSONL file back into typed records."""
+    scenarios: list[Scenario] = []
+    with input_path.open(encoding="utf-8") as source_file:
+        for line in source_file:
+            payload = json.loads(line)
+            if payload["schema_version"] != SCENARIO_SCHEMA_VERSION:
+                msg = f"Unsupported scenario schema: {payload['schema_version']}"
+                raise ValueError(msg)
+            scenarios.append(
+                Scenario(
+                    scenario_id=payload["scenario_id"],
+                    query_type=payload["query_type"],
+                    query_form=payload["query_form"],
+                    answerability=payload["answerability"],
+                    persona=payload["persona"],
+                    query_style=payload["query_style"],
+                    query_length=payload["query_length"],
+                    reasoning_hops=payload["reasoning_hops"],
+                    as_of_date=_parse_date(payload["as_of_date"]),
+                    fact_ids=tuple(payload["fact_ids"]),
+                    bridge=tuple(payload["bridge"]),
+                    gold_chunk_ids=tuple(payload["gold_chunk_ids"]),
+                )
+            )
+    return tuple(scenarios)
 
 
 def _parse_date(value: str | None) -> date | None:

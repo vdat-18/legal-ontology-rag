@@ -809,6 +809,7 @@ data/evaluation/
 ├── legal_facts.jsonl
 ├── fact_ledger.jsonl
 ├── evidence_relations.jsonl
+├── scenarios.jsonl
 ├── candidates/
 │   ├── single_turn.jsonl
 │   └── multi_turn.jsonl
@@ -857,22 +858,25 @@ Các mục 1 tới 8 không cần retriever và nên hoàn thành trước.
 1. Hoàn thiện temporal metadata cho corpus. **Chưa làm** — việc rà soát dữ
    liệu, không phải code.
 2. Định nghĩa typed schema cho `LegalFact`, `EvidenceReference`, trong đó
-   `fact_id` và `fact_content_sha256` tách bạch. **Đã xong** cho
-   `LegalFact`/`EvidenceReference`; `Scenario`, `GroundTruthCandidate`,
-   `Conversation`, `ConversationTurn` còn lại cho Phase 2-3.
+   `fact_id` và `fact_content_sha256` tách bạch. ✅ **Đã xong** cho
+   `LegalFact`/`EvidenceReference`/`EvidenceRelation`/`EvidenceBundle`/
+   `Scenario`; `GroundTruthCandidate`, `Conversation`, `ConversationTurn`
+   còn lại cho Phase 3.
 3. Implement lọc chất lượng chunk và legal-fact extraction kèm `quoted_span`.
-   **Đã xong.**
+   ✅ **Đã xong.**
 4. Implement ràng buộc căn cứ tất định. Chạy nó ngay trên output trích xuất để
    loại các fact có span không khớp trước khi tốn thời gian chuyên gia.
-   **Đã xong**, ở mức fact — `fact_ledger.verify_spans`. Cổng 1 ở mức
+   ✅ **Đã xong**, ở mức fact — `fact_ledger.verify_spans`. Cổng 1 ở mức
    candidate (mục 7) vẫn thuộc Phase 3.
 5. Xây fact ledger và quy trình phê duyệt. Chạy pilot trên một văn bản duy
-   nhất, ưu tiên 168/2024/NĐ-CP, cho tới khi schema fact ổn định. **Máy trạng
-   thái đã xong**; pilot thật trên 168/2024/NĐ-CP còn chờ vì cần LLM call
-   thật và người duyệt.
+   nhất, ưu tiên 168/2024/NĐ-CP, cho tới khi schema fact ổn định. ✅ **Máy
+   trạng thái đã xong**; pilot thật trên 168/2024/NĐ-CP còn chờ vì cần LLM
+   call thật và người duyệt.
 6. Tạo file cấu hình versioned cho query taxonomy, persona, evolution và phân
-   bố scenario.
+   bố scenario. ✅ **Đã xong.**
 7. Implement evidence graph có lưu `bridge` và ràng buộc cấu trúc bundle.
+   ✅ **Đã xong**, phạm vi MVP: bundle đúng 2 fact trên mỗi quan hệ đã xác
+   nhận, chưa nối chuỗi thành bundle 3+ fact.
 8. Implement single-turn generation kèm vòng tinh chỉnh bề mặt, cổng 1, cổng
    2 và gán nhãn lại.
 9. Chạy pilot, đo tỷ lệ lỗi trên mẫu review, ổn định schema candidate.
@@ -910,7 +914,7 @@ song song `groundtruth/`.
 và biến môi trường `RAGAS_*` đã không còn tồn tại. Cập nhật hoặc xóa file này
 ở Phase 0 để không ai đi theo hướng dẫn sai.
 
-### Phase 0 — Hạ tầng dùng chung
+### Phase 0 — Hạ tầng dùng chung ✅ Đã triển khai
 
 Ba phần này được ít nhất hai phase sau dùng lại, nên làm trước và làm đúng
 một lần, tránh trùng lặp giữa các module.
@@ -948,10 +952,16 @@ Phase 1.
 `span_match_threshold` (mặc định `0.85`), `bundle_overlap_threshold` (`τ`),
 `dedup_cosine_threshold` (`0.9`), `max_quality_retries`, `max_simulator_turns`.
 Danh sách persona, query taxonomy, phân bố scenario và evolution nằm ở file
-JSON versioned dưới `data/config/groundtruth/`, đọc bằng cùng cơ chế
-`importlib.resources` như `embedding/profiles.py`.
+JSON versioned dưới `data/config/groundtruth/`. **Đã đổi so với dự tính ban
+đầu:** không dùng `importlib.resources` như `embedding/profiles.py`, vì
+`data/config/` nằm ngoài cây package `src/legal_rag/` nên không phải là tài
+nguyên gói hợp lệ. Các CLI nhận đường dẫn config qua tham số dòng lệnh tường
+minh (`--query-taxonomy`, `--personas`, `--scenario-distribution`), đọc bằng
+`Path.read_text` + `json.loads` thuần — đúng phong cách các CLI hiện có
+(`legal-chunk`, `legal-extract-facts`) vốn luôn nhận đường dẫn tường minh,
+không có đường dẫn ngầm định.
 
-### Phase 1 — Trích xuất fact và fact ledger (mục 2, 3 ở trên) — Đã triển khai
+### Phase 1 — Trích xuất fact và fact ledger (mục 2, 3 ở trên) ✅ Đã triển khai
 
 Module trong `evaluation/`:
 
@@ -1013,26 +1023,64 @@ giả). Windowing và máy trạng thái test trực tiếp không cần mock; c
 client wrapper test theo mẫu mock `execute_baml_request` trong
 `tests/parser/test_baml_captioning.py`.
 
-### Phase 2 — Evidence graph và scenario sampling (mục 6, 7)
+### Phase 2 — Evidence graph và scenario sampling (mục 6, 7) ✅ Đã triển khai
 
-- `evidence_graph.py` — dùng `embedding/encoder.py` tìm cặp fact ứng viên
-  (cùng và khác văn bản), gọi BAML xác nhận quan hệ và lấy `bridge`, áp ràng
-  buộc cấu trúc bundle (khác văn bản cho multi-hop, chặn trùng `τ`).
-- `scenario_sampling.py` — nạp taxonomy/persona/phân bố từ config versioned,
-  thuật toán tham lam theo quota đã mô tả ở mục 5.
+- `evidence_graph.py` — `find_candidate_fact_pairs` dùng `EmbeddingEncoder`
+  tìm cặp fact ứng viên trong toàn bộ fact `approved` (không giới hạn cùng
+  văn bản, vì multi-hop cần đúng cặp khác văn bản); `confirm_evidence_relations`
+  gọi BAML xác nhận từng cặp và lấy `bridge`; `classify_bundle_kind` áp ràng
+  buộc cấu trúc — `amended_by` luôn là `temporal` bất kể văn bản, còn lại thì
+  khác văn bản mới là `multi_hop`, cùng văn bản hạ xuống `synthesis` — biểu
+  diễn trực tiếp bằng logic phân loại, không phải bước "hạ cấp" riêng sau khi
+  đã tạo bundle; `sample_bundles` chặn trùng theo `τ`.
+- `scenario_sampling.py` — nạp taxonomy/persona/phân bố từ config, thuật
+  toán tham lam theo quota đã mô tả ở mục 5.
 
-BAML mới: `evidence_relations.baml` — class `EvidenceRelation` khớp JSON ở
-mục 4, function `ConfirmEvidenceRelation(fact_a: LegalFact, fact_b: LegalFact,
-candidate_relation_type: string) -> EvidenceRelation | null`.
+**Hai điểm lệch so với kế hoạch ban đầu, có lý do rõ:**
 
-Config mới: `data/config/groundtruth/query_taxonomy.json`,
+- `ConfirmEvidenceRelation(fact_a, fact_b) -> ConfirmedRelation` **không**
+  nhận `candidate_relation_type` như phác thảo gốc. Không có tín hiệu tất
+  định nào để đoán trước loại quan hệ trước khi LLM đọc nội dung — nếu đoán
+  bằng heuristic thì vi phạm chính câu "Không xác định quan hệ chỉ bằng độ
+  tương đồng hoặc từ khóa" ở mục 4. LLM tự chọn loại quan hệ từ enum
+  `RelationType`, trả `is_related=false` khi không đủ căn cứ thay vì trả
+  `null` ở gốc kết quả — tránh sự mơ hồ khi bọc toàn bộ object trong nullable.
+- **Phạm vi MVP của `sample_bundles`: bundle đúng 2 fact**, ứng với một quan
+  hệ đã xác nhận, không nối chuỗi quan hệ thành bundle 3+ fact (dù mục 4 có
+  nhắc "tổng hợp nhiều hành vi trong một tình huống"). Ràng buộc trùng `τ`
+  vẫn đúng và có tác dụng ngay ở phạm vi này (chặn hai quan hệ trùng cùng một
+  cặp fact); nối chuỗi lớn hơn để lại cho vòng sau khi có nhu cầu thật.
+- **`sample_scenarios` chỉ sinh `answerable` và `partially_answerable`.**
+  Bundle luôn dựng từ fact đã duyệt — tức luôn có căn cứ thật — nên về mặt
+  cấu trúc không thể sinh ra `underspecified` hay `unanswerable` từ đó được.
+  Hai loại này cần một đường sinh khác, không dựa trên bundle (§8 phần
+  multi-turn đã có manh mối: `unanswerable` cần người viết hoặc mining riêng,
+  không sinh tự động từ evidence thật).
+
+BAML: `evidence_relations.baml` — enum `RelationType` (8 giá trị khớp danh
+sách quan hệ ở mục 4), class `LegalFactSummary`, `ConfirmedRelation`, function
+`ConfirmEvidenceRelation`. Giá trị `RelationType` phía BAML dùng PascalCase
+theo đúng quy ước `ChunkWindowRole`; phía Python dùng `Literal` snake_case
+khớp ví dụ JSON ở mục 4 (`"amended_by"`), dịch qua bảng ánh xạ tường minh
+trong `evidence_graph.py` — không suy luận chuỗi.
+
+Config: `data/config/groundtruth/query_taxonomy.json`,
 `data/config/groundtruth/personas.json`,
 `data/config/groundtruth/scenario_distribution.json`,
-`data/config/groundtruth/evolution.json`.
+`data/config/groundtruth/evolution.json` (file config được tạo ở Phase 2 theo
+đúng mục 6; logic *áp dụng* evolution vẫn thuộc Phase 3).
 
-Test: `test_evidence_graph.py` (ràng buộc cấu trúc bundle là logic thuần,
-test không cần mock LLM), `test_scenario_sampling.py` (thuật toán tham lam
-test bằng fixture fact cố định, kiểm phân bố đầu ra).
+CLI: `legal-build-evidence-graph` (`evidence_graph_cli.py`) — lọc fact
+`approved` từ ledger, xác nhận quan hệ, lấy mẫu bundle, sinh scenario, ghi
+`evidence_relations.jsonl` và `scenarios.jsonl`. `scenarios.jsonl` là output
+mới phát sinh khi triển khai, chưa có trong cấu trúc output đề xuất ban đầu
+ở mục 17 — bổ sung vì Phase 3 cần scenario đã chốt và ổn định, không tính
+lại mỗi lần sinh candidate.
+
+Test: `test_evidence_graph.py`, `test_scenario_sampling.py` (thuật toán tham
+lam test bằng fixture fact cố định, kiểm quota trần theo `ceil`, kiểm luân
+phiên theo trục ít dùng nhất), `tests/test_evidence_graph_cli.py` (tích hợp
+CLI đầu-cuối, xác nhận fact chưa `approved` không lọt vào bundle).
 
 ### Phase 3 — Sinh single-turn và hai cổng kiểm chứng (mục 8)
 
@@ -1117,11 +1165,23 @@ là so khớp tất định thuần Python, không qua `deepeval`.
 - `pyproject.toml`: extra `evaluation` đổi thành `deepeval`, `rapidfuzz`,
   `sentence-transformers` — gỡ `ragas`, `langchain-community`,
   `langchain-openai` (không còn code nào import sau khi pipeline Ragas cũ bị
-  xóa); thêm console script mới cho từng CLI ở các phase sau. **Đã áp dụng**
-  ở Phase 0.
-- `settings.py`: thêm `EvaluationSettings`. **Đã áp dụng.**
+  xóa); thêm console script mới cho từng CLI ở các phase sau. ✅ **Đã áp
+  dụng** ở Phase 0.
+- `settings.py`: thêm `EvaluationSettings`. ✅ **Đã áp dụng.**
 - `io_utils.py`: `write_jsonl_atomic` dùng chung; `parser/writer.py` và
-  `chunker/writer.py` refactor gọi vào đây. **Đã áp dụng.**
+  `chunker/writer.py` refactor gọi vào đây. ✅ **Đã áp dụng.**
 - `embedding/encoder.py`: `EmbeddingEncoder` bọc `sentence-transformers`,
-  nạp lazy để không bắt buộc cài đặt khi không dùng. **Đã áp dụng.**
+  nạp lazy để không bắt buộc cài đặt khi không dùng. ✅ **Đã áp dụng.**
 - `data/evaluation/evaluation-data.md`: viết lại theo pipeline mới hoặc xóa.
+  ✅ **Đã áp dụng** ở Phase 0.
+- `baml_transport.py`: tách khỏi `parser/image_captioner.py` khi cần dùng lại
+  cho `chunk_quality.py`/`fact_extraction.py`. ✅ **Đã áp dụng** ở Phase 1,
+  không nằm trong kế hoạch gốc.
+- `chunker/writer.py`: thêm `read_chunks` — CLI trích xuất fact cần đọc lại
+  `*.chunks.jsonl`. ✅ **Đã áp dụng** ở Phase 1, không nằm trong kế hoạch gốc.
+- `pyproject.toml`: thêm console script `legal-extract-facts`,
+  `legal-review-facts` (Phase 1), `legal-build-evidence-graph` (Phase 2).
+  ✅ **Đã áp dụng.**
+- `data/config/groundtruth/`: bốn file config versioned
+  (`query_taxonomy.json`, `personas.json`, `scenario_distribution.json`,
+  `evolution.json`). ✅ **Đã áp dụng** ở Phase 2.

@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0.0",
+  "query_types": [
+    { "id": "penalty_for_conduct", "description_vi": "Mức phạt của một hành vi" },
+    { "id": "penalty_and_points", "description_vi": "Phạt tiền và trừ điểm hoặc tước giấy phép" },
+    { "id": "remedial_measure", "description_vi": "Biện pháp khắc phục hậu quả" },
+    { "id": "subject_and_vehicle", "description_vi": "Đối tượng và loại phương tiện áp dụng" },
+    { "id": "enforcement_authority", "description_vi": "Thẩm quyền xử phạt" },
+    { "id": "procedure", "description_vi": "Trình tự xử lý vi phạm" },
+    { "id": "comparison", "description_vi": "So sánh hai trường hợp gần giống" },
+    { "id": "aggregation", "description_vi": "Tổng hợp nhiều hành vi trong một tình huống" },
+    { "id": "temporal_penalty", "description_vi": "Áp dụng quy định tại một thời điểm" },
+    { "id": "before_after_amendment", "description_vi": "Quy định trước và sau khi sửa đổi" },
+    { "id": "insufficient_evidence", "description_vi": "Không đủ căn cứ để kết luận" },
+    { "id": "out_of_scope", "description_vi": "Câu hỏi ngoài phạm vi xử phạt giao thông đường bộ" }
+  ]
+}
