@@ -57,3 +57,30 @@ class ChunkerSettings:
             max_tokens=int(values["CHUNK_MAX_TOKENS"]),
             split_overlap_tokens=int(values["CHUNK_SPLIT_OVERLAP_TOKENS"]),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class EvaluationSettings:
+    """Threshold and batch configuration for ground-truth synthesis."""
+
+    embedding_profile: str
+    chunk_quality_threshold: float
+    span_match_threshold: float
+    bundle_overlap_threshold: float
+    dedup_cosine_threshold: float
+    max_quality_retries: int
+    max_simulator_turns: int
+
+    @classmethod
+    def from_environment(cls, environment: Mapping[str, str] | None = None) -> EvaluationSettings:
+        """Load ground-truth synthesis settings from process environment variables."""
+        values = os.environ if environment is None else environment
+        return cls(
+            embedding_profile=values["EMBEDDING_PROFILE"].strip(),
+            chunk_quality_threshold=float(values["GROUNDTRUTH_CHUNK_QUALITY_THRESHOLD"]),
+            span_match_threshold=float(values["GROUNDTRUTH_SPAN_MATCH_THRESHOLD"]),
+            bundle_overlap_threshold=float(values["GROUNDTRUTH_BUNDLE_OVERLAP_THRESHOLD"]),
+            dedup_cosine_threshold=float(values["GROUNDTRUTH_DEDUP_COSINE_THRESHOLD"]),
+            max_quality_retries=int(values["GROUNDTRUTH_MAX_QUALITY_RETRIES"]),
+            max_simulator_turns=int(values["GROUNDTRUTH_MAX_SIMULATOR_TURNS"]),
+        )

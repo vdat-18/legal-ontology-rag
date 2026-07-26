@@ -2,20 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
-from typing import TextIO
 
+from legal_rag.io_utils import write_jsonl_atomic
 from legal_rag.parser.attachments import DocxAttachment
 from legal_rag.parser.models import AttachmentChildDocument, ParsedDocument
-
-_JSONL_LINE_SEPARATOR_ESCAPES = {
-    ord("\u0085"): "\\u0085",
-    ord("\u2028"): "\\u2028",
-    ord("\u2029"): "\\u2029",
-}
 
 
 def write_parsed_document(output_path: Path, document: ParsedDocument) -> None:
@@ -27,23 +20,7 @@ def write_parsed_document(output_path: Path, document: ParsedDocument) -> None:
     for child_document in document.child_documents:
         for attachment in child_document.attachments:
             _write_attachment_asset(output_path.parent, attachment)
-    temporary_path: Path | None = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            newline="\n",
-            dir=output_path.parent,
-            delete=False,
-        ) as temporary_file:
-            temporary_path = Path(temporary_file.name)
-            for record in _ordered_records(document):
-                _write_record(temporary_file, record)
-        temporary_path.replace(output_path)
-        temporary_path = None
-    finally:
-        if temporary_path is not None:
-            temporary_path.unlink(missing_ok=True)
+    write_jsonl_atomic(output_path, _ordered_records(document))
 
 
 def _ordered_records(document: ParsedDocument) -> Iterator[dict[str, object]]:
@@ -56,12 +33,6 @@ def _ordered_records(document: ParsedDocument) -> Iterator[dict[str, object]]:
         for attachment in unit.attachments:
             for child_document in children_by_attachment.get(attachment.attachment_id, ()):
                 yield from child_document.records(document.source_name, document.source_sha256)
-
-
-def _write_record(temporary_file: TextIO, record: dict[str, object]) -> None:
-    """Serialize one record as exactly one physical JSONL line."""
-    serialized = json.dumps(record, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
-    temporary_file.write(serialized.translate(_JSONL_LINE_SEPARATOR_ESCAPES) + "\n")
 
 
 def _write_attachment_asset(output_directory: Path, attachment: DocxAttachment) -> None:

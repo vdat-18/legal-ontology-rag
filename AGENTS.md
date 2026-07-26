@@ -53,7 +53,6 @@ Run these before committing when possible:
 ruff format --check .
 ruff check .
 pytest
-pre-commit run --all-files
 ```
 
 Do not weaken tests or checks only to make them pass.
