@@ -13,8 +13,11 @@ from legal_rag.evaluation.scenario_sampling import (
     Scenario,
     ScenarioDistribution,
     ScenarioSamplingConfig,
+    load_evolution_config,
+    load_persona_descriptions,
     load_personas,
     load_query_taxonomy,
+    load_query_type_descriptions,
     load_scenario_distribution,
     sample_scenarios,
 )
@@ -89,6 +92,28 @@ def test_load_scenario_distribution_reads_repo_config() -> None:
 
     assert "no_diacritics" in distribution.query_styles
     assert distribution.bundle_answerability_values == ("answerable", "partially_answerable")
+
+
+def test_load_evolution_config_reads_repo_config() -> None:
+    """The versioned evolution file in the repo loads without error."""
+    config = load_evolution_config(_REPO_CONFIG_DIR / "evolution.json")
+
+    assert "concretizing" in config.operation_ids
+    assert config.max_rounds == 2
+
+
+def test_load_query_type_descriptions_reads_repo_config() -> None:
+    """Every query_type_id in the repo config maps to a non-empty description."""
+    descriptions = load_query_type_descriptions(_REPO_CONFIG_DIR / "query_taxonomy.json")
+
+    assert descriptions["penalty_for_conduct"] == "Mức phạt của một hành vi"
+
+
+def test_load_persona_descriptions_reads_repo_config() -> None:
+    """Every persona_id in the repo config maps to a non-empty description."""
+    descriptions = load_persona_descriptions(_REPO_CONFIG_DIR / "personas.json")
+
+    assert descriptions["tai_xe_ca_nhan"] == "Tài xế cá nhân"
 
 
 def test_sample_scenarios_returns_empty_for_no_bundles() -> None:

@@ -74,6 +74,10 @@ class EvaluationSettings:
     chunk_quality_temperature: float = 0.0
     fact_extraction_max_output_tokens: int = 4096
     fact_extraction_temperature: float = 0.0
+    candidate_generation_max_output_tokens: int = 2048
+    candidate_generation_temperature: float = 0.0
+    verification_max_output_tokens: int = 1024
+    verification_temperature: float = 0.0
     max_response_bytes: int = 1_048_576
 
     @classmethod

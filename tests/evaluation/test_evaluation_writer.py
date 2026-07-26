@@ -5,15 +5,21 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+from legal_rag.evaluation.binding_gate import BindingCheckResult, BindingViolation
+from legal_rag.evaluation.candidate_generation import CandidateDraft, ClaimEvidence, FactAnswerFields, RequiredClaim
+from legal_rag.evaluation.candidate_record import CandidateRecord
 from legal_rag.evaluation.evidence_graph import EvidenceRelation
 from legal_rag.evaluation.fact_ledger import FactLedgerEntry
 from legal_rag.evaluation.models import EvidenceReference, LegalFact
 from legal_rag.evaluation.scenario_sampling import Scenario
+from legal_rag.evaluation.verification import VerificationResult
 from legal_rag.evaluation.writer import (
+    read_candidates,
     read_evidence_relations,
     read_fact_ledger,
     read_legal_facts,
     read_scenarios,
+    write_candidates,
     write_evidence_relations,
     write_fact_ledger,
     write_legal_facts,
@@ -160,3 +166,93 @@ def test_scenarios_round_trip_preserves_null_as_of_date(tmp_path: Path) -> None:
     scenarios = read_scenarios(output_path)
 
     assert scenarios[0].as_of_date is None
+
+
+def _candidate_draft() -> CandidateDraft:
+    """Build one candidate draft covering every nullable and tuple field."""
+    return CandidateDraft(
+        sample_id="sample-1",
+        scenario_id="scenario-1",
+        query_vi="oto vuot den do bi phat bao nhieu",
+        reference_answer_vi="Phạt tiền 4.000.000 đồng.",
+        reasoning_vi="Theo Điều 6.",
+        required_claims=(
+            RequiredClaim(
+                claim="Mức phạt tiền áp dụng",
+                fact_id="fact-1",
+                evidence=(ClaimEvidence(chunk_id="chunk-1", quoted_span="Phạt tiền 4.000.000 đồng."),),
+            ),
+        ),
+        answer_fields=(
+            FactAnswerFields(
+                fact_id="fact-1",
+                monetary_penalty="4.000.000 đồng",
+                license_points_deducted=None,
+                additional_penalties=(),
+                remedial_measures=(),
+            ),
+        ),
+        evolutions=("concretizing",),
+        gold_chunk_ids=("chunk-1",),
+        query_type="penalty_for_conduct",
+        query_form="specific",
+        persona="tai_xe_ca_nhan",
+        query_style="standard",
+        query_length="short",
+        answerability="answerable",
+        reasoning_hops=1,
+        as_of_date=date(2025, 2, 10),
+        source_fact_ids=("fact-1",),
+        source_fact_content_sha256=("content-fact-1",),
+        generator_model="provider/generator-model",
+    )
+
+
+def test_candidates_round_trip_with_full_verification(tmp_path: Path) -> None:
+    """A candidate that passed both gates reads back identically, including verification."""
+    output_path = tmp_path / "single_turn.jsonl"
+    record = CandidateRecord(
+        draft=_candidate_draft(),
+        binding=BindingCheckResult(passed=True, grounding_score=1.0, violations=()),
+        verification=VerificationResult(
+            passed=True,
+            is_standalone=True,
+            is_specific=True,
+            is_question_grounded=True,
+            is_answer_grounded=True,
+            is_domain_relevant=True,
+            is_temporal_correct=True,
+            necessary_reasoning_hops=1,
+            observed_query_type="penalty_for_conduct",
+            observed_answerability="answerable",
+            reasoning="Đầy đủ căn cứ.",
+            verifier_model="provider/verifier-model",
+        ),
+    )
+
+    write_candidates(output_path, [record])
+    records = read_candidates(output_path)
+
+    assert records == (record,)
+    assert records[0].review_status == "automatically_verified"
+
+
+def test_candidates_round_trip_rejected_by_binding_gate_has_no_verification(tmp_path: Path) -> None:
+    """A candidate rejected at gate 1 never reaches verification; None survives the round trip."""
+    output_path = tmp_path / "single_turn.jsonl"
+    record = CandidateRecord(
+        draft=_candidate_draft(),
+        binding=BindingCheckResult(
+            passed=False,
+            grounding_score=0.4,
+            violations=(BindingViolation(claim="Mức phạt tiền áp dụng", reason="span below threshold"),),
+        ),
+        verification=None,
+    )
+
+    write_candidates(output_path, [record])
+    records = read_candidates(output_path)
+
+    assert records == (record,)
+    assert records[0].verification is None
+    assert records[0].review_status == "rejected_by_binding_gate"

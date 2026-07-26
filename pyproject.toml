@@ -29,6 +29,7 @@ legal-chunk = "legal_rag.chunk_cli:main"
 legal-extract-facts = "legal_rag.evaluation_cli:main"
 legal-review-facts = "legal_rag.fact_review_cli:main"
 legal-build-evidence-graph = "legal_rag.evidence_graph_cli:main"
+legal-generate-candidates = "legal_rag.candidate_generation_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/legal_rag"]

@@ -59,6 +59,14 @@ class ScenarioSamplingConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class EvolutionConfig:
+    """Versioned catalog of evidence-preserving evolution operations."""
+
+    operation_ids: tuple[str, ...]
+    max_rounds: int
+
+
+@dataclass(frozen=True, slots=True)
 class Scenario:
     """One structured scenario, generated before any question text exists."""
 
@@ -115,6 +123,27 @@ def load_scenario_distribution(config_path: Path) -> ScenarioDistribution:
         query_forms=tuple(config["query_forms"]),
         bundle_answerability_values=tuple(config["bundle_answerability_values"]),
     )
+
+
+def load_evolution_config(config_path: Path) -> EvolutionConfig:
+    """Load the versioned evolution-operation configuration."""
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    return EvolutionConfig(
+        operation_ids=tuple(entry["id"] for entry in config["operations"]),
+        max_rounds=config["max_rounds"],
+    )
+
+
+def load_query_type_descriptions(config_path: Path) -> Mapping[str, str]:
+    """Load a query_type_id to human-readable Vietnamese description mapping."""
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    return {entry["id"]: entry["description_vi"] for entry in config["query_types"]}
+
+
+def load_persona_descriptions(config_path: Path) -> Mapping[str, str]:
+    """Load a persona_id to human-readable Vietnamese description mapping."""
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    return {entry["id"]: entry["description_vi"] for entry in config["personas"]}
 
 
 def sample_scenarios(
