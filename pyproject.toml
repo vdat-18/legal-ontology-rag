@@ -22,6 +22,7 @@ dependencies = [
 vietnamese = ["sentence-transformers>=3.0"]
 evaluation = ["deepeval==4.1.1", "rapidfuzz>=3.0", "sentence-transformers>=3.0"]
 dev = ["ruff==0.15.21", "pytest>=8.0"]
+naive-rag = ["pymilvus>=3.0", "milvus-lite>=2.4", "sentence-transformers>=3.0"]
 
 [project.scripts]
 legal-parse = "legal_rag.cli:main"
@@ -30,6 +31,8 @@ legal-extract-facts = "legal_rag.evaluation_cli:main"
 legal-review-facts = "legal_rag.fact_review_cli:main"
 legal-build-evidence-graph = "legal_rag.evidence_graph_cli:main"
 legal-generate-candidates = "legal_rag.candidate_generation_cli:main"
+legal-naive-rag-index = "legal_rag.naive_rag_index_cli:main"
+legal-naive-rag-query = "legal_rag.naive_rag_query_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/legal_rag"]

@@ -93,3 +93,31 @@ class EvaluationSettings:
             max_quality_retries=int(values["GROUNDTRUTH_MAX_QUALITY_RETRIES"]),
             max_simulator_turns=int(values["GROUNDTRUTH_MAX_SIMULATOR_TURNS"]),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class NaiveRagSettings:
+    """Retrieval, indexing, and generation settings for the naive RAG baseline."""
+
+    embedding_profile: str
+    top_k: int
+    milvus_uri: str
+    milvus_collection_name: str = "naive_rag_chunks"
+    milvus_index_type: str = "IVF_FLAT"
+    milvus_metric_type: str = "COSINE"
+    milvus_nlist: int = 128
+    milvus_nprobe: int = 16
+    milvus_insert_batch_size: int = 200
+    answer_max_output_tokens: int = 4096
+    answer_temperature: float = 0.3
+    max_response_bytes: int = 1_048_576
+
+    @classmethod
+    def from_environment(cls, environment: Mapping[str, str] | None = None) -> NaiveRagSettings:
+        """Load naive RAG baseline settings from process environment variables."""
+        values = os.environ if environment is None else environment
+        return cls(
+            embedding_profile=values["EMBEDDING_PROFILE"].strip(),
+            top_k=int(values["NAIVE_RAG_TOP_K"]),
+            milvus_uri=values["NAIVE_RAG_MILVUS_URI"].strip(),
+        )
