@@ -1,33 +1,28 @@
-"""Load chunked JSONL data, embed with BGE-M3, and index into Milvus."""
+"""Load chunked JSONL data, embed with the configured profile, and index into Milvus."""
 
 from __future__ import annotations
 
-import json
+from collections.abc import Sequence
 from pathlib import Path
 
 from loguru import logger
 from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusClient
 
-from legal_rag.naive_rag.config import MilvusConfig, NaiveRAGConfig
-from legal_rag.naive_rag.embedder import BGEM3Embedder
+from legal_rag.chunker.models import Chunk
+from legal_rag.chunker.writer import read_chunks
+from legal_rag.embedding.encoder import EmbeddingEncoder
+from legal_rag.settings import NaiveRagSettings
 
 _MAX_VARCHAR_BYTES = 65_535
 
 
-def load_chunks(chunks_dir: Path) -> list[dict]:
-    """Read all ``*.chunks.jsonl`` files from a directory.
-
-    Args:
-        chunks_dir: Directory containing chunked JSONL files.
-
-    Returns:
-        List of chunk dictionaries in file-name order.
-    """
-    chunks: list[dict] = []
-    for jsonl_file in sorted(chunks_dir.glob("*.chunks.jsonl")):
-        chunks.extend(json.loads(line) for line in jsonl_file.read_text(encoding="utf-8").splitlines() if line.strip())
+def load_chunks(chunks_dir: Path) -> tuple[Chunk, ...]:
+    """Read all ``*.chunks.jsonl`` files from a directory into typed chunk records."""
+    chunks: list[Chunk] = []
+    for chunks_path in sorted(chunks_dir.glob("*.chunks.jsonl")):
+        chunks.extend(read_chunks(chunks_path))
     logger.info("Loaded {} chunks from {}", len(chunks), chunks_dir)
-    return chunks
+    return tuple(chunks)
 
 
 def _truncate_varchar(text: str, max_bytes: int = _MAX_VARCHAR_BYTES) -> str:
@@ -39,11 +34,11 @@ def _truncate_varchar(text: str, max_bytes: int = _MAX_VARCHAR_BYTES) -> str:
     return text
 
 
-def _ensure_collection(client: MilvusClient, cfg: MilvusConfig, dim: int) -> None:
+def _ensure_collection(client: MilvusClient, settings: NaiveRagSettings, dim: int) -> None:
     """Create the Milvus collection and index if it does not already exist."""
-    if client.has_collection(cfg.collection_name):
-        stats = client.get_collection_stats(cfg.collection_name)
-        logger.info("Collection '{}' exists with {} rows", cfg.collection_name, stats["row_count"])
+    if client.has_collection(settings.milvus_collection_name):
+        stats = client.get_collection_stats(settings.milvus_collection_name)
+        logger.info("Collection '{}' exists with {} rows", settings.milvus_collection_name, stats["row_count"])
         return
 
     schema = CollectionSchema(
@@ -61,67 +56,57 @@ def _ensure_collection(client: MilvusClient, cfg: MilvusConfig, dim: int) -> Non
     index_params = client.prepare_index_params()
     index_params.add_index(
         field_name="vector",
-        index_type=cfg.index_type,
-        metric_type=cfg.metric_type,
-        params={"nlist": cfg.nlist},
+        index_type=settings.milvus_index_type,
+        metric_type=settings.milvus_metric_type,
+        params={"nlist": settings.milvus_nlist},
     )
     client.create_collection(
-        collection_name=cfg.collection_name,
+        collection_name=settings.milvus_collection_name,
         schema=schema,
         index_params=index_params,
     )
-    logger.info("Created collection '{}' with {} index", cfg.collection_name, cfg.metric_type)
+    logger.info("Created collection '{}' with {} index", settings.milvus_collection_name, settings.milvus_metric_type)
 
 
-def index_chunks(config: NaiveRAGConfig | None = None) -> int:
-    """Run the full indexing pipeline: load → embed → insert.
+def index_chunks(
+    chunks: Sequence[Chunk],
+    encoder: EmbeddingEncoder,
+    milvus_client: MilvusClient,
+    settings: NaiveRagSettings,
+) -> int:
+    """Embed and insert *chunks* into Milvus, skipping entirely if already populated."""
+    _ensure_collection(milvus_client, settings, encoder.profile.dimensions)
 
-    Args:
-        config: Pipeline configuration. Uses defaults when *None*.
-
-    Returns:
-        Number of chunks indexed.
-    """
-    cfg = config or NaiveRAGConfig()
-    embedder = BGEM3Embedder(cfg.embedder)
-    client = MilvusClient(uri=cfg.milvus.uri)
-    _ensure_collection(client, cfg.milvus, embedder.dim)
-
-    # Skip if already indexed
-    stats = client.get_collection_stats(cfg.milvus.collection_name)
+    stats = milvus_client.get_collection_stats(settings.milvus_collection_name)
     if stats["row_count"] > 0:
         logger.info("Collection already has {} rows, skipping indexing", stats["row_count"])
         return stats["row_count"]
 
-    chunks = load_chunks(cfg.chunks_dir)
     total_inserted = 0
-    batch_records: list[dict] = []
-    batch_texts: list[str] = []
+    batch: list[Chunk] = []
 
-    for i, chunk in enumerate(chunks):
-        batch_records.append(chunk)
-        batch_texts.append(chunk["embedding_text"])
+    for position, chunk in enumerate(chunks):
+        batch.append(chunk)
 
-        if len(batch_records) >= cfg.milvus.insert_batch_size or i == len(chunks) - 1:
-            vectors = embedder.encode(batch_texts)
+        if len(batch) >= settings.milvus_insert_batch_size or position == len(chunks) - 1:
+            vectors = encoder.encode([item.embedding_text for item in batch])
             data = [
                 {
-                    "chunk_id": rec["chunk_id"],
-                    "vector": vectors[j].tolist(),
-                    "text": _truncate_varchar(rec["text"]),
-                    "embedding_text": _truncate_varchar(rec["embedding_text"]),
-                    "source_name": rec["source_name"],
-                    "kind": rec["kind"],
-                    "record_scope": rec.get("record_scope", "root"),
-                    "chunk_index": rec.get("chunk_index", 0),
+                    "chunk_id": item.chunk_id,
+                    "vector": vectors[offset].tolist(),
+                    "text": _truncate_varchar(item.text),
+                    "embedding_text": _truncate_varchar(item.embedding_text),
+                    "source_name": item.source_name,
+                    "kind": item.kind,
+                    "record_scope": item.record_scope,
+                    "chunk_index": item.chunk_index,
                 }
-                for j, rec in enumerate(batch_records)
+                for offset, item in enumerate(batch)
             ]
-            client.insert(collection_name=cfg.milvus.collection_name, data=data)
+            milvus_client.insert(collection_name=settings.milvus_collection_name, data=data)
             total_inserted += len(data)
             logger.debug("Inserted batch {}/{}", total_inserted, len(chunks))
-            batch_records = []
-            batch_texts = []
+            batch = []
 
-    logger.info("Indexed {} chunks into '{}'", total_inserted, cfg.milvus.collection_name)
+    logger.info("Indexed {} chunks into '{}'", total_inserted, settings.milvus_collection_name)
     return total_inserted

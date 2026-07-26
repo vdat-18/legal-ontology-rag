@@ -1,60 +1,53 @@
-"""Generate answers from retrieved context using Gemini."""
+"""Generate answers from retrieved context using the shared BAML LLM client."""
 
 from __future__ import annotations
 
-from google import genai
-from google.genai import types
-from loguru import logger
+from collections.abc import Sequence
+from typing import Protocol
 
-from legal_rag.naive_rag.config import GeneratorConfig
+from baml_py.logging import set_log_level
+
+from legal_rag.baml_client.sync_client import b
+from legal_rag.baml_client.types import RetrievedChunkContext as BamlRetrievedChunkContext
+from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.naive_rag.retriever import RetrievedChunk
-
-_SYSTEM_PROMPT = (
-    "Bạn là trợ lý pháp luật giao thông Việt Nam. "
-    "Trả lời câu hỏi dựa HOÀN TOÀN vào các đoạn trích pháp luật được cung cấp.\n\n"
-    "Quy tắc:\n"
-    "- Chỉ trả lời dựa trên thông tin trong các đoạn trích. Nếu không tìm thấy, nói rõ.\n"
-    "- Trích dẫn nguồn (tên văn bản, điều khoản) khi trả lời.\n"
-    "- Nêu rõ mức phạt tiền, hình phạt bổ sung nếu có.\n"
-    "- Trả lời bằng tiếng Việt, ngắn gọn, chính xác."
-)
+from legal_rag.settings import NaiveRagSettings, Settings
 
 
-def _build_prompt(query: str, hits: list[RetrievedChunk]) -> str:
-    """Combine retrieved chunks and the user query into a single prompt."""
-    context_parts = [f"[Đoạn {i} — {hit.source_name}]\n{hit.text}" for i, hit in enumerate(hits, 1)]
-    context = "\n\n".join(context_parts)
-    return f"Đoạn trích pháp luật:\n\n{context}\n\n---\nCâu hỏi: {query}"
+class GenerationClient(Protocol):
+    """Boundary implemented by an answer-generation language-model client."""
+
+    def generate(self, query_vi: str, chunks: Sequence[BamlRetrievedChunkContext]) -> str:
+        """Return one generated answer, in Vietnamese, grounded in *chunks*."""
 
 
-async def generate(query: str, hits: list[RetrievedChunk], config: GeneratorConfig | None = None) -> str:
-    """Send retrieved context and query to Gemini and return the answer.
+class BamlGenerationClient:
+    """Typed BAML client backed by the shared runtime OpenAI-compatible provider."""
 
-    Args:
-        query: User question.
-        hits: Retrieved chunks providing legal context.
-        config: Generator settings. Uses defaults when *None*.
+    def __init__(self, settings: Settings, naive_rag_settings: NaiveRagSettings) -> None:
+        """Create a runtime BAML client from typed, secret-safe configuration."""
+        set_log_level("OFF")
+        self._registry = build_client_registry(
+            base_url=settings.llm_base_url,
+            api_key=settings.llm_api_key,
+            model=settings.llm_model,
+            max_output_tokens=naive_rag_settings.answer_max_output_tokens,
+            temperature=naive_rag_settings.answer_temperature,
+            timeout_seconds=settings.llm_timeout_seconds,
+        )
+        self._timeout_seconds = settings.llm_timeout_seconds
+        self._max_response_bytes = naive_rag_settings.max_response_bytes
 
-    Returns:
-        Model-generated answer string.
-    """
-    cfg = config or GeneratorConfig()
-    if not cfg.api_key:
-        msg = "GEMINI_API_KEY is not set"
-        raise ValueError(msg)
+    def generate(self, query_vi: str, chunks: Sequence[BamlRetrievedChunkContext]) -> str:
+        """Run one bounded BAML call and return the generated answer text."""
+        request = b.request.GenerateAnswer(query_vi, list(chunks), baml_options={"client_registry": self._registry})
+        raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
+        return b.parse.GenerateAnswer(raw_output, baml_options={"client_registry": self._registry}).answer_vi
 
-    client = genai.Client(api_key=cfg.api_key)
-    user_prompt = _build_prompt(query, hits)
 
-    gen_config = types.GenerateContentConfig(
-        temperature=cfg.temperature,
-        max_output_tokens=cfg.max_output_tokens,
-        system_instruction=_SYSTEM_PROMPT,
-    )
-    response = await client.aio.models.generate_content(
-        model=cfg.model,
-        contents=[user_prompt],
-        config=gen_config,
-    )
-    logger.debug("Generated answer ({} chars) for: {:.60s}", len(response.text or ""), query)
-    return response.text or ""
+def generate_answer(query: str, hits: Sequence[RetrievedChunk], client: GenerationClient) -> str:
+    """Generate one answer grounded in the retrieved chunks."""
+    chunk_contexts = [
+        BamlRetrievedChunkContext(chunk_id=hit.chunk_id, text=hit.text, source_name=hit.source_name) for hit in hits
+    ]
+    return client.generate(query, chunk_contexts)

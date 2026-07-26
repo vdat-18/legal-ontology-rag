@@ -2,38 +2,41 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from loguru import logger
 from pymilvus import MilvusClient
 
-from legal_rag.naive_rag.config import NaiveRAGConfig
-from legal_rag.naive_rag.embedder import BGEM3Embedder
-from legal_rag.naive_rag.generator import generate
+from legal_rag.embedding.encoder import EmbeddingEncoder
+from legal_rag.embedding.profiles import load_configured_embedding_profile
+from legal_rag.naive_rag.generator import BamlGenerationClient, generate_answer
 from legal_rag.naive_rag.retriever import RetrievedChunk, Retriever
+from legal_rag.settings import NaiveRagSettings, Settings
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class RAGResult:
     """Container for a pipeline response."""
 
     query: str
     answer: str
-    sources: list[RetrievedChunk] = field(default_factory=list)
+    sources: tuple[RetrievedChunk, ...] = ()
 
 
 class NaiveRAGPipeline:
     """End-to-end retrieve-then-generate pipeline."""
 
-    def __init__(self, config: NaiveRAGConfig | None = None) -> None:
-        """Initialize the pipeline with the given configuration."""
-        self.config = config or NaiveRAGConfig()
-        self._embedder = BGEM3Embedder(self.config.embedder)
-        self._client = MilvusClient(uri=self.config.milvus.uri)
-        self._retriever = Retriever(self._embedder, self._client, self.config.milvus)
+    def __init__(self, settings: Settings, naive_rag_settings: NaiveRagSettings) -> None:
+        """Initialize the pipeline from application and naive RAG settings."""
+        self.settings = naive_rag_settings
+        profile = load_configured_embedding_profile(naive_rag_settings.embedding_profile)
+        encoder = EmbeddingEncoder.from_profile(profile)
+        client = MilvusClient(uri=naive_rag_settings.milvus_uri)
+        self._retriever = Retriever(encoder, client, naive_rag_settings)
+        self._generation_client = BamlGenerationClient(settings, naive_rag_settings)
         logger.info("NaiveRAGPipeline initialized")
 
-    async def run(self, query: str, top_k: int | None = None) -> RAGResult:
+    def run(self, query: str, top_k: int | None = None) -> RAGResult:
         """Execute the full pipeline for a single query.
 
         Args:
@@ -43,8 +46,8 @@ class NaiveRAGPipeline:
         Returns:
             Result containing the answer and source chunks.
         """
-        k = top_k or self.config.top_k
+        k = top_k or self.settings.top_k
         hits = self._retriever.retrieve(query, top_k=k)
-        answer = await generate(query, hits, self.config.generator)
+        answer = generate_answer(query, hits, self._generation_client)
         logger.info("Pipeline completed for: {:.60s}", query)
-        return RAGResult(query=query, answer=answer, sources=hits)
+        return RAGResult(query=query, answer=answer, sources=tuple(hits))

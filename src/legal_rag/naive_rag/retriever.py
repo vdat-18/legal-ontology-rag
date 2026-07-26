@@ -7,11 +7,11 @@ from dataclasses import dataclass
 from loguru import logger
 from pymilvus import MilvusClient
 
-from legal_rag.naive_rag.config import MilvusConfig
-from legal_rag.naive_rag.embedder import BGEM3Embedder
+from legal_rag.embedding.encoder import EmbeddingEncoder
+from legal_rag.settings import NaiveRagSettings
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class RetrievedChunk:
     """A single chunk returned by the retriever."""
 
@@ -25,13 +25,11 @@ class RetrievedChunk:
 class Retriever:
     """Embed a query and search Milvus for the most similar chunks."""
 
-    def __init__(
-        self, embedder: BGEM3Embedder, milvus_client: MilvusClient, config: MilvusConfig | None = None
-    ) -> None:
-        """Initialize with an embedder, Milvus client, and optional config."""
-        self.embedder = embedder
+    def __init__(self, encoder: EmbeddingEncoder, milvus_client: MilvusClient, settings: NaiveRagSettings) -> None:
+        """Initialize with an embedding encoder, Milvus client, and naive RAG settings."""
+        self.encoder = encoder
         self.client = milvus_client
-        self.config = config or MilvusConfig()
+        self.settings = settings
 
     def retrieve(self, query: str, top_k: int = 10) -> list[RetrievedChunk]:
         """Search for the *top_k* chunks most similar to *query*.
@@ -43,14 +41,17 @@ class Retriever:
         Returns:
             Ranked list of retrieved chunks with similarity scores.
         """
-        query_vec = self.embedder.encode(query)[0].tolist()
+        query_vec = self.encoder.encode_query([query])[0].tolist()
 
         results = self.client.search(
-            collection_name=self.config.collection_name,
+            collection_name=self.settings.milvus_collection_name,
             data=[query_vec],
             limit=top_k,
             output_fields=["chunk_id", "text", "source_name", "kind"],
-            search_params={"metric_type": self.config.metric_type, "params": {"nprobe": self.config.nprobe}},
+            search_params={
+                "metric_type": self.settings.milvus_metric_type,
+                "params": {"nprobe": self.settings.milvus_nprobe},
+            },
         )
 
         hits = [
