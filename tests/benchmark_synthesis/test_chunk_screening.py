@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import pytest
 
-from legal_rag.baml_client.types import ChunkScreeningResult
+from legal_rag.baml_client.types import ChunkScreeningItem, ChunkScreeningResult
 from legal_rag.benchmark_synthesis import chunk_screening
 from legal_rag.benchmark_synthesis.chunk_screening import BamlChunkScreeningClient, screen_chunks
 from legal_rag.chunker.models import Chunk
@@ -41,14 +43,14 @@ def _chunk(chunk_id: str, text: str) -> Chunk:
 
 
 class _FakeScreeningClient:
-    """Return a pre-programmed result per chunk text."""
+    """Return pre-programmed results keyed by chunk_id, ignoring batch grouping."""
 
-    def __init__(self, results_by_text: dict[str, ChunkScreeningResult]) -> None:
-        self._results_by_text = results_by_text
+    def __init__(self, results_by_chunk_id: dict[str, ChunkScreeningResult]) -> None:
+        self._results_by_chunk_id = results_by_chunk_id
 
-    def screen(self, chunk_text: str) -> ChunkScreeningResult:
-        """Return the result configured for this exact chunk text."""
-        return self._results_by_text[chunk_text]
+    def screen(self, chunks: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+        """Return the configured result for each chunk_id in this batch."""
+        return [self._results_by_chunk_id[chunk.chunk_id] for chunk in chunks]
 
 
 def test_screen_chunks_splits_accepted_and_excluded() -> None:
@@ -57,8 +59,12 @@ def test_screen_chunks_splits_accepted_and_excluded() -> None:
     low = _chunk("chunk-low", "Mục lục")
     client = _FakeScreeningClient(
         {
-            high.text: ChunkScreeningResult(has_penalty_content=True, reason="Nêu rõ mức phạt tiền cụ thể."),
-            low.text: ChunkScreeningResult(has_penalty_content=False, reason="Đây là mục lục, không có chế tài."),
+            "chunk-high": ChunkScreeningResult(
+                chunk_id="chunk-high", has_penalty_content=True, reason="Nêu rõ mức phạt tiền cụ thể."
+            ),
+            "chunk-low": ChunkScreeningResult(
+                chunk_id="chunk-low", has_penalty_content=False, reason="Đây là mục lục, không có chế tài."
+            ),
         }
     )
 
@@ -68,6 +74,27 @@ def test_screen_chunks_splits_accepted_and_excluded() -> None:
     assert len(excluded) == 1
     assert excluded[0].chunk_id == "chunk-low"
     assert excluded[0].reason == "Đây là mục lục, không có chế tài."
+
+
+def test_screen_chunks_batches_calls_by_batch_size() -> None:
+    """More chunks than batch_size are screened across multiple calls, preserving order."""
+    chunks = [_chunk(f"chunk-{i}", f"Nội dung {i}") for i in range(5)]
+    calls: list[int] = []
+    results_by_chunk_id = {
+        chunk.chunk_id: ChunkScreeningResult(chunk_id=chunk.chunk_id, has_penalty_content=True, reason="")
+        for chunk in chunks
+    }
+
+    class _CountingClient:
+        def screen(self, batch: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            calls.append(len(batch))
+            return [results_by_chunk_id[item.chunk_id] for item in batch]
+
+    accepted, excluded = screen_chunks(chunks, _CountingClient(), batch_size=2)
+
+    assert calls == [2, 2, 1]
+    assert accepted == tuple(chunks)
+    assert excluded == ()
 
 
 def _settings() -> Settings:
@@ -93,15 +120,18 @@ def _evaluation_settings() -> EvaluationSettings:
 
 
 def test_baml_chunk_screening_client_parses_typed_result(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The generated non-stream client returns the typed BAML contract."""
+    """The generated non-stream client returns the typed BAML contract for a batch."""
     client = BamlChunkScreeningClient(_settings(), _evaluation_settings())
     monkeypatch.setattr(
         chunk_screening,
         "execute_baml_request",
-        lambda *args, **kwargs: '{"has_penalty_content":true,"reason":"Nêu mức phạt tiền cụ thể."}',
+        lambda *args, **kwargs: (
+            '[{"chunk_id":"chunk-1","has_penalty_content":true,"reason":"Nêu mức phạt tiền cụ thể."}]'
+        ),
     )
 
-    result = client.screen("Điều 6 khoản 9 điểm b quy định mức phạt tiền.")
+    results = client.screen([ChunkScreeningItem(chunk_id="chunk-1", text="Điều 6 khoản 9 điểm b quy định mức phạt.")])
 
-    assert result.has_penalty_content is True
-    assert result.reason == "Nêu mức phạt tiền cụ thể."
+    assert results[0].chunk_id == "chunk-1"
+    assert results[0].has_penalty_content is True
+    assert results[0].reason == "Nêu mức phạt tiền cụ thể."

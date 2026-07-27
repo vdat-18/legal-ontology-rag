@@ -158,16 +158,10 @@ class BamlFactExtractionClient:
         return tuple(result)
 
 
-def build_legal_fact(raw: BamlLegalFact, chunks_by_id: Mapping[str, Chunk]) -> LegalFact:
+def build_legal_fact(raw: BamlLegalFact) -> LegalFact:
     """Assign identity to one LLM-produced fact, trusting its cited provenance."""
     evidence = tuple(
-        EvidenceReference(
-            chunk_id=entry.chunk_id,
-            quoted_span=entry.quoted_span,
-            unit_ids=chunks_by_id[entry.chunk_id].unit_ids,
-            source_refs=chunks_by_id[entry.chunk_id].source_refs,
-        )
-        for entry in raw.evidence
+        EvidenceReference(chunk_id=entry.chunk_id, quoted_span=entry.quoted_span) for entry in raw.evidence
     )
 
     valid_from = date.fromisoformat(raw.valid_from) if raw.valid_from else None
@@ -235,6 +229,6 @@ def extract_facts_from_document(
             embedding_candidates,
             max_preceding_chunks=max_preceding_chunks,
         )
-        facts.extend(build_legal_fact(raw_fact, chunks_by_id) for raw_fact in client.extract(window))
+        facts.extend(build_legal_fact(raw_fact) for raw_fact in client.extract(window))
 
     return tuple(facts)

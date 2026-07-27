@@ -41,7 +41,7 @@ def _fact(
         valid_to=None,
         document_number=document_number,
         provision_path="Điều 6",
-        evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span="", unit_ids=(), source_refs=()),),
+        evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span=""),),
     )
 
 

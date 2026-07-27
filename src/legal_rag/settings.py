@@ -69,7 +69,7 @@ class EvaluationSettings:
     dedup_cosine_threshold: float
     max_quality_retries: int
     max_simulator_turns: int
-    chunk_screening_max_output_tokens: int = 256
+    chunk_screening_max_output_tokens: int = 2048
     chunk_screening_temperature: float = 0.0
     fact_extraction_max_output_tokens: int = 4096
     fact_extraction_temperature: float = 0.0

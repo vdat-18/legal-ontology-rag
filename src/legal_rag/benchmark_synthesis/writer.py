@@ -53,12 +53,7 @@ def read_legal_facts(input_path: Path) -> tuple[LegalFact, ...]:
                     document_number=payload["document_number"],
                     provision_path=payload["provision_path"],
                     evidence=tuple(
-                        EvidenceReference(
-                            chunk_id=entry["chunk_id"],
-                            quoted_span=entry["quoted_span"],
-                            unit_ids=tuple(entry["unit_ids"]),
-                            source_refs=tuple(entry["source_refs"]),
-                        )
+                        EvidenceReference(chunk_id=entry["chunk_id"], quoted_span=entry["quoted_span"])
                         for entry in payload["evidence"]
                     ),
                 )

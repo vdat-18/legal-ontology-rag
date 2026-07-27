@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
 import pytest
 
 from legal_rag import fact_extraction_cli
-from legal_rag.baml_client.types import ChunkScreeningResult
+from legal_rag.baml_client.types import ChunkScreeningItem, ChunkScreeningResult
 from legal_rag.baml_client.types import EvidenceEntry as BamlEvidenceEntry
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.benchmark_synthesis import chunk_screening, fact_extraction
@@ -53,9 +54,12 @@ class _AlwaysHasPenaltyContentClient:
     def __init__(self, settings: object, evaluation_settings: object) -> None:
         return None
 
-    def screen(self, chunk_text: str) -> ChunkScreeningResult:
-        """Return a positive screening result for any chunk text."""
-        return ChunkScreeningResult(has_penalty_content=True, reason="Contains penalty content.")
+    def screen(self, chunks: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+        """Return a positive screening result for every chunk in the batch."""
+        return [
+            ChunkScreeningResult(chunk_id=chunk.chunk_id, has_penalty_content=True, reason="Contains penalty content.")
+            for chunk in chunks
+        ]
 
 
 class _OneFactExtractionClient:

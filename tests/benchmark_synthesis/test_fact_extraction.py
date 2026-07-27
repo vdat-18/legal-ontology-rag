@@ -186,14 +186,12 @@ def _baml_fact(**overrides: object) -> BamlLegalFact:
     return BamlLegalFact(**defaults)
 
 
-def test_build_legal_fact_cross_references_real_chunk_provenance() -> None:
-    """unit_ids and source_refs come from the real chunk, not from the LLM."""
-    chunk = _chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
+def test_build_legal_fact_keeps_llm_cited_evidence_as_is() -> None:
+    """chunk_id and quoted_span in evidence come straight from the LLM, untouched."""
+    fact = build_legal_fact(_baml_fact())
 
-    fact = build_legal_fact(_baml_fact(), {"chunk-1": chunk})
-
-    assert fact.evidence[0].unit_ids == chunk.unit_ids
-    assert fact.evidence[0].source_refs == chunk.source_refs
+    assert fact.evidence[0].chunk_id == "chunk-1"
+    assert fact.evidence[0].quoted_span == "phạt tiền từ 4.000.000 đồng"
     assert fact.valid_from is not None
     assert fact.valid_from.isoformat() == "2025-01-01"
     assert fact.valid_to is None
@@ -201,10 +199,8 @@ def test_build_legal_fact_cross_references_real_chunk_provenance() -> None:
 
 def test_build_legal_fact_identity_is_stable_for_identical_identity_fields() -> None:
     """Two facts sharing conduct, subject, document_number, and provision_path share a fact_id."""
-    chunk = _chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
-
-    first = build_legal_fact(_baml_fact(), {"chunk-1": chunk})
-    second = build_legal_fact(_baml_fact(monetary_penalty="5.000.000 đồng"), {"chunk-1": chunk})
+    first = build_legal_fact(_baml_fact())
+    second = build_legal_fact(_baml_fact(monetary_penalty="5.000.000 đồng"))
 
     assert first.fact_id == second.fact_id
     assert first.fact_content_sha256 != second.fact_content_sha256
@@ -212,15 +208,9 @@ def test_build_legal_fact_identity_is_stable_for_identical_identity_fields() -> 
 
 def test_build_legal_fact_trusts_llm_evidence_without_validation() -> None:
     """No defensive check runs; an empty evidence list simply produces empty evidence."""
-    fact = build_legal_fact(_baml_fact(evidence=[]), {})
+    fact = build_legal_fact(_baml_fact(evidence=[]))
 
     assert fact.evidence == ()
-
-
-def test_build_legal_fact_raises_naturally_when_evidence_chunk_is_missing() -> None:
-    """A chunk_id absent from chunks_by_id raises a natural KeyError, with no defensive handling."""
-    with pytest.raises(KeyError):
-        build_legal_fact(_baml_fact(), {"other": _chunk("other", "text")})
 
 
 class _FakeExtractionClient:

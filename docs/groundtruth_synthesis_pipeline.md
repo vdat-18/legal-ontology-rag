@@ -92,9 +92,7 @@ keyword matching hoặc các luật suy diễn thủ công.
   "evidence": [
     {
       "chunk_id": "...",
-      "quoted_span": "...",
-      "unit_ids": ["..."],
-      "source_refs": ["..."]
+      "quoted_span": "..."
     }
   ]
 }
@@ -106,8 +104,8 @@ Nguyên tắc:
 - Không sử dụng kiến thức sẵn có của model làm căn cứ.
 - Nếu một fact cần nhiều chunk thì phải lưu tất cả chunk cần thiết.
 - Mỗi `evidence` phải kèm `quoted_span` trích nguyên văn từ `text` của chunk.
-- `chunk_id` phục vụ retrieval evaluation.
-- `unit_ids` và `source_refs` phục vụ audit ngược về nguồn parser.
+- `chunk_id` phục vụ retrieval evaluation, lấy trực tiếp từ trích dẫn của LLM,
+  không tra cứu lại `unit_ids`/`source_refs` từ chunk gốc.
 
 ### Sàng lọc chunk trước khi trích xuất
 
@@ -117,6 +115,12 @@ thẩm quyền, thủ tục, đối tượng áp dụng) hay không. Chunk bị 
 có nội dung chế tài bị bỏ qua và ghi vào danh sách loại trừ kèm lý do do
 chính model đưa ra — thường là mục lục, tiêu đề chương, đoạn dẫn nhập không
 mang chế tài.
+
+Các chunk được gộp theo batch (mặc định 8 chunk/lần gọi) thay vì gọi LLM
+riêng cho từng chunk, để giảm số lần round-trip. Mỗi chunk trong batch mang
+theo `chunk_id`, và model phải trả về đúng `chunk_id` đó trong từng kết quả —
+kết quả được đối chiếu ngược lại theo `chunk_id`, không dựa vào thứ tự trả về,
+để tránh lệch kết quả giữa các chunk khi batch lớn.
 
 Cổng rẻ này đứng trước để bảo vệ hai công đoạn đắt phía sau: LLM call trích
 xuất và thời gian chuyên gia duyệt fact. Câu hỏi nhị phân này thay cho cách
@@ -959,18 +963,21 @@ Module trong `benchmark_synthesis/`:
   `build_provision_index`, tương đồng embedding cùng `source_name` qua
   `find_embedding_candidates`), gọi BAML trích fact, rồi gán `fact_id` và
   `fact_content_sha256` qua `sha256_json`. **Tin tưởng hoàn toàn output LLM**
-  (xem "Nguyên tắc kiến trúc" ở đầu tài liệu): không còn bước validate
-  `evidence.chunk_id`/`evidence` rỗng — tra `chunks_by_id[chunk_id]` trực
-  tiếp, để raise `KeyError` tự nhiên nếu model trích dẫn sai, thay vì bắt
-  lỗi và loại fact.
+  (xem "Nguyên tắc kiến trúc" ở đầu tài liệu): `evidence.chunk_id` và
+  `evidence.quoted_span` được giữ nguyên như LLM trả về, không tra cứu lại
+  chunk gốc để gán thêm `unit_ids`/`source_refs` (đã bỏ hai field này khỏi
+  `EvidenceReference` vì không có nơi nào trong pipeline đọc lại chúng).
 - `writer.py` — đọc/ghi JSONL nguyên tử cho `legal_facts.jsonl`, dùng lại
   `io_utils.write_jsonl_atomic`.
 
 BAML trong `baml_src/`:
 
-- `chunk_screening.baml` — class `ChunkScreeningResult` (has_penalty_content,
-  reason), function `ScreenChunk(chunk_text: string)`, kèm persona và
-  few-shot examples.
+- `chunk_screening.baml` — class `ChunkScreeningItem` (chunk_id, text) và
+  `ChunkScreeningResult` (chunk_id, has_penalty_content, reason), function
+  `ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[]` gọi
+  theo batch (mặc định 8 chunk/lần, xem `DEFAULT_SCREENING_BATCH_SIZE` trong
+  `chunk_screening.py`), kèm persona và few-shot examples. Kết quả đối chiếu
+  ngược lại theo `chunk_id`, không theo thứ tự mảng trả về.
 - `legal_fact_extraction.baml` — enum `ChunkWindowRole`, class
   `ChunkWindowEntry`, `EvidenceEntry`, `LegalFact` khớp JSON ở mục 2, function
   `ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[]`, kèm persona,

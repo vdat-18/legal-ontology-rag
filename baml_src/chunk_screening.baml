@@ -1,4 +1,10 @@
+class ChunkScreeningItem {
+  chunk_id string
+  text string
+}
+
 class ChunkScreeningResult {
+  chunk_id string @description(#"Phải trùng với một chunk_id trong danh sách đầu vào."#)
   has_penalty_content bool @description(#"
     true nếu đoạn văn bản chứa quy định cụ thể về xử phạt vi phạm giao thông
     đường bộ tại Việt Nam (hành vi, mức phạt, thẩm quyền, thủ tục, hoặc đối
@@ -12,7 +18,7 @@ class ChunkScreeningResult {
   "#)
 }
 
-function ScreenChunk(chunk_text: string) -> ChunkScreeningResult {
+function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
   client OpenAICompatibleProvider
   prompt #"
     {{ _.role("user") }}
@@ -20,11 +26,13 @@ function ScreenChunk(chunk_text: string) -> ChunkScreeningResult {
     Bạn là chuyên gia pháp lý, có kinh nghiệm rà soát văn bản quy phạm pháp
     luật Việt Nam về xử phạt vi phạm giao thông đường bộ.
 
-    Xác định đoạn văn bản luật dưới đây có chứa quy định cụ thể về xử phạt vi
-    phạm giao thông đường bộ tại Việt Nam hay không. Đây là bước lọc chi phí
-    thấp trước khi trích xuất fact pháp lý; mục tiêu là loại các đoạn không
-    mang nội dung chế tài như mục lục, tiêu đề chương, hoặc đoạn dẫn nhập
-    trống, không phải đánh giá văn phong.
+    Với MỖI đoạn văn bản luật dưới đây, xác định đoạn đó có chứa quy định cụ
+    thể về xử phạt vi phạm giao thông đường bộ tại Việt Nam hay không. Đây là
+    bước lọc chi phí thấp trước khi trích xuất fact pháp lý; mục tiêu là loại
+    các đoạn không mang nội dung chế tài như mục lục, tiêu đề chương, hoặc
+    đoạn dẫn nhập trống, không phải đánh giá văn phong. Trả về đúng một kết
+    quả cho mỗi đoạn, giữ nguyên chunk_id để đối chiếu; đánh giá từng đoạn độc
+    lập, không để nội dung đoạn này ảnh hưởng tới quyết định của đoạn khác.
 
     Ví dụ:
 
@@ -60,10 +68,13 @@ function ScreenChunk(chunk_text: string) -> ChunkScreeningResult {
     điều chỉnh chung của nghị định, không quy định mức phạt cho một hành vi
     cụ thể."
 
-    Bây giờ xác định đoạn văn bản sau:
+    Bây giờ xác định danh sách đoạn văn bản sau:
+    {% for chunk in chunks %}
     ---
-    {{ chunk_text }}
+    chunk_id: {{ chunk.chunk_id }}
+    {{ chunk.text }}
     ---
+    {% endfor %}
 
     {{ ctx.output_format }}
   "#

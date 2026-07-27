@@ -9,10 +9,12 @@ from typing import Any, Protocol
 from baml_py.logging import set_log_level
 
 from legal_rag.baml_client.sync_client import b
-from legal_rag.baml_client.types import ChunkScreeningResult
+from legal_rag.baml_client.types import ChunkScreeningItem, ChunkScreeningResult
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.chunker.models import Chunk
 from legal_rag.settings import EvaluationSettings, Settings
+
+DEFAULT_SCREENING_BATCH_SIZE = 8
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,8 +32,8 @@ class ExcludedChunk:
 class ChunkScreeningClient(Protocol):
     """Boundary implemented by a chunk-screening language-model client."""
 
-    def screen(self, chunk_text: str) -> ChunkScreeningResult:
-        """Return whether this chunk contains penalty content worth extracting."""
+    def screen(self, chunks: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+        """Return, for each given chunk, whether it contains penalty content worth extracting."""
 
 
 class BamlChunkScreeningClient:
@@ -51,22 +53,31 @@ class BamlChunkScreeningClient:
         self._timeout_seconds = settings.llm_timeout_seconds
         self._max_response_bytes = evaluation_settings.max_response_bytes
 
-    def screen(self, chunk_text: str) -> ChunkScreeningResult:
-        """Run one bounded BAML call and return its generated typed result."""
-        request = b.request.ScreenChunk(chunk_text, baml_options={"client_registry": self._registry})
+    def screen(self, chunks: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+        """Run one bounded BAML call over a batch of chunks and return their typed results."""
+        request = b.request.ScreenChunks(list(chunks), baml_options={"client_registry": self._registry})
         raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        return b.parse.ScreenChunk(raw_output, baml_options={"client_registry": self._registry})
+        return b.parse.ScreenChunks(raw_output, baml_options={"client_registry": self._registry})
 
 
 def screen_chunks(
     chunks: Sequence[Chunk],
     client: ChunkScreeningClient,
+    *,
+    batch_size: int = DEFAULT_SCREENING_BATCH_SIZE,
 ) -> tuple[tuple[Chunk, ...], tuple[ExcludedChunk, ...]]:
     """Split chunks into those worth reading for fact extraction and those excluded."""
+    results_by_chunk_id: dict[str, ChunkScreeningResult] = {}
+    for batch_start in range(0, len(chunks), batch_size):
+        batch = chunks[batch_start : batch_start + batch_size]
+        items = [ChunkScreeningItem(chunk_id=chunk.chunk_id, text=chunk.text) for chunk in batch]
+        for result in client.screen(items):
+            results_by_chunk_id[result.chunk_id] = result
+
     accepted: list[Chunk] = []
     excluded: list[ExcludedChunk] = []
     for chunk in chunks:
-        result = client.screen(chunk.text)
+        result = results_by_chunk_id[chunk.chunk_id]
         if result.has_penalty_content:
             accepted.append(chunk)
         else:

@@ -55,7 +55,7 @@ def _fact(fact_id: str = "fact-1", *, evidence_chunk_id: str = "chunk-1") -> Leg
         valid_to=None,
         document_number="168/2024/NĐ-CP",
         provision_path="Điều 6",
-        evidence=(EvidenceReference(chunk_id=evidence_chunk_id, quoted_span="", unit_ids=(), source_refs=()),),
+        evidence=(EvidenceReference(chunk_id=evidence_chunk_id, quoted_span=""),),
     )
 
 
@@ -188,8 +188,8 @@ def test_check_binding_grounding_score_averages_across_all_checked_spans() -> No
         document_number="168/2024/NĐ-CP",
         provision_path="Điều 6",
         evidence=(
-            EvidenceReference(chunk_id="chunk-1", quoted_span="", unit_ids=(), source_refs=()),
-            EvidenceReference(chunk_id="chunk-2", quoted_span="", unit_ids=(), source_refs=()),
+            EvidenceReference(chunk_id="chunk-1", quoted_span=""),
+            EvidenceReference(chunk_id="chunk-2", quoted_span=""),
         ),
     )
     chunk2 = _chunk("chunk-2", "Trừ 4 điểm giấy phép lái xe.")

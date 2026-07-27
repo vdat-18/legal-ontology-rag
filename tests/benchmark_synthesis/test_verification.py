@@ -30,7 +30,7 @@ def _fact(fact_id: str = "fact-1") -> LegalFact:
         valid_to=None,
         document_number="168/2024/NĐ-CP",
         provision_path="Điều 6",
-        evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span="Phạt tiền.", unit_ids=(), source_refs=()),),
+        evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span="Phạt tiền."),),
     )
 
 

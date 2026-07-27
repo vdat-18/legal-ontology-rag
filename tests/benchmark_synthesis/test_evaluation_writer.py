@@ -49,8 +49,6 @@ def _fact() -> LegalFact:
             EvidenceReference(
                 chunk_id="chunk-1",
                 quoted_span="Phạt tiền từ 4.000.000 đồng.",
-                unit_ids=("unit-1",),
-                source_refs=("word/document.xml#/body/1",),
             ),
         ),
     )

@@ -41,8 +41,8 @@ def _fact(fact_id: str = "fact-1") -> LegalFact:
         document_number="168/2024/NĐ-CP",
         provision_path="Điều 6",
         evidence=(
-            EvidenceReference(chunk_id="chunk-1", quoted_span="Phạt tiền 4.000.000 đồng.", unit_ids=(), source_refs=()),
-            EvidenceReference(chunk_id="chunk-2", quoted_span="Trừ 4 điểm.", unit_ids=(), source_refs=()),
+            EvidenceReference(chunk_id="chunk-1", quoted_span="Phạt tiền 4.000.000 đồng."),
+            EvidenceReference(chunk_id="chunk-2", quoted_span="Trừ 4 điểm."),
         ),
     )
 

@@ -41,7 +41,7 @@ def _fact(fact_id: str, *, valid_from: date | None = None) -> LegalFact:
         valid_to=None,
         document_number="168/2024/NĐ-CP",
         provision_path="Điều 6",
-        evidence=(EvidenceReference(chunk_id=f"chunk-{fact_id}", quoted_span="", unit_ids=(), source_refs=()),),
+        evidence=(EvidenceReference(chunk_id=f"chunk-{fact_id}", quoted_span=""),),
     )
 
 
