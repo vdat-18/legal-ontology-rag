@@ -85,6 +85,18 @@ services:
       - minio
     restart: unless-stopped
 
+  # Attu: official Milvus web admin UI (http://localhost:3000).
+  attu:
+    image: zilliz/attu:v2.4.3
+    container_name: legal-rag-attu
+    environment:
+      - MILVUS_URL=milvus:19530
+    ports:
+      - "3000:3000"
+    depends_on:
+      - milvus
+    restart: unless-stopped
+
 volumes:
   neo4j_data:
   neo4j_logs:
