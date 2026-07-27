@@ -16,7 +16,6 @@ from legal_rag.graphiti_rag.indexer import (
     index_chunks_concurrent,
     load_corpus_metadata,
 )
-from legal_rag.graphiti_rag.ontology import EDGE_TYPES, ENTITY_TYPES
 
 
 class _FakeGraphiti:
@@ -184,8 +183,6 @@ def test_index_chunks_adds_one_episode_with_correct_fields() -> None:
     assert call["reference_time"] == datetime(2025, 1, 1, tzinfo=UTC)
     assert call["group_id"] == "traffic_penalty_groundtruth_v1"
     assert "uuid" not in call
-    assert call["entity_types"] is ENTITY_TYPES
-    assert call["edge_types"] is EDGE_TYPES
 
 
 def test_index_chunks_skips_when_episode_already_indexed() -> None:

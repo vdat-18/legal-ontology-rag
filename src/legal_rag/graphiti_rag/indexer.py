@@ -16,7 +16,6 @@ from neo4j import AsyncDriver, AsyncGraphDatabase
 
 from legal_rag.chunker.models import Chunk
 from legal_rag.graphiti_rag.effective_date import EffectiveDateClient, extract_effective_date
-from legal_rag.graphiti_rag.ontology import EDGE_TYPES, ENTITY_TYPES
 from legal_rag.settings import GraphitiSettings
 
 _MAX_ADD_EPISODE_ATTEMPTS = 3
@@ -126,8 +125,8 @@ async def _add_episode_with_retry(
     """Attempt to add one episode, retrying transient failures. Return whether it succeeded.
 
     DeepSeek's structured-output fallback intermittently fails on Graphiti's own internal dedup
-    calls (unrelated to this project's ontology) — a single such failure should not lose all
-    progress on a multi-hour full-corpus run, so it is retried a bounded number of times.
+    calls — a single such failure should not lose all progress on a multi-hour full-corpus run,
+    so it is retried a bounded number of times.
     """
     for attempt in range(1, _MAX_ADD_EPISODE_ATTEMPTS + 1):
         try:
@@ -138,8 +137,6 @@ async def _add_episode_with_retry(
                 reference_time=reference_time,
                 source=EpisodeType.text,
                 group_id=group_id,
-                entity_types=ENTITY_TYPES,
-                edge_types=EDGE_TYPES,
             )
         except Exception as error:
             logger.warning(
