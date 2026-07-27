@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
 from pathlib import Path
 
+import neo4j.exceptions
+import openai
 from graphiti_core import Graphiti
 from graphiti_core.nodes import EpisodeType
 from loguru import logger
@@ -20,6 +22,13 @@ from legal_rag.graphiti_rag.ontology import EDGE_TYPES, ENTITY_TYPES
 from legal_rag.settings import GraphitiSettings
 
 _MAX_ADD_EPISODE_ATTEMPTS = 3
+_NON_RETRYABLE_ERRORS: tuple[type[Exception], ...] = (
+    openai.AuthenticationError,
+    openai.PermissionDeniedError,
+    openai.NotFoundError,
+    neo4j.exceptions.AuthError,
+    neo4j.exceptions.ConfigurationError,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,6 +137,8 @@ async def _add_episode_with_retry(
     DeepSeek's structured-output fallback intermittently fails on Graphiti's own internal dedup
     calls (unrelated to this project's ontology) — a single such failure should not lose all
     progress on a multi-hour full-corpus run, so it is retried a bounded number of times.
+    Permanent configuration errors (bad API key, bad Neo4j credentials, wrong endpoint) will not
+    resolve themselves on retry, so they fail immediately instead of burning the retry budget.
     """
     for attempt in range(1, _MAX_ADD_EPISODE_ATTEMPTS + 1):
         try:
@@ -141,6 +152,9 @@ async def _add_episode_with_retry(
                 entity_types=ENTITY_TYPES,
                 edge_types=EDGE_TYPES,
             )
+        except _NON_RETRYABLE_ERRORS as error:
+            logger.error("add_episode failed for {} with a non-retryable error: {}", episode_name, error)
+            return False
         except Exception as error:
             logger.warning(
                 "add_episode failed for {} (attempt {}/{}): {}",

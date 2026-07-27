@@ -69,6 +69,16 @@ class DeepSeekNonThinkingClient(OpenAIGenericClient):
             raise
 
 
+def _select_llm_client_class(model: str) -> type[OpenAIGenericClient]:
+    """Pick the DeepSeek thinking-mode-disabling client only when *model* is actually DeepSeek's.
+
+    ``thinking: {"type": "disabled"}`` is a DeepSeek-specific extension field, not part of the
+    OpenAI-compatible API — sending it to a different provider risks the request being rejected,
+    so it is only attached when the configured model is DeepSeek's, not unconditionally.
+    """
+    return DeepSeekNonThinkingClient if "deepseek" in model.lower() else OpenAIGenericClient
+
+
 def build_graphiti(
     settings: Settings,
     graphiti_settings: GraphitiSettings,
@@ -100,9 +110,8 @@ def build_graphiti(
     openai_client = AsyncOpenAI(
         api_key=llm_config.api_key, base_url=llm_config.base_url, timeout=settings.llm_timeout_seconds
     )
-    llm_client = DeepSeekNonThinkingClient(
-        config=llm_config, client=openai_client, structured_output_mode="json_object"
-    )
+    llm_client_cls = _select_llm_client_class(settings.llm_model)
+    llm_client = llm_client_cls(config=llm_config, client=openai_client, structured_output_mode="json_object")
     resolved_embedder = embedder or QwenGraphitiEmbedder.from_profile(profile)
     return Graphiti(
         uri=graphiti_settings.neo4j_uri,

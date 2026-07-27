@@ -6,6 +6,7 @@ import asyncio
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+import neo4j.exceptions
 import pytest
 
 from legal_rag.chunker.models import Chunk
@@ -22,9 +23,10 @@ from legal_rag.graphiti_rag.ontology import EDGE_TYPES, ENTITY_TYPES
 class _FakeGraphiti:
     """Record add_episode calls instead of talking to a real Graphiti/LLM/Neo4j stack."""
 
-    def __init__(self, *, always_fail: bool = False) -> None:
+    def __init__(self, *, always_fail: bool = False, fail_with: Exception | None = None) -> None:
         self.calls: list[dict[str, object]] = []
         self._always_fail = always_fail
+        self._fail_with = fail_with
 
     async def add_episode(self, **kwargs: object) -> None:
         """Record the episode arguments passed by the indexer, or raise if configured to fail.
@@ -36,6 +38,8 @@ class _FakeGraphiti:
         """
         await asyncio.sleep(0)
         self.calls.append(kwargs)
+        if self._fail_with is not None:
+            raise self._fail_with
         if self._always_fail:
             msg = "simulated DeepSeek structured-output failure"
             raise ValueError(msg)
@@ -221,6 +225,22 @@ def test_index_chunks_retries_then_skips_a_chunk_that_keeps_failing() -> None:
     assert summary.indexed == 0
     assert summary.skipped_error == 1
     assert len(graphiti.calls) == 3
+
+
+def test_index_chunks_does_not_retry_a_non_retryable_configuration_error() -> None:
+    """A permanent error (bad Neo4j credentials, bad API key, ...) fails fast, without retrying."""
+    metadata = CorpusMetadata(
+        group_id="g1",
+        documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=date(2025, 1, 1), amends=None)},
+    )
+    chunk = _chunk("chunk-1", "doc.docx")
+    graphiti = _FakeGraphiti(fail_with=neo4j.exceptions.AuthError("bad credentials"))
+
+    summary = asyncio.run(index_chunks([chunk], metadata, graphiti, _FakeNeo4jDriver(), _FakeEffectiveDateClient()))
+
+    assert summary.indexed == 0
+    assert summary.skipped_error == 1
+    assert len(graphiti.calls) == 1
 
 
 def test_index_chunks_concurrent_distributes_work_across_all_clients() -> None:

@@ -5,8 +5,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from loguru import logger
+
+if TYPE_CHECKING:
+    from legal_rag.graphiti_rag.indexer import IndexingSummary
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -19,7 +23,7 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-async def _run(chunks_dir: Path, corpus_config_path: Path) -> None:
+async def _run(chunks_dir: Path, corpus_config_path: Path) -> IndexingSummary:
     """Load chunks and corpus metadata, then index every chunk as one Graphiti episode.
 
     Builds one Graphiti client per configured LLM API key (``LLM_API_KEY`` plus any
@@ -80,10 +84,15 @@ async def _run(chunks_dir: Path, corpus_config_path: Path) -> None:
         summary.skipped_already_indexed,
         summary.skipped_error,
     )
+    return summary
 
 
 def main() -> None:
-    """Load chunks, embed them with the configured profile, and index them into Graphiti."""
+    """Load chunks, embed them with the configured profile, and index them into Graphiti.
+
+    Exits non-zero when any episode failed to index, so a broken run (bad API key, bad Neo4j
+    credentials, ...) is never mistaken for a successful one by the caller/CI.
+    """
     from dotenv import find_dotenv, load_dotenv
 
     arguments = _parser().parse_args()
@@ -91,7 +100,9 @@ def main() -> None:
     if dotenv_path:
         load_dotenv(dotenv_path)
 
-    asyncio.run(_run(arguments.chunks_dir, arguments.corpus_config))
+    summary = asyncio.run(_run(arguments.chunks_dir, arguments.corpus_config))
+    if summary.skipped_error > 0:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
