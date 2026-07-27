@@ -97,9 +97,30 @@ services:
       - milvus
     restart: unless-stopped
 
+  # Runs the CLIs in [project.scripts]; not a long-running service, invoke via
+  # `docker compose run --rm app <command> <args>`.
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: legal-rag-app
+    env_file:
+      - .env
+    environment:
+      # Overrides the host-oriented MILVUS_URI in .env: inside the compose
+      # network "localhost" is the app container itself, not the milvus one.
+      - MILVUS_URI=http://milvus:19530
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - huggingface_cache:/root/.cache/huggingface
+    depends_on:
+      - milvus
+
 volumes:
   neo4j_data:
   neo4j_logs:
   etcd_data:
   minio_data:
   milvus_data:
+  huggingface_cache:
