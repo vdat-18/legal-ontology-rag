@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 from legal_rag.benchmark_synthesis.binding_gate import check_binding
 from legal_rag.benchmark_synthesis.candidate_generation import CandidateDraft, ClaimEvidence, RequiredClaim
-from legal_rag.benchmark_synthesis.fact_ledger import FactLedgerEntry
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.chunker.models import Chunk
 
@@ -62,17 +59,6 @@ def _fact(fact_id: str = "fact-1", *, evidence_chunk_id: str = "chunk-1") -> Leg
     )
 
 
-def _approved_entry(fact_id: str = "fact-1") -> FactLedgerEntry:
-    """Build one approved ledger entry for binding-gate tests."""
-    return FactLedgerEntry(
-        fact_id=fact_id,
-        fact_content_sha256=f"content-{fact_id}",
-        status="approved",
-        reviewer="an.nguyen",
-        reviewed_at=datetime(2026, 1, 1, tzinfo=UTC),
-    )
-
-
 def _draft(claims: tuple[RequiredClaim, ...]) -> CandidateDraft:
     """Build one minimal candidate draft with the given required claims."""
     return CandidateDraft(
@@ -109,13 +95,7 @@ def test_check_binding_passes_with_exact_matching_span() -> None:
         evidence=(ClaimEvidence(chunk_id="chunk-1", quoted_span="Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."),),
     )
 
-    result = check_binding(
-        _draft((claim,)),
-        {"fact-1": fact},
-        {"chunk-1": chunk},
-        {"fact-1": _approved_entry()},
-        span_match_threshold=_THRESHOLD,
-    )
+    result = check_binding(_draft((claim,)), {"fact-1": fact}, {"chunk-1": chunk}, span_match_threshold=_THRESHOLD)
 
     assert result.passed is True
     assert result.grounding_score == 1.0
@@ -132,13 +112,7 @@ def test_check_binding_rejects_span_below_threshold() -> None:
         evidence=(ClaimEvidence(chunk_id="chunk-1", quoted_span="Hoàn toàn không liên quan tới đoạn văn bản."),),
     )
 
-    result = check_binding(
-        _draft((claim,)),
-        {"fact-1": fact},
-        {"chunk-1": chunk},
-        {"fact-1": _approved_entry()},
-        span_match_threshold=_THRESHOLD,
-    )
+    result = check_binding(_draft((claim,)), {"fact-1": fact}, {"chunk-1": chunk}, span_match_threshold=_THRESHOLD)
 
     assert result.passed is False
     assert any("below threshold" in violation.reason for violation in result.violations)
@@ -154,77 +128,17 @@ def test_check_binding_rejects_chunk_outside_fact_evidence_set() -> None:
         evidence=(ClaimEvidence(chunk_id="chunk-2", quoted_span="Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."),),
     )
 
-    result = check_binding(
-        _draft((claim,)),
-        {"fact-1": fact},
-        {"chunk-2": chunk},
-        {"fact-1": _approved_entry()},
-        span_match_threshold=_THRESHOLD,
-    )
+    result = check_binding(_draft((claim,)), {"fact-1": fact}, {"chunk-2": chunk}, span_match_threshold=_THRESHOLD)
 
     assert result.passed is False
     assert any("outside fact" in violation.reason for violation in result.violations)
-
-
-def test_check_binding_rejects_fact_not_approved() -> None:
-    """A fact whose ledger entry is not approved fails the candidate."""
-    chunk = _chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
-    fact = _fact()
-    claim = RequiredClaim(
-        claim="Mức phạt tiền áp dụng",
-        fact_id="fact-1",
-        evidence=(ClaimEvidence(chunk_id="chunk-1", quoted_span="Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."),),
-    )
-    pending_entry = FactLedgerEntry(
-        fact_id="fact-1",
-        fact_content_sha256="content-fact-1",
-        status="needs_expert_review",
-        reviewer=None,
-        reviewed_at=None,
-    )
-
-    result = check_binding(
-        _draft((claim,)),
-        {"fact-1": fact},
-        {"chunk-1": chunk},
-        {"fact-1": pending_entry},
-        span_match_threshold=_THRESHOLD,
-    )
-
-    assert result.passed is False
-    assert any("not approved" in violation.reason for violation in result.violations)
-
-
-def test_check_binding_rejects_stale_fact() -> None:
-    """A fact whose ledger entry has gone stale fails the candidate."""
-    chunk = _chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
-    fact = _fact()
-    claim = RequiredClaim(
-        claim="Mức phạt tiền áp dụng",
-        fact_id="fact-1",
-        evidence=(ClaimEvidence(chunk_id="chunk-1", quoted_span="Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."),),
-    )
-    stale_entry = FactLedgerEntry(
-        fact_id="fact-1", fact_content_sha256="content-fact-1-changed", status="stale", reviewer=None, reviewed_at=None
-    )
-
-    result = check_binding(
-        _draft((claim,)),
-        {"fact-1": fact},
-        {"chunk-1": chunk},
-        {"fact-1": stale_entry},
-        span_match_threshold=_THRESHOLD,
-    )
-
-    assert result.passed is False
-    assert any("not approved" in violation.reason for violation in result.violations)
 
 
 def test_check_binding_rejects_unknown_fact_id() -> None:
     """A claim citing a fact_id absent from facts_by_id is rejected, not a crash."""
     claim = RequiredClaim(claim="Mức phạt tiền áp dụng", fact_id="fact-missing", evidence=())
 
-    result = check_binding(_draft((claim,)), {}, {}, {}, span_match_threshold=_THRESHOLD)
+    result = check_binding(_draft((claim,)), {}, {}, span_match_threshold=_THRESHOLD)
 
     assert result.passed is False
     assert any("not found" in violation.reason for violation in result.violations)
@@ -235,9 +149,7 @@ def test_check_binding_rejects_claim_with_no_evidence() -> None:
     fact = _fact()
     claim = RequiredClaim(claim="Mức phạt tiền áp dụng", fact_id="fact-1", evidence=())
 
-    result = check_binding(
-        _draft((claim,)), {"fact-1": fact}, {}, {"fact-1": _approved_entry()}, span_match_threshold=_THRESHOLD
-    )
+    result = check_binding(_draft((claim,)), {"fact-1": fact}, {}, span_match_threshold=_THRESHOLD)
 
     assert result.passed is False
     assert any("no evidence" in violation.reason for violation in result.violations)
@@ -252,9 +164,7 @@ def test_check_binding_rejects_missing_chunk() -> None:
         evidence=(ClaimEvidence(chunk_id="chunk-1", quoted_span="bất kỳ"),),
     )
 
-    result = check_binding(
-        _draft((claim,)), {"fact-1": fact}, {}, {"fact-1": _approved_entry()}, span_match_threshold=_THRESHOLD
-    )
+    result = check_binding(_draft((claim,)), {"fact-1": fact}, {}, span_match_threshold=_THRESHOLD)
 
     assert result.passed is False
     assert any("not found" in violation.reason for violation in result.violations)
@@ -296,7 +206,6 @@ def test_check_binding_grounding_score_averages_across_all_checked_spans() -> No
         _draft((claim,)),
         {"fact-1": fact},
         {"chunk-1": chunk, "chunk-2": chunk2},
-        {"fact-1": _approved_entry()},
         span_match_threshold=_THRESHOLD,
     )
 

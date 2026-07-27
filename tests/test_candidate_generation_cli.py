@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -16,10 +15,9 @@ from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGene
 from legal_rag.baml_client.types import SurfaceCritique as BamlSurfaceCritique
 from legal_rag.baml_client.types import VerificationResult as BamlVerificationResult
 from legal_rag.benchmark_synthesis import candidate_generation, verification
-from legal_rag.benchmark_synthesis.fact_ledger import FactLedgerEntry
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
-from legal_rag.benchmark_synthesis.writer import read_candidates, write_fact_ledger, write_legal_facts, write_scenarios
+from legal_rag.benchmark_synthesis.writer import read_candidates, write_legal_facts, write_scenarios
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
 
@@ -145,7 +143,6 @@ class _FakeVerificationClient:
 def _configure_cli(
     monkeypatch: pytest.MonkeyPatch,
     facts_path: Path,
-    ledger_path: Path,
     scenarios_path: Path,
     chunks_dir: Path,
     candidates_output_path: Path,
@@ -172,7 +169,6 @@ def _configure_cli(
         [
             "legal-generate-candidates",
             str(facts_path),
-            str(ledger_path),
             str(scenarios_path),
             str(chunks_dir),
             str(candidates_output_path),
@@ -193,22 +189,15 @@ def test_candidate_generation_cli_produces_automatically_verified_candidate(
 ) -> None:
     """A well-grounded generated candidate passes both gates end to end."""
     facts_path = tmp_path / "legal_facts.jsonl"
-    ledger_path = tmp_path / "fact_ledger.jsonl"
     scenarios_path = tmp_path / "scenarios.jsonl"
     chunks_dir = tmp_path / "chunks"
     chunks_dir.mkdir()
     candidates_path = tmp_path / "single_turn.jsonl"
 
     write_legal_facts(facts_path, [_fact()])
-    write_fact_ledger(
-        ledger_path,
-        [FactLedgerEntry("fact-1", "content-fact-1", "approved", "an.nguyen", datetime(2026, 1, 1, tzinfo=UTC))],
-    )
     write_scenarios(scenarios_path, [_scenario()])
     write_chunks(chunks_dir / "168_2024_ND-CP.chunks.jsonl", [_chunk()])
-    _configure_cli(
-        monkeypatch, facts_path, ledger_path, scenarios_path, chunks_dir, candidates_path, candidates_per_scenario=1
-    )
+    _configure_cli(monkeypatch, facts_path, scenarios_path, chunks_dir, candidates_path, candidates_per_scenario=1)
 
     candidate_generation_cli.main()
 
@@ -225,22 +214,15 @@ def test_candidate_generation_cli_generates_multiple_attempts_per_scenario(
 ) -> None:
     """candidates_per_scenario controls how many draws are made per scenario."""
     facts_path = tmp_path / "legal_facts.jsonl"
-    ledger_path = tmp_path / "fact_ledger.jsonl"
     scenarios_path = tmp_path / "scenarios.jsonl"
     chunks_dir = tmp_path / "chunks"
     chunks_dir.mkdir()
     candidates_path = tmp_path / "single_turn.jsonl"
 
     write_legal_facts(facts_path, [_fact()])
-    write_fact_ledger(
-        ledger_path,
-        [FactLedgerEntry("fact-1", "content-fact-1", "approved", "an.nguyen", datetime(2026, 1, 1, tzinfo=UTC))],
-    )
     write_scenarios(scenarios_path, [_scenario()])
     write_chunks(chunks_dir / "168_2024_ND-CP.chunks.jsonl", [_chunk()])
-    _configure_cli(
-        monkeypatch, facts_path, ledger_path, scenarios_path, chunks_dir, candidates_path, candidates_per_scenario=3
-    )
+    _configure_cli(monkeypatch, facts_path, scenarios_path, chunks_dir, candidates_path, candidates_per_scenario=3)
 
     candidate_generation_cli.main()
 

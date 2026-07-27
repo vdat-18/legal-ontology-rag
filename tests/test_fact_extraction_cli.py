@@ -13,7 +13,7 @@ from legal_rag.baml_client.types import ChunkScreeningResult
 from legal_rag.baml_client.types import EvidenceEntry as BamlEvidenceEntry
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.benchmark_synthesis import chunk_screening, fact_extraction
-from legal_rag.benchmark_synthesis.writer import read_fact_ledger, read_legal_facts
+from legal_rag.benchmark_synthesis.writer import read_legal_facts
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
 
@@ -97,7 +97,6 @@ def _configure_cli(
     monkeypatch: pytest.MonkeyPatch,
     chunks_path: Path,
     facts_output_path: Path,
-    ledger_path: Path,
 ) -> None:
     """Set deterministic CLI arguments, environment, and fake LLM/embedding clients."""
     monkeypatch.setenv("LLM_BASE_URL", "http://localhost:20128/v1")
@@ -117,54 +116,18 @@ def _configure_cli(
     monkeypatch.setattr(
         EmbeddingEncoder, "from_profile", lambda profile: EmbeddingEncoder(profile, _FakeEncoderBackend())
     )
-    monkeypatch.setattr(
-        sys, "argv", ["legal-extract-facts", str(chunks_path), str(facts_output_path), str(ledger_path)]
-    )
+    monkeypatch.setattr(sys, "argv", ["legal-extract-facts", str(chunks_path), str(facts_output_path)])
 
 
-def test_fact_extraction_cli_extracts_facts_and_queues_them_for_review(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """The command reads chunks, extracts one fact, and queues it for expert review."""
+def test_fact_extraction_cli_extracts_and_writes_facts(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """The command reads chunks, extracts one fact, and writes it directly, with no review step."""
     chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
     facts_path = tmp_path / "legal_facts.jsonl"
-    ledger_path = tmp_path / "fact_ledger.jsonl"
     write_chunks(chunks_path, (_chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."),))
-    _configure_cli(monkeypatch, chunks_path, facts_path, ledger_path)
+    _configure_cli(monkeypatch, chunks_path, facts_path)
 
     fact_extraction_cli.main()
 
     facts = read_legal_facts(facts_path)
-    entries = read_fact_ledger(ledger_path)
     assert len(facts) == 1
     assert facts[0].conduct == "Vượt đèn đỏ"
-    assert len(entries) == 1
-    assert entries[0].status == "needs_expert_review"
-    assert entries[0].fact_id == facts[0].fact_id
-
-
-def test_fact_extraction_cli_second_run_preserves_approved_entry(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """Re-running extraction on unchanged chunks does not disturb an already-approved fact."""
-    from datetime import UTC, datetime
-
-    from legal_rag.benchmark_synthesis.fact_ledger import approve
-    from legal_rag.benchmark_synthesis.writer import write_fact_ledger
-
-    chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
-    facts_path = tmp_path / "legal_facts.jsonl"
-    ledger_path = tmp_path / "fact_ledger.jsonl"
-    write_chunks(chunks_path, (_chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."),))
-    _configure_cli(monkeypatch, chunks_path, facts_path, ledger_path)
-    fact_extraction_cli.main()
-
-    entries = read_fact_ledger(ledger_path)
-    reviewed_at = datetime(2026, 1, 1, tzinfo=UTC)
-    write_fact_ledger(ledger_path, [approve(entries[0], reviewer="an.nguyen", reviewed_at=reviewed_at)])
-
-    fact_extraction_cli.main()
-
-    entries = read_fact_ledger(ledger_path)
-    assert entries[0].status == "approved"
-    assert entries[0].reviewer == "an.nguyen"

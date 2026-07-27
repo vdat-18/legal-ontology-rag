@@ -10,9 +10,11 @@ class ChunkWindowEntry {
   role ChunkWindowRole @description(#"
     Target là chunk chính đang được đọc để trích fact. Adjacent là chunk liền
     kề bị chunker cắt ra từ cùng một điều khoản. CitedProvision là chunk được
-    Target dẫn chiếu tường minh, ví dụ "theo Điều X". EmbeddingCandidate là
-    chunk gợi ý theo độ tương đồng ngữ nghĩa trong cùng văn bản, chỉ dùng khi
-    thật sự liên quan tới Target.
+    tra theo số điều mà Target nhắc tới, ví dụ "theo Điều X" — nhưng số điều
+    này có thể trùng ngẫu nhiên với một luật hoặc nghị định khác, chỉ dùng làm
+    căn cứ nếu nội dung thực sự cùng bối cảnh với Target. EmbeddingCandidate
+    là chunk gợi ý theo độ tương đồng ngữ nghĩa trong cùng văn bản, chỉ dùng
+    khi thật sự liên quan tới Target.
   "#)
   provision_path string?
   text string
@@ -64,6 +66,9 @@ function ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[] {
       danh sách rỗng thay vì đoán.
     - Một Target có thể sinh ra không, một, hoặc nhiều fact, ví dụ một hàng
       bảng liệt kê nhiều hành vi khác nhau.
+    - Chỉ dùng chunk vai trò CitedProvision nếu nội dung thực sự cùng bối
+      cảnh với Target (cùng nghị định hoặc văn bản đang xét); số điều có thể
+      trùng ngẫu nhiên với một luật hoặc nghị định khác, nếu vậy thì bỏ qua.
     - Chỉ dùng chunk vai trò EmbeddingCandidate nếu nội dung của nó thực sự
       là căn cứ cho fact; nếu không liên quan thì bỏ qua, không ép dùng.
 

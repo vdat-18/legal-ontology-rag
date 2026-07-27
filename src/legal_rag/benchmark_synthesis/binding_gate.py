@@ -16,7 +16,6 @@ from typing import Any
 from rapidfuzz import fuzz
 
 from legal_rag.benchmark_synthesis.candidate_generation import CandidateDraft
-from legal_rag.benchmark_synthesis.fact_ledger import FactLedgerEntry
 from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.chunker.models import Chunk
 
@@ -54,17 +53,15 @@ def check_binding(
     draft: CandidateDraft,
     facts_by_id: Mapping[str, LegalFact],
     chunks_by_id: Mapping[str, Chunk],
-    ledger_by_fact_id: Mapping[str, FactLedgerEntry],
     *,
     span_match_threshold: float,
 ) -> BindingCheckResult:
-    """Validate every required claim's evidence against real, approved fact data.
+    """Validate every required claim's evidence against real fact data.
 
-    Checks, per claim: the fact exists and is approved; every referenced
-    chunk_id belongs to that fact's own evidence set; every quoted_span
-    matches the real chunk text at or above span_match_threshold, measured
-    by Levenshtein partial ratio. grounding_score is the mean ratio across
-    every span checked.
+    Checks, per claim: the fact exists; every referenced chunk_id belongs to
+    that fact's own evidence set; every quoted_span matches the real chunk
+    text at or above span_match_threshold, measured by Levenshtein partial
+    ratio. grounding_score is the mean ratio across every span checked.
     """
     violations: list[BindingViolation] = []
     partial_ratios: list[float] = []
@@ -73,14 +70,6 @@ def check_binding(
         fact = facts_by_id.get(claim.fact_id)
         if fact is None:
             violations.append(BindingViolation(claim.claim, f"fact_id {claim.fact_id!r} not found"))
-            continue
-
-        ledger_entry = ledger_by_fact_id.get(claim.fact_id)
-        if ledger_entry is None or ledger_entry.status != "approved":
-            status = ledger_entry.status if ledger_entry is not None else "missing"
-            violations.append(
-                BindingViolation(claim.claim, f"fact {claim.fact_id!r} is not approved (status={status!r})")
-            )
             continue
 
         if not claim.evidence:

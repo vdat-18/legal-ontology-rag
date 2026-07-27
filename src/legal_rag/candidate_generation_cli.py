@@ -14,7 +14,6 @@ def _parser() -> argparse.ArgumentParser:
         description="Generate single-turn candidates from scenarios and run gate 1 and gate 2."
     )
     parser.add_argument("facts_path", type=Path, help="Legal-facts JSONL path")
-    parser.add_argument("ledger_path", type=Path, help="Fact-ledger JSONL path; only approved facts are trusted")
     parser.add_argument("scenarios_path", type=Path, help="Scenarios JSONL path")
     parser.add_argument("chunks_dir", type=Path, help="Directory containing one or more *.chunks.jsonl files")
     parser.add_argument("candidates_output_path", type=Path, help="Destination single-turn candidates JSONL path")
@@ -46,12 +45,7 @@ def main() -> None:
         load_query_type_descriptions,
     )
     from legal_rag.benchmark_synthesis.verification import BamlVerificationClient, verify_candidate
-    from legal_rag.benchmark_synthesis.writer import (
-        read_fact_ledger,
-        read_legal_facts,
-        read_scenarios,
-        write_candidates,
-    )
+    from legal_rag.benchmark_synthesis.writer import read_legal_facts, read_scenarios, write_candidates
     from legal_rag.chunker.writer import read_chunks
     from legal_rag.settings import EvaluationSettings, Settings
 
@@ -63,7 +57,6 @@ def main() -> None:
     evaluation_settings = EvaluationSettings.from_environment()
 
     facts_by_id = {fact.fact_id: fact for fact in read_legal_facts(arguments.facts_path)}
-    ledger_by_fact_id = {entry.fact_id: entry for entry in read_fact_ledger(arguments.ledger_path)}
     scenarios = read_scenarios(arguments.scenarios_path)
 
     chunks_by_id = {}
@@ -100,7 +93,6 @@ def main() -> None:
                 draft,
                 facts_by_id,
                 chunks_by_id,
-                ledger_by_fact_id,
                 span_match_threshold=evaluation_settings.span_match_threshold,
             )
 
