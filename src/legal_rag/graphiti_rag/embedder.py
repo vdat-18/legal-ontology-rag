@@ -23,9 +23,7 @@ class QwenGraphitiEmbedder(EmbedderClient):
         """Load the sentence-transformers model pinned by an embedding profile."""
         return cls(EmbeddingEncoder.from_profile(profile))
 
-    async def create(
-        self, input_data: str | list[str] | Iterable[int] | Iterable[Iterable[int]]
-    ) -> list[float]:
+    async def create(self, input_data: str | list[str] | Iterable[int] | Iterable[Iterable[int]]) -> list[float]:
         """Embed one text and return its vector as a plain list of floats."""
         text = input_data if isinstance(input_data, str) else str(input_data)
         vectors = await asyncio.to_thread(self._encoder.encode, [text])

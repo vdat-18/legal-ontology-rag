@@ -9,19 +9,14 @@ Rewriting the query into formal terminology before searching closes most of this
 
 from __future__ import annotations
 
+import asyncio
 from typing import Protocol
 
-from openai import AsyncOpenAI
+from baml_py.logging import set_log_level
 
-from legal_rag.settings import Settings
-
-_SYSTEM_PROMPT = (
-    "Bạn là chuyên gia thuật ngữ pháp luật giao thông đường bộ Việt Nam. Diễn đạt lại câu hỏi "
-    "sau đây bằng đúng thuật ngữ pháp lý chính thức thường dùng trong nghị định, thông tư "
-    "(ví dụ: 'vượt đèn đỏ' -> 'không chấp hành hiệu lệnh của đèn tín hiệu giao thông'), giữ "
-    "nguyên ý nghĩa và đối tượng của câu hỏi gốc. Chỉ trả về câu hỏi đã diễn đạt lại, không "
-    "thêm giải thích hay tiền tố nào khác."
-)
+from legal_rag.baml_client.sync_client import b
+from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.settings import GraphitiSettings, Settings
 
 
 class QueryRewriteClient(Protocol):
@@ -31,33 +26,27 @@ class QueryRewriteClient(Protocol):
         """Return *query* rewritten into formal legal terminology."""
 
 
-class OpenAIQueryRewriteClient:
-    """Rewrites colloquial queries into formal legal terminology via the configured LLM."""
+class BamlQueryRewriteClient:
+    """Typed BAML client, backed by the shared runtime OpenAI-compatible provider."""
 
-    def __init__(self, settings: Settings) -> None:
-        """Create a client from the project's OpenAI-compatible LLM settings."""
-        self._client = AsyncOpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
-        self._model = settings.llm_model
+    def __init__(self, settings: Settings, graphiti_settings: GraphitiSettings) -> None:
+        """Create a runtime BAML client from typed, secret-safe configuration."""
+        set_log_level("OFF")
+        self._registry = build_client_registry(
+            base_url=settings.llm_base_url,
+            api_key=settings.llm_api_key,
+            model=settings.llm_model,
+            max_output_tokens=graphiti_settings.query_rewrite_max_output_tokens,
+            temperature=0.0,
+            timeout_seconds=settings.llm_timeout_seconds,
+        )
+        self._timeout_seconds = settings.llm_timeout_seconds
+        self._max_response_bytes = graphiti_settings.max_response_bytes
 
     async def rewrite(self, query: str) -> str:
-        """Return *query* rewritten into formal legal terminology, or the original on failure.
-
-        A rewrite failure (empty response, API error) degrades to the original query rather
-        than blocking the pipeline — retrieval with the original query is still better than no
-        retrieval at all.
-        """
-        try:
-            response = await self._client.chat.completions.create(
-                model=self._model,
-                messages=[
-                    {"role": "system", "content": _SYSTEM_PROMPT},
-                    {"role": "user", "content": query},
-                ],
-                temperature=0.0,
-                max_tokens=200,
-                extra_body={"thinking": {"type": "disabled"}},
-            )
-        except Exception:
-            return query
-        rewritten = (response.choices[0].message.content or "").strip()
-        return rewritten or query
+        """Run one bounded BAML call and return the query rewritten into formal legal terms."""
+        request = b.request.RewriteQueryToLegalTerms(query, baml_options={"client_registry": self._registry})
+        raw_output = await asyncio.to_thread(
+            execute_baml_request, request, self._timeout_seconds, self._max_response_bytes
+        )
+        return b.parse.RewriteQueryToLegalTerms(raw_output, baml_options={"client_registry": self._registry}).query_vi

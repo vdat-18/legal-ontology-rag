@@ -15,6 +15,7 @@ from graphiti_core.llm_client.errors import EmptyResponseError, RateLimitError
 from graphiti_core.llm_client.openai_generic_client import DEFAULT_MODEL, OpenAIGenericClient
 from graphiti_core.prompts.models import Message
 from loguru import logger
+from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel
 
@@ -94,7 +95,14 @@ def build_graphiti(
         model=settings.llm_model,
         base_url=settings.llm_base_url,
     )
-    llm_client = DeepSeekNonThinkingClient(config=llm_config, structured_output_mode="json_object")
+    # OpenAIGenericClient/OpenAIRerankerClient build an AsyncOpenAI client with no timeout when
+    # none is given; pass one bound to the project's configured LLM timeout instead.
+    openai_client = AsyncOpenAI(
+        api_key=llm_config.api_key, base_url=llm_config.base_url, timeout=settings.llm_timeout_seconds
+    )
+    llm_client = DeepSeekNonThinkingClient(
+        config=llm_config, client=openai_client, structured_output_mode="json_object"
+    )
     resolved_embedder = embedder or QwenGraphitiEmbedder.from_profile(profile)
     return Graphiti(
         uri=graphiti_settings.neo4j_uri,
@@ -102,7 +110,7 @@ def build_graphiti(
         password=graphiti_settings.neo4j_password,
         llm_client=llm_client,
         embedder=resolved_embedder,
-        cross_encoder=OpenAIRerankerClient(config=llm_config),
+        cross_encoder=OpenAIRerankerClient(config=llm_config, client=openai_client),
     )
 
 

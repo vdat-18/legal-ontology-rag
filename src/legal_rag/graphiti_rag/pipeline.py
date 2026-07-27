@@ -10,7 +10,7 @@ from legal_rag.embedding.profiles import load_configured_embedding_profile
 from legal_rag.graphiti_rag.client import build_graphiti
 from legal_rag.graphiti_rag.generator import generate_answer
 from legal_rag.graphiti_rag.provenance import find_unindexed_document_citations
-from legal_rag.graphiti_rag.query_rewriter import OpenAIQueryRewriteClient
+from legal_rag.graphiti_rag.query_rewriter import BamlQueryRewriteClient
 from legal_rag.graphiti_rag.retriever import RetrievedFact, search_facts, select_minimal_facts
 from legal_rag.naive_rag.generator import BamlGenerationClient
 from legal_rag.settings import GraphitiSettings, Settings
@@ -52,7 +52,7 @@ class GraphitiRAGPipeline:
         profile = load_configured_embedding_profile(graphiti_settings.embedding_profile)
         self._graphiti_client = build_graphiti(settings, graphiti_settings, profile)
         self._generation_client = BamlGenerationClient(settings, graphiti_settings)
-        self._query_rewrite_client = OpenAIQueryRewriteClient(settings)
+        self._query_rewrite_client = BamlQueryRewriteClient(settings, graphiti_settings)
         logger.info("GraphitiRAGPipeline initialized for group '{}'", group_id)
 
     async def run(self, query: str, max_facts: int | None = None) -> GraphitiRAGResult:

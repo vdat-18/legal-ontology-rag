@@ -136,6 +136,7 @@ class GraphitiSettings:
     max_context_facts: int = 10
     answer_max_output_tokens: int = 4096
     answer_temperature: float = 0.3
+    query_rewrite_max_output_tokens: int = 2048
     max_response_bytes: int = 1_048_576
 
     @classmethod

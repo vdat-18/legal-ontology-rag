@@ -21,7 +21,9 @@ class _FakeGenerationClient:
 
 def _fact(chunk_id: str, text: str) -> RetrievedFact:
     """Build one retrieved fact for generator tests."""
-    return RetrievedFact(chunk_id=chunk_id, text=text, source_name="PENALIZES", source_node_uuid="a", target_node_uuid="b")
+    return RetrievedFact(
+        chunk_id=chunk_id, text=text, source_name="PENALIZES", source_node_uuid="a", target_node_uuid="b"
+    )
 
 
 def test_generate_answer_builds_chunk_context_from_retrieved_facts() -> None:
