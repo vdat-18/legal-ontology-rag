@@ -54,6 +54,12 @@ function VerifyCandidate(
        dưới đây — nếu đáp án vẫn đủ căn cứ khi thiếu một fact, fact đó không
        thực sự cần thiết. Trả về số fact thực sự cần thiết, có thể khác
        declared_reasoning_hops={{ declared_reasoning_hops }}.
+
+       Ví dụ: câu hỏi khai 2 hop dựa trên fact_1 (mức phạt tiền) và fact_2
+       (trừ điểm giấy phép, cùng hành vi). Nếu câu hỏi chỉ hỏi "phạt bao
+       nhiêu tiền", một mình fact_1 đã đủ căn cứ trả lời — trả về
+       necessary_reasoning_hops=1, không phải 2, dù bundle được chọn có 2
+       fact.
     8. observed_query_type: chọn đúng một giá trị trong danh sách sau, dựa
        theo nội dung câu hỏi thực tế, không dựa theo nhãn đã gán trước:
        {{ query_type_catalog }}

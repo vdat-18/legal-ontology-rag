@@ -46,6 +46,9 @@ function ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[] {
   prompt #"
     {{ _.role("user") }}
 
+    Bạn là chuyên gia pháp lý, trích xuất fact xử phạt vi phạm giao thông
+    đường bộ có căn cứ xác thực từ văn bản quy phạm pháp luật Việt Nam.
+
     Đọc các đoạn văn bản luật dưới đây và trích xuất các fact pháp lý nguyên
     tử về xử phạt vi phạm giao thông đường bộ tại Việt Nam. Chunk vai trò
     Target là trọng tâm; các chunk khác chỉ là ngữ cảnh hỗ trợ.
@@ -63,6 +66,33 @@ function ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[] {
       bảng liệt kê nhiều hành vi khác nhau.
     - Chỉ dùng chunk vai trò EmbeddingCandidate nếu nội dung của nó thực sự
       là căn cứ cho fact; nếu không liên quan thì bỏ qua, không ép dùng.
+
+    Ví dụ:
+
+    Window ví dụ 1:
+    [Target] chunk_id=chunk_042
+    Điều 6 khoản 9 điểm b: Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng
+    đối với người điều khiển xe ô tô không chấp hành hiệu lệnh của đèn tín
+    hiệu giao thông.
+    ---
+    Kết quả: một fact với conduct="Không chấp hành hiệu lệnh của đèn tín
+    hiệu giao thông", monetary_penalty="4.000.000 đồng đến 6.000.000 đồng",
+    evidence=[{chunk_id: "chunk_042", quoted_span: "Phạt tiền từ 4.000.000
+    đồng đến 6.000.000 đồng đối với người điều khiển xe ô tô không chấp
+    hành hiệu lệnh của đèn tín hiệu giao thông"}]. quoted_span trích nguyên
+    văn, không diễn giải lại.
+
+    Window ví dụ 2:
+    [Target] chunk_id=chunk_003
+    Điều 3. Giải thích từ ngữ
+    Trong Nghị định này, các từ ngữ dưới đây được hiểu như sau: "Người điều
+    khiển xe" là người đang lái, vận hành phương tiện tham gia giao thông
+    đường bộ.
+    ---
+    Kết quả: danh sách rỗng — đây là điều khoản giải thích từ ngữ, không nêu
+    hành vi vi phạm hay mức phạt cụ thể nào để trích xuất fact.
+
+    Bây giờ đọc window sau:
 
     Window:
     {% for entry in window %}
