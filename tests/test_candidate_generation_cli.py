@@ -158,9 +158,7 @@ def _configure_cli(
     monkeypatch.setenv("GROUNDTRUTH_CHUNK_QUALITY_THRESHOLD", "0.6")
     monkeypatch.setenv("GROUNDTRUTH_SPAN_MATCH_THRESHOLD", "0.85")
     monkeypatch.setenv("GROUNDTRUTH_BUNDLE_OVERLAP_THRESHOLD", "0.5")
-    monkeypatch.setenv("GROUNDTRUTH_DEDUP_COSINE_THRESHOLD", "0.9")
     monkeypatch.setenv("GROUNDTRUTH_MAX_QUALITY_RETRIES", "2")
-    monkeypatch.setenv("GROUNDTRUTH_MAX_SIMULATOR_TURNS", "8")
     monkeypatch.setattr(candidate_generation, "BamlCandidateGenerationClient", _FakeGenerationClient)
     monkeypatch.setattr(verification, "BamlVerificationClient", _FakeVerificationClient)
     monkeypatch.setattr(

@@ -1,4 +1,4 @@
-"""Tests for atomic fact-ledger pipeline persistence."""
+"""Tests for atomic ground-truth synthesis persistence."""
 
 from __future__ import annotations
 

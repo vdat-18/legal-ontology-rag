@@ -78,9 +78,7 @@ def _configure_cli(
     monkeypatch.setenv("EMBEDDING_PROFILE", "qwen3_0_6b")
     monkeypatch.setenv("GROUNDTRUTH_SPAN_MATCH_THRESHOLD", "0.85")
     monkeypatch.setenv("GROUNDTRUTH_BUNDLE_OVERLAP_THRESHOLD", "0.5")
-    monkeypatch.setenv("GROUNDTRUTH_DEDUP_COSINE_THRESHOLD", "0.9")
     monkeypatch.setenv("GROUNDTRUTH_MAX_QUALITY_RETRIES", "2")
-    monkeypatch.setenv("GROUNDTRUTH_MAX_SIMULATOR_TURNS", "8")
     monkeypatch.setattr(evidence_graph, "BamlEvidenceRelationClient", _AlwaysRelatedClient)
     from legal_rag.embedding.encoder import EmbeddingEncoder
 

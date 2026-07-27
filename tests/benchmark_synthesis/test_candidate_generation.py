@@ -333,9 +333,7 @@ def _evaluation_settings() -> EvaluationSettings:
         embedding_profile="qwen3_0_6b",
         span_match_threshold=0.85,
         bundle_overlap_threshold=0.5,
-        dedup_cosine_threshold=0.9,
         max_quality_retries=2,
-        max_simulator_turns=8,
     )
 
 

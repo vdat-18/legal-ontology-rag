@@ -1,4 +1,4 @@
-"""Typed records for the fact-ledger ground-truth synthesis pipeline."""
+"""Typed records for ground-truth synthesis legal facts."""
 
 from __future__ import annotations
 

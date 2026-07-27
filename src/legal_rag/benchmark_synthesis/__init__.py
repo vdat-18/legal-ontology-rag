@@ -1,1 +1,1 @@
-"""Ground-truth synthesis pipeline: fact extraction, ledger, and review."""
+"""Ground-truth synthesis pipeline: fact extraction, evidence graph, and candidate generation."""

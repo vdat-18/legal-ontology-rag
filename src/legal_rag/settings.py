@@ -66,9 +66,7 @@ class EvaluationSettings:
     embedding_profile: str
     span_match_threshold: float
     bundle_overlap_threshold: float
-    dedup_cosine_threshold: float
     max_quality_retries: int
-    max_simulator_turns: int
     chunk_screening_max_output_tokens: int = 2048
     chunk_screening_temperature: float = 0.0
     fact_extraction_max_output_tokens: int = 4096
@@ -87,9 +85,7 @@ class EvaluationSettings:
             embedding_profile=values["EMBEDDING_PROFILE"].strip(),
             span_match_threshold=float(values["GROUNDTRUTH_SPAN_MATCH_THRESHOLD"]),
             bundle_overlap_threshold=float(values["GROUNDTRUTH_BUNDLE_OVERLAP_THRESHOLD"]),
-            dedup_cosine_threshold=float(values["GROUNDTRUTH_DEDUP_COSINE_THRESHOLD"]),
             max_quality_retries=int(values["GROUNDTRUTH_MAX_QUALITY_RETRIES"]),
-            max_simulator_turns=int(values["GROUNDTRUTH_MAX_SIMULATOR_TURNS"]),
         )
 
 

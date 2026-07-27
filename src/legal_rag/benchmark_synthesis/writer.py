@@ -1,4 +1,4 @@
-"""Atomic persistence for the fact-ledger pipeline's JSONL outputs."""
+"""Atomic persistence for ground-truth synthesis JSONL outputs."""
 
 from __future__ import annotations
 

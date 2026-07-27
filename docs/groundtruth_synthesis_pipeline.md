@@ -936,7 +936,7 @@ Phase 1.
 **Cấu hình.** Thêm `EvaluationSettings` vào `settings.py`, theo đúng mẫu
 `ChunkerSettings` — nạp từ biến môi trường:
 `span_match_threshold` (mặc định `0.85`), `bundle_overlap_threshold` (`τ`),
-`dedup_cosine_threshold` (`0.9`), `max_quality_retries`, `max_simulator_turns`.
+`max_quality_retries`.
 Danh sách persona, query taxonomy, phân bố scenario và evolution nằm ở file
 JSON versioned dưới `data/config/groundtruth/`. **Đã đổi so với dự tính ban
 đầu:** không dùng `importlib.resources` như `embedding/profiles.py`, vì
