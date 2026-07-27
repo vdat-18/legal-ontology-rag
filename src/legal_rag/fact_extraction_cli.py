@@ -21,13 +21,13 @@ def main() -> None:
     """Run chunk-quality filtering, fact extraction, and ledger reconciliation for one document."""
     from dotenv import find_dotenv, load_dotenv
 
+    from legal_rag.benchmark_synthesis.chunk_quality import BamlChunkQualityClient, filter_chunks_by_quality
+    from legal_rag.benchmark_synthesis.fact_extraction import BamlFactExtractionClient, extract_facts_from_document
+    from legal_rag.benchmark_synthesis.fact_ledger import queue_for_expert_review, reconcile_ledger, verify_spans
+    from legal_rag.benchmark_synthesis.writer import read_fact_ledger, write_fact_ledger, write_legal_facts
     from legal_rag.chunker.writer import read_chunks
     from legal_rag.embedding.encoder import EmbeddingEncoder
     from legal_rag.embedding.profiles import load_configured_embedding_profile
-    from legal_rag.evaluation.chunk_quality import BamlChunkQualityClient, filter_chunks_by_quality
-    from legal_rag.evaluation.fact_extraction import BamlFactExtractionClient, extract_facts_from_document
-    from legal_rag.evaluation.fact_ledger import queue_for_expert_review, reconcile_ledger, verify_spans
-    from legal_rag.evaluation.writer import read_fact_ledger, write_fact_ledger, write_legal_facts
     from legal_rag.settings import EvaluationSettings, Settings
 
     arguments = _parser().parse_args()

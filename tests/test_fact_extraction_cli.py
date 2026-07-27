@@ -8,14 +8,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from legal_rag import evaluation_cli
+from legal_rag import fact_extraction_cli
 from legal_rag.baml_client.types import EvidenceEntry as BamlEvidenceEntry
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
+from legal_rag.benchmark_synthesis import chunk_quality, fact_extraction
+from legal_rag.benchmark_synthesis.chunk_quality import ChunkQualityScore
+from legal_rag.benchmark_synthesis.writer import read_fact_ledger, read_legal_facts
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
-from legal_rag.evaluation import chunk_quality, fact_extraction
-from legal_rag.evaluation.chunk_quality import ChunkQualityScore
-from legal_rag.evaluation.writer import read_fact_ledger, read_legal_facts
 
 
 def _chunk(chunk_id: str, text: str) -> Chunk:
@@ -123,7 +123,7 @@ def _configure_cli(
     )
 
 
-def test_evaluation_cli_extracts_facts_and_queues_them_for_review(
+def test_fact_extraction_cli_extracts_facts_and_queues_them_for_review(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """The command reads chunks, extracts one fact, and queues it for expert review."""
@@ -133,7 +133,7 @@ def test_evaluation_cli_extracts_facts_and_queues_them_for_review(
     write_chunks(chunks_path, (_chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."),))
     _configure_cli(monkeypatch, chunks_path, facts_path, ledger_path)
 
-    evaluation_cli.main()
+    fact_extraction_cli.main()
 
     facts = read_legal_facts(facts_path)
     entries = read_fact_ledger(ledger_path)
@@ -144,25 +144,27 @@ def test_evaluation_cli_extracts_facts_and_queues_them_for_review(
     assert entries[0].fact_id == facts[0].fact_id
 
 
-def test_evaluation_cli_second_run_preserves_approved_entry(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_fact_extraction_cli_second_run_preserves_approved_entry(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """Re-running extraction on unchanged chunks does not disturb an already-approved fact."""
     from datetime import UTC, datetime
 
-    from legal_rag.evaluation.fact_ledger import approve
-    from legal_rag.evaluation.writer import write_fact_ledger
+    from legal_rag.benchmark_synthesis.fact_ledger import approve
+    from legal_rag.benchmark_synthesis.writer import write_fact_ledger
 
     chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
     facts_path = tmp_path / "legal_facts.jsonl"
     ledger_path = tmp_path / "fact_ledger.jsonl"
     write_chunks(chunks_path, (_chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."),))
     _configure_cli(monkeypatch, chunks_path, facts_path, ledger_path)
-    evaluation_cli.main()
+    fact_extraction_cli.main()
 
     entries = read_fact_ledger(ledger_path)
     reviewed_at = datetime(2026, 1, 1, tzinfo=UTC)
     write_fact_ledger(ledger_path, [approve(entries[0], reviewer="an.nguyen", reviewed_at=reviewed_at)])
 
-    evaluation_cli.main()
+    fact_extraction_cli.main()
 
     entries = read_fact_ledger(ledger_path)
     assert entries[0].status == "approved"

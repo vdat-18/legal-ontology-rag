@@ -10,10 +10,15 @@ import numpy as np
 import pytest
 
 from legal_rag import evidence_graph_cli
-from legal_rag.evaluation import evidence_graph
-from legal_rag.evaluation.fact_ledger import FactLedgerEntry
-from legal_rag.evaluation.models import EvidenceReference, LegalFact
-from legal_rag.evaluation.writer import read_evidence_relations, read_scenarios, write_fact_ledger, write_legal_facts
+from legal_rag.benchmark_synthesis import evidence_graph
+from legal_rag.benchmark_synthesis.fact_ledger import FactLedgerEntry
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.writer import (
+    read_evidence_relations,
+    read_scenarios,
+    write_fact_ledger,
+    write_legal_facts,
+)
 
 _REPO_CONFIG_DIR = Path(__file__).resolve().parent.parent / "data" / "config" / "groundtruth"
 

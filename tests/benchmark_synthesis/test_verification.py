@@ -7,10 +7,10 @@ import pytest
 from legal_rag.baml_client.types import Answerability, FactContext
 from legal_rag.baml_client.types import ClaimReference as BamlClaimReference
 from legal_rag.baml_client.types import VerificationResult as BamlVerificationResult
-from legal_rag.evaluation import verification
-from legal_rag.evaluation.candidate_generation import CandidateDraft
-from legal_rag.evaluation.models import EvidenceReference, LegalFact
-from legal_rag.evaluation.verification import BamlVerificationClient, verify_candidate
+from legal_rag.benchmark_synthesis import verification
+from legal_rag.benchmark_synthesis.candidate_generation import CandidateDraft
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.verification import BamlVerificationClient, verify_candidate
 from legal_rag.settings import EvaluationSettings, Settings
 
 

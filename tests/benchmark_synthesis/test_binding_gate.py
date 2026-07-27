@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from legal_rag.benchmark_synthesis.binding_gate import check_binding
+from legal_rag.benchmark_synthesis.candidate_generation import CandidateDraft, ClaimEvidence, RequiredClaim
+from legal_rag.benchmark_synthesis.fact_ledger import FactLedgerEntry
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.chunker.models import Chunk
-from legal_rag.evaluation.binding_gate import check_binding
-from legal_rag.evaluation.candidate_generation import CandidateDraft, ClaimEvidence, RequiredClaim
-from legal_rag.evaluation.fact_ledger import FactLedgerEntry
-from legal_rag.evaluation.models import EvidenceReference, LegalFact
 
 _THRESHOLD = 0.85
 

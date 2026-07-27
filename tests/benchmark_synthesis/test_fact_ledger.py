@@ -7,8 +7,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from legal_rag.chunker.models import Chunk
-from legal_rag.evaluation.fact_ledger import (
+from legal_rag.benchmark_synthesis.fact_ledger import (
     FACT_LEDGER_SCHEMA_VERSION,
     FactLedgerEntry,
     FactLedgerError,
@@ -19,7 +18,8 @@ from legal_rag.evaluation.fact_ledger import (
     reject,
     verify_spans,
 )
-from legal_rag.evaluation.models import EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
+from legal_rag.chunker.models import Chunk
 
 
 def _chunk(chunk_id: str, text: str) -> Chunk:

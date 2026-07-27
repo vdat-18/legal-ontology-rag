@@ -10,9 +10,8 @@ import pytest
 from legal_rag.baml_client.types import ChunkWindowRole
 from legal_rag.baml_client.types import EvidenceEntry as BamlEvidenceEntry
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
-from legal_rag.chunker.models import Chunk
-from legal_rag.evaluation import fact_extraction
-from legal_rag.evaluation.fact_extraction import (
+from legal_rag.benchmark_synthesis import fact_extraction
+from legal_rag.benchmark_synthesis.fact_extraction import (
     BamlFactExtractionClient,
     FactExtractionError,
     build_legal_fact,
@@ -22,6 +21,7 @@ from legal_rag.evaluation.fact_extraction import (
     extract_facts_from_document,
     find_embedding_candidates,
 )
+from legal_rag.chunker.models import Chunk
 from legal_rag.settings import EvaluationSettings, Settings
 
 

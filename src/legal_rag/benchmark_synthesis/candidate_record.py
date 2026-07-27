@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from legal_rag.evaluation.binding_gate import BindingCheckResult
-from legal_rag.evaluation.candidate_generation import CandidateDraft
-from legal_rag.evaluation.verification import VerificationResult
+from legal_rag.benchmark_synthesis.binding_gate import BindingCheckResult
+from legal_rag.benchmark_synthesis.candidate_generation import CandidateDraft
+from legal_rag.benchmark_synthesis.verification import VerificationResult
 
 
 @dataclass(frozen=True, slots=True)

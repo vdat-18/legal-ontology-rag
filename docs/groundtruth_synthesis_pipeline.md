@@ -57,7 +57,7 @@ truth.
 Nguồn đầu vào hiện tại:
 
 - `data/config/groundtruth_corpus_v1.json`
-- `data/evaluation/groundtruth-corpus-v1-snapshot.json`
+- `data/benchmark_synthesis/groundtruth-corpus-v1-snapshot.json`
 - Các file `data/processed/groundtruth/*.chunks.jsonl`
 
 Mỗi lần sinh benchmark phải lưu:
@@ -164,7 +164,7 @@ Cặp này lặp lại đúng kỷ luật mà chunker đang dùng cho `chunk_id`
 - Khi `fact_content_sha256` đổi so với lúc duyệt, fact tự động chuyển về trạng
   thái cần duyệt lại, và mọi candidate phái sinh bị đánh dấu `stale`.
 
-Output dự kiến: `data/evaluation/legal_facts.jsonl`.
+Output dự kiến: `data/benchmark_synthesis/legal_facts.jsonl`.
 
 ## 3. Phê duyệt fact ledger
 
@@ -805,7 +805,7 @@ hoặc từ chối.
 ## 17. Cấu trúc output đề xuất
 
 ```text
-data/evaluation/
+data/benchmark_synthesis/
 ├── legal_facts.jsonl
 ├── fact_ledger.jsonl
 ├── evidence_relations.jsonl
@@ -902,18 +902,31 @@ quy ước đã có của repo (`chunker/`, `parser/`, `embedding/`). Tuân th�
 hint ở API công khai, `pathlib`, không dùng `print()`, không thêm dependency
 trừ khi thư viện hiện có không đủ.
 
-### Quyết định vị trí: tái dùng `evaluation/`, không tạo package mới
+### Quyết định vị trí: ban đầu tái dùng `evaluation/`, sau đó đổi tên thành `benchmark_synthesis/`
 
 `src/legal_rag/evaluation/` đã tồn tại nhưng rỗng — đây từng là nơi chứa
 pipeline Ragas cũ (`groundtruth.py`, `schemas.py`, `snapshot.py`,
 `synthesis.py`) trước khi bị gỡ ở commit `38475a6`. Toàn bộ code mới của kế
-hoạch này đặt lại vào `src/legal_rag/evaluation/`, chia theo module một-file-
-một-trách-nhiệm thay vì gộp bốn file lớn như thiết kế cũ. Không tạo package
-song song `groundtruth/`.
+hoạch này ban đầu đặt lại vào `src/legal_rag/evaluation/`, chia theo module
+một-file-một-trách-nhiệm thay vì gộp bốn file lớn như thiết kế cũ, không tạo
+package song song `groundtruth/`.
 
-`data/evaluation/evaluation-data.md` hiện trỏ tới API `generate_groundtruth_candidates(...)`
-và biến môi trường `RAGAS_*` đã không còn tồn tại. Cập nhật hoặc xóa file này
-ở Phase 0 để không ai đi theo hướng dẫn sai.
+`data/evaluation/evaluation-data.md` lúc đó trỏ tới API
+`generate_groundtruth_candidates(...)` và biến môi trường `RAGAS_*` đã không
+còn tồn tại; nội dung này được viết lại ở Phase 0.
+
+**Đổi lại sau đó:** tên `evaluation/` gây hiểu lầm — nó đọc như "đo lường chất
+lượng hệ RAG", trong khi toàn bộ module ở đây chỉ *sinh* dữ liệu ground truth
+(fact → duyệt → evidence graph → scenario → candidate), không đo gì cả. Việc
+đo lường thật (Recall@k, Faithfulness, Answer correctness... qua `deepeval`,
+mục 16) là một mối quan tâm khác, chưa có code, sẽ cần vị trí riêng của nó khi
+tới Phase 8. Do đó `src/legal_rag/evaluation/` và `data/evaluation/` được đổi
+tên thành `src/legal_rag/benchmark_synthesis/` và `data/benchmark_synthesis/`
+— khớp với mục đích thật (sinh benchmark) và không còn xung đột tên với phần
+đánh giá RAG thật sẽ thêm sau. Extra `evaluation` trong `pyproject.toml`
+(nhóm dependency: `deepeval`, `rapidfuzz`, `sentence-transformers`) giữ
+nguyên tên, vì nó sẽ tiếp tục phục vụ cả code synthesis hiện tại lẫn code
+đánh giá RAG thật ở Phase 8.
 
 ### Phase 0 — Hạ tầng dùng chung ✅ Đã triển khai
 
@@ -941,10 +954,10 @@ buộc mọi người dùng `legal-parse`/`legal-chunk` phải cài thêm nó.
 
 **Atomic JSONL writer dùng chung.** `parser/writer.py` và `chunker/writer.py`
 hiện có cùng một khối logic ghi tệp tạm rồi `replace()` nguyên tử, lặp lại y
-hệt. Thêm một module thứ ba (`evaluation/writer.py`) sẽ là lần lặp thứ ba —
-đủ điều kiện theo AGENTS.md để tách hàm dùng chung. Thêm
+hệt. Thêm một module thứ ba (`benchmark_synthesis/writer.py`) sẽ là lần lặp
+thứ ba — đủ điều kiện theo AGENTS.md để tách hàm dùng chung. Thêm
 `src/legal_rag/io_utils.py` chứa `write_jsonl_atomic(path, records)`, refactor
-hai module cũ gọi vào đây, rồi `evaluation/writer.py` dùng lại. Đây là thay
+hai module cũ gọi vào đây, rồi `benchmark_synthesis/writer.py` dùng lại. Đây là thay
 đổi cross-cutting nhỏ, nên làm thành một commit riêng trước khi viết code
 Phase 1.
 
@@ -964,7 +977,7 @@ không có đường dẫn ngầm định.
 
 ### Phase 1 — Trích xuất fact và fact ledger (mục 2, 3 ở trên) ✅ Đã triển khai
 
-Module trong `evaluation/`:
+Module trong `benchmark_synthesis/`:
 
 - `models.py` — `LegalFact`, `EvidenceReference` dạng
   `@dataclass(frozen=True, slots=True)` với `to_dict()`, hằng
@@ -995,7 +1008,7 @@ BAML trong `baml_src/`:
   `ChunkWindowEntry`, `EvidenceEntry`, `LegalFact` khớp JSON ở mục 2, function
   `ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[]`.
 
-CLI: `legal-extract-facts` (`evaluation_cli.py`) chạy nối tiếp cổng chất
+CLI: `legal-extract-facts` (`fact_extraction_cli.py`) chạy nối tiếp cổng chất
 lượng chunk, trích xuất, đối chiếu ledger, `verify_spans`, và
 `queue_for_expert_review` cho mọi fact mới trong một lần gọi; nhận đường dẫn
 chunk JSONL của một văn bản, ghi `legal_facts.jsonl` và `fact_ledger.jsonl`.
@@ -1016,10 +1029,10 @@ Phase 1 nhưng cần thiết để nó chạy được:
   cuối, chưa có gì đọc lại `*.chunks.jsonl`, nhưng CLI trích xuất fact cần
   đọc đúng file đó làm đầu vào.
 
-Test: `tests/evaluation/test_fact_extraction.py`, `test_fact_ledger.py`,
+Test: `tests/benchmark_synthesis/test_fact_extraction.py`, `test_fact_ledger.py`,
 `test_chunk_quality.py`, `test_evaluation_models.py`,
 `test_evaluation_writer.py`, `tests/test_baml_transport.py`,
-`tests/test_evaluation_cli.py` (tích hợp CLI đầu-cuối với client và encoder
+`tests/test_fact_extraction_cli.py` (tích hợp CLI đầu-cuối với client và encoder
 giả). Windowing và máy trạng thái test trực tiếp không cần mock; các BAML
 client wrapper test theo mẫu mock `execute_baml_request` trong
 `tests/parser/test_baml_captioning.py`.
@@ -1205,7 +1218,7 @@ Phần đánh giá retrieval/generator/end-to-end tái dùng `deepeval` (đã c�
 extra `evaluation`) cho các metric LLM-judge; `Accuracy theo field` ở mục 16
 là so khớp tất định thuần Python, không qua `deepeval`.
 
-### Tổng hợp thay đổi ngoài `evaluation/`
+### Tổng hợp thay đổi ngoài `benchmark_synthesis/`
 
 - `pyproject.toml`: extra `evaluation` đổi thành `deepeval`, `rapidfuzz`,
   `sentence-transformers` — gỡ `ragas`, `langchain-community`,
@@ -1219,6 +1232,11 @@ là so khớp tất định thuần Python, không qua `deepeval`.
   nạp lazy để không bắt buộc cài đặt khi không dùng. ✅ **Đã áp dụng.**
 - `data/evaluation/evaluation-data.md`: viết lại theo pipeline mới hoặc xóa.
   ✅ **Đã áp dụng** ở Phase 0.
+- `src/legal_rag/evaluation/` và `data/evaluation/` đổi tên thành
+  `src/legal_rag/benchmark_synthesis/` và `data/benchmark_synthesis/`
+  (`evaluation-data.md` → `benchmark-synthesis-data.md`), `evaluation_cli.py`
+  đổi tên thành `fact_extraction_cli.py`, để tên khớp mục đích thật (sinh
+  benchmark) thay vì đọc như đo lường RAG. ✅ **Đã áp dụng.**
 - `baml_transport.py`: tách khỏi `parser/image_captioner.py` khi cần dùng lại
   cho `chunk_quality.py`/`fact_extraction.py`. ✅ **Đã áp dụng** ở Phase 1,
   không nằm trong kế hoạch gốc.

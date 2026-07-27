@@ -7,8 +7,8 @@ import pytest
 
 from legal_rag.baml_client.types import ConfirmedRelation as BamlConfirmedRelation
 from legal_rag.baml_client.types import RelationType as BamlRelationType
-from legal_rag.evaluation import evidence_graph
-from legal_rag.evaluation.evidence_graph import (
+from legal_rag.benchmark_synthesis import evidence_graph
+from legal_rag.benchmark_synthesis.evidence_graph import (
     BamlEvidenceRelationClient,
     EvidenceRelation,
     classify_bundle_kind,
@@ -16,7 +16,7 @@ from legal_rag.evaluation.evidence_graph import (
     find_candidate_fact_pairs,
     sample_bundles,
 )
-from legal_rag.evaluation.models import EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.settings import EvaluationSettings, Settings
 
 

@@ -7,20 +7,20 @@ from collections.abc import Sequence
 from datetime import date, datetime
 from pathlib import Path
 
-from legal_rag.evaluation.binding_gate import BindingCheckResult, BindingViolation
-from legal_rag.evaluation.candidate_generation import (
+from legal_rag.benchmark_synthesis.binding_gate import BindingCheckResult, BindingViolation
+from legal_rag.benchmark_synthesis.candidate_generation import (
     CANDIDATE_SCHEMA_VERSION,
     CandidateDraft,
     ClaimEvidence,
     FactAnswerFields,
     RequiredClaim,
 )
-from legal_rag.evaluation.candidate_record import CandidateRecord
-from legal_rag.evaluation.evidence_graph import EVIDENCE_RELATION_SCHEMA_VERSION, EvidenceRelation
-from legal_rag.evaluation.fact_ledger import FACT_LEDGER_SCHEMA_VERSION, FactLedgerEntry
-from legal_rag.evaluation.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
-from legal_rag.evaluation.scenario_sampling import SCENARIO_SCHEMA_VERSION, Scenario
-from legal_rag.evaluation.verification import VerificationResult
+from legal_rag.benchmark_synthesis.candidate_record import CandidateRecord
+from legal_rag.benchmark_synthesis.evidence_graph import EVIDENCE_RELATION_SCHEMA_VERSION, EvidenceRelation
+from legal_rag.benchmark_synthesis.fact_ledger import FACT_LEDGER_SCHEMA_VERSION, FactLedgerEntry
+from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.scenario_sampling import SCENARIO_SCHEMA_VERSION, Scenario
+from legal_rag.benchmark_synthesis.verification import VerificationResult
 from legal_rag.io_utils import write_jsonl_atomic
 
 

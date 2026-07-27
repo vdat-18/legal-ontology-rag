@@ -13,8 +13,8 @@ from legal_rag.baml_client.types import ClaimReference as BamlClaimReference
 from legal_rag.baml_client.types import FactContext
 from legal_rag.baml_client.types import VerificationResult as BamlVerificationResult
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
-from legal_rag.evaluation.candidate_generation import CandidateDraft, RequiredClaim, build_fact_context
-from legal_rag.evaluation.models import LegalFact
+from legal_rag.benchmark_synthesis.candidate_generation import CandidateDraft, RequiredClaim, build_fact_context
+from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.settings import EvaluationSettings, Settings
 
 _ANSWERABILITY_BY_BAML_ENUM: dict[str, str] = {

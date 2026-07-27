@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-from legal_rag.evaluation.evidence_graph import EvidenceBundle
-from legal_rag.evaluation.models import EvidenceReference, LegalFact
-from legal_rag.evaluation.scenario_sampling import (
+from legal_rag.benchmark_synthesis.evidence_graph import EvidenceBundle
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.scenario_sampling import (
     PersonaCatalog,
     QueryTaxonomy,
     Scenario,

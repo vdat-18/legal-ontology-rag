@@ -31,23 +31,28 @@ def main() -> None:
     """Generate candidates for every scenario, then run gate 1 and, when it passes, gate 2."""
     from dotenv import find_dotenv, load_dotenv
 
-    from legal_rag.chunker.writer import read_chunks
-    from legal_rag.evaluation.binding_gate import check_binding
-    from legal_rag.evaluation.candidate_generation import (
+    from legal_rag.benchmark_synthesis.binding_gate import check_binding
+    from legal_rag.benchmark_synthesis.candidate_generation import (
         BamlCandidateGenerationClient,
         evolve_candidate,
         generate_candidate,
         refine_surface,
     )
-    from legal_rag.evaluation.candidate_record import CandidateRecord
-    from legal_rag.evaluation.scenario_sampling import (
+    from legal_rag.benchmark_synthesis.candidate_record import CandidateRecord
+    from legal_rag.benchmark_synthesis.scenario_sampling import (
         load_evolution_config,
         load_persona_descriptions,
         load_query_taxonomy,
         load_query_type_descriptions,
     )
-    from legal_rag.evaluation.verification import BamlVerificationClient, verify_candidate
-    from legal_rag.evaluation.writer import read_fact_ledger, read_legal_facts, read_scenarios, write_candidates
+    from legal_rag.benchmark_synthesis.verification import BamlVerificationClient, verify_candidate
+    from legal_rag.benchmark_synthesis.writer import (
+        read_fact_ledger,
+        read_legal_facts,
+        read_scenarios,
+        write_candidates,
+    )
+    from legal_rag.chunker.writer import read_chunks
     from legal_rag.settings import EvaluationSettings, Settings
 
     arguments = _parser().parse_args()

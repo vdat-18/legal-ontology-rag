@@ -15,10 +15,10 @@ from typing import Any
 
 from rapidfuzz import fuzz
 
+from legal_rag.benchmark_synthesis.candidate_generation import CandidateDraft
+from legal_rag.benchmark_synthesis.fact_ledger import FactLedgerEntry
+from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.chunker.models import Chunk
-from legal_rag.evaluation.candidate_generation import CandidateDraft
-from legal_rag.evaluation.fact_ledger import FactLedgerEntry
-from legal_rag.evaluation.models import LegalFact
 
 
 @dataclass(frozen=True, slots=True)

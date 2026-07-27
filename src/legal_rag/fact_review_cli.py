@@ -8,7 +8,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from legal_rag.evaluation.models import LegalFact
+from legal_rag.benchmark_synthesis.models import LegalFact
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -43,8 +43,8 @@ def main() -> None:
     """Walk every fact awaiting expert review and record an approve/reject decision."""
     from dotenv import find_dotenv, load_dotenv
 
-    from legal_rag.evaluation.fact_ledger import approve, reject
-    from legal_rag.evaluation.writer import read_fact_ledger, read_legal_facts, write_fact_ledger
+    from legal_rag.benchmark_synthesis.fact_ledger import approve, reject
+    from legal_rag.benchmark_synthesis.writer import read_fact_ledger, read_legal_facts, write_fact_ledger
 
     arguments = _parser().parse_args()
     dotenv_path = find_dotenv(usecwd=True)

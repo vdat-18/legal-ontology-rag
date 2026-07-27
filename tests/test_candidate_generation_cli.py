@@ -15,13 +15,13 @@ from legal_rag.baml_client.types import EvolvedCandidate as BamlEvolvedCandidate
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
 from legal_rag.baml_client.types import SurfaceCritique as BamlSurfaceCritique
 from legal_rag.baml_client.types import VerificationResult as BamlVerificationResult
+from legal_rag.benchmark_synthesis import candidate_generation, verification
+from legal_rag.benchmark_synthesis.fact_ledger import FactLedgerEntry
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
+from legal_rag.benchmark_synthesis.writer import read_candidates, write_fact_ledger, write_legal_facts, write_scenarios
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
-from legal_rag.evaluation import candidate_generation, verification
-from legal_rag.evaluation.fact_ledger import FactLedgerEntry
-from legal_rag.evaluation.models import EvidenceReference, LegalFact
-from legal_rag.evaluation.scenario_sampling import Scenario
-from legal_rag.evaluation.writer import read_candidates, write_fact_ledger, write_legal_facts, write_scenarios
 
 _REPO_CONFIG_DIR = Path(__file__).resolve().parent.parent / "data" / "config" / "groundtruth"
 _PENALTY_SPAN = "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."

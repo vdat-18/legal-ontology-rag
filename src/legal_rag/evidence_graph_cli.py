@@ -30,27 +30,27 @@ def main() -> None:
     """Confirm evidence relations among approved facts and sample scenarios from the result."""
     from dotenv import find_dotenv, load_dotenv
 
-    from legal_rag.embedding.encoder import EmbeddingEncoder
-    from legal_rag.embedding.profiles import load_configured_embedding_profile
-    from legal_rag.evaluation.evidence_graph import (
+    from legal_rag.benchmark_synthesis.evidence_graph import (
         BamlEvidenceRelationClient,
         confirm_evidence_relations,
         find_candidate_fact_pairs,
         sample_bundles,
     )
-    from legal_rag.evaluation.scenario_sampling import (
+    from legal_rag.benchmark_synthesis.scenario_sampling import (
         ScenarioSamplingConfig,
         load_personas,
         load_query_taxonomy,
         load_scenario_distribution,
         sample_scenarios,
     )
-    from legal_rag.evaluation.writer import (
+    from legal_rag.benchmark_synthesis.writer import (
         read_fact_ledger,
         read_legal_facts,
         write_evidence_relations,
         write_scenarios,
     )
+    from legal_rag.embedding.encoder import EmbeddingEncoder
+    from legal_rag.embedding.profiles import load_configured_embedding_profile
     from legal_rag.settings import EvaluationSettings, Settings
 
     arguments = _parser().parse_args()

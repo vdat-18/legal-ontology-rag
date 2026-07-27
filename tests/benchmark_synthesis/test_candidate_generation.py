@@ -11,16 +11,16 @@ from legal_rag.baml_client.types import EvolutionOperation, FactContext
 from legal_rag.baml_client.types import EvolvedCandidate as BamlEvolvedCandidate
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
 from legal_rag.baml_client.types import SurfaceCritique as BamlSurfaceCritique
-from legal_rag.evaluation import candidate_generation
-from legal_rag.evaluation.candidate_generation import (
+from legal_rag.benchmark_synthesis import candidate_generation
+from legal_rag.benchmark_synthesis.candidate_generation import (
     BamlCandidateGenerationClient,
     build_fact_context,
     evolve_candidate,
     generate_candidate,
     refine_surface,
 )
-from legal_rag.evaluation.models import EvidenceReference, LegalFact
-from legal_rag.evaluation.scenario_sampling import Scenario
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.settings import EvaluationSettings, Settings
 
 

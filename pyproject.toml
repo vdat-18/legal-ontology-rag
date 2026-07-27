@@ -27,7 +27,7 @@ naive-rag = ["pymilvus>=3.0", "milvus-lite>=2.4", "sentence-transformers>=3.0"]
 [project.scripts]
 legal-parse = "legal_rag.cli:main"
 legal-chunk = "legal_rag.chunk_cli:main"
-legal-extract-facts = "legal_rag.evaluation_cli:main"
+legal-extract-facts = "legal_rag.fact_extraction_cli:main"
 legal-review-facts = "legal_rag.fact_review_cli:main"
 legal-build-evidence-graph = "legal_rag.evidence_graph_cli:main"
 legal-generate-candidates = "legal_rag.candidate_generation_cli:main"

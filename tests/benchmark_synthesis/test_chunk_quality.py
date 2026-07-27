@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import pytest
 
+from legal_rag.benchmark_synthesis import chunk_quality
+from legal_rag.benchmark_synthesis.chunk_quality import (
+    BamlChunkQualityClient,
+    ChunkQualityScore,
+    filter_chunks_by_quality,
+)
 from legal_rag.chunker.models import Chunk
-from legal_rag.evaluation import chunk_quality
-from legal_rag.evaluation.chunk_quality import BamlChunkQualityClient, ChunkQualityScore, filter_chunks_by_quality
 from legal_rag.settings import EvaluationSettings, Settings
 
 

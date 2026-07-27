@@ -16,9 +16,9 @@ from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import ChunkWindowEntry, ChunkWindowRole
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.chunker.models import Chunk
 from legal_rag.embedding.encoder import EmbeddingEncoder
-from legal_rag.evaluation.models import EvidenceReference, LegalFact
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import EvaluationSettings, Settings
 

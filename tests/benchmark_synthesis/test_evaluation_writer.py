@@ -5,15 +5,20 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from legal_rag.evaluation.binding_gate import BindingCheckResult, BindingViolation
-from legal_rag.evaluation.candidate_generation import CandidateDraft, ClaimEvidence, FactAnswerFields, RequiredClaim
-from legal_rag.evaluation.candidate_record import CandidateRecord
-from legal_rag.evaluation.evidence_graph import EvidenceRelation
-from legal_rag.evaluation.fact_ledger import FactLedgerEntry
-from legal_rag.evaluation.models import EvidenceReference, LegalFact
-from legal_rag.evaluation.scenario_sampling import Scenario
-from legal_rag.evaluation.verification import VerificationResult
-from legal_rag.evaluation.writer import (
+from legal_rag.benchmark_synthesis.binding_gate import BindingCheckResult, BindingViolation
+from legal_rag.benchmark_synthesis.candidate_generation import (
+    CandidateDraft,
+    ClaimEvidence,
+    FactAnswerFields,
+    RequiredClaim,
+)
+from legal_rag.benchmark_synthesis.candidate_record import CandidateRecord
+from legal_rag.benchmark_synthesis.evidence_graph import EvidenceRelation
+from legal_rag.benchmark_synthesis.fact_ledger import FactLedgerEntry
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
+from legal_rag.benchmark_synthesis.verification import VerificationResult
+from legal_rag.benchmark_synthesis.writer import (
     read_candidates,
     read_evidence_relations,
     read_fact_ledger,

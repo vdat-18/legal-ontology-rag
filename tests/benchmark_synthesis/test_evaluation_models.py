@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from legal_rag.evaluation.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
 
 
 def _fact(**overrides: object) -> LegalFact:

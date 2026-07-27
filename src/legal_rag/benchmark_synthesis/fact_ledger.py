@@ -9,8 +9,8 @@ from typing import Any, Literal
 
 from rapidfuzz import fuzz
 
+from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.chunker.models import Chunk
-from legal_rag.evaluation.models import LegalFact
 
 FACT_LEDGER_SCHEMA_VERSION = "1.0.0"
 
