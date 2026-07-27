@@ -264,7 +264,6 @@ def _evaluation_settings() -> EvaluationSettings:
     """Build ground-truth synthesis settings for an offline BAML request."""
     return EvaluationSettings(
         embedding_profile="qwen3_0_6b",
-        chunk_quality_threshold=0.6,
         span_match_threshold=0.85,
         bundle_overlap_threshold=0.5,
         dedup_cosine_threshold=0.9,

@@ -115,16 +115,22 @@ Nguyên tắc:
 - `chunk_id` phục vụ retrieval evaluation.
 - `unit_ids` và `source_refs` phục vụ audit ngược về nguồn parser.
 
-### Lọc chất lượng chunk trước khi trích xuất
+### Sàng lọc chunk trước khi trích xuất
 
-Trước khi trích xuất fact, một critic model rẻ chấm mỗi chunk theo bốn tiêu
-chí: rõ ràng, đủ sâu, có cấu trúc, đúng chủ đề. Chunk dưới ngưỡng bị bỏ qua
-và ghi vào danh sách loại trừ kèm lý do — thường là mục lục, tiêu đề chương,
-đoạn dẫn nhập không mang chế tài.
+Trước khi trích xuất fact, một critic model rẻ trả lời một câu hỏi nhị phân
+cho mỗi chunk: đoạn này có chứa nội dung chế tài cụ thể (hành vi, mức phạt,
+thẩm quyền, thủ tục, đối tượng áp dụng) hay không. Chunk bị đánh giá không
+có nội dung chế tài bị bỏ qua và ghi vào danh sách loại trừ kèm lý do do
+chính model đưa ra — thường là mục lục, tiêu đề chương, đoạn dẫn nhập không
+mang chế tài.
 
 Cổng rẻ này đứng trước để bảo vệ hai công đoạn đắt phía sau: LLM call trích
-xuất và thời gian chuyên gia duyệt fact. Ngưỡng nằm trong cấu hình có phiên
-bản, và danh sách chunk bị loại phải audit được.
+xuất và thời gian chuyên gia duyệt fact. Câu hỏi nhị phân này thay cho cách
+chấm điểm liên tục rồi so ngưỡng: LLM đáng tin hơn nhiều với quyết định
+nhị phân rõ ràng so với việc tự hiệu chỉnh điểm số liên tục 0.0-1.0 (dễ bị
+dồn cụm, khiến một ngưỡng cố định gần như vô nghĩa trong thực tế). Danh sách
+chunk bị loại phải audit được — lý do lấy trực tiếp từ model, không phải câu
+chữ tính toán từ điểm số.
 
 ### Gộp chunk khi một fact cần nhiều nguồn
 
@@ -962,7 +968,7 @@ hai module cũ gọi vào đây, rồi `benchmark_synthesis/writer.py` dùng l�
 Phase 1.
 
 **Cấu hình.** Thêm `EvaluationSettings` vào `settings.py`, theo đúng mẫu
-`ChunkerSettings` — nạp từ biến môi trường: `chunk_quality_threshold`,
+`ChunkerSettings` — nạp từ biến môi trường:
 `span_match_threshold` (mặc định `0.85`), `bundle_overlap_threshold` (`τ`),
 `dedup_cosine_threshold` (`0.9`), `max_quality_retries`, `max_simulator_turns`.
 Danh sách persona, query taxonomy, phân bố scenario và evolution nằm ở file
@@ -982,8 +988,9 @@ Module trong `benchmark_synthesis/`:
 - `models.py` — `LegalFact`, `EvidenceReference` dạng
   `@dataclass(frozen=True, slots=True)` với `to_dict()`, hằng
   `LEGAL_FACT_SCHEMA_VERSION`, theo đúng khuôn `chunker/models.py`.
-- `chunk_quality.py` — gọi BAML chấm 4 tiêu chí, lọc theo
-  `chunk_quality_threshold`, ghi danh sách chunk bị loại kèm lý do.
+- `chunk_screening.py` — gọi BAML hỏi nhị phân "có nội dung chế tài không",
+  lọc theo `has_penalty_content`, ghi danh sách chunk bị loại kèm lý do do
+  model đưa ra.
 - `fact_extraction.py` — dựng cửa sổ đọc theo ba nguồn ở mục "Gộp chunk khi
   một fact cần nhiều nguồn" (liền kề qua `previous_chunk_id`/`next_chunk_id`,
   trích dẫn chéo bằng regex "Điều N" tra theo `build_provision_index`, tương
@@ -1002,8 +1009,8 @@ Module trong `benchmark_synthesis/`:
 
 BAML trong `baml_src/`:
 
-- `chunk_quality.baml` — class `ChunkQualityResult` (clarity, depth,
-  structure, relevance), function `EvaluateChunkQuality(chunk_text: string)`.
+- `chunk_screening.baml` — class `ChunkScreeningResult` (has_penalty_content,
+  reason), function `ScreenChunk(chunk_text: string)`.
 - `legal_fact_extraction.baml` — enum `ChunkWindowRole`, class
   `ChunkWindowEntry`, `EvidenceEntry`, `LegalFact` khớp JSON ở mục 2, function
   `ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[]`.
@@ -1030,7 +1037,7 @@ Phase 1 nhưng cần thiết để nó chạy được:
   đọc đúng file đó làm đầu vào.
 
 Test: `tests/benchmark_synthesis/test_fact_extraction.py`, `test_fact_ledger.py`,
-`test_chunk_quality.py`, `test_evaluation_models.py`,
+`test_chunk_screening.py`, `test_evaluation_models.py`,
 `test_evaluation_writer.py`, `tests/test_baml_transport.py`,
 `tests/test_fact_extraction_cli.py` (tích hợp CLI đầu-cuối với client và encoder
 giả). Windowing và máy trạng thái test trực tiếp không cần mock; các BAML
@@ -1238,8 +1245,13 @@ là so khớp tất định thuần Python, không qua `deepeval`.
   đổi tên thành `fact_extraction_cli.py`, để tên khớp mục đích thật (sinh
   benchmark) thay vì đọc như đo lường RAG. ✅ **Đã áp dụng.**
 - `baml_transport.py`: tách khỏi `parser/image_captioner.py` khi cần dùng lại
-  cho `chunk_quality.py`/`fact_extraction.py`. ✅ **Đã áp dụng** ở Phase 1,
+  cho `chunk_screening.py`/`fact_extraction.py`. ✅ **Đã áp dụng** ở Phase 1,
   không nằm trong kế hoạch gốc.
+- `chunk_screening.py` (trước đó `chunk_quality.py`): đổi từ chấm 4 tiêu chí
+  liên tục + so ngưỡng sang hỏi nhị phân `has_penalty_content` — LLM đáng tin
+  hơn với quyết định nhị phân so với tự hiệu chỉnh điểm số liên tục. Bỏ
+  `chunk_quality_threshold` khỏi `EvaluationSettings`/`.env.example`.
+  ✅ **Đã áp dụng.**
 - `chunker/writer.py`: thêm `read_chunks` — CLI trích xuất fact cần đọc lại
   `*.chunks.jsonl`. ✅ **Đã áp dụng** ở Phase 1, không nằm trong kế hoạch gốc.
 - `pyproject.toml`: thêm console script `legal-extract-facts`,

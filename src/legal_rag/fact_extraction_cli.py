@@ -18,10 +18,10 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    """Run chunk-quality filtering, fact extraction, and ledger reconciliation for one document."""
+    """Run chunk screening, fact extraction, and ledger reconciliation for one document."""
     from dotenv import find_dotenv, load_dotenv
 
-    from legal_rag.benchmark_synthesis.chunk_quality import BamlChunkQualityClient, filter_chunks_by_quality
+    from legal_rag.benchmark_synthesis.chunk_screening import BamlChunkScreeningClient, screen_chunks
     from legal_rag.benchmark_synthesis.fact_extraction import BamlFactExtractionClient, extract_facts_from_document
     from legal_rag.benchmark_synthesis.fact_ledger import queue_for_expert_review, reconcile_ledger, verify_spans
     from legal_rag.benchmark_synthesis.writer import read_fact_ledger, write_fact_ledger, write_legal_facts
@@ -38,12 +38,10 @@ def main() -> None:
     evaluation_settings = EvaluationSettings.from_environment()
 
     chunks = read_chunks(arguments.chunks_path)
-    quality_client = BamlChunkQualityClient(settings, evaluation_settings)
-    accepted_chunks, excluded = filter_chunks_by_quality(
-        chunks, quality_client, threshold=evaluation_settings.chunk_quality_threshold
-    )
+    screening_client = BamlChunkScreeningClient(settings, evaluation_settings)
+    accepted_chunks, excluded = screen_chunks(chunks, screening_client)
     logger.info(
-        "Chunk quality gate: {} accepted, {} excluded from {}",
+        "Chunk screening gate: {} accepted, {} excluded from {}",
         len(accepted_chunks),
         len(excluded),
         arguments.chunks_path.name,

@@ -9,10 +9,10 @@ import numpy as np
 import pytest
 
 from legal_rag import fact_extraction_cli
+from legal_rag.baml_client.types import ChunkScreeningResult
 from legal_rag.baml_client.types import EvidenceEntry as BamlEvidenceEntry
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
-from legal_rag.benchmark_synthesis import chunk_quality, fact_extraction
-from legal_rag.benchmark_synthesis.chunk_quality import ChunkQualityScore
+from legal_rag.benchmark_synthesis import chunk_screening, fact_extraction
 from legal_rag.benchmark_synthesis.writer import read_fact_ledger, read_legal_facts
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
@@ -47,15 +47,15 @@ def _chunk(chunk_id: str, text: str) -> Chunk:
     )
 
 
-class _AlwaysHighQualityClient:
-    """Accept every chunk with a perfect score, ignoring settings."""
+class _AlwaysHasPenaltyContentClient:
+    """Accept every chunk as having penalty content, ignoring settings."""
 
     def __init__(self, settings: object, evaluation_settings: object) -> None:
         return None
 
-    def evaluate(self, chunk_text: str) -> ChunkQualityScore:
-        """Return a perfect score for any chunk text."""
-        return ChunkQualityScore(1.0, 1.0, 1.0, 1.0)
+    def screen(self, chunk_text: str) -> ChunkScreeningResult:
+        """Return a positive screening result for any chunk text."""
+        return ChunkScreeningResult(has_penalty_content=True, reason="Contains penalty content.")
 
 
 class _OneFactExtractionClient:
@@ -105,13 +105,12 @@ def _configure_cli(
     monkeypatch.setenv("LLM_MODEL", "provider/test-model")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
     monkeypatch.setenv("EMBEDDING_PROFILE", "qwen3_0_6b")
-    monkeypatch.setenv("GROUNDTRUTH_CHUNK_QUALITY_THRESHOLD", "0.6")
     monkeypatch.setenv("GROUNDTRUTH_SPAN_MATCH_THRESHOLD", "0.85")
     monkeypatch.setenv("GROUNDTRUTH_BUNDLE_OVERLAP_THRESHOLD", "0.5")
     monkeypatch.setenv("GROUNDTRUTH_DEDUP_COSINE_THRESHOLD", "0.9")
     monkeypatch.setenv("GROUNDTRUTH_MAX_QUALITY_RETRIES", "2")
     monkeypatch.setenv("GROUNDTRUTH_MAX_SIMULATOR_TURNS", "8")
-    monkeypatch.setattr(chunk_quality, "BamlChunkQualityClient", _AlwaysHighQualityClient)
+    monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _AlwaysHasPenaltyContentClient)
     monkeypatch.setattr(fact_extraction, "BamlFactExtractionClient", _OneFactExtractionClient)
     from legal_rag.embedding.encoder import EmbeddingEncoder
 
