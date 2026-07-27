@@ -29,6 +29,7 @@ async def _run(chunks_dir: Path, corpus_config_path: Path) -> None:
     """
     from legal_rag.embedding.profiles import load_configured_embedding_profile
     from legal_rag.graphiti_rag.client import build_graphiti, load_llm_api_keys
+    from legal_rag.graphiti_rag.effective_date import BamlEffectiveDateClient
     from legal_rag.graphiti_rag.embedder import QwenGraphitiEmbedder
     from legal_rag.graphiti_rag.indexer import (
         build_neo4j_driver,
@@ -46,6 +47,7 @@ async def _run(chunks_dir: Path, corpus_config_path: Path) -> None:
     corpus_metadata = load_corpus_metadata(corpus_config_path)
     profile = load_configured_embedding_profile(graphiti_settings.embedding_profile)
     embedder = QwenGraphitiEmbedder.from_profile(profile)
+    date_extraction_client = BamlEffectiveDateClient(settings, graphiti_settings)
 
     api_keys = load_llm_api_keys()
     graphiti_clients = [
@@ -56,9 +58,13 @@ async def _run(chunks_dir: Path, corpus_config_path: Path) -> None:
         await graphiti_clients[0].build_indices_and_constraints()
         if len(graphiti_clients) > 1:
             logger.info("Indexing with {} concurrent LLM API keys", len(graphiti_clients))
-            summary = await index_chunks_concurrent(chunks, corpus_metadata, graphiti_clients, neo4j_driver)
+            summary = await index_chunks_concurrent(
+                chunks, corpus_metadata, graphiti_clients, neo4j_driver, date_extraction_client
+            )
         else:
-            summary = await index_chunks(chunks, corpus_metadata, graphiti_clients[0], neo4j_driver)
+            summary = await index_chunks(
+                chunks, corpus_metadata, graphiti_clients[0], neo4j_driver, date_extraction_client
+            )
     finally:
         for graphiti_client in graphiti_clients:
             await graphiti_client.close()

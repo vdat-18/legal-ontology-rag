@@ -1,71 +1,88 @@
-"""Extract a legal document's own commencement date from its chunk text.
-
-Vietnamese legal documents (decrees, circulars, decisions, laws) almost always state their
-own effective date in a dedicated article titled "Hiệu lực thi hành" ("effective enforcement"),
-using a stock self-referential phrase such as "Nghị định này có hiệu lực thi hành từ ngày 01
-tháng 01 năm 2025" or "... kể từ ngày 01/01/2025". Other, unrelated clauses can also contain
-the words "hiệu lực" (a license still being valid, a specific sub-provision's own delayed
-phase-in date) — anchoring the date search on chunks that contain the numbered article heading
-("Điều N. Hiệu lực thi hành") avoids picking up one of those instead of the document's actual
-commencement date. Some document types (e.g. "Quyết định") omit the numbered heading, so a
-looser fallback pattern is tried across the whole document if no heading is found.
-"""
+"""Extract a legal document's own commencement date from its chunks, via BAML/LLM."""
 
 from __future__ import annotations
 
-import re
 from collections.abc import Sequence
 from datetime import date
+from typing import Protocol
 
+from baml_py.logging import set_log_level
+
+from legal_rag.baml_client.sync_client import b
+from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.chunker.models import Chunk
+from legal_rag.settings import GraphitiSettings, Settings
 
-_ARTICLE_HEADING_PATTERN = re.compile(r"Điều\s+\d+\.\s*Hiệu\s+lực\s+thi\s+hành", re.IGNORECASE)
-
-_SELF_REFERENCE = r"(?:Nghị định|Thông tư|Quyết định|Luật|Văn bản)\s+này\s+có\s+hiệu\s+lực(?:\s+thi\s+hành)?"
-_WORD_DATE_PATTERN = re.compile(
-    _SELF_REFERENCE + r"\s+(?:kể\s+)?từ\s+ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})",
-    re.IGNORECASE,
-)
-_SLASH_DATE_PATTERN = re.compile(
-    _SELF_REFERENCE + r"\s+(?:kể\s+)?từ\s+ngày\s+(\d{1,2})/(\d{1,2})/(\d{4})",
-    re.IGNORECASE,
-)
+_WINDOW_TOKEN_BUDGET = 40_000
 
 
-def _find_date(text: str) -> date | None:
-    """Return the first self-referential commencement date found in *text*, if any."""
-    for pattern in (_WORD_DATE_PATTERN, _SLASH_DATE_PATTERN):
-        match = pattern.search(text)
-        if match:
-            day, month, year = (int(group) for group in match.groups())
-            return date(year, month, day)
-    return None
+class EffectiveDateClient(Protocol):
+    """Boundary implemented by a commencement-date-extracting language-model client."""
+
+    def extract(self, document_text: str) -> date | None:
+        """Return the document's own commencement date found in *document_text*, if any."""
 
 
-def extract_effective_date(document_chunks: Sequence[Chunk]) -> date | None:
-    """Find one document's own commencement date from its chunks, in chunk-index order.
+class BamlEffectiveDateClient:
+    """Typed BAML client, backed by the shared runtime OpenAI-compatible provider."""
 
-    Args:
-        document_chunks: All chunks belonging to a single source document.
+    def __init__(self, settings: Settings, graphiti_settings: GraphitiSettings) -> None:
+        """Create a runtime BAML client from typed, secret-safe configuration."""
+        set_log_level("OFF")
+        self._registry = build_client_registry(
+            base_url=settings.llm_base_url,
+            api_key=settings.llm_api_key,
+            model=settings.llm_model,
+            max_output_tokens=graphiti_settings.query_rewrite_max_output_tokens,
+            temperature=0.0,
+            timeout_seconds=settings.llm_timeout_seconds,
+        )
+        self._timeout_seconds = settings.llm_timeout_seconds
+        self._max_response_bytes = graphiti_settings.max_response_bytes
 
-    Returns:
-        The extracted commencement date, or ``None`` if no confident match was found.
+    def extract(self, document_text: str) -> date | None:
+        """Run one bounded BAML call and return the document's own commencement date, if stated."""
+        request = b.request.ExtractEffectiveDate(document_text, baml_options={"client_registry": self._registry})
+        raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
+        result = b.parse.ExtractEffectiveDate(raw_output, baml_options={"client_registry": self._registry})
+        return date.fromisoformat(result.effective_date) if result.effective_date else None
+
+
+def _windows(ordered_chunks: Sequence[Chunk]) -> list[str]:
+    """Group consecutive chunks into windows, each bounded by a per-call token budget.
+
+    One BAML call over an entire long document becomes unreliable well before typical Vietnamese
+    legal documents run out of length (confirmed empirically against this project's longest
+    ground-truth document, ~77k tokens, which produced inconsistent answers across repeated
+    calls at the same temperature). Splitting into token-bounded windows keeps every call within
+    the range known to work; this bound is a batching concern, not a content-based rule — the
+    LLM alone still decides whether a given window states the document's commencement date.
+    """
+    windows: list[str] = []
+    current_chunks: list[Chunk] = []
+    current_tokens = 0
+    for chunk in ordered_chunks:
+        if current_chunks and current_tokens + chunk.text_token_count > _WINDOW_TOKEN_BUDGET:
+            windows.append("\n".join(c.text for c in current_chunks))
+            current_chunks = []
+            current_tokens = 0
+        current_chunks.append(chunk)
+        current_tokens += chunk.text_token_count
+    if current_chunks:
+        windows.append("\n".join(c.text for c in current_chunks))
+    return windows
+
+
+def extract_effective_date(document_chunks: Sequence[Chunk], client: EffectiveDateClient) -> date | None:
+    """Find one document's own commencement date, scanning token-bounded windows from the end.
+
+    Vietnamese legal documents state their own commencement date near the end (typically in an
+    article titled "Hiệu lực thi hành"), so windows are checked last-to-first and the first
+    non-null result is returned, keeping the common one-window case to a single call.
     """
     ordered = sorted(document_chunks, key=lambda chunk: chunk.chunk_index)
-
-    for index, chunk in enumerate(ordered):
-        if not _ARTICLE_HEADING_PATTERN.search(chunk.text):
-            continue
-        combined = chunk.text
-        if index + 1 < len(ordered):
-            combined += "\n" + ordered[index + 1].text
-        found = _find_date(combined)
-        if found is not None:
-            return found
-
-    for chunk in ordered:
-        found = _find_date(chunk.text)
-        if found is not None:
-            return found
-
+    for window_text in reversed(_windows(ordered)):
+        extracted = client.extract(window_text)
+        if extracted is not None:
+            return extracted
     return None

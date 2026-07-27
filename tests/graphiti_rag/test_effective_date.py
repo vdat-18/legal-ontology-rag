@@ -8,7 +8,20 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.graphiti_rag.effective_date import extract_effective_date
 
 
-def _chunk(chunk_index: int, text: str) -> Chunk:
+class _FakeEffectiveDateClient:
+    """Record each window of text it was asked to extract from, returning results in order."""
+
+    def __init__(self, results: list[date | None]) -> None:
+        self.calls: list[str] = []
+        self._results = list(results)
+
+    def extract(self, document_text: str) -> date | None:
+        """Record the call and return the next configured result."""
+        self.calls.append(document_text)
+        return self._results[len(self.calls) - 1]
+
+
+def _chunk(chunk_index: int, text: str, text_token_count: int = 5) -> Chunk:
     """Build one minimal chunk for effective-date extraction tests."""
     return Chunk(
         chunk_id=f"chunk-{chunk_index}",
@@ -30,64 +43,64 @@ def _chunk(chunk_index: int, text: str) -> Chunk:
         text=text,
         context_text="",
         embedding_text=text,
-        text_token_count=5,
-        embedding_token_count=5,
+        text_token_count=text_token_count,
+        embedding_token_count=text_token_count,
         previous_chunk_id=None,
         next_chunk_id=None,
     )
 
 
-def test_extracts_word_form_date_from_the_heading_article() -> None:
-    """The word-form date in the numbered "Hiệu lực thi hành" article is extracted."""
+def test_returns_the_clients_result_when_the_whole_document_fits_one_window() -> None:
+    """A short document is sent to the client as a single window, in chunk-index order."""
+    chunks = [_chunk(0, "Điều 1. Phạm vi điều chỉnh"), _chunk(1, "Điều 20. Hiệu lực thi hành...")]
+    client = _FakeEffectiveDateClient([date(2026, 8, 15)])
+
+    assert extract_effective_date(chunks, client) == date(2026, 8, 15)
+    assert client.calls == ["Điều 1. Phạm vi điều chỉnh\nĐiều 20. Hiệu lực thi hành..."]
+
+
+def test_returns_none_when_the_client_finds_no_date_anywhere() -> None:
+    """A None result from the client (no stated commencement date) is passed through."""
+    chunks = [_chunk(0, "Điều 1. Phạm vi điều chỉnh")]
+    client = _FakeEffectiveDateClient([None])
+
+    assert extract_effective_date(chunks, client) is None
+
+
+def test_sorts_chunks_by_index_before_windowing_even_if_passed_out_of_order() -> None:
+    """Chunks passed out of order are sorted by chunk_index before windows are built."""
+    chunks = [_chunk(2, "third"), _chunk(0, "first"), _chunk(1, "second")]
+    client = _FakeEffectiveDateClient([date(2025, 1, 1)])
+
+    extract_effective_date(chunks, client)
+
+    assert client.calls == ["first\nsecond\nthird"]
+
+
+def test_splits_into_multiple_windows_once_the_token_budget_is_exceeded() -> None:
+    """Chunks that together exceed the per-window token budget are split into separate windows."""
     chunks = [
-        _chunk(0, "Điều 1. Phạm vi điều chỉnh\n\nVăn bản này quy định..."),
-        _chunk(1, "Điều 20. Hiệu lực thi hành\n\n1. Nghị định này có hiệu lực thi hành từ ngày 15 tháng 8 năm 2026."),
+        _chunk(0, "first-half", text_token_count=39_000),
+        _chunk(1, "second-half", text_token_count=39_000),
     ]
+    client = _FakeEffectiveDateClient([None, date(2025, 1, 1)])
 
-    assert extract_effective_date(chunks) == date(2026, 8, 15)
+    result = extract_effective_date(chunks, client)
+
+    assert result == date(2025, 1, 1)
+    assert client.calls == ["second-half", "first-half"]
 
 
-def test_extracts_slash_form_date_from_the_heading_article() -> None:
-    """The slash-form date (dd/mm/yyyy) in the heading article is also recognized."""
+def test_scans_windows_from_the_end_and_stops_at_the_first_non_null_result() -> None:
+    """Windows are checked last-to-first; the first non-null result short-circuits the scan."""
     chunks = [
-        _chunk(0, "Quyết định này có hiệu lực thi hành kể từ ngày 01/01/2025.\n\nĐiều 3. ..."),
+        _chunk(0, "early", text_token_count=39_000),
+        _chunk(1, "middle", text_token_count=39_000),
+        _chunk(2, "late", text_token_count=39_000),
     ]
+    client = _FakeEffectiveDateClient([date(2025, 1, 1), date(2099, 1, 1)])
 
-    assert extract_effective_date(chunks) == date(2025, 1, 1)
+    result = extract_effective_date(chunks, client)
 
-
-def test_ignores_unrelated_sub_clause_dates_before_the_real_heading() -> None:
-    """A phase-in date for an unrelated sub-provision, in a chunk without the heading, is ignored."""
-    chunks = [
-        _chunk(0, "1. Quy định này có hiệu lực thi hành từ ngày 01 tháng 01 năm 2028 đối với thiết bị X."),
-        _chunk(1, "Điều 20. Hiệu lực thi hành\n\n1. Nghị định này có hiệu lực thi hành từ ngày 15 tháng 8 năm 2026."),
-    ]
-
-    assert extract_effective_date(chunks) == date(2026, 8, 15)
-
-
-def test_falls_back_to_the_next_chunk_when_heading_and_date_are_split() -> None:
-    """If the date sentence spills into the next chunk, it is still found."""
-    chunks = [
-        _chunk(93, "...\n\nĐiều 88. Hiệu lực thi hành"),
-        _chunk(94, "1. Luật này có hiệu lực thi hành từ ngày 01 tháng 01 năm 2025, trừ trường hợp..."),
-    ]
-
-    assert extract_effective_date(chunks) == date(2025, 1, 1)
-
-
-def test_falls_back_to_whole_document_search_when_no_heading_exists() -> None:
-    """Document types without a numbered heading (e.g. Quyết định) still resolve via fallback."""
-    chunks = [
-        _chunk(0, "Điều 1. Ban hành kèm theo Quyết định này..."),
-        _chunk(1, "Quyết định này có hiệu lực thi hành kể từ ngày 01/01/2025.\n\nĐiều 3. ..."),
-    ]
-
-    assert extract_effective_date(chunks) == date(2025, 1, 1)
-
-
-def test_returns_none_when_nothing_matches() -> None:
-    """A document with no recognizable commencement-date clause returns None, not a guess."""
-    chunks = [_chunk(0, "Điều 1. Phạm vi điều chỉnh\n\nVăn bản này không có điều khoản hiệu lực rõ ràng.")]
-
-    assert extract_effective_date(chunks) is None
+    assert result == date(2025, 1, 1)
+    assert client.calls == ["late"]

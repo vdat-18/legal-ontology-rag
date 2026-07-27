@@ -41,6 +41,17 @@ class _FakeGraphiti:
             raise ValueError(msg)
 
 
+class _FakeEffectiveDateClient:
+    """Return a fixed extracted date without making any real LLM call."""
+
+    def __init__(self, result: date | None = None) -> None:
+        self._result = result
+
+    def extract(self, document_text: str) -> date | None:
+        """Return the configured fixed result, ignoring the document text."""
+        return self._result
+
+
 class _FakeNeo4jDriver:
     """Report a fixed set of (name, group_id) episode keys as already indexed."""
 
@@ -112,7 +123,9 @@ def test_index_chunks_skips_when_source_not_in_corpus_config() -> None:
     metadata = CorpusMetadata(group_id="g1", documents={})
     chunk = _chunk("chunk-1", "unknown.docx")
 
-    summary = asyncio.run(index_chunks([chunk], metadata, _FakeGraphiti(), _FakeNeo4jDriver()))
+    summary = asyncio.run(
+        index_chunks([chunk], metadata, _FakeGraphiti(), _FakeNeo4jDriver(), _FakeEffectiveDateClient())
+    )
 
     assert summary.indexed == 0
     assert summary.skipped_no_metadata == 1
@@ -126,26 +139,25 @@ def test_index_chunks_skips_when_effective_date_is_missing() -> None:
     )
     chunk = _chunk("chunk-1", "doc.docx")
 
-    summary = asyncio.run(index_chunks([chunk], metadata, _FakeGraphiti(), _FakeNeo4jDriver()))
+    summary = asyncio.run(
+        index_chunks([chunk], metadata, _FakeGraphiti(), _FakeNeo4jDriver(), _FakeEffectiveDateClient())
+    )
 
     assert summary.indexed == 0
     assert summary.skipped_no_date == 1
 
 
 def test_index_chunks_falls_back_to_extracted_effective_date_when_config_date_is_null() -> None:
-    """A null config effective_date is resolved from the document's own "Hiệu lực thi hành" text."""
+    """A null config effective_date is resolved from the date extraction client's own result."""
     metadata = CorpusMetadata(
         group_id="g1",
         documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=None, amends=None)},
     )
-    chunk = _chunk(
-        "chunk-1",
-        "doc.docx",
-        text="Điều 20. Hiệu lực thi hành\n\nNghị định này có hiệu lực thi hành từ ngày 15 tháng 8 năm 2026.",
-    )
+    chunk = _chunk("chunk-1", "doc.docx")
     graphiti = _FakeGraphiti()
+    date_extraction_client = _FakeEffectiveDateClient(date(2026, 8, 15))
 
-    summary = asyncio.run(index_chunks([chunk], metadata, graphiti, _FakeNeo4jDriver()))
+    summary = asyncio.run(index_chunks([chunk], metadata, graphiti, _FakeNeo4jDriver(), date_extraction_client))
 
     assert summary.indexed == 1
     assert summary.skipped_no_date == 0
@@ -161,7 +173,7 @@ def test_index_chunks_adds_one_episode_with_correct_fields() -> None:
     chunk = _chunk("chunk-1", "doc.docx", chunk_index=3, text="Phạt tiền từ 4 đến 6 triệu.")
     graphiti = _FakeGraphiti()
 
-    summary = asyncio.run(index_chunks([chunk], metadata, graphiti, _FakeNeo4jDriver()))
+    summary = asyncio.run(index_chunks([chunk], metadata, graphiti, _FakeNeo4jDriver(), _FakeEffectiveDateClient()))
 
     assert summary.indexed == 1
     assert len(graphiti.calls) == 1
@@ -186,7 +198,9 @@ def test_index_chunks_skips_when_episode_already_indexed() -> None:
     graphiti = _FakeGraphiti()
     existing = frozenset({("doc.docx#0", "g1")})
 
-    summary = asyncio.run(index_chunks([chunk], metadata, graphiti, _FakeNeo4jDriver(existing)))
+    summary = asyncio.run(
+        index_chunks([chunk], metadata, graphiti, _FakeNeo4jDriver(existing), _FakeEffectiveDateClient())
+    )
 
     assert summary.indexed == 0
     assert summary.skipped_already_indexed == 1
@@ -202,7 +216,7 @@ def test_index_chunks_retries_then_skips_a_chunk_that_keeps_failing() -> None:
     chunk = _chunk("chunk-1", "doc.docx")
     graphiti = _FakeGraphiti(always_fail=True)
 
-    summary = asyncio.run(index_chunks([chunk], metadata, graphiti, _FakeNeo4jDriver()))
+    summary = asyncio.run(index_chunks([chunk], metadata, graphiti, _FakeNeo4jDriver(), _FakeEffectiveDateClient()))
 
     assert summary.indexed == 0
     assert summary.skipped_error == 1
@@ -218,7 +232,9 @@ def test_index_chunks_concurrent_distributes_work_across_all_clients() -> None:
     chunks = [_chunk(f"chunk-{i}", "doc.docx", chunk_index=i) for i in range(6)]
     clients = [_FakeGraphiti(), _FakeGraphiti()]
 
-    summary = asyncio.run(index_chunks_concurrent(chunks, metadata, clients, _FakeNeo4jDriver()))
+    summary = asyncio.run(
+        index_chunks_concurrent(chunks, metadata, clients, _FakeNeo4jDriver(), _FakeEffectiveDateClient())
+    )
 
     assert summary.indexed == 6
     assert summary.skipped_error == 0
@@ -240,7 +256,9 @@ def test_index_chunks_concurrent_skips_no_metadata_and_no_date_chunks() -> None:
     ]
     clients = [_FakeGraphiti(), _FakeGraphiti()]
 
-    summary = asyncio.run(index_chunks_concurrent(chunks, metadata, clients, _FakeNeo4jDriver()))
+    summary = asyncio.run(
+        index_chunks_concurrent(chunks, metadata, clients, _FakeNeo4jDriver(), _FakeEffectiveDateClient())
+    )
 
     assert summary.indexed == 1
     assert summary.skipped_no_metadata == 1
@@ -255,7 +273,9 @@ def test_index_chunks_concurrent_retries_then_counts_persistent_failures_as_erro
     chunks = [_chunk("chunk-1", "doc.docx", chunk_index=0)]
     clients = [_FakeGraphiti(always_fail=True)]
 
-    summary = asyncio.run(index_chunks_concurrent(chunks, metadata, clients, _FakeNeo4jDriver()))
+    summary = asyncio.run(
+        index_chunks_concurrent(chunks, metadata, clients, _FakeNeo4jDriver(), _FakeEffectiveDateClient())
+    )
 
     assert summary.indexed == 0
     assert summary.skipped_error == 1

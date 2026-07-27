@@ -15,7 +15,7 @@ from loguru import logger
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
 from legal_rag.chunker.models import Chunk
-from legal_rag.graphiti_rag.effective_date import extract_effective_date
+from legal_rag.graphiti_rag.effective_date import EffectiveDateClient, extract_effective_date
 from legal_rag.graphiti_rag.ontology import EDGE_TYPES, ENTITY_TYPES
 from legal_rag.settings import GraphitiSettings
 
@@ -85,7 +85,11 @@ async def _episode_already_indexed(neo4j_driver: AsyncDriver, name: str, group_i
     return len(records) > 0
 
 
-def _resolve_effective_dates(chunks: Sequence[Chunk], corpus_metadata: CorpusMetadata) -> dict[str, date | None]:
+def _resolve_effective_dates(
+    chunks: Sequence[Chunk],
+    corpus_metadata: CorpusMetadata,
+    date_extraction_client: EffectiveDateClient,
+) -> dict[str, date | None]:
     """Resolve one effective date per source document: the corpus config's, else extracted.
 
     The corpus config's ``effective_date`` is the authoritative source when present. When it is
@@ -105,7 +109,7 @@ def _resolve_effective_dates(chunks: Sequence[Chunk], corpus_metadata: CorpusMet
         if document.effective_date is not None:
             resolved[source_name] = document.effective_date
             continue
-        extracted = extract_effective_date(document_chunks)
+        extracted = extract_effective_date(document_chunks, date_extraction_client)
         if extracted is not None:
             logger.info("Extracted effective_date {} for {} from its own text", extracted, source_name)
         resolved[source_name] = extracted
@@ -181,9 +185,10 @@ async def index_chunks(
     corpus_metadata: CorpusMetadata,
     graphiti_client: Graphiti,
     neo4j_driver: AsyncDriver,
+    date_extraction_client: EffectiveDateClient,
 ) -> IndexingSummary:
     """Add one Graphiti episode per chunk, skipping chunks without known temporal metadata."""
-    effective_dates = _resolve_effective_dates(chunks, corpus_metadata)
+    effective_dates = _resolve_effective_dates(chunks, corpus_metadata, date_extraction_client)
     eligible, skipped_no_metadata, skipped_no_date = _filter_eligible_chunks(chunks, corpus_metadata, effective_dates)
 
     indexed = 0
@@ -219,6 +224,7 @@ async def index_chunks_concurrent(
     corpus_metadata: CorpusMetadata,
     graphiti_clients: Sequence[Graphiti],
     neo4j_driver: AsyncDriver,
+    date_extraction_client: EffectiveDateClient,
 ) -> IndexingSummary:
     """Index chunks using several Graphiti clients (e.g. one per LLM API key) sharing one queue.
 
@@ -229,7 +235,7 @@ async def index_chunks_concurrent(
     resolution correctness across concurrent writers to one Neo4j group is a known, accepted
     tradeoff (see the Graphiti baseline project notes), not something this function fixes.
     """
-    effective_dates = _resolve_effective_dates(chunks, corpus_metadata)
+    effective_dates = _resolve_effective_dates(chunks, corpus_metadata, date_extraction_client)
     eligible, skipped_no_metadata, skipped_no_date = _filter_eligible_chunks(chunks, corpus_metadata, effective_dates)
 
     queue: asyncio.Queue[Chunk] = asyncio.Queue()
