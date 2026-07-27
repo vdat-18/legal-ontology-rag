@@ -6,12 +6,12 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from pymilvus import MilvusClient
 
 from legal_rag.chunker.models import Chunk
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.naive_rag import pipeline as pipeline_module
+from legal_rag.naive_rag.connection import build_milvus_client
 from legal_rag.naive_rag.indexer import index_chunks
 from legal_rag.naive_rag.pipeline import NaiveRAGPipeline
 from legal_rag.settings import NaiveRagSettings, Settings
@@ -98,7 +98,7 @@ def test_pipeline_run_retrieves_and_generates_an_answer(monkeypatch: pytest.Monk
     monkeypatch.setattr(pipeline_module, "BamlGenerationClient", _FakeGenerationClient)
 
     seed_encoder = EmbeddingEncoder(_profile(), _FakeEncoderBackend())
-    seed_client = MilvusClient(uri=naive_rag_settings.milvus_uri)
+    seed_client = build_milvus_client(naive_rag_settings)
     index_chunks((_chunk("chunk-1", "Phạt tiền từ 4 đến 6 triệu."),), seed_encoder, seed_client, naive_rag_settings)
 
     pipeline = NaiveRAGPipeline(settings, naive_rag_settings)

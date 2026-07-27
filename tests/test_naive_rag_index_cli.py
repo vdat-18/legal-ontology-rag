@@ -7,13 +7,14 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from pymilvus import MilvusClient
 
 from legal_rag import naive_rag_index_cli
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.embedding.profiles import EmbeddingProfile
+from legal_rag.naive_rag.connection import build_milvus_client
+from legal_rag.settings import NaiveRagSettings
 
 
 class _FakeEncoderBackend:
@@ -81,12 +82,12 @@ def test_index_cli_indexes_every_chunk_file_in_the_directory(monkeypatch: pytest
     )
     monkeypatch.setenv("EMBEDDING_PROFILE", "bge_m3")
     monkeypatch.setenv("NAIVE_RAG_TOP_K", "5")
-    monkeypatch.setenv("NAIVE_RAG_MILVUS_URI", milvus_uri)
+    monkeypatch.setenv("MILVUS_URI", milvus_uri)
     monkeypatch.setattr(sys, "argv", ["legal-naive-rag-index", str(chunks_dir)])
 
     naive_rag_index_cli.main()
 
-    client = MilvusClient(uri=milvus_uri)
+    client = build_milvus_client(NaiveRagSettings(embedding_profile="bge_m3", top_k=5, milvus_uri=milvus_uri))
     assert client.get_collection_stats("naive_rag_chunks")["row_count"] == 1
 
 
@@ -104,11 +105,11 @@ def test_index_cli_second_run_skips_reindexing(monkeypatch: pytest.MonkeyPatch, 
     )
     monkeypatch.setenv("EMBEDDING_PROFILE", "bge_m3")
     monkeypatch.setenv("NAIVE_RAG_TOP_K", "5")
-    monkeypatch.setenv("NAIVE_RAG_MILVUS_URI", milvus_uri)
+    monkeypatch.setenv("MILVUS_URI", milvus_uri)
     monkeypatch.setattr(sys, "argv", ["legal-naive-rag-index", str(chunks_dir)])
     naive_rag_index_cli.main()
 
     naive_rag_index_cli.main()
 
-    client = MilvusClient(uri=milvus_uri)
+    client = build_milvus_client(NaiveRagSettings(embedding_profile="bge_m3", top_k=5, milvus_uri=milvus_uri))
     assert client.get_collection_stats("naive_rag_chunks")["row_count"] == 1

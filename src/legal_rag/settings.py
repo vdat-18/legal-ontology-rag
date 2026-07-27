@@ -102,6 +102,7 @@ class NaiveRagSettings:
     embedding_profile: str
     top_k: int
     milvus_uri: str
+    milvus_database: str = "naive_rag_b0"
     milvus_collection_name: str = "naive_rag_chunks"
     milvus_index_type: str = "IVF_FLAT"
     milvus_metric_type: str = "COSINE"
@@ -119,5 +120,5 @@ class NaiveRagSettings:
         return cls(
             embedding_profile=values["EMBEDDING_PROFILE"].strip(),
             top_k=int(values["NAIVE_RAG_TOP_K"]),
-            milvus_uri=values["NAIVE_RAG_MILVUS_URI"].strip(),
+            milvus_uri=values["MILVUS_URI"].strip(),
         )

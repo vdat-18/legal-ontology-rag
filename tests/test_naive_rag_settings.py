@@ -11,7 +11,7 @@ def test_naive_rag_settings_load_from_environment() -> None:
         {
             "EMBEDDING_PROFILE": "bge_m3",
             "NAIVE_RAG_TOP_K": "5",
-            "NAIVE_RAG_MILVUS_URI": "./naive_rag_test.db",
+            "MILVUS_URI": "./naive_rag_test.db",
         }
     )
 

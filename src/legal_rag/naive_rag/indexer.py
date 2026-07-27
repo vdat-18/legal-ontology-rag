@@ -108,5 +108,11 @@ def index_chunks(
             logger.debug("Inserted batch {}/{}", total_inserted, len(chunks))
             batch = []
 
+    # Flush so a subsequent run's row-count check (used to skip re-indexing) sees this data;
+    # a standalone Milvus server does not guarantee inserted rows are counted until flushed.
+    # Milvus Lite (a local ".db" file, matching pymilvus's own dispatch rule) is already
+    # synchronous here and its flush RPC is broken on Windows, so it is skipped for Lite.
+    if not settings.milvus_uri.endswith(".db"):
+        milvus_client.flush(settings.milvus_collection_name)
     logger.info("Indexed {} chunks into '{}'", total_inserted, settings.milvus_collection_name)
     return total_inserted

@@ -5,10 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from loguru import logger
-from pymilvus import MilvusClient
 
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.embedding.profiles import load_configured_embedding_profile
+from legal_rag.naive_rag.connection import build_milvus_client
 from legal_rag.naive_rag.generator import BamlGenerationClient, generate_answer
 from legal_rag.naive_rag.retriever import RetrievedChunk, Retriever
 from legal_rag.settings import NaiveRagSettings, Settings
@@ -31,7 +31,7 @@ class NaiveRAGPipeline:
         self.settings = naive_rag_settings
         profile = load_configured_embedding_profile(naive_rag_settings.embedding_profile)
         encoder = EmbeddingEncoder.from_profile(profile)
-        client = MilvusClient(uri=naive_rag_settings.milvus_uri)
+        client = build_milvus_client(naive_rag_settings)
         self._retriever = Retriever(encoder, client, naive_rag_settings)
         self._generation_client = BamlGenerationClient(settings, naive_rag_settings)
         logger.info("NaiveRAGPipeline initialized")

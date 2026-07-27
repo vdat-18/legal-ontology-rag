@@ -20,10 +20,10 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> None:
     """Load chunks, embed them with the configured profile, and index into Milvus."""
     from dotenv import find_dotenv, load_dotenv
-    from pymilvus import MilvusClient
 
     from legal_rag.embedding.encoder import EmbeddingEncoder
     from legal_rag.embedding.profiles import load_configured_embedding_profile
+    from legal_rag.naive_rag.connection import build_milvus_client
     from legal_rag.naive_rag.indexer import index_chunks, load_chunks
     from legal_rag.settings import NaiveRagSettings
 
@@ -36,7 +36,7 @@ def main() -> None:
     chunks = load_chunks(arguments.chunks_dir)
     profile = load_configured_embedding_profile(naive_rag_settings.embedding_profile)
     encoder = EmbeddingEncoder.from_profile(profile)
-    milvus_client = MilvusClient(uri=naive_rag_settings.milvus_uri)
+    milvus_client = build_milvus_client(naive_rag_settings)
 
     total_indexed = index_chunks(chunks, encoder, milvus_client, naive_rag_settings)
     logger.info(
