@@ -122,3 +122,29 @@ class NaiveRagSettings:
             top_k=int(values["NAIVE_RAG_TOP_K"]),
             milvus_uri=values["MILVUS_URI"].strip(),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class GraphitiSettings:
+    """Embedding profile selection and Neo4j connection settings for the Graphiti knowledge graph."""
+
+    embedding_profile: str
+    neo4j_uri: str
+    neo4j_user: str
+    neo4j_password: str = field(repr=False)
+    search_num_results: int = 30
+    max_context_facts: int = 10
+    answer_max_output_tokens: int = 4096
+    answer_temperature: float = 0.3
+    max_response_bytes: int = 1_048_576
+
+    @classmethod
+    def from_environment(cls, environment: Mapping[str, str] | None = None) -> GraphitiSettings:
+        """Load Graphiti knowledge-graph settings from process environment variables."""
+        values = os.environ if environment is None else environment
+        return cls(
+            embedding_profile=values["EMBEDDING_PROFILE"].strip(),
+            neo4j_uri=values["NEO4J_URI"].strip(),
+            neo4j_user=values["NEO4J_USER"].strip(),
+            neo4j_password=values["NEO4J_PASSWORD"].strip(),
+        )
