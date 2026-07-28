@@ -9,13 +9,10 @@ Rewriting the query into formal terminology before searching closes most of this
 
 from __future__ import annotations
 
-import asyncio
 from typing import Protocol
 
-from baml_py.logging import set_log_level
-
 from legal_rag.baml_client.sync_client import b
-from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.baml_transport import BamlCaller
 from legal_rag.settings import GraphitiSettings, Settings
 
 
@@ -31,22 +28,15 @@ class BamlQueryRewriteClient:
 
     def __init__(self, settings: Settings, graphiti_settings: GraphitiSettings) -> None:
         """Create a runtime BAML client from typed, secret-safe configuration."""
-        set_log_level("OFF")
-        self._registry = build_client_registry(
-            base_url=settings.llm_base_url,
-            api_key=settings.llm_api_key,
-            model=settings.llm_model,
+        self._caller = BamlCaller.from_settings(
+            settings,
             max_output_tokens=graphiti_settings.query_rewrite_max_output_tokens,
             temperature=graphiti_settings.extraction_temperature,
-            timeout_seconds=settings.llm_timeout_seconds,
+            max_response_bytes=graphiti_settings.max_response_bytes,
         )
-        self._timeout_seconds = settings.llm_timeout_seconds
-        self._max_response_bytes = graphiti_settings.max_response_bytes
 
     async def rewrite(self, query: str) -> str:
         """Run one bounded BAML call and return the query rewritten into formal legal terms."""
-        request = b.request.RewriteQueryToLegalTerms(query, baml_options={"client_registry": self._registry})
-        raw_output = await asyncio.to_thread(
-            execute_baml_request, request, self._timeout_seconds, self._max_response_bytes
-        )
-        return b.parse.RewriteQueryToLegalTerms(raw_output, baml_options={"client_registry": self._registry}).query_vi
+        request = b.request.RewriteQueryToLegalTerms(query, baml_options=self._caller.options)
+        raw_output = await self._caller.execute_async(request)
+        return b.parse.RewriteQueryToLegalTerms(raw_output, baml_options=self._caller.options).query_vi

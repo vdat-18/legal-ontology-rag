@@ -6,10 +6,8 @@ from collections.abc import Sequence
 from datetime import date
 from typing import Protocol
 
-from baml_py.logging import set_log_level
-
 from legal_rag.baml_client.sync_client import b
-from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.baml_transport import BamlCaller
 from legal_rag.chunker.models import Chunk
 from legal_rag.settings import GraphitiSettings, Settings
 
@@ -26,23 +24,18 @@ class BamlEffectiveDateClient:
 
     def __init__(self, settings: Settings, graphiti_settings: GraphitiSettings) -> None:
         """Create a runtime BAML client from typed, secret-safe configuration."""
-        set_log_level("OFF")
-        self._registry = build_client_registry(
-            base_url=settings.llm_base_url,
-            api_key=settings.llm_api_key,
-            model=settings.llm_model,
+        self._caller = BamlCaller.from_settings(
+            settings,
             max_output_tokens=graphiti_settings.effective_date_max_output_tokens,
             temperature=graphiti_settings.extraction_temperature,
-            timeout_seconds=settings.llm_timeout_seconds,
+            max_response_bytes=graphiti_settings.max_response_bytes,
         )
-        self._timeout_seconds = settings.llm_timeout_seconds
-        self._max_response_bytes = graphiti_settings.max_response_bytes
 
     def extract(self, document_text: str) -> date | None:
         """Run one bounded BAML call and return the document's own commencement date, if stated."""
-        request = b.request.ExtractEffectiveDate(document_text, baml_options={"client_registry": self._registry})
-        raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        result = b.parse.ExtractEffectiveDate(raw_output, baml_options={"client_registry": self._registry})
+        request = b.request.ExtractEffectiveDate(document_text, baml_options=self._caller.options)
+        raw_output = self._caller.execute(request)
+        result = b.parse.ExtractEffectiveDate(raw_output, baml_options=self._caller.options)
         return date.fromisoformat(result.effective_date) if result.effective_date else None
 
 
