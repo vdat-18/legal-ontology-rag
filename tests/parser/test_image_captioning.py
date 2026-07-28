@@ -17,7 +17,7 @@ from legal_rag.parser.image_captioner import (
 from legal_rag.parser.image_context import ImageContext
 from legal_rag.parser.images import DocxImage, DocxImageExtraction
 from legal_rag.parser.models import CaptionModelResponse
-from legal_rag.settings import Settings
+from legal_rag.settings import LlmProvider, Settings
 
 
 class FakeCaptionClient:
@@ -87,6 +87,7 @@ def _settings() -> Settings:
         llm_base_url="http://localhost:20128/v1",
         llm_api_key="test-provider-key",
         llm_model="provider/test-model",
+        llm_provider=LlmProvider.OPENAI,
         llm_timeout_seconds=30,
         image_caption_max_concurrency=1,
         image_caption_max_output_tokens=256,
@@ -146,6 +147,7 @@ def test_settings_use_code_defaults_for_image_captioning() -> None:
         "LLM_BASE_URL": "http://localhost:20128/v1/",
         "LLM_API_KEY": "provider-key",
         "LLM_MODEL": "provider/model",
+        "LLM_PROVIDER": "openai",
         "LLM_TIMEOUT_SECONDS": "60",
     }
 

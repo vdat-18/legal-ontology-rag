@@ -21,7 +21,7 @@ from legal_rag.evaluation.candidate_generation import (
 )
 from legal_rag.evaluation.models import EvidenceReference, LegalFact
 from legal_rag.evaluation.scenario_sampling import Scenario
-from legal_rag.settings import EvaluationSettings, Settings
+from legal_rag.settings import EvaluationSettings, LlmProvider, Settings
 
 
 def _fact(fact_id: str = "fact-1") -> LegalFact:
@@ -323,6 +323,7 @@ def _settings() -> Settings:
         llm_base_url="http://localhost:20128/v1",
         llm_api_key="provider-test-key",
         llm_model="provider/test-model",
+        llm_provider=LlmProvider.OPENAI,
         llm_timeout_seconds=30,
     )
 

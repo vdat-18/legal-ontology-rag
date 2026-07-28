@@ -202,7 +202,7 @@ async def index_chunks(
     date_extraction_client: EffectiveDateClient,
 ) -> IndexingSummary:
     """Add one Graphiti episode per chunk, skipping chunks without known temporal metadata."""
-    effective_dates = _resolve_effective_dates(chunks, corpus_metadata, date_extraction_client)
+    effective_dates = await asyncio.to_thread(_resolve_effective_dates, chunks, corpus_metadata, date_extraction_client)
     eligible, skipped_no_metadata, skipped_no_date = _filter_eligible_chunks(chunks, corpus_metadata, effective_dates)
 
     indexed = 0
@@ -240,42 +240,34 @@ async def index_chunks_concurrent(
     neo4j_driver: AsyncDriver,
     date_extraction_client: EffectiveDateClient,
 ) -> IndexingSummary:
-    """Index chunks using several Graphiti clients (e.g. one per LLM API key) sharing one queue.
+    """Index chunks using several Graphiti clients (e.g. one per LLM API key) sharing one backlog.
 
     Unlike statically splitting chunks into one fixed batch per client up front, every client
-    pulls its next chunk from a shared queue the moment it finishes the previous one — so a
+    takes its next chunk from a shared backlog the moment it finishes the previous one — so a
     client whose batch happened to be a short document doesn't sit idle while others still have
     a long backlog. This is the concurrency-safe counterpart to :func:`index_chunks`; entity/edge
     resolution correctness across concurrent writers to one Neo4j group is a known, accepted
     tradeoff (see the Graphiti baseline project notes), not something this function fixes.
     """
-    effective_dates = _resolve_effective_dates(chunks, corpus_metadata, date_extraction_client)
+    effective_dates = await asyncio.to_thread(_resolve_effective_dates, chunks, corpus_metadata, date_extraction_client)
     eligible, skipped_no_metadata, skipped_no_date = _filter_eligible_chunks(chunks, corpus_metadata, effective_dates)
 
-    queue: asyncio.Queue[Chunk] = asyncio.Queue()
-    for chunk in eligible:
-        queue.put_nowait(chunk)
-
+    # Workers share one iterator: advancing it never awaits, so on asyncio's single thread each
+    # worker is guaranteed a distinct chunk without needing a lock or a queue.
+    backlog = iter(eligible)
     counts = {"indexed": 0, "skipped_already_indexed": 0, "skipped_error": 0}
 
     async def worker(graphiti_client: Graphiti) -> None:
-        while True:
-            try:
-                chunk = queue.get_nowait()
-            except asyncio.QueueEmpty:
-                return
-            try:
-                episode_name = f"{chunk.source_name}#{chunk.chunk_index}"
-                if await _episode_already_indexed(neo4j_driver, episode_name, corpus_metadata.group_id):
-                    counts["skipped_already_indexed"] += 1
-                    continue
-                reference_time = datetime.combine(effective_dates[chunk.source_name], time.min, tzinfo=UTC)
-                succeeded = await _add_episode_with_retry(
-                    graphiti_client, episode_name, chunk, reference_time, corpus_metadata.group_id
-                )
-                counts["indexed" if succeeded else "skipped_error"] += 1
-            finally:
-                queue.task_done()
+        for chunk in backlog:
+            episode_name = f"{chunk.source_name}#{chunk.chunk_index}"
+            if await _episode_already_indexed(neo4j_driver, episode_name, corpus_metadata.group_id):
+                counts["skipped_already_indexed"] += 1
+                continue
+            reference_time = datetime.combine(effective_dates[chunk.source_name], time.min, tzinfo=UTC)
+            succeeded = await _add_episode_with_retry(
+                graphiti_client, episode_name, chunk, reference_time, corpus_metadata.group_id
+            )
+            counts["indexed" if succeeded else "skipped_error"] += 1
 
     await asyncio.gather(*(worker(client) for client in graphiti_clients))
 

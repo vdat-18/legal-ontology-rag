@@ -11,9 +11,15 @@ from legal_rag.graphiti_rag.effective_date import extract_effective_date
 class _FakeEffectiveDateClient:
     """Record each window of text it was asked to extract from, returning results in order."""
 
-    def __init__(self, results: list[date | None]) -> None:
+    def __init__(self, results: list[date | None], window_tokens: int = 40_000) -> None:
         self.calls: list[str] = []
         self._results = list(results)
+        self._window_tokens = window_tokens
+
+    @property
+    def window_tokens(self) -> int:
+        """The per-call document-text budget this fake was configured with."""
+        return self._window_tokens
 
     def extract(self, document_text: str) -> date | None:
         """Record the call and return the next configured result."""
@@ -89,6 +95,16 @@ def test_splits_into_multiple_windows_once_the_token_budget_is_exceeded() -> Non
 
     assert result == date(2025, 1, 1)
     assert client.calls == ["second-half", "first-half"]
+
+
+def test_honours_the_clients_configured_window_budget() -> None:
+    """The client's own window_tokens drives splitting, not a hardcoded constant."""
+    chunks = [_chunk(index, f"chunk-{index}", text_token_count=10) for index in range(3)]
+    client = _FakeEffectiveDateClient([None, None, date(2025, 1, 1)], window_tokens=10)
+
+    extract_effective_date(chunks, client)
+
+    assert client.calls == ["chunk-2", "chunk-1", "chunk-0"]
 
 
 def test_scans_windows_from_the_end_and_stops_at_the_first_non_null_result() -> None:

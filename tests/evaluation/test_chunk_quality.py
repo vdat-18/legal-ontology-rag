@@ -7,7 +7,7 @@ import pytest
 from legal_rag.chunker.models import Chunk
 from legal_rag.evaluation import chunk_quality
 from legal_rag.evaluation.chunk_quality import BamlChunkQualityClient, ChunkQualityScore, filter_chunks_by_quality
-from legal_rag.settings import EvaluationSettings, Settings
+from legal_rag.settings import EvaluationSettings, LlmProvider, Settings
 
 
 def _chunk(chunk_id: str, text: str) -> Chunk:
@@ -93,6 +93,7 @@ def _settings() -> Settings:
         llm_base_url="http://localhost:20128/v1",
         llm_api_key="provider-test-key",
         llm_model="provider/test-model",
+        llm_provider=LlmProvider.OPENAI,
         llm_timeout_seconds=30,
     )
 

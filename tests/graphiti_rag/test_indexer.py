@@ -51,6 +51,11 @@ class _FakeEffectiveDateClient:
     def __init__(self, result: date | None = None) -> None:
         self._result = result
 
+    @property
+    def window_tokens(self) -> int:
+        """A budget large enough that indexer tests always use a single window."""
+        return 40_000
+
     def extract(self, document_text: str) -> date | None:
         """Return the configured fixed result, ignoring the document text."""
         return self._result

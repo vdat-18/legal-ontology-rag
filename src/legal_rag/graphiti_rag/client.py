@@ -14,14 +14,13 @@ from graphiti_core.llm_client.config import DEFAULT_MAX_TOKENS, LLMConfig, Model
 from graphiti_core.llm_client.errors import EmptyResponseError, RateLimitError
 from graphiti_core.llm_client.openai_generic_client import DEFAULT_MODEL, OpenAIGenericClient
 from graphiti_core.prompts.models import Message
-from loguru import logger
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel
 
 from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.graphiti_rag.embedder import QwenGraphitiEmbedder
-from legal_rag.settings import GraphitiSettings, Settings
+from legal_rag.settings import GraphitiSettings, LlmProvider, Settings
 
 
 class DeepSeekNonThinkingClient(OpenAIGenericClient):
@@ -58,25 +57,18 @@ class DeepSeekNonThinkingClient(OpenAIGenericClient):
                 response_format=self._build_response_format(response_model),
                 extra_body={"thinking": {"type": "disabled"}},
             )
-            result = response.choices[0].message.content or ""
-            if not result:
-                raise EmptyResponseError("LLM returned an empty response")  # noqa: TRY301, TRY003
-            return json.loads(self._strip_code_fences(result))
         except openai.RateLimitError as error:
             raise RateLimitError from error
-        except Exception as error:
-            logger.error("Error in generating LLM response: {}", error)
-            raise
+        result = response.choices[0].message.content or ""
+        if not result:
+            raise EmptyResponseError("LLM returned an empty response")  # noqa: TRY003
+        return json.loads(self._strip_code_fences(result))
 
 
-def _select_llm_client_class(model: str) -> type[OpenAIGenericClient]:
-    """Pick the DeepSeek thinking-mode-disabling client only when *model* is actually DeepSeek's.
-
-    ``thinking: {"type": "disabled"}`` is a DeepSeek-specific extension field, not part of the
-    OpenAI-compatible API — sending it to a different provider risks the request being rejected,
-    so it is only attached when the configured model is DeepSeek's, not unconditionally.
-    """
-    return DeepSeekNonThinkingClient if "deepseek" in model.lower() else OpenAIGenericClient
+_LLM_CLIENT_CLASSES: dict[LlmProvider, type[OpenAIGenericClient]] = {
+    LlmProvider.OPENAI: OpenAIGenericClient,
+    LlmProvider.DEEPSEEK: DeepSeekNonThinkingClient,
+}
 
 
 def build_graphiti(
@@ -110,7 +102,7 @@ def build_graphiti(
     openai_client = AsyncOpenAI(
         api_key=llm_config.api_key, base_url=llm_config.base_url, timeout=settings.llm_timeout_seconds
     )
-    llm_client_cls = _select_llm_client_class(settings.llm_model)
+    llm_client_cls = _LLM_CLIENT_CLASSES[settings.llm_provider]
     llm_client = llm_client_cls(config=llm_config, client=openai_client, structured_output_mode="json_object")
     resolved_embedder = embedder or QwenGraphitiEmbedder.from_profile(profile)
     return Graphiti(

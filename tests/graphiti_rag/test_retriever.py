@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import asyncio
 
-from legal_rag.graphiti_rag.retriever import RetrievedFact, search_facts, select_minimal_facts
+import pytest
+
+from legal_rag.graphiti_rag.retriever import (
+    MissingProvenanceError,
+    RetrievedFact,
+    search_facts,
+    select_minimal_facts,
+)
 
 
 class _FakeEdge:
@@ -49,7 +56,7 @@ def _fake_episode_lookup(episodes: list[_FakeEpisode]):
     by_uuid = {episode.uuid: episode for episode in episodes}
 
     async def _lookup(_driver: object, uuids: list[str]) -> list[_FakeEpisode]:
-        return [by_uuid[uuid] for uuid in uuids]
+        return [by_uuid[uuid] for uuid in uuids if uuid in by_uuid]
 
     return _lookup
 
@@ -95,6 +102,31 @@ def test_search_facts_uses_the_first_episode_when_an_edge_has_several() -> None:
     )
 
     assert facts[0].chunk_id == "doc.docx#1"
+
+
+def test_search_facts_raises_when_an_edge_has_no_resolvable_episode() -> None:
+    """An unattributable edge fails retrieval loudly instead of silently dropping evidence."""
+    edges = [_FakeEdge("e1", "some fact", "PENALIZES", "n1", "n2", episodes=["missing-ep"])]
+    graphiti = _FakeGraphiti(edges)
+
+    with pytest.raises(MissingProvenanceError) as error:
+        asyncio.run(search_facts(graphiti, "q", "group-1", 30, get_episodes_by_uuids=_fake_episode_lookup([])))
+
+    assert error.value.edge_uuid == "e1"
+    assert error.value.missing_episode_uuids == ("missing-ep",)
+
+
+def test_search_facts_falls_back_to_a_later_episode_when_the_first_is_unresolvable() -> None:
+    """A partially-resolvable edge is still cited, using its first resolvable episode."""
+    edges = [_FakeEdge("e1", "some fact", "PENALIZES", "n1", "n2", episodes=["gone", "ep2"])]
+    episodes = [_FakeEpisode("ep2", "doc.docx#9", "doc.docx")]
+    graphiti = _FakeGraphiti(edges)
+
+    facts = asyncio.run(
+        search_facts(graphiti, "q", "group-1", 30, get_episodes_by_uuids=_fake_episode_lookup(episodes))
+    )
+
+    assert facts[0].chunk_id == "doc.docx#9"
 
 
 def test_select_minimal_facts_keeps_the_first_fact_even_with_no_new_coverage() -> None:

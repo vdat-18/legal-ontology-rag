@@ -9,6 +9,15 @@ from pathlib import Path
 from loguru import logger
 
 
+def _positive_int(raw: str) -> int:
+    """Parse *raw* as an integer of at least 1, for argparse options that count things."""
+    value = int(raw)
+    if value < 1:
+        msg = f"expected a positive integer, got {value}"
+        raise argparse.ArgumentTypeError(msg)
+    return value
+
+
 def _parser() -> argparse.ArgumentParser:
     """Build the Graphiti query command-line interface."""
     parser = argparse.ArgumentParser(description="Answer one question using the Graphiti knowledge graph pipeline.")
@@ -20,7 +29,12 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         help="Ground-truth corpus config JSON path, used to flag citations outside the indexed corpus",
     )
-    parser.add_argument("--max-facts", type=int, default=None, help="Override the configured number of context facts")
+    parser.add_argument(
+        "--max-facts",
+        type=_positive_int,
+        default=None,
+        help="Override the configured number of context facts (positive integer)",
+    )
     return parser
 
 

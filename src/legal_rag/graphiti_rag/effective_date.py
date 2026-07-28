@@ -13,11 +13,13 @@ from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.chunker.models import Chunk
 from legal_rag.settings import GraphitiSettings, Settings
 
-_WINDOW_TOKEN_BUDGET = 40_000
-
 
 class EffectiveDateClient(Protocol):
     """Boundary implemented by a commencement-date-extracting language-model client."""
+
+    @property
+    def window_tokens(self) -> int:
+        """The largest amount of document text, in tokens, this client accepts per call."""
 
     def extract(self, document_text: str) -> date | None:
         """Return the document's own commencement date found in *document_text*, if any."""
@@ -39,6 +41,12 @@ class BamlEffectiveDateClient:
         )
         self._timeout_seconds = settings.llm_timeout_seconds
         self._max_response_bytes = graphiti_settings.max_response_bytes
+        self._window_tokens = graphiti_settings.effective_date_window_tokens
+
+    @property
+    def window_tokens(self) -> int:
+        """The configured per-call document-text budget, in tokens."""
+        return self._window_tokens
 
     def extract(self, document_text: str) -> date | None:
         """Run one bounded BAML call and return the document's own commencement date, if stated."""
@@ -48,8 +56,8 @@ class BamlEffectiveDateClient:
         return date.fromisoformat(result.effective_date) if result.effective_date else None
 
 
-def _windows(ordered_chunks: Sequence[Chunk]) -> list[str]:
-    """Group consecutive chunks into windows, each bounded by a per-call token budget.
+def _windows(ordered_chunks: Sequence[Chunk], window_tokens: int) -> list[str]:
+    """Group consecutive chunks into windows, each bounded by *window_tokens*.
 
     One BAML call over an entire long document becomes unreliable well before typical Vietnamese
     legal documents run out of length (confirmed empirically against this project's longest
@@ -62,7 +70,7 @@ def _windows(ordered_chunks: Sequence[Chunk]) -> list[str]:
     current_chunks: list[Chunk] = []
     current_tokens = 0
     for chunk in ordered_chunks:
-        if current_chunks and current_tokens + chunk.text_token_count > _WINDOW_TOKEN_BUDGET:
+        if current_chunks and current_tokens + chunk.text_token_count > window_tokens:
             windows.append("\n".join(c.text for c in current_chunks))
             current_chunks = []
             current_tokens = 0
@@ -81,7 +89,7 @@ def extract_effective_date(document_chunks: Sequence[Chunk], client: EffectiveDa
     non-null result is returned, keeping the common one-window case to a single call.
     """
     ordered = sorted(document_chunks, key=lambda chunk: chunk.chunk_index)
-    for window_text in reversed(_windows(ordered)):
+    for window_text in reversed(_windows(ordered, client.window_tokens)):
         extracted = client.extract(window_text)
         if extracted is not None:
             return extracted

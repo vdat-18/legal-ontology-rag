@@ -13,6 +13,25 @@ from loguru import logger
 EpisodeLookup = Callable[[GraphDriver, list[str]], Awaitable[list[EpisodicNode]]]
 
 
+class MissingProvenanceError(RuntimeError):
+    """Raised when a retrieved edge's supporting episodes cannot be resolved.
+
+    Every indexed edge is written together with the episode it was extracted from, so an
+    unresolvable episode means the graph is inconsistent. Answering from the remaining facts
+    would silently drop evidence and produce a confidently-cited but incomplete answer, so
+    retrieval fails loudly instead.
+    """
+
+    def __init__(self, edge_uuid: str, missing_episode_uuids: Sequence[str]) -> None:
+        """Record which edge could not be attributed, and which episodes were missing."""
+        self.edge_uuid = edge_uuid
+        self.missing_episode_uuids = tuple(missing_episode_uuids)
+        super().__init__(
+            f"Edge {edge_uuid} has no resolvable supporting episode "
+            f"(missing episode uuids: {', '.join(self.missing_episode_uuids) or 'none recorded'})"
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class RetrievedFact:
     """One fact (graph edge) retrieved for a query, duck-typed to feed the shared BAML generator.
@@ -40,26 +59,33 @@ async def search_facts(
 
     An edge's real provenance is the episode it was extracted from at indexing time — its own
     ``name``/``uuid`` only describe the relation type and the edge's own identity, not the
-    source document or chunk. An edge can carry more than one supporting episode; the first is
-    used as the cited source.
+    source document or chunk. An edge can carry more than one supporting episode; the first
+    resolvable one is used as the cited source.
+
+    Raises:
+        MissingProvenanceError: If any retrieved edge has no resolvable supporting episode.
     """
     edges = await graphiti_client.search(query, group_ids=[group_id], num_results=num_results)
 
-    episode_uuids = list({edge.episodes[0] for edge in edges})
+    episode_uuids = list({uuid for edge in edges for uuid in edge.episodes})
     episodes_by_uuid = {
         episode.uuid: episode for episode in await get_episodes_by_uuids(graphiti_client.driver, episode_uuids)
     }
 
-    facts = [
-        RetrievedFact(
-            chunk_id=episodes_by_uuid[edge.episodes[0]].name,
-            text=edge.fact,
-            source_name=episodes_by_uuid[edge.episodes[0]].source_description,
-            source_node_uuid=edge.source_node_uuid,
-            target_node_uuid=edge.target_node_uuid,
+    facts = []
+    for edge in edges:
+        source_episode = next((episodes_by_uuid[uuid] for uuid in edge.episodes if uuid in episodes_by_uuid), None)
+        if source_episode is None:
+            raise MissingProvenanceError(edge.uuid, edge.episodes)
+        facts.append(
+            RetrievedFact(
+                chunk_id=source_episode.name,
+                text=edge.fact,
+                source_name=source_episode.source_description,
+                source_node_uuid=edge.source_node_uuid,
+                target_node_uuid=edge.target_node_uuid,
+            )
         )
-        for edge in edges
-    ]
     logger.debug("Retrieved {} candidate facts for query: {:.60s}", len(facts), query)
     return facts
 
