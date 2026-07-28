@@ -14,20 +14,21 @@ EpisodeLookup = Callable[[GraphDriver, list[str]], Awaitable[list[EpisodicNode]]
 
 
 class MissingProvenanceError(ValueError):
-    """Raised when none of a retrieved edge's supporting episodes can be resolved.
+    """Raised when a retrieved edge's supporting episodes cannot be fully resolved.
 
-    Every indexed edge is written together with the episode it was extracted from, so an edge
-    with no resolvable episode means the graph is inconsistent. Dropping it would answer from a
-    silently incomplete fact set, so retrieval fails loudly instead.
+    Every indexed edge is written together with the episodes it was extracted from, and episodes
+    are never deleted, so any episode that fails to resolve means the graph is inconsistent.
+    Citing only the episodes that happen to resolve would drop evidence silently and ground the
+    answer in a partial fact set, so retrieval fails loudly instead of degrading.
     """
 
-    def __init__(self, edge_uuid: str, episode_uuids: Sequence[str]) -> None:
+    def __init__(self, edge_uuid: str, missing_episode_uuids: Sequence[str]) -> None:
         """Record which edge could not be attributed, and which episodes failed to resolve."""
         self.edge_uuid = edge_uuid
-        self.episode_uuids = tuple(episode_uuids)
+        self.missing_episode_uuids = tuple(missing_episode_uuids)
         super().__init__(
-            f"Edge {edge_uuid} has no resolvable supporting episode "
-            f"(unresolved episode uuids: {', '.join(self.episode_uuids) or 'none recorded'})"
+            f"Edge {edge_uuid} has unresolvable provenance "
+            f"(missing episode uuids: {', '.join(self.missing_episode_uuids) or 'edge records no episode'})"
         )
 
 
@@ -82,13 +83,13 @@ async def search_facts(
 
     facts: list[RetrievedFact] = []
     for edge in edges:
+        missing_episode_uuids = [uuid for uuid in edge.episodes if uuid not in episodes_by_uuid]
+        if missing_episode_uuids or not edge.episodes:
+            raise MissingProvenanceError(edge.uuid, missing_episode_uuids)
         sources = tuple(
-            FactSource(chunk_id=episode.name, source_name=episode.source_description)
+            FactSource(chunk_id=episodes_by_uuid[uuid].name, source_name=episodes_by_uuid[uuid].source_description)
             for uuid in edge.episodes
-            if (episode := episodes_by_uuid.get(uuid)) is not None
         )
-        if not sources:
-            raise MissingProvenanceError(edge.uuid, edge.episodes)
         facts.append(RetrievedFact(fact=edge.fact, sources=sources))
 
     logger.debug("Retrieved {} candidate facts for query: {:.60s}", len(facts), query)

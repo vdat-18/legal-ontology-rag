@@ -167,7 +167,9 @@ async def index_chunks(
     window_token_budget: int,
 ) -> IndexingSummary:
     """Add one Graphiti episode per chunk, skipping chunks without known temporal metadata."""
-    effective_dates = _resolve_effective_dates(chunks, corpus_metadata, date_extraction_client, window_token_budget)
+    effective_dates = await asyncio.to_thread(
+        _resolve_effective_dates, chunks, corpus_metadata, date_extraction_client, window_token_budget
+    )
     eligible, skipped_no_metadata, skipped_no_date = _filter_eligible_chunks(chunks, corpus_metadata, effective_dates)
 
     indexed = 0
@@ -207,7 +209,9 @@ async def index_chunks_concurrent(
     resolution correctness across concurrent writers to one Neo4j group is a known, accepted
     tradeoff (see the Graphiti baseline project notes), not something this function fixes.
     """
-    effective_dates = _resolve_effective_dates(chunks, corpus_metadata, date_extraction_client, window_token_budget)
+    effective_dates = await asyncio.to_thread(
+        _resolve_effective_dates, chunks, corpus_metadata, date_extraction_client, window_token_budget
+    )
     eligible, skipped_no_metadata, skipped_no_date = _filter_eligible_chunks(chunks, corpus_metadata, effective_dates)
 
     # Workers share one iterator: advancing it never awaits, so on asyncio's single thread each

@@ -105,17 +105,17 @@ def test_search_facts_cites_every_supporting_episode_of_an_edge() -> None:
     )
 
 
-def test_search_facts_keeps_only_the_episodes_that_resolve_when_some_are_missing() -> None:
-    """An edge whose episode lookup returns fewer nodes keeps the resolvable ones, without KeyError."""
+def test_search_facts_raises_when_only_some_episodes_of_an_edge_resolve() -> None:
+    """Partial provenance is still a graph inconsistency: it must not silently lose a source."""
     edges = [_FakeEdge("e1", "some fact", "PENALIZES", episodes=["ep1", "ep-missing"])]
     episodes = [_FakeEpisode("ep1", "chunk-1", "doc.docx")]
     graphiti = _FakeGraphiti(edges)
 
-    facts = asyncio.run(
-        search_facts(graphiti, "q", "group-1", 30, get_episodes_by_uuids=_fake_episode_lookup(episodes))
-    )
+    with pytest.raises(MissingProvenanceError) as error:
+        asyncio.run(search_facts(graphiti, "q", "group-1", 30, get_episodes_by_uuids=_fake_episode_lookup(episodes)))
 
-    assert facts[0].sources == (FactSource(chunk_id="chunk-1", source_name="doc.docx"),)
+    assert error.value.edge_uuid == "e1"
+    assert error.value.missing_episode_uuids == ("ep-missing",)
 
 
 def test_search_facts_raises_for_an_edge_that_records_no_episode() -> None:
@@ -127,11 +127,11 @@ def test_search_facts_raises_for_an_edge_that_records_no_episode() -> None:
         asyncio.run(search_facts(graphiti, "q", "group-1", 30, get_episodes_by_uuids=_fake_episode_lookup([])))
 
     assert error.value.edge_uuid == "e1"
-    assert error.value.episode_uuids == ()
+    assert error.value.missing_episode_uuids == ()
 
 
 def test_search_facts_raises_when_every_episode_of_an_edge_is_unresolvable() -> None:
-    """A graph inconsistency surfaces with the edge and episode uuids, not a degraded answer."""
+    """A graph inconsistency surfaces with the edge and missing episode uuids, not a degraded answer."""
     edges = [_FakeEdge("e1", "unciteable fact", "PENALIZES", episodes=["ep-missing"])]
     graphiti = _FakeGraphiti(edges)
 
@@ -139,4 +139,4 @@ def test_search_facts_raises_when_every_episode_of_an_edge_is_unresolvable() -> 
         asyncio.run(search_facts(graphiti, "q", "group-1", 30, get_episodes_by_uuids=_fake_episode_lookup([])))
 
     assert error.value.edge_uuid == "e1"
-    assert error.value.episode_uuids == ("ep-missing",)
+    assert error.value.missing_episode_uuids == ("ep-missing",)
