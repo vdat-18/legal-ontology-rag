@@ -47,9 +47,7 @@ def _extract_model_ids(payload: Any) -> list[str]:
     data = payload.get("data") if isinstance(payload, dict) else None
     if not isinstance(data, list):
         return []
-    return sorted(
-        entry["id"] for entry in data if isinstance(entry, dict) and isinstance(entry.get("id"), str)
-    )
+    return sorted(entry["id"] for entry in data if isinstance(entry, dict) and isinstance(entry.get("id"), str))
 
 
 def _read_error_detail(error: HTTPError) -> str:

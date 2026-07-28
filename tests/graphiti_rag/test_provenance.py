@@ -58,6 +58,15 @@ def test_scans_all_texts_in_one_call() -> None:
     assert client.calls == ["first text\nsecond text"]
 
 
+def test_discards_a_document_number_the_model_did_not_copy_from_the_text() -> None:
+    """Model output is untrusted: a number absent from the scanned text is not reported."""
+    client = _FakeDocumentCitationClient(["100/2019/NĐ-CP", "999/1999/NĐ-CP"])
+
+    result = find_unindexed_document_citations(["Theo Nghị định 100/2019/NĐ-CP."], frozenset(), client)
+
+    assert result == ["100/2019/NĐ-CP"]
+
+
 def test_returns_empty_when_no_document_is_cited() -> None:
     """Text citing no legal document flags nothing."""
     client = _FakeDocumentCitationClient([])

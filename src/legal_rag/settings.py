@@ -11,23 +11,13 @@ from enum import StrEnum
 class LlmProvider(StrEnum):
     """The OpenAI-compatible provider serving ``LLM_MODEL``.
 
-    Providers differ in the non-standard request fields they accept, so the provider has to be
-    stated explicitly rather than guessed from the model name — a guess silently degrades to
-    generic behaviour on a typo or an unrecognised model.
+    Providers differ in the non-standard request fields they accept, so the provider is stated
+    in configuration rather than guessed from the model name, which is unreliable across model
+    aliases and OpenAI-compatible gateways.
     """
 
     OPENAI = "openai"
     DEEPSEEK = "deepseek"
-
-    @classmethod
-    def parse(cls, raw: str) -> LlmProvider:
-        """Parse *raw* into a provider, rejecting anything unsupported."""
-        try:
-            return cls(raw.strip().lower())
-        except ValueError:
-            supported = ", ".join(provider.value for provider in cls)
-            msg = f"Unsupported LLM_PROVIDER {raw!r}; expected one of: {supported}"
-            raise ValueError(msg) from None
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,8 +27,8 @@ class Settings:
     llm_base_url: str
     llm_api_key: str = field(repr=False)
     llm_model: str
-    llm_provider: LlmProvider
     llm_timeout_seconds: float
+    llm_provider: LlmProvider
     image_caption_max_concurrency: int = 4
     image_caption_max_output_tokens: int = 2048
     image_caption_max_context_characters: int = 4000
@@ -60,8 +50,8 @@ class Settings:
             llm_base_url=values["LLM_BASE_URL"].strip().rstrip("/"),
             llm_api_key=values["LLM_API_KEY"].strip(),
             llm_model=values["LLM_MODEL"].strip(),
-            llm_provider=LlmProvider.parse(values["LLM_PROVIDER"]),
             llm_timeout_seconds=float(values["LLM_TIMEOUT_SECONDS"]),
+            llm_provider=LlmProvider(values["LLM_PROVIDER"].strip().lower()),
         )
 
 
@@ -159,25 +149,29 @@ class GraphitiSettings:
     neo4j_password: str = field(repr=False)
     search_num_results: int = 30
     max_context_facts: int = 10
+    effective_date_window_token_budget: int = 40_000
     answer_max_output_tokens: int = 4096
     answer_temperature: float = 0.3
     query_rewrite_max_output_tokens: int = 2048
-    effective_date_window_tokens: int = 40_000
     max_response_bytes: int = 1_048_576
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] | None = None) -> GraphitiSettings:
-        """Load Graphiti knowledge-graph settings from process environment variables."""
+        """Load Graphiti knowledge-graph settings from process environment variables.
+
+        The numeric tunables keep their declared defaults unless the matching ``GRAPHITI_*``
+        variable is set, so a configured value is never silently ignored.
+        """
         values = os.environ if environment is None else environment
         overrides = {
             "search_num_results": values.get("GRAPHITI_SEARCH_NUM_RESULTS"),
             "max_context_facts": values.get("GRAPHITI_MAX_CONTEXT_FACTS"),
-            "effective_date_window_tokens": values.get("GRAPHITI_EFFECTIVE_DATE_WINDOW_TOKENS"),
+            "effective_date_window_token_budget": values.get("GRAPHITI_EFFECTIVE_DATE_WINDOW_TOKEN_BUDGET"),
         }
         return cls(
+            **{name: int(value) for name, value in overrides.items() if value is not None},
             embedding_profile=values["EMBEDDING_PROFILE"].strip(),
             neo4j_uri=values["NEO4J_URI"].strip(),
             neo4j_user=values["NEO4J_USER"].strip(),
             neo4j_password=values["NEO4J_PASSWORD"].strip(),
-            **{name: int(value) for name, value in overrides.items() if value is not None},
         )

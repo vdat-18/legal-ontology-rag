@@ -65,6 +65,10 @@ class DeepSeekNonThinkingClient(OpenAIGenericClient):
         return json.loads(self._strip_code_fences(result))
 
 
+# ``thinking: {"type": "disabled"}`` is a DeepSeek-specific extension field, not part of the
+# OpenAI-compatible API, so it is only sent to DeepSeek. The provider comes from typed
+# configuration rather than being sniffed from the model name, which is unreliable across
+# model aliases and OpenAI-compatible gateways.
 _LLM_CLIENT_CLASSES: dict[LlmProvider, type[OpenAIGenericClient]] = {
     LlmProvider.OPENAI: OpenAIGenericClient,
     LlmProvider.DEEPSEEK: DeepSeekNonThinkingClient,

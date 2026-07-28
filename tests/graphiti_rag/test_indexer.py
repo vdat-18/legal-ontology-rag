@@ -19,6 +19,8 @@ from legal_rag.graphiti_rag.indexer import (
 )
 from legal_rag.graphiti_rag.ontology import EDGE_TYPES, ENTITY_TYPES
 
+_WINDOW_TOKEN_BUDGET = 40_000
+
 
 class _FakeGraphiti:
     """Record add_episode calls instead of talking to a real Graphiti/LLM/Neo4j stack."""
@@ -41,7 +43,7 @@ class _FakeGraphiti:
         if self._fail_with is not None:
             raise self._fail_with
         if self._always_fail:
-            msg = "simulated DeepSeek structured-output failure"
+            msg = "simulated add_episode failure"
             raise ValueError(msg)
 
 
@@ -50,11 +52,6 @@ class _FakeEffectiveDateClient:
 
     def __init__(self, result: date | None = None) -> None:
         self._result = result
-
-    @property
-    def window_tokens(self) -> int:
-        """A budget large enough that indexer tests always use a single window."""
-        return 40_000
 
     def extract(self, document_text: str) -> date | None:
         """Return the configured fixed result, ignoring the document text."""
@@ -133,7 +130,9 @@ def test_index_chunks_skips_when_source_not_in_corpus_config() -> None:
     chunk = _chunk("chunk-1", "unknown.docx")
 
     summary = asyncio.run(
-        index_chunks([chunk], metadata, _FakeGraphiti(), _FakeNeo4jDriver(), _FakeEffectiveDateClient())
+        index_chunks(
+            [chunk], metadata, _FakeGraphiti(), _FakeNeo4jDriver(), _FakeEffectiveDateClient(), _WINDOW_TOKEN_BUDGET
+        )
     )
 
     assert summary.indexed == 0
@@ -149,7 +148,9 @@ def test_index_chunks_skips_when_effective_date_is_missing() -> None:
     chunk = _chunk("chunk-1", "doc.docx")
 
     summary = asyncio.run(
-        index_chunks([chunk], metadata, _FakeGraphiti(), _FakeNeo4jDriver(), _FakeEffectiveDateClient())
+        index_chunks(
+            [chunk], metadata, _FakeGraphiti(), _FakeNeo4jDriver(), _FakeEffectiveDateClient(), _WINDOW_TOKEN_BUDGET
+        )
     )
 
     assert summary.indexed == 0
@@ -166,28 +167,32 @@ def test_index_chunks_falls_back_to_extracted_effective_date_when_config_date_is
     graphiti = _FakeGraphiti()
     date_extraction_client = _FakeEffectiveDateClient(date(2026, 8, 15))
 
-    summary = asyncio.run(index_chunks([chunk], metadata, graphiti, _FakeNeo4jDriver(), date_extraction_client))
+    summary = asyncio.run(
+        index_chunks([chunk], metadata, graphiti, _FakeNeo4jDriver(), date_extraction_client, _WINDOW_TOKEN_BUDGET)
+    )
 
     assert summary.indexed == 1
     assert summary.skipped_no_date == 0
     assert graphiti.calls[0]["reference_time"] == datetime(2026, 8, 15, tzinfo=UTC)
 
 
-def test_index_chunks_adds_one_episode_with_correct_fields() -> None:
-    """A valid chunk is added as one Graphiti episode with the expected temporal/group fields."""
+def test_index_chunks_adds_one_episode_named_by_its_chunk_id() -> None:
+    """A valid chunk is added as one Graphiti episode named by its stable chunk_id."""
     metadata = CorpusMetadata(
         group_id="traffic_penalty_groundtruth_v1",
         documents={"doc.docx": CorpusDocument(so_hieu="168/2024/NĐ-CP", effective_date=date(2025, 1, 1), amends=None)},
     )
-    chunk = _chunk("chunk-1", "doc.docx", chunk_index=3, text="Phạt tiền từ 4 đến 6 triệu.")
+    chunk = _chunk("chunk-abc123", "doc.docx", chunk_index=3, text="Phạt tiền từ 4 đến 6 triệu.")
     graphiti = _FakeGraphiti()
 
-    summary = asyncio.run(index_chunks([chunk], metadata, graphiti, _FakeNeo4jDriver(), _FakeEffectiveDateClient()))
+    summary = asyncio.run(
+        index_chunks([chunk], metadata, graphiti, _FakeNeo4jDriver(), _FakeEffectiveDateClient(), _WINDOW_TOKEN_BUDGET)
+    )
 
     assert summary.indexed == 1
     assert len(graphiti.calls) == 1
     call = graphiti.calls[0]
-    assert call["name"] == "doc.docx#3"
+    assert call["name"] == "chunk-abc123"
     assert call["episode_body"] == "Phạt tiền từ 4 đến 6 triệu."
     assert call["source_description"] == "doc.docx"
     assert call["reference_time"] == datetime(2025, 1, 1, tzinfo=UTC)
@@ -198,17 +203,19 @@ def test_index_chunks_adds_one_episode_with_correct_fields() -> None:
 
 
 def test_index_chunks_skips_when_episode_already_indexed() -> None:
-    """A chunk whose deterministic episode name already exists in the group is skipped."""
+    """A chunk whose stable chunk_id already exists in the group is skipped."""
     metadata = CorpusMetadata(
         group_id="g1",
         documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=date(2025, 1, 1), amends=None)},
     )
     chunk = _chunk("chunk-1", "doc.docx", chunk_index=0)
     graphiti = _FakeGraphiti()
-    existing = frozenset({("doc.docx#0", "g1")})
+    existing = frozenset({("chunk-1", "g1")})
 
     summary = asyncio.run(
-        index_chunks([chunk], metadata, graphiti, _FakeNeo4jDriver(existing), _FakeEffectiveDateClient())
+        index_chunks(
+            [chunk], metadata, graphiti, _FakeNeo4jDriver(existing), _FakeEffectiveDateClient(), _WINDOW_TOKEN_BUDGET
+        )
     )
 
     assert summary.indexed == 0
@@ -216,8 +223,8 @@ def test_index_chunks_skips_when_episode_already_indexed() -> None:
     assert graphiti.calls == []
 
 
-def test_index_chunks_retries_then_skips_a_chunk_that_keeps_failing() -> None:
-    """A chunk whose add_episode call keeps raising is retried, then skipped, not fatal."""
+def test_index_chunks_propagates_a_failing_add_episode() -> None:
+    """A failing add_episode raises out of the run rather than being swallowed as a skip."""
     metadata = CorpusMetadata(
         group_id="g1",
         documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=date(2025, 1, 1), amends=None)},
@@ -225,15 +232,18 @@ def test_index_chunks_retries_then_skips_a_chunk_that_keeps_failing() -> None:
     chunk = _chunk("chunk-1", "doc.docx")
     graphiti = _FakeGraphiti(always_fail=True)
 
-    summary = asyncio.run(index_chunks([chunk], metadata, graphiti, _FakeNeo4jDriver(), _FakeEffectiveDateClient()))
+    with pytest.raises(ValueError, match="simulated add_episode failure"):
+        asyncio.run(
+            index_chunks(
+                [chunk], metadata, graphiti, _FakeNeo4jDriver(), _FakeEffectiveDateClient(), _WINDOW_TOKEN_BUDGET
+            )
+        )
 
-    assert summary.indexed == 0
-    assert summary.skipped_error == 1
-    assert len(graphiti.calls) == 3
+    assert len(graphiti.calls) == 1
 
 
-def test_index_chunks_does_not_retry_a_non_retryable_configuration_error() -> None:
-    """A permanent error (bad Neo4j credentials, bad API key, ...) fails fast, without retrying."""
+def test_index_chunks_propagates_a_configuration_error_without_special_casing() -> None:
+    """A configuration error (bad Neo4j credentials, ...) surfaces on the first attempt, not retried."""
     metadata = CorpusMetadata(
         group_id="g1",
         documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=date(2025, 1, 1), amends=None)},
@@ -241,10 +251,13 @@ def test_index_chunks_does_not_retry_a_non_retryable_configuration_error() -> No
     chunk = _chunk("chunk-1", "doc.docx")
     graphiti = _FakeGraphiti(fail_with=neo4j.exceptions.AuthError("bad credentials"))
 
-    summary = asyncio.run(index_chunks([chunk], metadata, graphiti, _FakeNeo4jDriver(), _FakeEffectiveDateClient()))
+    with pytest.raises(neo4j.exceptions.AuthError):
+        asyncio.run(
+            index_chunks(
+                [chunk], metadata, graphiti, _FakeNeo4jDriver(), _FakeEffectiveDateClient(), _WINDOW_TOKEN_BUDGET
+            )
+        )
 
-    assert summary.indexed == 0
-    assert summary.skipped_error == 1
     assert len(graphiti.calls) == 1
 
 
@@ -258,11 +271,12 @@ def test_index_chunks_concurrent_distributes_work_across_all_clients() -> None:
     clients = [_FakeGraphiti(), _FakeGraphiti()]
 
     summary = asyncio.run(
-        index_chunks_concurrent(chunks, metadata, clients, _FakeNeo4jDriver(), _FakeEffectiveDateClient())
+        index_chunks_concurrent(
+            chunks, metadata, clients, _FakeNeo4jDriver(), _FakeEffectiveDateClient(), _WINDOW_TOKEN_BUDGET
+        )
     )
 
     assert summary.indexed == 6
-    assert summary.skipped_error == 0
     total_calls = len(clients[0].calls) + len(clients[1].calls)
     assert total_calls == 6
     assert len(clients[0].calls) > 0
@@ -282,15 +296,17 @@ def test_index_chunks_concurrent_skips_no_metadata_and_no_date_chunks() -> None:
     clients = [_FakeGraphiti(), _FakeGraphiti()]
 
     summary = asyncio.run(
-        index_chunks_concurrent(chunks, metadata, clients, _FakeNeo4jDriver(), _FakeEffectiveDateClient())
+        index_chunks_concurrent(
+            chunks, metadata, clients, _FakeNeo4jDriver(), _FakeEffectiveDateClient(), _WINDOW_TOKEN_BUDGET
+        )
     )
 
     assert summary.indexed == 1
     assert summary.skipped_no_metadata == 1
 
 
-def test_index_chunks_concurrent_retries_then_counts_persistent_failures_as_errors() -> None:
-    """A client that always fails still lets the run finish, counting its chunk as an error."""
+def test_index_chunks_concurrent_propagates_a_failing_add_episode() -> None:
+    """A worker whose add_episode fails propagates the error instead of counting it as a skip."""
     metadata = CorpusMetadata(
         group_id="g1",
         documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=date(2025, 1, 1), amends=None)},
@@ -298,12 +314,12 @@ def test_index_chunks_concurrent_retries_then_counts_persistent_failures_as_erro
     chunks = [_chunk("chunk-1", "doc.docx", chunk_index=0)]
     clients = [_FakeGraphiti(always_fail=True)]
 
-    summary = asyncio.run(
-        index_chunks_concurrent(chunks, metadata, clients, _FakeNeo4jDriver(), _FakeEffectiveDateClient())
-    )
-
-    assert summary.indexed == 0
-    assert summary.skipped_error == 1
+    with pytest.raises(ValueError, match="simulated add_episode failure"):
+        asyncio.run(
+            index_chunks_concurrent(
+                chunks, metadata, clients, _FakeNeo4jDriver(), _FakeEffectiveDateClient(), _WINDOW_TOKEN_BUDGET
+            )
+        )
 
 
 if __name__ == "__main__":

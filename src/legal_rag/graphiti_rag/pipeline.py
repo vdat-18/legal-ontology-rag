@@ -1,4 +1,4 @@
-"""Graphiti RAG pipeline: rewrite the query, search the graph, select minimal facts, generate."""
+"""Graphiti RAG pipeline: rewrite the query, search the graph, keep the top-ranked facts, generate."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from legal_rag.graphiti_rag.client import build_graphiti
 from legal_rag.graphiti_rag.generator import generate_answer
 from legal_rag.graphiti_rag.provenance import BamlDocumentCitationClient, find_unindexed_document_citations
 from legal_rag.graphiti_rag.query_rewriter import BamlQueryRewriteClient
-from legal_rag.graphiti_rag.retriever import RetrievedFact, search_facts, select_minimal_facts
+from legal_rag.graphiti_rag.retriever import RetrievedFact, search_facts
 from legal_rag.naive_rag.generator import BamlGenerationClient
 from legal_rag.settings import GraphitiSettings, Settings
 
@@ -29,7 +29,12 @@ class GraphitiRAGResult:
 
 
 class GraphitiRAGPipeline:
-    """End-to-end rewrite-search-select-then-generate pipeline over the Graphiti knowledge graph."""
+    """End-to-end rewrite-search-then-generate pipeline over the Graphiti knowledge graph.
+
+    Retrieval order comes from Graphiti's hybrid search and cross-encoder reranker; the pipeline
+    keeps the top ``max_context_facts`` of that ranking as context rather than re-scoring facts
+    with any handcrafted rule.
+    """
 
     def __init__(
         self,
@@ -84,12 +89,12 @@ class GraphitiRAGPipeline:
             self._graphiti_client, rewritten_query, self._group_id, self._settings.search_num_results
         )
         fact_budget = self._settings.max_context_facts if max_facts is None else max_facts
-        selected = select_minimal_facts(candidates, fact_budget)
+        selected = candidates[:fact_budget]
         answer = await asyncio.to_thread(generate_answer, query, selected, self._generation_client)
 
         unindexed_citations = await asyncio.to_thread(
             find_unindexed_document_citations,
-            [answer, *(fact.text for fact in selected)],
+            [answer, *(fact.fact for fact in selected)],
             self._known_so_hieu,
             self._citation_client,
         )

@@ -61,8 +61,9 @@ async def _run(query: str, group_id: str, corpus_config_path: Path | None, max_f
     if result.rewritten_query != result.query:
         logger.info("Rewritten query: {}", result.rewritten_query)
     logger.info("Answer: {}", result.answer)
-    for source in result.sources:
-        logger.info("Fact [{}]: {}", source.source_name, source.text)
+    for fact in result.sources:
+        citations = ", ".join(f"{source.source_name}#{source.chunk_id}" for source in fact.sources)
+        logger.info("Fact [{}]: {}", citations, fact.fact)
     if result.unindexed_citations:
         logger.warning(
             "Caveat: this answer cites document(s) not fully indexed in this corpus: {} — "

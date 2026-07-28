@@ -7,19 +7,15 @@ from datetime import date
 from legal_rag.chunker.models import Chunk
 from legal_rag.graphiti_rag.effective_date import extract_effective_date
 
+_WINDOW_TOKEN_BUDGET = 40_000
+
 
 class _FakeEffectiveDateClient:
     """Record each window of text it was asked to extract from, returning results in order."""
 
-    def __init__(self, results: list[date | None], window_tokens: int = 40_000) -> None:
+    def __init__(self, results: list[date | None]) -> None:
         self.calls: list[str] = []
         self._results = list(results)
-        self._window_tokens = window_tokens
-
-    @property
-    def window_tokens(self) -> int:
-        """The per-call document-text budget this fake was configured with."""
-        return self._window_tokens
 
     def extract(self, document_text: str) -> date | None:
         """Record the call and return the next configured result."""
@@ -61,7 +57,7 @@ def test_returns_the_clients_result_when_the_whole_document_fits_one_window() ->
     chunks = [_chunk(0, "Điều 1. Phạm vi điều chỉnh"), _chunk(1, "Điều 20. Hiệu lực thi hành...")]
     client = _FakeEffectiveDateClient([date(2026, 8, 15)])
 
-    assert extract_effective_date(chunks, client) == date(2026, 8, 15)
+    assert extract_effective_date(chunks, client, _WINDOW_TOKEN_BUDGET) == date(2026, 8, 15)
     assert client.calls == ["Điều 1. Phạm vi điều chỉnh\nĐiều 20. Hiệu lực thi hành..."]
 
 
@@ -70,7 +66,7 @@ def test_returns_none_when_the_client_finds_no_date_anywhere() -> None:
     chunks = [_chunk(0, "Điều 1. Phạm vi điều chỉnh")]
     client = _FakeEffectiveDateClient([None])
 
-    assert extract_effective_date(chunks, client) is None
+    assert extract_effective_date(chunks, client, _WINDOW_TOKEN_BUDGET) is None
 
 
 def test_sorts_chunks_by_index_before_windowing_even_if_passed_out_of_order() -> None:
@@ -78,7 +74,7 @@ def test_sorts_chunks_by_index_before_windowing_even_if_passed_out_of_order() ->
     chunks = [_chunk(2, "third"), _chunk(0, "first"), _chunk(1, "second")]
     client = _FakeEffectiveDateClient([date(2025, 1, 1)])
 
-    extract_effective_date(chunks, client)
+    extract_effective_date(chunks, client, _WINDOW_TOKEN_BUDGET)
 
     assert client.calls == ["first\nsecond\nthird"]
 
@@ -91,20 +87,10 @@ def test_splits_into_multiple_windows_once_the_token_budget_is_exceeded() -> Non
     ]
     client = _FakeEffectiveDateClient([None, date(2025, 1, 1)])
 
-    result = extract_effective_date(chunks, client)
+    result = extract_effective_date(chunks, client, _WINDOW_TOKEN_BUDGET)
 
     assert result == date(2025, 1, 1)
     assert client.calls == ["second-half", "first-half"]
-
-
-def test_honours_the_clients_configured_window_budget() -> None:
-    """The client's own window_tokens drives splitting, not a hardcoded constant."""
-    chunks = [_chunk(index, f"chunk-{index}", text_token_count=10) for index in range(3)]
-    client = _FakeEffectiveDateClient([None, None, date(2025, 1, 1)], window_tokens=10)
-
-    extract_effective_date(chunks, client)
-
-    assert client.calls == ["chunk-2", "chunk-1", "chunk-0"]
 
 
 def test_scans_windows_from_the_end_and_stops_at_the_first_non_null_result() -> None:
@@ -116,7 +102,7 @@ def test_scans_windows_from_the_end_and_stops_at_the_first_non_null_result() -> 
     ]
     client = _FakeEffectiveDateClient([date(2025, 1, 1), date(2099, 1, 1)])
 
-    result = extract_effective_date(chunks, client)
+    result = extract_effective_date(chunks, client, _WINDOW_TOKEN_BUDGET)
 
     assert result == date(2025, 1, 1)
     assert client.calls == ["late"]

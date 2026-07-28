@@ -60,14 +60,15 @@ async def _run(chunks_dir: Path, corpus_config_path: Path) -> IndexingSummary:
     neo4j_driver = build_neo4j_driver(graphiti_settings)
     try:
         await graphiti_clients[0].build_indices_and_constraints()
+        window_token_budget = graphiti_settings.effective_date_window_token_budget
         if len(graphiti_clients) > 1:
             logger.info("Indexing with {} concurrent LLM API keys", len(graphiti_clients))
             summary = await index_chunks_concurrent(
-                chunks, corpus_metadata, graphiti_clients, neo4j_driver, date_extraction_client
+                chunks, corpus_metadata, graphiti_clients, neo4j_driver, date_extraction_client, window_token_budget
             )
         else:
             summary = await index_chunks(
-                chunks, corpus_metadata, graphiti_clients[0], neo4j_driver, date_extraction_client
+                chunks, corpus_metadata, graphiti_clients[0], neo4j_driver, date_extraction_client, window_token_budget
             )
     finally:
         for graphiti_client in graphiti_clients:
@@ -75,14 +76,13 @@ async def _run(chunks_dir: Path, corpus_config_path: Path) -> IndexingSummary:
         await neo4j_driver.close()
 
     logger.info(
-        "Indexed {} episodes into group '{}' ({} skipped: {} no-metadata, {} no-date, {} already-indexed, {} error)",
+        "Indexed {} episodes into group '{}' ({} skipped: {} no-metadata, {} no-date, {} already-indexed)",
         summary.indexed,
         corpus_metadata.group_id,
-        summary.skipped_no_metadata + summary.skipped_no_date + summary.skipped_already_indexed + summary.skipped_error,
+        summary.skipped_no_metadata + summary.skipped_no_date + summary.skipped_already_indexed,
         summary.skipped_no_metadata,
         summary.skipped_no_date,
         summary.skipped_already_indexed,
-        summary.skipped_error,
     )
     return summary
 
@@ -90,8 +90,9 @@ async def _run(chunks_dir: Path, corpus_config_path: Path) -> IndexingSummary:
 def main() -> None:
     """Load chunks, embed them with the configured profile, and index them into Graphiti.
 
-    Exits non-zero when any episode failed to index, so a broken run (bad API key, bad Neo4j
-    credentials, ...) is never mistaken for a successful one by the caller/CI.
+    A failed episode (bad API key, bad Neo4j credentials, an LLM/Graphiti error, ...) raises out
+    of the run, so the process exits non-zero and a broken run is never mistaken for a successful
+    one by the caller/CI.
     """
     from dotenv import find_dotenv, load_dotenv
 
@@ -100,9 +101,7 @@ def main() -> None:
     if dotenv_path:
         load_dotenv(dotenv_path)
 
-    summary = asyncio.run(_run(arguments.chunks_dir, arguments.corpus_config))
-    if summary.skipped_error > 0:
-        raise SystemExit(1)
+    asyncio.run(_run(arguments.chunks_dir, arguments.corpus_config))
 
 
 if __name__ == "__main__":

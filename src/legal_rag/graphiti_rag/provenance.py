@@ -64,6 +64,9 @@ def find_unindexed_document_citations(
 
     Returns:
         Sorted, deduplicated document numbers cited in *texts* but absent from *known_so_hieu*.
+        A returned number the model did not actually copy from *texts* is discarded, since this
+        result is surfaced to the reader as a caveat about the answer's coverage.
     """
-    cited = set(client.extract_citations("\n".join(texts)))
+    scanned = "\n".join(texts)
+    cited = {number for number in client.extract_citations(scanned) if number in scanned}
     return sorted(cited - known_so_hieu)

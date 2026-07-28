@@ -1,4 +1,4 @@
-"""Tests for searching and minimally selecting facts from the Graphiti graph."""
+"""Tests for searching facts and resolving their structured provenance from the Graphiti graph."""
 
 from __future__ import annotations
 
@@ -7,24 +7,20 @@ import asyncio
 import pytest
 
 from legal_rag.graphiti_rag.retriever import (
+    FactSource,
     MissingProvenanceError,
     RetrievedFact,
     search_facts,
-    select_minimal_facts,
 )
 
 
 class _FakeEdge:
     """A minimal stand-in for graphiti_core's EntityEdge."""
 
-    def __init__(
-        self, uuid: str, fact: str, name: str, source_node_uuid: str, target_node_uuid: str, episodes: list[str]
-    ) -> None:
+    def __init__(self, uuid: str, fact: str, name: str, episodes: list[str]) -> None:
         self.uuid = uuid
         self.fact = fact
         self.name = name
-        self.source_node_uuid = source_node_uuid
-        self.target_node_uuid = target_node_uuid
         self.episodes = episodes
 
 
@@ -52,7 +48,11 @@ class _FakeGraphiti:
 
 
 def _fake_episode_lookup(episodes: list[_FakeEpisode]):
-    """Build a fake ``get_episodes_by_uuids`` that resolves from a pre-seeded episode list."""
+    """Build a fake ``get_episodes_by_uuids`` that resolves only the uuids it knows about.
+
+    Like the real lookup, it returns fewer nodes than requested when some uuids don't exist,
+    exercising the retriever's guard against missing episodes instead of raising ``KeyError``.
+    """
     by_uuid = {episode.uuid: episode for episode in episodes}
 
     async def _lookup(_driver: object, uuids: list[str]) -> list[_FakeEpisode]:
@@ -61,17 +61,10 @@ def _fake_episode_lookup(episodes: list[_FakeEpisode]):
     return _lookup
 
 
-def _fact(chunk_id: str, source: str, target: str, text: str = "some fact") -> RetrievedFact:
-    """Build one retrieved fact for selection tests."""
-    return RetrievedFact(
-        chunk_id=chunk_id, text=text, source_name="RELATION", source_node_uuid=source, target_node_uuid=target
-    )
-
-
 def test_search_facts_cites_the_source_episode_not_the_edges_own_name_and_uuid() -> None:
     """Provenance comes from the edge's supporting episode, not its own relation name/uuid."""
-    edges = [_FakeEdge("e1", "Phạt tiền 4-6 triệu", "PENALIZES", "n1", "n2", episodes=["ep1"])]
-    episodes = [_FakeEpisode("ep1", "168_2024_ND-CP.docx#3", "168_2024_ND-CP.docx")]
+    edges = [_FakeEdge("e1", "Phạt tiền 4-6 triệu", "PENALIZES", episodes=["ep1"])]
+    episodes = [_FakeEpisode("ep1", "chunk-abc123", "168_2024_ND-CP.docx")]
     graphiti = _FakeGraphiti(edges)
 
     facts = asyncio.run(
@@ -84,16 +77,21 @@ def test_search_facts_cites_the_source_episode_not_the_edges_own_name_and_uuid()
         )
     )
 
-    assert facts == [RetrievedFact("168_2024_ND-CP.docx#3", "Phạt tiền 4-6 triệu", "168_2024_ND-CP.docx", "n1", "n2")]
+    assert facts == [
+        RetrievedFact(
+            fact="Phạt tiền 4-6 triệu",
+            sources=(FactSource(chunk_id="chunk-abc123", source_name="168_2024_ND-CP.docx"),),
+        )
+    ]
     assert graphiti.calls == [{"query": "vượt đèn đỏ bị phạt bao nhiêu?", "group_ids": ["group-1"], "num_results": 30}]
 
 
-def test_search_facts_uses_the_first_episode_when_an_edge_has_several() -> None:
-    """An edge reinforced across multiple episodes is cited by its first supporting episode."""
-    edges = [_FakeEdge("e1", "some fact", "PENALIZES", "n1", "n2", episodes=["ep1", "ep2"])]
+def test_search_facts_cites_every_supporting_episode_of_an_edge() -> None:
+    """An edge reinforced across several episodes carries the provenance of all of them."""
+    edges = [_FakeEdge("e1", "some fact", "PENALIZES", episodes=["ep1", "ep2"])]
     episodes = [
-        _FakeEpisode("ep1", "doc.docx#1", "doc.docx"),
-        _FakeEpisode("ep2", "doc.docx#9", "doc.docx"),
+        _FakeEpisode("ep1", "chunk-1", "doc.docx"),
+        _FakeEpisode("ep2", "chunk-9", "doc.docx"),
     ]
     graphiti = _FakeGraphiti(edges)
 
@@ -101,65 +99,44 @@ def test_search_facts_uses_the_first_episode_when_an_edge_has_several() -> None:
         search_facts(graphiti, "q", "group-1", 30, get_episodes_by_uuids=_fake_episode_lookup(episodes))
     )
 
-    assert facts[0].chunk_id == "doc.docx#1"
+    assert facts[0].sources == (
+        FactSource(chunk_id="chunk-1", source_name="doc.docx"),
+        FactSource(chunk_id="chunk-9", source_name="doc.docx"),
+    )
 
 
-def test_search_facts_raises_when_an_edge_has_no_resolvable_episode() -> None:
-    """An unattributable edge fails retrieval loudly instead of silently dropping evidence."""
-    edges = [_FakeEdge("e1", "some fact", "PENALIZES", "n1", "n2", episodes=["missing-ep"])]
-    graphiti = _FakeGraphiti(edges)
-
-    with pytest.raises(MissingProvenanceError) as error:
-        asyncio.run(search_facts(graphiti, "q", "group-1", 30, get_episodes_by_uuids=_fake_episode_lookup([])))
-
-    assert error.value.edge_uuid == "e1"
-    assert error.value.missing_episode_uuids == ("missing-ep",)
-
-
-def test_search_facts_falls_back_to_a_later_episode_when_the_first_is_unresolvable() -> None:
-    """A partially-resolvable edge is still cited, using its first resolvable episode."""
-    edges = [_FakeEdge("e1", "some fact", "PENALIZES", "n1", "n2", episodes=["gone", "ep2"])]
-    episodes = [_FakeEpisode("ep2", "doc.docx#9", "doc.docx")]
+def test_search_facts_keeps_only_the_episodes_that_resolve_when_some_are_missing() -> None:
+    """An edge whose episode lookup returns fewer nodes keeps the resolvable ones, without KeyError."""
+    edges = [_FakeEdge("e1", "some fact", "PENALIZES", episodes=["ep1", "ep-missing"])]
+    episodes = [_FakeEpisode("ep1", "chunk-1", "doc.docx")]
     graphiti = _FakeGraphiti(edges)
 
     facts = asyncio.run(
         search_facts(graphiti, "q", "group-1", 30, get_episodes_by_uuids=_fake_episode_lookup(episodes))
     )
 
-    assert facts[0].chunk_id == "doc.docx#9"
+    assert facts[0].sources == (FactSource(chunk_id="chunk-1", source_name="doc.docx"),)
 
 
-def test_select_minimal_facts_keeps_the_first_fact_even_with_no_new_coverage() -> None:
-    """The top-ranked fact is always kept, even though it "covers" only itself."""
-    facts = [_fact("f1", "a", "b")]
+def test_search_facts_raises_for_an_edge_that_records_no_episode() -> None:
+    """An edge carrying no supporting episode fails loudly instead of being silently dropped."""
+    edges = [_FakeEdge("e1", "unciteable fact", "PENALIZES", episodes=[])]
+    graphiti = _FakeGraphiti(edges)
 
-    selected = select_minimal_facts(facts, max_facts=10)
+    with pytest.raises(MissingProvenanceError) as error:
+        asyncio.run(search_facts(graphiti, "q", "group-1", 30, get_episodes_by_uuids=_fake_episode_lookup([])))
 
-    assert selected == facts
-
-
-def test_select_minimal_facts_drops_fully_redundant_facts() -> None:
-    """A lower-ranked fact whose entities are already covered is dropped as redundant."""
-    facts = [_fact("f1", "a", "b"), _fact("f2", "a", "b")]
-
-    selected = select_minimal_facts(facts, max_facts=10)
-
-    assert selected == [facts[0]]
+    assert error.value.edge_uuid == "e1"
+    assert error.value.episode_uuids == ()
 
 
-def test_select_minimal_facts_keeps_facts_that_introduce_new_entities() -> None:
-    """A fact that connects to at least one new entity is kept, even if it shares one entity."""
-    facts = [_fact("f1", "a", "b"), _fact("f2", "b", "c")]
+def test_search_facts_raises_when_every_episode_of_an_edge_is_unresolvable() -> None:
+    """A graph inconsistency surfaces with the edge and episode uuids, not a degraded answer."""
+    edges = [_FakeEdge("e1", "unciteable fact", "PENALIZES", episodes=["ep-missing"])]
+    graphiti = _FakeGraphiti(edges)
 
-    selected = select_minimal_facts(facts, max_facts=10)
+    with pytest.raises(MissingProvenanceError) as error:
+        asyncio.run(search_facts(graphiti, "q", "group-1", 30, get_episodes_by_uuids=_fake_episode_lookup([])))
 
-    assert selected == facts
-
-
-def test_select_minimal_facts_respects_max_facts_budget() -> None:
-    """Selection stops once max_facts is reached, even if more non-redundant facts remain."""
-    facts = [_fact("f1", "a", "b"), _fact("f2", "c", "d"), _fact("f3", "e", "f")]
-
-    selected = select_minimal_facts(facts, max_facts=2)
-
-    assert selected == facts[:2]
+    assert error.value.edge_uuid == "e1"
+    assert error.value.episode_uuids == ("ep-missing",)

@@ -17,10 +17,6 @@ from legal_rag.settings import GraphitiSettings, Settings
 class EffectiveDateClient(Protocol):
     """Boundary implemented by a commencement-date-extracting language-model client."""
 
-    @property
-    def window_tokens(self) -> int:
-        """The largest amount of document text, in tokens, this client accepts per call."""
-
     def extract(self, document_text: str) -> date | None:
         """Return the document's own commencement date found in *document_text*, if any."""
 
@@ -41,12 +37,6 @@ class BamlEffectiveDateClient:
         )
         self._timeout_seconds = settings.llm_timeout_seconds
         self._max_response_bytes = graphiti_settings.max_response_bytes
-        self._window_tokens = graphiti_settings.effective_date_window_tokens
-
-    @property
-    def window_tokens(self) -> int:
-        """The configured per-call document-text budget, in tokens."""
-        return self._window_tokens
 
     def extract(self, document_text: str) -> date | None:
         """Run one bounded BAML call and return the document's own commencement date, if stated."""
@@ -56,21 +46,22 @@ class BamlEffectiveDateClient:
         return date.fromisoformat(result.effective_date) if result.effective_date else None
 
 
-def _windows(ordered_chunks: Sequence[Chunk], window_tokens: int) -> list[str]:
-    """Group consecutive chunks into windows, each bounded by *window_tokens*.
+def _windows(ordered_chunks: Sequence[Chunk], window_token_budget: int) -> list[str]:
+    """Group consecutive chunks into windows, each bounded by *window_token_budget* tokens.
 
     One BAML call over an entire long document becomes unreliable well before typical Vietnamese
     legal documents run out of length (confirmed empirically against this project's longest
     ground-truth document, ~77k tokens, which produced inconsistent answers across repeated
     calls at the same temperature). Splitting into token-bounded windows keeps every call within
-    the range known to work; this bound is a batching concern, not a content-based rule — the
-    LLM alone still decides whether a given window states the document's commencement date.
+    the range known to work; the budget is typed config (``GraphitiSettings``), and this bound is
+    a batching concern, not a content-based rule — the LLM alone still decides whether a given
+    window states the document's commencement date.
     """
     windows: list[str] = []
     current_chunks: list[Chunk] = []
     current_tokens = 0
     for chunk in ordered_chunks:
-        if current_chunks and current_tokens + chunk.text_token_count > window_tokens:
+        if current_chunks and current_tokens + chunk.text_token_count > window_token_budget:
             windows.append("\n".join(c.text for c in current_chunks))
             current_chunks = []
             current_tokens = 0
@@ -81,7 +72,9 @@ def _windows(ordered_chunks: Sequence[Chunk], window_tokens: int) -> list[str]:
     return windows
 
 
-def extract_effective_date(document_chunks: Sequence[Chunk], client: EffectiveDateClient) -> date | None:
+def extract_effective_date(
+    document_chunks: Sequence[Chunk], client: EffectiveDateClient, window_token_budget: int
+) -> date | None:
     """Find one document's own commencement date, scanning token-bounded windows from the end.
 
     Vietnamese legal documents state their own commencement date near the end (typically in an
@@ -89,7 +82,7 @@ def extract_effective_date(document_chunks: Sequence[Chunk], client: EffectiveDa
     non-null result is returned, keeping the common one-window case to a single call.
     """
     ordered = sorted(document_chunks, key=lambda chunk: chunk.chunk_index)
-    for window_text in reversed(_windows(ordered, client.window_tokens)):
+    for window_text in reversed(_windows(ordered, window_token_budget)):
         extracted = client.extract(window_text)
         if extracted is not None:
             return extracted

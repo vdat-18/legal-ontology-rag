@@ -10,9 +10,14 @@ from legal_rag.naive_rag.generator import GenerationClient
 
 
 def generate_answer(query: str, facts: Sequence[RetrievedFact], client: GenerationClient) -> str:
-    """Generate one answer grounded in the selected graph facts."""
+    """Generate one answer grounded in the selected graph facts.
+
+    A fact supported by several episodes contributes one context per supporting source, so every
+    chunk that reinforces the fact is cited rather than only the first.
+    """
     contexts = [
-        BamlRetrievedChunkContext(chunk_id=fact.chunk_id, text=fact.text, source_name=fact.source_name)
+        BamlRetrievedChunkContext(chunk_id=source.chunk_id, text=fact.fact, source_name=source.source_name)
         for fact in facts
+        for source in fact.sources
     ]
     return client.generate(query, contexts)

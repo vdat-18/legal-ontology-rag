@@ -1,4 +1,4 @@
-"""Retrieve candidate facts from the Graphiti graph and select a minimal, non-redundant set."""
+"""Retrieve candidate facts from the Graphiti graph with the provenance of every supporting episode."""
 
 from __future__ import annotations
 
@@ -13,38 +13,47 @@ from loguru import logger
 EpisodeLookup = Callable[[GraphDriver, list[str]], Awaitable[list[EpisodicNode]]]
 
 
-class MissingProvenanceError(RuntimeError):
-    """Raised when a retrieved edge's supporting episodes cannot be resolved.
+class MissingProvenanceError(ValueError):
+    """Raised when none of a retrieved edge's supporting episodes can be resolved.
 
-    Every indexed edge is written together with the episode it was extracted from, so an
-    unresolvable episode means the graph is inconsistent. Answering from the remaining facts
-    would silently drop evidence and produce a confidently-cited but incomplete answer, so
-    retrieval fails loudly instead.
+    Every indexed edge is written together with the episode it was extracted from, so an edge
+    with no resolvable episode means the graph is inconsistent. Dropping it would answer from a
+    silently incomplete fact set, so retrieval fails loudly instead.
     """
 
-    def __init__(self, edge_uuid: str, missing_episode_uuids: Sequence[str]) -> None:
-        """Record which edge could not be attributed, and which episodes were missing."""
+    def __init__(self, edge_uuid: str, episode_uuids: Sequence[str]) -> None:
+        """Record which edge could not be attributed, and which episodes failed to resolve."""
         self.edge_uuid = edge_uuid
-        self.missing_episode_uuids = tuple(missing_episode_uuids)
+        self.episode_uuids = tuple(episode_uuids)
         super().__init__(
             f"Edge {edge_uuid} has no resolvable supporting episode "
-            f"(missing episode uuids: {', '.join(self.missing_episode_uuids) or 'none recorded'})"
+            f"(unresolved episode uuids: {', '.join(self.episode_uuids) or 'none recorded'})"
         )
 
 
 @dataclass(frozen=True, slots=True)
-class RetrievedFact:
-    """One fact (graph edge) retrieved for a query, duck-typed to feed the shared BAML generator.
+class FactSource:
+    """One supporting episode's provenance for a retrieved fact: its source chunk and document.
 
-    ``chunk_id``/``text``/``source_name`` match the fields the naive RAG generator already
-    builds a ``RetrievedChunkContext`` from, so the same generation client can be reused as-is.
+    ``chunk_id`` is the chunker's stable ``Chunk.chunk_id`` (the indexer names each episode by it),
+    so a fact traces back to the exact retrieval chunk it was extracted from, not to the edge's own
+    relation name.
     """
 
     chunk_id: str
-    text: str
     source_name: str
-    source_node_uuid: str
-    target_node_uuid: str
+
+
+@dataclass(frozen=True, slots=True)
+class RetrievedFact:
+    """One fact (graph edge) with the structured provenance of every episode that supports it.
+
+    An edge can be reinforced by more than one episode; ``sources`` lists all of them so the fact
+    can cite every supporting chunk, not just the first.
+    """
+
+    fact: str
+    sources: tuple[FactSource, ...]
 
 
 async def search_facts(
@@ -55,15 +64,14 @@ async def search_facts(
     *,
     get_episodes_by_uuids: EpisodeLookup = EpisodicNode.get_by_uuids,
 ) -> list[RetrievedFact]:
-    """Run Graphiti's hybrid search and return the raw, relevance-ranked candidate facts.
+    """Run Graphiti's hybrid search and return the relevance-ranked candidate facts with provenance.
 
-    An edge's real provenance is the episode it was extracted from at indexing time — its own
-    ``name``/``uuid`` only describe the relation type and the edge's own identity, not the
-    source document or chunk. An edge can carry more than one supporting episode; the first
-    resolvable one is used as the cited source.
+    An edge's real provenance is the episode(s) it was extracted from at indexing time — its own
+    ``name``/``uuid`` only describe the relation type and the edge's own identity, not the source
+    document or chunk. Every supporting episode that resolves contributes one ``FactSource``.
 
     Raises:
-        MissingProvenanceError: If any retrieved edge has no resolvable supporting episode.
+        MissingProvenanceError: If an edge has no resolvable supporting episode at all.
     """
     edges = await graphiti_client.search(query, group_ids=[group_id], num_results=num_results)
 
@@ -72,43 +80,16 @@ async def search_facts(
         episode.uuid: episode for episode in await get_episodes_by_uuids(graphiti_client.driver, episode_uuids)
     }
 
-    facts = []
+    facts: list[RetrievedFact] = []
     for edge in edges:
-        source_episode = next((episodes_by_uuid[uuid] for uuid in edge.episodes if uuid in episodes_by_uuid), None)
-        if source_episode is None:
-            raise MissingProvenanceError(edge.uuid, edge.episodes)
-        facts.append(
-            RetrievedFact(
-                chunk_id=source_episode.name,
-                text=edge.fact,
-                source_name=source_episode.source_description,
-                source_node_uuid=edge.source_node_uuid,
-                target_node_uuid=edge.target_node_uuid,
-            )
+        sources = tuple(
+            FactSource(chunk_id=episode.name, source_name=episode.source_description)
+            for uuid in edge.episodes
+            if (episode := episodes_by_uuid.get(uuid)) is not None
         )
+        if not sources:
+            raise MissingProvenanceError(edge.uuid, edge.episodes)
+        facts.append(RetrievedFact(fact=edge.fact, sources=sources))
+
     logger.debug("Retrieved {} candidate facts for query: {:.60s}", len(facts), query)
     return facts
-
-
-def select_minimal_facts(facts: Sequence[RetrievedFact], max_facts: int) -> list[RetrievedFact]:
-    """Greedily select a minimal, non-redundant subset of *facts*, up to *max_facts*.
-
-    Approximates the "minimal hyperedge cover" idea from ontology-grounded RAG (e.g. OG-RAG,
-    arXiv:2412.15235) without a full optimization solver: a fact's "coverage" is the pair of
-    entity uuids it connects, and a candidate is only added once it introduces at least one
-    entity uuid not already covered by a higher-ranked, already-selected fact — since *facts*
-    is pre-ranked by relevance (the order Graphiti's hybrid search returns), this drops facts
-    that are redundant with better-ranked ones instead of just truncating to top-N.
-    """
-    selected: list[RetrievedFact] = []
-    covered_uuids: set[str] = set()
-
-    for fact in facts:
-        if len(selected) >= max_facts:
-            break
-        new_coverage = {fact.source_node_uuid, fact.target_node_uuid} - covered_uuids
-        if not selected or new_coverage:
-            selected.append(fact)
-            covered_uuids |= {fact.source_node_uuid, fact.target_node_uuid}
-
-    return selected
