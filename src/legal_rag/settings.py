@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 
@@ -133,6 +133,20 @@ class NaiveRagSettings:
         )
 
 
+_GRAPHITI_TUNABLES: dict[str, Callable[[str], int | float]] = {
+    "search_num_results": int,
+    "max_context_facts": int,
+    "effective_date_window_token_budget": int,
+    "answer_max_output_tokens": int,
+    "answer_temperature": float,
+    "query_rewrite_max_output_tokens": int,
+    "effective_date_max_output_tokens": int,
+    "citation_max_output_tokens": int,
+    "extraction_temperature": float,
+    "max_response_bytes": int,
+}
+
+
 @dataclass(frozen=True, slots=True)
 class GraphitiSettings:
     """Embedding profile selection and Neo4j connection settings for the Graphiti knowledge graph."""
@@ -147,23 +161,26 @@ class GraphitiSettings:
     answer_max_output_tokens: int = 4096
     answer_temperature: float = 0.3
     query_rewrite_max_output_tokens: int = 2048
+    effective_date_max_output_tokens: int = 2048
+    citation_max_output_tokens: int = 2048
+    extraction_temperature: float = 0.0
     max_response_bytes: int = 1_048_576
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] | None = None) -> GraphitiSettings:
         """Load Graphiti knowledge-graph settings from process environment variables.
 
-        The numeric tunables keep their declared defaults unless the matching ``GRAPHITI_*``
-        variable is set, so a configured value is never silently ignored.
+        Every tunable above is overridable as ``GRAPHITI_<FIELD_NAME>`` and keeps its declared
+        default otherwise, so no declared value can be silently ignored by the loader.
         """
         values = os.environ if environment is None else environment
         overrides = {
-            "search_num_results": values.get("GRAPHITI_SEARCH_NUM_RESULTS"),
-            "max_context_facts": values.get("GRAPHITI_MAX_CONTEXT_FACTS"),
-            "effective_date_window_token_budget": values.get("GRAPHITI_EFFECTIVE_DATE_WINDOW_TOKEN_BUDGET"),
+            name: converter(values[f"GRAPHITI_{name.upper()}"])
+            for name, converter in _GRAPHITI_TUNABLES.items()
+            if f"GRAPHITI_{name.upper()}" in values
         }
         return cls(
-            **{name: int(value) for name, value in overrides.items() if value is not None},
+            **overrides,
             embedding_profile=values["EMBEDDING_PROFILE"].strip(),
             neo4j_uri=values["NEO4J_URI"].strip(),
             neo4j_user=values["NEO4J_USER"].strip(),

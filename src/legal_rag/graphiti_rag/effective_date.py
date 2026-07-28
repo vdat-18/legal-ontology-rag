@@ -31,8 +31,8 @@ class BamlEffectiveDateClient:
             base_url=settings.llm_base_url,
             api_key=settings.llm_api_key,
             model=settings.llm_model,
-            max_output_tokens=graphiti_settings.query_rewrite_max_output_tokens,
-            temperature=0.0,
+            max_output_tokens=graphiti_settings.effective_date_max_output_tokens,
+            temperature=graphiti_settings.extraction_temperature,
             timeout_seconds=settings.llm_timeout_seconds,
         )
         self._timeout_seconds = settings.llm_timeout_seconds
