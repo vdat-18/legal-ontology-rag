@@ -7,8 +7,8 @@ import pytest
 
 from legal_rag.baml_client.types import ConfirmedRelation as BamlConfirmedRelation
 from legal_rag.baml_client.types import RelationType as BamlRelationType
-from legal_rag.evaluation import evidence_graph
-from legal_rag.evaluation.evidence_graph import (
+from legal_rag.benchmark_synthesis import evidence_graph
+from legal_rag.benchmark_synthesis.evidence_graph import (
     BamlEvidenceRelationClient,
     EvidenceRelation,
     classify_bundle_kind,
@@ -16,7 +16,7 @@ from legal_rag.evaluation.evidence_graph import (
     find_candidate_fact_pairs,
     sample_bundles,
 )
-from legal_rag.evaluation.models import EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.settings import EvaluationSettings, LlmProvider, Settings
 
 
@@ -41,7 +41,7 @@ def _fact(
         valid_to=None,
         document_number=document_number,
         provision_path="Điều 6",
-        evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span="", unit_ids=(), source_refs=()),),
+        evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span=""),),
     )
 
 
@@ -210,12 +210,9 @@ def _evaluation_settings() -> EvaluationSettings:
     """Build ground-truth synthesis settings for an offline BAML request."""
     return EvaluationSettings(
         embedding_profile="qwen3_0_6b",
-        chunk_quality_threshold=0.6,
         span_match_threshold=0.85,
         bundle_overlap_threshold=0.5,
-        dedup_cosine_threshold=0.9,
         max_quality_retries=2,
-        max_simulator_turns=8,
     )
 
 

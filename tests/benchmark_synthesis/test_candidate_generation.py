@@ -11,16 +11,16 @@ from legal_rag.baml_client.types import EvolutionOperation, FactContext
 from legal_rag.baml_client.types import EvolvedCandidate as BamlEvolvedCandidate
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
 from legal_rag.baml_client.types import SurfaceCritique as BamlSurfaceCritique
-from legal_rag.evaluation import candidate_generation
-from legal_rag.evaluation.candidate_generation import (
+from legal_rag.benchmark_synthesis import candidate_generation
+from legal_rag.benchmark_synthesis.candidate_generation import (
     BamlCandidateGenerationClient,
     build_fact_context,
     evolve_candidate,
     generate_candidate,
     refine_surface,
 )
-from legal_rag.evaluation.models import EvidenceReference, LegalFact
-from legal_rag.evaluation.scenario_sampling import Scenario
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.settings import EvaluationSettings, LlmProvider, Settings
 
 
@@ -41,8 +41,8 @@ def _fact(fact_id: str = "fact-1") -> LegalFact:
         document_number="168/2024/NĐ-CP",
         provision_path="Điều 6",
         evidence=(
-            EvidenceReference(chunk_id="chunk-1", quoted_span="Phạt tiền 4.000.000 đồng.", unit_ids=(), source_refs=()),
-            EvidenceReference(chunk_id="chunk-2", quoted_span="Trừ 4 điểm.", unit_ids=(), source_refs=()),
+            EvidenceReference(chunk_id="chunk-1", quoted_span="Phạt tiền 4.000.000 đồng."),
+            EvidenceReference(chunk_id="chunk-2", quoted_span="Trừ 4 điểm."),
         ),
     )
 
@@ -332,12 +332,9 @@ def _evaluation_settings() -> EvaluationSettings:
     """Build ground-truth synthesis settings for an offline BAML request."""
     return EvaluationSettings(
         embedding_profile="qwen3_0_6b",
-        chunk_quality_threshold=0.6,
         span_match_threshold=0.85,
         bundle_overlap_threshold=0.5,
-        dedup_cosine_threshold=0.9,
         max_quality_retries=2,
-        max_simulator_turns=8,
     )
 
 

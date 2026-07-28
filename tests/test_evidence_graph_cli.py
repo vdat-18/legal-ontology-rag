@@ -3,23 +3,21 @@
 from __future__ import annotations
 
 import sys
-from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
 import pytest
 
 from legal_rag import evidence_graph_cli
-from legal_rag.evaluation import evidence_graph
-from legal_rag.evaluation.fact_ledger import FactLedgerEntry
-from legal_rag.evaluation.models import EvidenceReference, LegalFact
-from legal_rag.evaluation.writer import read_evidence_relations, read_scenarios, write_fact_ledger, write_legal_facts
+from legal_rag.benchmark_synthesis import evidence_graph
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.writer import read_evidence_relations, read_scenarios, write_legal_facts
 
 _REPO_CONFIG_DIR = Path(__file__).resolve().parent.parent / "data" / "config" / "groundtruth"
 
 
 def _fact(fact_id: str, conduct: str) -> LegalFact:
-    """Build one approved-ready legal fact for CLI tests."""
+    """Build one legal fact for CLI tests."""
     return LegalFact(
         fact_id=fact_id,
         fact_content_sha256=f"content-{fact_id}",
@@ -34,7 +32,7 @@ def _fact(fact_id: str, conduct: str) -> LegalFact:
         valid_to=None,
         document_number="168/2024/NĐ-CP",
         provision_path="Điều 6",
-        evidence=(EvidenceReference(chunk_id=f"chunk-{fact_id}", quoted_span="", unit_ids=(), source_refs=()),),
+        evidence=(EvidenceReference(chunk_id=f"chunk-{fact_id}", quoted_span=""),),
     )
 
 
@@ -67,7 +65,6 @@ class _FakeEncoderBackend:
 def _configure_cli(
     monkeypatch: pytest.MonkeyPatch,
     facts_path: Path,
-    ledger_path: Path,
     relations_output_path: Path,
     scenarios_output_path: Path,
     *,
@@ -79,12 +76,9 @@ def _configure_cli(
     monkeypatch.setenv("LLM_MODEL", "provider/test-model")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
     monkeypatch.setenv("EMBEDDING_PROFILE", "qwen3_0_6b")
-    monkeypatch.setenv("GROUNDTRUTH_CHUNK_QUALITY_THRESHOLD", "0.6")
     monkeypatch.setenv("GROUNDTRUTH_SPAN_MATCH_THRESHOLD", "0.85")
     monkeypatch.setenv("GROUNDTRUTH_BUNDLE_OVERLAP_THRESHOLD", "0.5")
-    monkeypatch.setenv("GROUNDTRUTH_DEDUP_COSINE_THRESHOLD", "0.9")
     monkeypatch.setenv("GROUNDTRUTH_MAX_QUALITY_RETRIES", "2")
-    monkeypatch.setenv("GROUNDTRUTH_MAX_SIMULATOR_TURNS", "8")
     monkeypatch.setattr(evidence_graph, "BamlEvidenceRelationClient", _AlwaysRelatedClient)
     from legal_rag.embedding.encoder import EmbeddingEncoder
 
@@ -97,7 +91,6 @@ def _configure_cli(
         [
             "legal-build-evidence-graph",
             str(facts_path),
-            str(ledger_path),
             str(relations_output_path),
             str(scenarios_output_path),
             "--query-taxonomy",
@@ -115,26 +108,14 @@ def _configure_cli(
 def test_evidence_graph_cli_confirms_relations_and_samples_scenarios(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """The command confirms relations between approved facts and samples scenarios from them."""
+    """The command confirms relations between facts and samples scenarios from them."""
     facts_path = tmp_path / "legal_facts.jsonl"
-    ledger_path = tmp_path / "fact_ledger.jsonl"
     relations_path = tmp_path / "evidence_relations.jsonl"
     scenarios_path = tmp_path / "scenarios.jsonl"
     fact_a = _fact("fact-a", "Vượt đèn đỏ")
     fact_b = _fact("fact-b", "Không chấp hành hiệu lệnh đèn tín hiệu")
     write_legal_facts(facts_path, [fact_a, fact_b])
-    write_fact_ledger(
-        ledger_path,
-        [
-            FactLedgerEntry(
-                "fact-a", fact_a.fact_content_sha256, "approved", "an.nguyen", datetime(2026, 1, 1, tzinfo=UTC)
-            ),
-            FactLedgerEntry(
-                "fact-b", fact_b.fact_content_sha256, "approved", "an.nguyen", datetime(2026, 1, 1, tzinfo=UTC)
-            ),
-        ],
-    )
-    _configure_cli(monkeypatch, facts_path, ledger_path, relations_path, scenarios_path, total_samples=2)
+    _configure_cli(monkeypatch, facts_path, relations_path, scenarios_path, total_samples=2)
 
     evidence_graph_cli.main()
 
@@ -145,31 +126,3 @@ def test_evidence_graph_cli_confirms_relations_and_samples_scenarios(
     assert relations[0].to_fact_id == "fact-b"
     assert len(scenarios) > 0
     assert all(scenario.fact_ids for scenario in scenarios)
-
-
-def test_evidence_graph_cli_excludes_unapproved_facts(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """A fact without an approved ledger entry never reaches relation confirmation."""
-    facts_path = tmp_path / "legal_facts.jsonl"
-    ledger_path = tmp_path / "fact_ledger.jsonl"
-    relations_path = tmp_path / "evidence_relations.jsonl"
-    scenarios_path = tmp_path / "scenarios.jsonl"
-    fact_a = _fact("fact-a", "Vượt đèn đỏ")
-    fact_b = _fact("fact-b", "Không chấp hành hiệu lệnh đèn tín hiệu")
-    write_legal_facts(facts_path, [fact_a, fact_b])
-    write_fact_ledger(
-        ledger_path,
-        [
-            FactLedgerEntry(
-                "fact-a", fact_a.fact_content_sha256, "approved", "an.nguyen", datetime(2026, 1, 1, tzinfo=UTC)
-            ),
-            FactLedgerEntry("fact-b", fact_b.fact_content_sha256, "needs_expert_review", None, None),
-        ],
-    )
-    _configure_cli(monkeypatch, facts_path, ledger_path, relations_path, scenarios_path, total_samples=1)
-
-    evidence_graph_cli.main()
-
-    relations = read_evidence_relations(relations_path)
-    scenarios = read_scenarios(scenarios_path)
-    assert relations == ()
-    assert all(fact_id == "fact-a" for scenario in scenarios for fact_id in scenario.fact_ids)

@@ -18,8 +18,8 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from legal_rag.evaluation.evidence_graph import EvidenceBundle
-from legal_rag.evaluation.models import LegalFact
+from legal_rag.benchmark_synthesis.evidence_graph import EvidenceBundle
+from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.parser.hashing import sha256_json
 
 SCENARIO_SCHEMA_VERSION = "1.0.0"

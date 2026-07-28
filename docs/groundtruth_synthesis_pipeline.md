@@ -8,39 +8,33 @@ hỏi single-turn và hội thoại multi-turn, đồng thời đánh giá riên
 generation và toàn bộ luồng RAG.
 
 Dữ liệu do LLM sinh chỉ là candidate. Chỉ những mẫu đã vượt qua kiểm tra tự
-động và được ràng buộc vào một fact pháp lý đã được chuyên gia phê duyệt mới
-được đưa vào ground truth.
+động mới được đưa vào ground truth.
 
-## Nguyên tắc kiến trúc: fact ledger
+## Nguyên tắc kiến trúc: tin tưởng LLM có kiểm tra tất định
 
-Tài nguyên khan hiếm nhất của dự án là thời gian của người có chuyên môn pháp
-lý, không phải LLM call. Vì vậy điểm phê duyệt của con người đặt tại **fact
-pháp lý**, không đặt tại từng câu hỏi.
+**Đã đổi so với thiết kế ban đầu:** bản đầu tài liệu này đặt điểm phê duyệt
+con người tại từng fact pháp lý qua một fact ledger (`extracted →
+span_verified → needs_expert_review → approved | rejected`, cộng `stale`).
+Quyết định hiện tại: tin tưởng hoàn toàn output của LLM ở tầng trích xuất
+fact — bỏ hẳn fact ledger và bước chuyên gia duyệt tay. Không còn khái niệm
+fact `approved`/`stale`; mọi fact trong `legal_facts.jsonl` được Phase 2/3
+dùng thẳng, không lọc theo trạng thái nào.
 
-- Số fact pháp lý phân biệt trong corpus là hữu hạn và nhỏ. Số câu hỏi có thể
-  sinh từ chúng là rất lớn.
-- Duyệt một fact là khoản đầu tư một lần, tái sử dụng cho mọi câu hỏi phái
-  sinh. Chi phí review chuyển từ `O(số câu hỏi)` sang `O(số fact)`.
-- Câu hỏi phái sinh an toàn vì bị **ràng buộc cơ học** vào fact đã duyệt, chứ
-  không vì có người đọc lại từng câu.
-
-Ba cổng chất lượng, theo thứ tự từ rẻ đến đắt:
+Hai cổng chất lượng còn lại vẫn tất định, không cần người, áp dụng ở tầng
+candidate (không phải tầng fact):
 
 ```text
 Cổng 1  Ràng buộc căn cứ tất định   không dùng LLM, không dùng người
 Cổng 2  Kiểm chứng LLM độc lập      dùng LLM khác generator
-Cổng 3  Phê duyệt fact ledger       dùng chuyên gia, một lần cho mỗi fact
 ```
 
-Một candidate chỉ hợp lệ khi mọi căn cứ của nó nằm trong evidence set của một
-fact đã ở trạng thái `approved`. Không có đường nào khác đưa dữ liệu vào ground
-truth.
+Một candidate chỉ hợp lệ khi mọi căn cứ của nó nằm trong evidence set thật của
+một fact đã trích xuất.
 
 ```text
 .chunks.jsonl
     -> Legal facts (typed output, kèm quoted span)
-    -> Fact ledger phê duyệt bởi chuyên gia         [cổng 3, một lần]
-    -> Evidence graph trên các fact đã duyệt
+    -> Evidence graph trên mọi fact đã trích xuất
     -> Scenario sampling (persona x style x length)
     -> Single-turn candidates
     -> Ràng buộc căn cứ tất định                    [cổng 1]
@@ -57,7 +51,7 @@ truth.
 Nguồn đầu vào hiện tại:
 
 - `data/config/groundtruth_corpus_v1.json`
-- `data/evaluation/groundtruth-corpus-v1-snapshot.json`
+- `data/benchmark_synthesis/groundtruth-corpus-v1-snapshot.json`
 - Các file `data/processed/groundtruth/*.chunks.jsonl`
 
 Mỗi lần sinh benchmark phải lưu:
@@ -98,9 +92,7 @@ keyword matching hoặc các luật suy diễn thủ công.
   "evidence": [
     {
       "chunk_id": "...",
-      "quoted_span": "...",
-      "unit_ids": ["..."],
-      "source_refs": ["..."]
+      "quoted_span": "..."
     }
   ]
 }
@@ -112,19 +104,31 @@ Nguyên tắc:
 - Không sử dụng kiến thức sẵn có của model làm căn cứ.
 - Nếu một fact cần nhiều chunk thì phải lưu tất cả chunk cần thiết.
 - Mỗi `evidence` phải kèm `quoted_span` trích nguyên văn từ `text` của chunk.
-- `chunk_id` phục vụ retrieval evaluation.
-- `unit_ids` và `source_refs` phục vụ audit ngược về nguồn parser.
+- `chunk_id` phục vụ retrieval evaluation, lấy trực tiếp từ trích dẫn của LLM,
+  không tra cứu lại `unit_ids`/`source_refs` từ chunk gốc.
 
-### Lọc chất lượng chunk trước khi trích xuất
+### Sàng lọc chunk trước khi trích xuất
 
-Trước khi trích xuất fact, một critic model rẻ chấm mỗi chunk theo bốn tiêu
-chí: rõ ràng, đủ sâu, có cấu trúc, đúng chủ đề. Chunk dưới ngưỡng bị bỏ qua
-và ghi vào danh sách loại trừ kèm lý do — thường là mục lục, tiêu đề chương,
-đoạn dẫn nhập không mang chế tài.
+Trước khi trích xuất fact, một critic model rẻ trả lời một câu hỏi nhị phân
+cho mỗi chunk: đoạn này có chứa nội dung chế tài cụ thể (hành vi, mức phạt,
+thẩm quyền, thủ tục, đối tượng áp dụng) hay không. Chunk bị đánh giá không
+có nội dung chế tài bị bỏ qua và ghi vào danh sách loại trừ kèm lý do do
+chính model đưa ra — thường là mục lục, tiêu đề chương, đoạn dẫn nhập không
+mang chế tài.
+
+Các chunk được gộp theo batch (mặc định 8 chunk/lần gọi) thay vì gọi LLM
+riêng cho từng chunk, để giảm số lần round-trip. Mỗi chunk trong batch mang
+theo `chunk_id`, và model phải trả về đúng `chunk_id` đó trong từng kết quả —
+kết quả được đối chiếu ngược lại theo `chunk_id`, không dựa vào thứ tự trả về,
+để tránh lệch kết quả giữa các chunk khi batch lớn.
 
 Cổng rẻ này đứng trước để bảo vệ hai công đoạn đắt phía sau: LLM call trích
-xuất và thời gian chuyên gia duyệt fact. Ngưỡng nằm trong cấu hình có phiên
-bản, và danh sách chunk bị loại phải audit được.
+xuất và thời gian chuyên gia duyệt fact. Câu hỏi nhị phân này thay cho cách
+chấm điểm liên tục rồi so ngưỡng: LLM đáng tin hơn nhiều với quyết định
+nhị phân rõ ràng so với việc tự hiệu chỉnh điểm số liên tục 0.0-1.0 (dễ bị
+dồn cụm, khiến một ngưỡng cố định gần như vô nghĩa trong thực tế). Danh sách
+chunk bị loại phải audit được — lý do lấy trực tiếp từ model, không phải câu
+chữ tính toán từ điểm số.
 
 ### Gộp chunk khi một fact cần nhiều nguồn
 
@@ -154,50 +158,28 @@ xử lý khác nhau:
 
 `fact_id` là hash trên các trường **định danh**: `conduct`, `subject`,
 `document_number`, `provision_path`. `fact_content_sha256` là hash trên **toàn
-bộ** nội dung fact.
+bộ** nội dung fact — giữ lại để phát hiện nội dung fact đổi giữa các lần trích
+xuất, dù không còn gắn với trạng thái duyệt nào (xem "Nguyên tắc kiến trúc" ở
+đầu tài liệu).
 
 Cặp này lặp lại đúng kỷ luật mà chunker đang dùng cho `chunk_id` và
-`content_sha256`, và cho hai tính chất bắt buộc:
+`content_sha256`: trích xuất lại corpus không làm đổi `fact_id` khi cách diễn
+đạt thay đổi, vì `fact_id` chỉ phụ thuộc các trường định danh.
 
-- Trích xuất lại corpus không làm mất trạng thái phê duyệt, vì `fact_id` không
-  đổi khi cách diễn đạt thay đổi.
-- Khi `fact_content_sha256` đổi so với lúc duyệt, fact tự động chuyển về trạng
-  thái cần duyệt lại, và mọi candidate phái sinh bị đánh dấu `stale`.
+Output dự kiến: `data/benchmark_synthesis/legal_facts.jsonl`.
 
-Output dự kiến: `data/evaluation/legal_facts.jsonl`.
+## 3. Phê duyệt fact ledger — đã bỏ
 
-## 3. Phê duyệt fact ledger
-
-Đây là cổng chất lượng duy nhất cần chuyên môn pháp lý và là công đoạn đắt
-nhất của toàn pipeline. Mọi thiết kế phía sau tồn tại để không phải lặp lại nó.
-
-Luồng trạng thái của một fact:
-
-```text
-extracted
-    -> span_verified
-    -> needs_expert_review
-    -> approved | rejected
-    -> stale        (khi fact_content_sha256 đổi)
-```
-
-Người duyệt xác nhận trên từng fact:
-
-- Nội dung chế tài đúng và đầy đủ so với điều khoản nguồn
-- `provision_path` trỏ đúng điều, khoản, điểm
-- `valid_from` và `valid_to` đúng, kể cả khi văn bản đã bị sửa đổi
-- Không nhầm hành vi, đối tượng hoặc loại phương tiện
-- `quoted_span` thực sự là căn cứ của nội dung, không phải đoạn lân cận
-
-Duyệt theo cụm để tận dụng ngữ cảnh: gom các fact cùng một điều hoặc cùng một
-hành vi vào một phiên duyệt thay vì duyệt theo thứ tự ngẫu nhiên.
-
-Fact ở trạng thái `approved` là nguồn chân lý duy nhất của benchmark. Không
-sinh candidate từ fact chưa duyệt.
+Bản đầu tài liệu này đặt một cổng chất lượng ở đây, dùng chuyên gia duyệt tay
+từng fact qua một máy trạng thái ledger
+(`extracted → span_verified → needs_expert_review → approved | rejected`,
+cộng `stale` khi nội dung đổi). Đã bỏ theo quyết định "tin tưởng LLM có kiểm
+tra tất định" ở đầu tài liệu — mọi fact trích xuất được Phase 2/3 dùng thẳng,
+không qua cổng người nào ở tầng fact.
 
 ## 4. Xây evidence graph
 
-Evidence graph chỉ liên kết các fact đã ở trạng thái `approved`.
+Evidence graph liên kết mọi fact đã trích xuất.
 
 Các loại quan hệ:
 
@@ -413,8 +395,7 @@ Cổng 1. Chạy trước mọi kiểm chứng bằng LLM, không tốn LLM call
 Với mỗi phần tử `evidence` của mỗi claim:
 
 1. `chunk_id` phải nằm trong evidence set của fact `fact_id`.
-2. Fact `fact_id` phải ở trạng thái `approved` và không `stale`.
-3. `quoted_span` phải khớp `text` của chunk theo Levenshtein partial ratio với
+2. `quoted_span` phải khớp `text` của chunk theo Levenshtein partial ratio với
    ngưỡng tối thiểu `0.85`.
 
 Candidate bị loại cơ học nếu bất kỳ điều kiện nào sai. Điểm grounding của
@@ -531,8 +512,8 @@ chunk không thuộc gold evidence không tự động trở thành negative vì
 tại nhiều căn cứ tương đương hoặc bổ sung.
 
 Loại trước bằng cơ chế tất định các chunk đã thuộc evidence set của bất kỳ fact
-`approved` nào xuất hiện trong scenario, để verifier không phải xử lý các
-trường hợp hiển nhiên.
+nào xuất hiện trong scenario, để verifier không phải xử lý các trường hợp hiển
+nhiên.
 
 ## 10. Kiểm chứng LLM độc lập
 
@@ -607,14 +588,14 @@ Chạy retriever hiện tại và lưu:
 Không loại một candidate chỉ vì baseline không retrieve được; đó có thể là một
 test case khó và có giá trị chẩn đoán.
 
-## 12. Kiểm soát độ phủ trên fact ledger
+## 12. Kiểm soát độ phủ trên bảng fact
 
 Độ phủ đo trên **bảng fact**, không đo trên tập câu hỏi. Chỉ có cách này mới
 trả lời được câu hỏi quan trọng nhất là còn fact nào chưa được kiểm tra.
 
 Chỉ số chính:
 
-- Tỷ lệ fact `approved` có ít nhất một candidate
+- Tỷ lệ fact có ít nhất một candidate
 - Danh sách fact chưa được phủ, xuất tường minh trong coverage report
 - Số candidate trên mỗi fact, phát hiện fact bị khai thác quá mức
 
@@ -805,9 +786,8 @@ hoặc từ chối.
 ## 17. Cấu trúc output đề xuất
 
 ```text
-data/evaluation/
+data/benchmark_synthesis/
 ├── legal_facts.jsonl
-├── fact_ledger.jsonl
 ├── evidence_relations.jsonl
 ├── scenarios.jsonl
 ├── candidates/
@@ -824,9 +804,6 @@ data/evaluation/
     ├── coverage_report.json
     └── binding_report.json
 ```
-
-`fact_ledger.jsonl` lưu trạng thái phê duyệt, người duyệt và thời điểm duyệt,
-tách khỏi `legal_facts.jsonl` để trích xuất lại không ghi đè lịch sử phê duyệt.
 
 ## Tài liệu tham khảo phương pháp
 
@@ -864,14 +841,11 @@ Các mục 1 tới 8 không cần retriever và nên hoàn thành trước.
    còn lại cho Phase 3.
 3. Implement lọc chất lượng chunk và legal-fact extraction kèm `quoted_span`.
    ✅ **Đã xong.**
-4. Implement ràng buộc căn cứ tất định. Chạy nó ngay trên output trích xuất để
-   loại các fact có span không khớp trước khi tốn thời gian chuyên gia.
-   ✅ **Đã xong**, ở mức fact — `fact_ledger.verify_spans`. Cổng 1 ở mức
-   candidate (mục 7) vẫn thuộc Phase 3.
-5. Xây fact ledger và quy trình phê duyệt. Chạy pilot trên một văn bản duy
-   nhất, ưu tiên 168/2024/NĐ-CP, cho tới khi schema fact ổn định. ✅ **Máy
-   trạng thái đã xong**; pilot thật trên 168/2024/NĐ-CP còn chờ vì cần LLM
-   call thật và người duyệt.
+4. Implement ràng buộc căn cứ tất định. ✅ **Đã xong**, ở mức candidate (mục
+   7, Phase 3) — `binding_gate.check_binding`. Không còn cổng span-match ở
+   mức fact: fact ledger đã bỏ (xem "Nguyên tắc kiến trúc" ở đầu tài liệu).
+5. ~~Xây fact ledger và quy trình phê duyệt~~ — **đã bỏ**, thay bằng tin
+   tưởng LLM ở tầng trích xuất fact. Pilot thật trên 168/2024/NĐ-CP còn chờ.
 6. Tạo file cấu hình versioned cho query taxonomy, persona, evolution và phân
    bố scenario. ✅ **Đã xong.**
 7. Implement evidence graph có lưu `bridge` và ràng buộc cấu trúc bundle.
@@ -889,10 +863,8 @@ Các mục 1 tới 8 không cần retriever và nên hoàn thành trước.
 13. Xuất các split theo `fact_id` và implement đánh giá retrieval,
     oracle-generator, oracle trộn nhiễu và end-to-end.
 
-Không bắt đầu sinh dữ liệu hàng loạt trước khi schema fact, temporal metadata
-và quy trình phê duyệt fact ledger đã ổn định. Sinh candidate hàng loạt trên
-một fact ledger chưa ổn định sẽ tạo ra khối lượng lớn dữ liệu `stale` ngay khi
-fact được sửa.
+Không bắt đầu sinh dữ liệu hàng loạt trước khi schema fact và temporal
+metadata đã ổn định.
 
 ## Kế hoạch triển khai kỹ thuật
 
@@ -902,18 +874,31 @@ quy ước đã có của repo (`chunker/`, `parser/`, `embedding/`). Tuân th�
 hint ở API công khai, `pathlib`, không dùng `print()`, không thêm dependency
 trừ khi thư viện hiện có không đủ.
 
-### Quyết định vị trí: tái dùng `evaluation/`, không tạo package mới
+### Quyết định vị trí: ban đầu tái dùng `evaluation/`, sau đó đổi tên thành `benchmark_synthesis/`
 
 `src/legal_rag/evaluation/` đã tồn tại nhưng rỗng — đây từng là nơi chứa
 pipeline Ragas cũ (`groundtruth.py`, `schemas.py`, `snapshot.py`,
 `synthesis.py`) trước khi bị gỡ ở commit `38475a6`. Toàn bộ code mới của kế
-hoạch này đặt lại vào `src/legal_rag/evaluation/`, chia theo module một-file-
-một-trách-nhiệm thay vì gộp bốn file lớn như thiết kế cũ. Không tạo package
-song song `groundtruth/`.
+hoạch này ban đầu đặt lại vào `src/legal_rag/evaluation/`, chia theo module
+một-file-một-trách-nhiệm thay vì gộp bốn file lớn như thiết kế cũ, không tạo
+package song song `groundtruth/`.
 
-`data/evaluation/evaluation-data.md` hiện trỏ tới API `generate_groundtruth_candidates(...)`
-và biến môi trường `RAGAS_*` đã không còn tồn tại. Cập nhật hoặc xóa file này
-ở Phase 0 để không ai đi theo hướng dẫn sai.
+`data/evaluation/evaluation-data.md` lúc đó trỏ tới API
+`generate_groundtruth_candidates(...)` và biến môi trường `RAGAS_*` đã không
+còn tồn tại; nội dung này được viết lại ở Phase 0.
+
+**Đổi lại sau đó:** tên `evaluation/` gây hiểu lầm — nó đọc như "đo lường chất
+lượng hệ RAG", trong khi toàn bộ module ở đây chỉ *sinh* dữ liệu ground truth
+(fact → duyệt → evidence graph → scenario → candidate), không đo gì cả. Việc
+đo lường thật (Recall@k, Faithfulness, Answer correctness... qua `deepeval`,
+mục 16) là một mối quan tâm khác, chưa có code, sẽ cần vị trí riêng của nó khi
+tới Phase 8. Do đó `src/legal_rag/evaluation/` và `data/evaluation/` được đổi
+tên thành `src/legal_rag/benchmark_synthesis/` và `data/benchmark_synthesis/`
+— khớp với mục đích thật (sinh benchmark) và không còn xung đột tên với phần
+đánh giá RAG thật sẽ thêm sau. Extra `evaluation` trong `pyproject.toml`
+(nhóm dependency: `deepeval`, `rapidfuzz`, `sentence-transformers`) giữ
+nguyên tên, vì nó sẽ tiếp tục phục vụ cả code synthesis hiện tại lẫn code
+đánh giá RAG thật ở Phase 8.
 
 ### Phase 0 — Hạ tầng dùng chung ✅ Đã triển khai
 
@@ -941,17 +926,17 @@ buộc mọi người dùng `legal-parse`/`legal-chunk` phải cài thêm nó.
 
 **Atomic JSONL writer dùng chung.** `parser/writer.py` và `chunker/writer.py`
 hiện có cùng một khối logic ghi tệp tạm rồi `replace()` nguyên tử, lặp lại y
-hệt. Thêm một module thứ ba (`evaluation/writer.py`) sẽ là lần lặp thứ ba —
-đủ điều kiện theo AGENTS.md để tách hàm dùng chung. Thêm
+hệt. Thêm một module thứ ba (`benchmark_synthesis/writer.py`) sẽ là lần lặp
+thứ ba — đủ điều kiện theo AGENTS.md để tách hàm dùng chung. Thêm
 `src/legal_rag/io_utils.py` chứa `write_jsonl_atomic(path, records)`, refactor
-hai module cũ gọi vào đây, rồi `evaluation/writer.py` dùng lại. Đây là thay
+hai module cũ gọi vào đây, rồi `benchmark_synthesis/writer.py` dùng lại. Đây là thay
 đổi cross-cutting nhỏ, nên làm thành một commit riêng trước khi viết code
 Phase 1.
 
 **Cấu hình.** Thêm `EvaluationSettings` vào `settings.py`, theo đúng mẫu
-`ChunkerSettings` — nạp từ biến môi trường: `chunk_quality_threshold`,
+`ChunkerSettings` — nạp từ biến môi trường:
 `span_match_threshold` (mặc định `0.85`), `bundle_overlap_threshold` (`τ`),
-`dedup_cosine_threshold` (`0.9`), `max_quality_retries`, `max_simulator_turns`.
+`max_quality_retries`.
 Danh sách persona, query taxonomy, phân bố scenario và evolution nằm ở file
 JSON versioned dưới `data/config/groundtruth/`. **Đã đổi so với dự tính ban
 đầu:** không dùng `importlib.resources` như `embedding/profiles.py`, vì
@@ -962,48 +947,48 @@ minh (`--query-taxonomy`, `--personas`, `--scenario-distribution`), đọc bằn
 (`legal-chunk`, `legal-extract-facts`) vốn luôn nhận đường dẫn tường minh,
 không có đường dẫn ngầm định.
 
-### Phase 1 — Trích xuất fact và fact ledger (mục 2, 3 ở trên) ✅ Đã triển khai
+### Phase 1 — Trích xuất fact (mục 2 ở trên) ✅ Đã triển khai
 
-Module trong `evaluation/`:
+Module trong `benchmark_synthesis/`:
 
 - `models.py` — `LegalFact`, `EvidenceReference` dạng
   `@dataclass(frozen=True, slots=True)` với `to_dict()`, hằng
   `LEGAL_FACT_SCHEMA_VERSION`, theo đúng khuôn `chunker/models.py`.
-- `chunk_quality.py` — gọi BAML chấm 4 tiêu chí, lọc theo
-  `chunk_quality_threshold`, ghi danh sách chunk bị loại kèm lý do.
+- `chunk_screening.py` — gọi BAML hỏi nhị phân "có nội dung chế tài không",
+  lọc theo `has_penalty_content`, ghi danh sách chunk bị loại kèm lý do do
+  model đưa ra.
 - `fact_extraction.py` — dựng cửa sổ đọc theo ba nguồn ở mục "Gộp chunk khi
-  một fact cần nhiều nguồn" (liền kề qua `previous_chunk_id`/`next_chunk_id`,
-  trích dẫn chéo bằng regex "Điều N" tra theo `build_provision_index`, tương
-  đồng embedding cùng `source_name` qua `find_embedding_candidates`), gọi BAML
-  trích fact, đối chiếu `evidence.chunk_id` với chunk thật để tự điền
-  `unit_ids`/`source_refs` — không tin trực tiếp giá trị LLM trả về — rồi gán
-  `fact_id` và `fact_content_sha256` qua `sha256_json`.
-- `fact_ledger.py` — máy trạng thái `extracted → span_verified →
-  needs_expert_review → approved | rejected`, cộng thêm `stale` khi
-  `fact_content_sha256` đổi so với bản đã duyệt. `verify_spans` dùng
-  `rapidfuzz.fuzz.partial_ratio` giữa `quoted_span` và text chunk thật —
-  cùng cơ chế văn bản với Cổng 1 ở mục 7, áp dụng sớm ngay tại fact thay vì
-  đợi tới candidate.
-- `writer.py` — đọc/ghi JSONL nguyên tử cho `legal_facts.jsonl` và
-  `fact_ledger.jsonl`, dùng lại `io_utils.write_jsonl_atomic`.
+  một fact cần nhiều nguồn" (tối đa 2 chunk liền trước qua chuỗi
+  `previous_chunk_id`, trích dẫn chéo bằng regex "Điều N" tra theo
+  `build_provision_index`, tương đồng embedding cùng `source_name` qua
+  `find_embedding_candidates`), gọi BAML trích fact, rồi gán `fact_id` và
+  `fact_content_sha256` qua `sha256_json`. **Tin tưởng hoàn toàn output LLM**
+  (xem "Nguyên tắc kiến trúc" ở đầu tài liệu): `evidence.chunk_id` và
+  `evidence.quoted_span` được giữ nguyên như LLM trả về, không tra cứu lại
+  chunk gốc để gán thêm `unit_ids`/`source_refs` (đã bỏ hai field này khỏi
+  `EvidenceReference` vì không có nơi nào trong pipeline đọc lại chúng).
+- `writer.py` — đọc/ghi JSONL nguyên tử cho `legal_facts.jsonl`, dùng lại
+  `io_utils.write_jsonl_atomic`.
 
 BAML trong `baml_src/`:
 
-- `chunk_quality.baml` — class `ChunkQualityResult` (clarity, depth,
-  structure, relevance), function `EvaluateChunkQuality(chunk_text: string)`.
+- `chunk_screening.baml` — class `ChunkScreeningItem` (chunk_id, text) và
+  `ChunkScreeningResult` (chunk_id, has_penalty_content, reason), function
+  `ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[]` gọi
+  theo batch (mặc định 8 chunk/lần, xem `DEFAULT_SCREENING_BATCH_SIZE` trong
+  `chunk_screening.py`), kèm persona và few-shot examples. Kết quả đối chiếu
+  ngược lại theo `chunk_id`, không theo thứ tự mảng trả về.
 - `legal_fact_extraction.baml` — enum `ChunkWindowRole`, class
   `ChunkWindowEntry`, `EvidenceEntry`, `LegalFact` khớp JSON ở mục 2, function
-  `ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[]`.
+  `ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[]`, kèm persona,
+  few-shot examples, và cảnh báo cho vai trò `CitedProvision` (số điều có thể
+  trùng ngẫu nhiên với luật khác — regex chỉ đề xuất ứng viên, LLM tự quyết
+  định có dùng hay không).
 
-CLI: `legal-extract-facts` (`evaluation_cli.py`) chạy nối tiếp cổng chất
-lượng chunk, trích xuất, đối chiếu ledger, `verify_spans`, và
-`queue_for_expert_review` cho mọi fact mới trong một lần gọi; nhận đường dẫn
-chunk JSONL của một văn bản, ghi `legal_facts.jsonl` và `fact_ledger.jsonl`.
-
-`legal-review-facts` (`fact_review_cli.py`) là script duyệt tương tác dùng
-`print`/`input` trực tiếp — không qua `loguru`, vì đây là giao diện người
-dùng thật của công cụ, không phải log chẩn đoán; có ngoại lệ ruff T20 riêng
-cho file này trong `pyproject.toml`.
+CLI: `legal-extract-facts` (`fact_extraction_cli.py`) chạy nối tiếp cổng sàng
+lọc chunk và trích xuất fact trong một lần gọi; nhận đường dẫn chunk JSONL
+của một văn bản, ghi thẳng `legal_facts.jsonl` — không còn ledger, không còn
+bước duyệt tay.
 
 Hạ tầng dùng chung mới phát sinh khi triển khai, ngoài phạm vi ban đầu của
 Phase 1 nhưng cần thiết để nó chạy được:
@@ -1016,18 +1001,17 @@ Phase 1 nhưng cần thiết để nó chạy được:
   cuối, chưa có gì đọc lại `*.chunks.jsonl`, nhưng CLI trích xuất fact cần
   đọc đúng file đó làm đầu vào.
 
-Test: `tests/evaluation/test_fact_extraction.py`, `test_fact_ledger.py`,
-`test_chunk_quality.py`, `test_evaluation_models.py`,
+Test: `tests/benchmark_synthesis/test_fact_extraction.py`,
+`test_chunk_screening.py`, `test_evaluation_models.py`,
 `test_evaluation_writer.py`, `tests/test_baml_transport.py`,
-`tests/test_evaluation_cli.py` (tích hợp CLI đầu-cuối với client và encoder
-giả). Windowing và máy trạng thái test trực tiếp không cần mock; các BAML
-client wrapper test theo mẫu mock `execute_baml_request` trong
-`tests/parser/test_baml_captioning.py`.
+`tests/test_fact_extraction_cli.py` (tích hợp CLI đầu-cuối với client và encoder
+giả). Windowing test trực tiếp không cần mock; các BAML client wrapper test
+theo mẫu mock `execute_baml_request` trong `tests/parser/test_baml_captioning.py`.
 
 ### Phase 2 — Evidence graph và scenario sampling (mục 6, 7) ✅ Đã triển khai
 
 - `evidence_graph.py` — `find_candidate_fact_pairs` dùng `EmbeddingEncoder`
-  tìm cặp fact ứng viên trong toàn bộ fact `approved` (không giới hạn cùng
+  tìm cặp fact ứng viên trong toàn bộ fact đã trích xuất (không giới hạn cùng
   văn bản, vì multi-hop cần đúng cặp khác văn bản); `confirm_evidence_relations`
   gọi BAML xác nhận từng cặp và lấy `bridge`; `classify_bundle_kind` áp ràng
   buộc cấu trúc — `amended_by` luôn là `temporal` bất kể văn bản, còn lại thì
@@ -1052,8 +1036,8 @@ client wrapper test theo mẫu mock `execute_baml_request` trong
   vẫn đúng và có tác dụng ngay ở phạm vi này (chặn hai quan hệ trùng cùng một
   cặp fact); nối chuỗi lớn hơn để lại cho vòng sau khi có nhu cầu thật.
 - **`sample_scenarios` chỉ sinh `answerable` và `partially_answerable`.**
-  Bundle luôn dựng từ fact đã duyệt — tức luôn có căn cứ thật — nên về mặt
-  cấu trúc không thể sinh ra `underspecified` hay `unanswerable` từ đó được.
+  Bundle luôn dựng từ fact đã trích xuất — tức luôn có căn cứ thật — nên về
+  mặt cấu trúc không thể sinh ra `underspecified` hay `unanswerable` từ đó được.
   Hai loại này cần một đường sinh khác, không dựa trên bundle (§8 phần
   multi-turn đã có manh mối: `unanswerable` cần người viết hoặc mining riêng,
   không sinh tự động từ evidence thật).
@@ -1071,8 +1055,8 @@ Config: `data/config/groundtruth/query_taxonomy.json`,
 `data/config/groundtruth/evolution.json` (file config được tạo ở Phase 2 theo
 đúng mục 6; logic *áp dụng* evolution vẫn thuộc Phase 3).
 
-CLI: `legal-build-evidence-graph` (`evidence_graph_cli.py`) — lọc fact
-`approved` từ ledger, xác nhận quan hệ, lấy mẫu bundle, sinh scenario, ghi
+CLI: `legal-build-evidence-graph` (`evidence_graph_cli.py`) — đọc mọi fact từ
+`legal_facts.jsonl`, xác nhận quan hệ, lấy mẫu bundle, sinh scenario, ghi
 `evidence_relations.jsonl` và `scenarios.jsonl`. `scenarios.jsonl` là output
 mới phát sinh khi triển khai, chưa có trong cấu trúc output đề xuất ban đầu
 ở mục 17 — bổ sung vì Phase 3 cần scenario đã chốt và ổn định, không tính
@@ -1081,7 +1065,7 @@ lại mỗi lần sinh candidate.
 Test: `test_evidence_graph.py`, `test_scenario_sampling.py` (thuật toán tham
 lam test bằng fixture fact cố định, kiểm quota trần theo `ceil`, kiểm luân
 phiên theo trục ít dùng nhất), `tests/test_evidence_graph_cli.py` (tích hợp
-CLI đầu-cuối, xác nhận fact chưa `approved` không lọt vào bundle).
+CLI đầu-cuối).
 
 ### Phase 3 — Sinh single-turn và hai cổng kiểm chứng (mục 8) ✅ Đã triển khai
 
@@ -1096,8 +1080,7 @@ CLI đầu-cuối, xác nhận fact chưa `approved` không lọt vào bundle).
   evolution đã cấu hình, giữ nguyên evidence, chỉ đổi `query_vi` và
   `reference_answer_vi`.
 - `binding_gate.py` — Cổng 1: `check_binding` kiểm `chunk_id` thuộc evidence
-  set thật của fact, fact `approved` (bao gồm cả trạng thái `stale`, vì một
-  fact `stale` không bao giờ đồng thời `approved`), và
+  set thật của fact, và
   `rapidfuzz.fuzz.partial_ratio` giữa `quoted_span` và text chunk vượt
   `span_match_threshold`. Thuần hàm, không gọi LLM, **không raise cho input
   không hợp lệ** — trả về `BindingCheckResult` (passed, grounding_score,
@@ -1144,16 +1127,16 @@ function `GenerateSingleTurnCandidate`, `CritiqueSurface`, enum
 dùng chung `FactContext`/`ClaimReference` từ file kia (cùng namespace BAML).
 
 CLI: `legal-generate-candidates` (`candidate_generation_cli.py`) — đọc
-`legal_facts.jsonl`, `fact_ledger.jsonl` (lọc `approved`), `scenarios.jsonl`,
-và mọi `*.chunks.jsonl` trong một thư mục; với mỗi scenario sinh
-`--candidates-per-scenario` candidate độc lập, chạy nối tiếp sinh → tinh
-chỉnh bề mặt → evolution → Cổng 1 → Cổng 2 (chỉ chạy nếu Cổng 1 qua); ghi
-toàn bộ candidate (kể cả bị loại) vào một file JSONL kèm `review_status`.
+`legal_facts.jsonl`, `scenarios.jsonl`, và mọi `*.chunks.jsonl` trong một
+thư mục; với mỗi scenario sinh `--candidates-per-scenario` candidate độc
+lập, chạy nối tiếp sinh → tinh chỉnh bề mặt → evolution → Cổng 1 → Cổng 2
+(chỉ chạy nếu Cổng 1 qua); ghi toàn bộ candidate (kể cả bị loại) vào một
+file JSONL kèm `review_status`.
 
-Test: `test_binding_gate.py` — 9 test, đúng bảng ưu tiên cao nhất của Phase 3
+Test: `test_binding_gate.py` — đúng bảng ưu tiên cao nhất của Phase 3
 (span khớp hoàn toàn, span dưới ngưỡng, `chunk_id` ngoài evidence set, fact
-chưa `approved`, fact `stale`, fact không tồn tại, chunk không tồn tại, claim
-rỗng, grounding_score trung bình nhiều span). `test_candidate_generation.py`,
+không tồn tại, chunk không tồn tại, claim rỗng, grounding_score trung bình
+nhiều span). `test_candidate_generation.py`,
 `test_verification.py` (gồm parametrize trên cả 6 chiều Cổng 2) theo mẫu mock
 BAML đã có. `tests/test_candidate_generation_cli.py` tích hợp CLI đầu-cuối.
 
@@ -1173,7 +1156,7 @@ tới khi phase này xong.
 ### Phase 6 — Hard negatives và difficulty (mục 11, chặn bởi Phase 5)
 
 - `hard_negatives.py` — chạy retriever, loại trước các chunk đã thuộc
-  evidence set của fact `approved` bằng tập hợp, gọi BAML xác nhận negative
+  evidence set của bất kỳ fact nào bằng tập hợp, gọi BAML xác nhận negative
   thật sự không đủ căn cứ.
 - `leakage.py` — chạy candidate qua ba chế độ closed-book / oracle /
   oracle-trộn-nhiễu, ghi leakage score và difficulty vào candidate.
@@ -1205,8 +1188,21 @@ Phần đánh giá retrieval/generator/end-to-end tái dùng `deepeval` (đã c�
 extra `evaluation`) cho các metric LLM-judge; `Accuracy theo field` ở mục 16
 là so khớp tất định thuần Python, không qua `deepeval`.
 
-### Tổng hợp thay đổi ngoài `evaluation/`
+### Tổng hợp thay đổi ngoài `benchmark_synthesis/`
 
+- **Bỏ fact ledger và bước chuyên gia duyệt tay ở tầng fact** (mục 3 ở trên):
+  xóa `fact_ledger.py`, `fact_review_cli.py` (và script `legal-review-facts`
+  trong `pyproject.toml`), `tests/benchmark_synthesis/test_fact_ledger.py`.
+  `fact_extraction.py` không còn `FactExtractionError`/`FactExtractionRejection`
+  — `build_legal_fact` tra `chunks_by_id[chunk_id]` trực tiếp, để `KeyError`
+  raise tự nhiên nếu LLM trích dẫn sai, thay vì validate và loại fact.
+  `writer.py` bỏ `read_fact_ledger`/`write_fact_ledger`. `binding_gate.py`
+  (Cổng 1 ở tầng candidate, Phase 3) bỏ tham số `ledger_by_fact_id` và kiểm
+  tra "fact approved" — vẫn giữ nguyên kiểm tra `chunk_id` thuộc evidence set
+  thật và span-match, đây là quyết định tách biệt: chỉ bỏ tầng duyệt người,
+  không bỏ kiểm tra tất định ở tầng candidate. `evidence_graph_cli.py` và
+  `candidate_generation_cli.py` không còn lọc theo `approved`, dùng thẳng
+  mọi fact trong `legal_facts.jsonl`. ✅ **Đã áp dụng.**
 - `pyproject.toml`: extra `evaluation` đổi thành `deepeval`, `rapidfuzz`,
   `sentence-transformers` — gỡ `ragas`, `langchain-community`,
   `langchain-openai` (không còn code nào import sau khi pipeline Ragas cũ bị
@@ -1219,9 +1215,19 @@ là so khớp tất định thuần Python, không qua `deepeval`.
   nạp lazy để không bắt buộc cài đặt khi không dùng. ✅ **Đã áp dụng.**
 - `data/evaluation/evaluation-data.md`: viết lại theo pipeline mới hoặc xóa.
   ✅ **Đã áp dụng** ở Phase 0.
+- `src/legal_rag/evaluation/` và `data/evaluation/` đổi tên thành
+  `src/legal_rag/benchmark_synthesis/` và `data/benchmark_synthesis/`
+  (`evaluation-data.md` → `benchmark-synthesis-data.md`), `evaluation_cli.py`
+  đổi tên thành `fact_extraction_cli.py`, để tên khớp mục đích thật (sinh
+  benchmark) thay vì đọc như đo lường RAG. ✅ **Đã áp dụng.**
 - `baml_transport.py`: tách khỏi `parser/image_captioner.py` khi cần dùng lại
-  cho `chunk_quality.py`/`fact_extraction.py`. ✅ **Đã áp dụng** ở Phase 1,
+  cho `chunk_screening.py`/`fact_extraction.py`. ✅ **Đã áp dụng** ở Phase 1,
   không nằm trong kế hoạch gốc.
+- `chunk_screening.py` (trước đó `chunk_quality.py`): đổi từ chấm 4 tiêu chí
+  liên tục + so ngưỡng sang hỏi nhị phân `has_penalty_content` — LLM đáng tin
+  hơn với quyết định nhị phân so với tự hiệu chỉnh điểm số liên tục. Bỏ
+  `chunk_quality_threshold` khỏi `EvaluationSettings`/`.env.example`.
+  ✅ **Đã áp dụng.**
 - `chunker/writer.py`: thêm `read_chunks` — CLI trích xuất fact cần đọc lại
   `*.chunks.jsonl`. ✅ **Đã áp dụng** ở Phase 1, không nằm trong kế hoạch gốc.
 - `pyproject.toml`: thêm console script `legal-extract-facts`,

@@ -1,4 +1,4 @@
-"""Typed records for the fact-ledger ground-truth synthesis pipeline."""
+"""Typed records for ground-truth synthesis legal facts."""
 
 from __future__ import annotations
 
@@ -15,16 +15,12 @@ class EvidenceReference:
 
     chunk_id: str
     quoted_span: str
-    unit_ids: tuple[str, ...]
-    source_refs: tuple[str, ...]
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable evidence record."""
         return {
             "chunk_id": self.chunk_id,
             "quoted_span": self.quoted_span,
-            "unit_ids": list(self.unit_ids),
-            "source_refs": list(self.source_refs),
         }
 
 

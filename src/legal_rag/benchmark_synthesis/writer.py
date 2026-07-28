@@ -1,37 +1,31 @@
-"""Atomic persistence for the fact-ledger pipeline's JSONL outputs."""
+"""Atomic persistence for ground-truth synthesis JSONL outputs."""
 
 from __future__ import annotations
 
 import json
 from collections.abc import Sequence
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 
-from legal_rag.evaluation.binding_gate import BindingCheckResult, BindingViolation
-from legal_rag.evaluation.candidate_generation import (
+from legal_rag.benchmark_synthesis.binding_gate import BindingCheckResult, BindingViolation
+from legal_rag.benchmark_synthesis.candidate_generation import (
     CANDIDATE_SCHEMA_VERSION,
     CandidateDraft,
     ClaimEvidence,
     FactAnswerFields,
     RequiredClaim,
 )
-from legal_rag.evaluation.candidate_record import CandidateRecord
-from legal_rag.evaluation.evidence_graph import EVIDENCE_RELATION_SCHEMA_VERSION, EvidenceRelation
-from legal_rag.evaluation.fact_ledger import FACT_LEDGER_SCHEMA_VERSION, FactLedgerEntry
-from legal_rag.evaluation.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
-from legal_rag.evaluation.scenario_sampling import SCENARIO_SCHEMA_VERSION, Scenario
-from legal_rag.evaluation.verification import VerificationResult
+from legal_rag.benchmark_synthesis.candidate_record import CandidateRecord
+from legal_rag.benchmark_synthesis.evidence_graph import EVIDENCE_RELATION_SCHEMA_VERSION, EvidenceRelation
+from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.scenario_sampling import SCENARIO_SCHEMA_VERSION, Scenario
+from legal_rag.benchmark_synthesis.verification import VerificationResult
 from legal_rag.io_utils import write_jsonl_atomic
 
 
 def write_legal_facts(output_path: Path, facts: Sequence[LegalFact]) -> None:
     """Atomically replace one UTF-8 JSONL output with legal-fact records."""
     write_jsonl_atomic(output_path, (fact.to_dict() for fact in facts))
-
-
-def write_fact_ledger(output_path: Path, entries: Sequence[FactLedgerEntry]) -> None:
-    """Atomically replace one UTF-8 JSONL output with fact-ledger records."""
-    write_jsonl_atomic(output_path, (entry.to_dict() for entry in entries))
 
 
 def read_legal_facts(input_path: Path) -> tuple[LegalFact, ...]:
@@ -59,44 +53,12 @@ def read_legal_facts(input_path: Path) -> tuple[LegalFact, ...]:
                     document_number=payload["document_number"],
                     provision_path=payload["provision_path"],
                     evidence=tuple(
-                        EvidenceReference(
-                            chunk_id=entry["chunk_id"],
-                            quoted_span=entry["quoted_span"],
-                            unit_ids=tuple(entry["unit_ids"]),
-                            source_refs=tuple(entry["source_refs"]),
-                        )
+                        EvidenceReference(chunk_id=entry["chunk_id"], quoted_span=entry["quoted_span"])
                         for entry in payload["evidence"]
                     ),
                 )
             )
     return tuple(facts)
-
-
-def read_fact_ledger(input_path: Path) -> tuple[FactLedgerEntry, ...]:
-    """Read a fact-ledger JSONL file back into typed entries.
-
-    A missing file means no ledger exists yet, which is the expected state
-    before the first extraction run; it is not an error condition.
-    """
-    if not input_path.exists():
-        return ()
-    entries: list[FactLedgerEntry] = []
-    with input_path.open(encoding="utf-8") as source_file:
-        for line in source_file:
-            payload = json.loads(line)
-            if payload["schema_version"] != FACT_LEDGER_SCHEMA_VERSION:
-                msg = f"Unsupported fact-ledger schema: {payload['schema_version']}"
-                raise ValueError(msg)
-            entries.append(
-                FactLedgerEntry(
-                    fact_id=payload["fact_id"],
-                    fact_content_sha256=payload["fact_content_sha256"],
-                    status=payload["status"],
-                    reviewer=payload["reviewer"],
-                    reviewed_at=datetime.fromisoformat(payload["reviewed_at"]) if payload["reviewed_at"] else None,
-                )
-            )
-    return tuple(entries)
 
 
 def write_evidence_relations(output_path: Path, relations: Sequence[EvidenceRelation]) -> None:

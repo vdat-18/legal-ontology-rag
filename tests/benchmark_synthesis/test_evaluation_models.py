@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from legal_rag.evaluation.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
 
 
 def _fact(**overrides: object) -> LegalFact:
@@ -27,8 +27,6 @@ def _fact(**overrides: object) -> LegalFact:
             EvidenceReference(
                 chunk_id="chunk-1",
                 quoted_span="phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng",
-                unit_ids=("unit-1",),
-                source_refs=("word/document.xml#/body/1",),
             ),
         ),
     }
@@ -48,8 +46,6 @@ def test_legal_fact_to_dict_serializes_stable_output_schema() -> None:
         {
             "chunk_id": "chunk-1",
             "quoted_span": "phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng",
-            "unit_ids": ["unit-1"],
-            "source_refs": ["word/document.xml#/body/1"],
         }
     ]
 

@@ -15,8 +15,8 @@ from legal_rag.baml_client.types import EvolvedCandidate as BamlEvolvedCandidate
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
 from legal_rag.baml_client.types import SurfaceCritique as BamlSurfaceCritique
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
-from legal_rag.evaluation.models import LegalFact
-from legal_rag.evaluation.scenario_sampling import Scenario
+from legal_rag.benchmark_synthesis.models import LegalFact
+from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import EvaluationSettings, Settings
 

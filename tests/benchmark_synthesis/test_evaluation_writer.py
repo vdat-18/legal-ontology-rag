@@ -1,27 +1,29 @@
-"""Tests for atomic fact-ledger pipeline persistence."""
+"""Tests for atomic ground-truth synthesis persistence."""
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import date
 from pathlib import Path
 
-from legal_rag.evaluation.binding_gate import BindingCheckResult, BindingViolation
-from legal_rag.evaluation.candidate_generation import CandidateDraft, ClaimEvidence, FactAnswerFields, RequiredClaim
-from legal_rag.evaluation.candidate_record import CandidateRecord
-from legal_rag.evaluation.evidence_graph import EvidenceRelation
-from legal_rag.evaluation.fact_ledger import FactLedgerEntry
-from legal_rag.evaluation.models import EvidenceReference, LegalFact
-from legal_rag.evaluation.scenario_sampling import Scenario
-from legal_rag.evaluation.verification import VerificationResult
-from legal_rag.evaluation.writer import (
+from legal_rag.benchmark_synthesis.binding_gate import BindingCheckResult, BindingViolation
+from legal_rag.benchmark_synthesis.candidate_generation import (
+    CandidateDraft,
+    ClaimEvidence,
+    FactAnswerFields,
+    RequiredClaim,
+)
+from legal_rag.benchmark_synthesis.candidate_record import CandidateRecord
+from legal_rag.benchmark_synthesis.evidence_graph import EvidenceRelation
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
+from legal_rag.benchmark_synthesis.verification import VerificationResult
+from legal_rag.benchmark_synthesis.writer import (
     read_candidates,
     read_evidence_relations,
-    read_fact_ledger,
     read_legal_facts,
     read_scenarios,
     write_candidates,
     write_evidence_relations,
-    write_fact_ledger,
     write_legal_facts,
     write_scenarios,
 )
@@ -47,8 +49,6 @@ def _fact() -> LegalFact:
             EvidenceReference(
                 chunk_id="chunk-1",
                 quoted_span="Phạt tiền từ 4.000.000 đồng.",
-                unit_ids=("unit-1",),
-                source_refs=("word/document.xml#/body/1",),
             ),
         ),
     )
@@ -63,43 +63,6 @@ def test_legal_facts_round_trip_through_jsonl(tmp_path: Path) -> None:
     facts = read_legal_facts(output_path)
 
     assert facts == (fact,)
-
-
-def test_fact_ledger_round_trip_through_jsonl(tmp_path: Path) -> None:
-    """A written ledger entry reads back with identical field values, including timestamps."""
-    output_path = tmp_path / "fact_ledger.jsonl"
-    entry = FactLedgerEntry(
-        fact_id="fact-1",
-        fact_content_sha256="content-1",
-        status="approved",
-        reviewer="an.nguyen",
-        reviewed_at=datetime(2026, 1, 1, tzinfo=UTC),
-    )
-
-    write_fact_ledger(output_path, [entry])
-    entries = read_fact_ledger(output_path)
-
-    assert entries == (entry,)
-
-
-def test_fact_ledger_round_trip_preserves_null_reviewer(tmp_path: Path) -> None:
-    """An unreviewed entry's null reviewer and timestamp survive the round trip."""
-    output_path = tmp_path / "fact_ledger.jsonl"
-    entry = FactLedgerEntry(
-        fact_id="fact-1", fact_content_sha256="content-1", status="extracted", reviewer=None, reviewed_at=None
-    )
-
-    write_fact_ledger(output_path, [entry])
-    entries = read_fact_ledger(output_path)
-
-    assert entries == (entry,)
-
-
-def test_read_fact_ledger_returns_empty_for_missing_file(tmp_path: Path) -> None:
-    """A ledger that has never been written reads back as no entries, not an error."""
-    entries = read_fact_ledger(tmp_path / "does_not_exist.jsonl")
-
-    assert entries == ()
 
 
 def test_evidence_relations_round_trip_through_jsonl(tmp_path: Path) -> None:

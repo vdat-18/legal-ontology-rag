@@ -10,11 +10,9 @@ import pytest
 from legal_rag.baml_client.types import ChunkWindowRole
 from legal_rag.baml_client.types import EvidenceEntry as BamlEvidenceEntry
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
-from legal_rag.chunker.models import Chunk
-from legal_rag.evaluation import fact_extraction
-from legal_rag.evaluation.fact_extraction import (
+from legal_rag.benchmark_synthesis import fact_extraction
+from legal_rag.benchmark_synthesis.fact_extraction import (
     BamlFactExtractionClient,
-    FactExtractionError,
     build_legal_fact,
     build_provision_index,
     build_reading_window,
@@ -22,6 +20,7 @@ from legal_rag.evaluation.fact_extraction import (
     extract_facts_from_document,
     find_embedding_candidates,
 )
+from legal_rag.chunker.models import Chunk
 from legal_rag.settings import EvaluationSettings, LlmProvider, Settings
 
 
@@ -85,26 +84,43 @@ def test_cited_articles_returns_empty_when_no_citation_present() -> None:
     assert cited_articles(chunk) == frozenset()
 
 
-def test_build_reading_window_includes_target_adjacent_and_cited_chunks() -> None:
-    """The window combines target, adjacency, and citation-resolved chunks by role."""
+def test_build_reading_window_includes_target_preceding_and_cited_chunks() -> None:
+    """The window combines target, up to two preceding chunks, and citation-resolved chunks by role."""
     heading = _chunk("art5", "Điều 5. Thẩm quyền xử phạt.")
-    target = _chunk("target", "Áp dụng theo Điều 5.", previous_chunk_id="prev", next_chunk_id="next")
-    previous = _chunk("prev", "Phần trước.")
+    preceding_two = _chunk("prev2", "Phần trước xa hơn.")
+    preceding_one = _chunk("prev1", "Phần ngay trước.", previous_chunk_id="prev2")
+    target = _chunk("target", "Áp dụng theo Điều 5.", previous_chunk_id="prev1", next_chunk_id="next")
     following = _chunk("next", "Phần sau.")
-    chunks_by_id = {chunk.chunk_id: chunk for chunk in (heading, target, previous, following)}
-    provision_index = build_provision_index([heading, target, previous, following])
+    chunks_by_id = {chunk.chunk_id: chunk for chunk in (heading, preceding_two, preceding_one, target, following)}
+    provision_index = build_provision_index([heading, preceding_two, preceding_one, target, following])
 
     window = build_reading_window(target, chunks_by_id, provision_index)
 
     roles_by_id = {entry.chunk_id: entry.role for entry in window}
     assert roles_by_id == {
         "target": ChunkWindowRole.Target,
-        "prev": ChunkWindowRole.Adjacent,
-        "next": ChunkWindowRole.Adjacent,
+        "prev1": ChunkWindowRole.Adjacent,
+        "prev2": ChunkWindowRole.Adjacent,
         "art5": ChunkWindowRole.CitedProvision,
     }
+    assert "next" not in roles_by_id
     art5_entry = next(entry for entry in window if entry.chunk_id == "art5")
     assert art5_entry.provision_path == "Điều 5"
+
+
+def test_build_reading_window_limits_preceding_chunk_depth() -> None:
+    """Walking back through previous_chunk_id stops after max_preceding_chunks."""
+    far = _chunk("far", "Xa nhất.")
+    middle = _chunk("middle", "Giữa.", previous_chunk_id="far")
+    near = _chunk("near", "Gần nhất.", previous_chunk_id="middle")
+    target = _chunk("target", "Điều 5.", previous_chunk_id="near")
+    chunks_by_id = {chunk.chunk_id: chunk for chunk in (far, middle, near, target)}
+    provision_index = build_provision_index([far, middle, near, target])
+
+    window = build_reading_window(target, chunks_by_id, provision_index, max_preceding_chunks=2)
+
+    ids = {entry.chunk_id for entry in window}
+    assert ids == {"target", "near", "middle"}
 
 
 def test_build_reading_window_deduplicates_chunk_appearing_in_multiple_roles() -> None:
@@ -121,16 +137,16 @@ def test_build_reading_window_deduplicates_chunk_appearing_in_multiple_roles() -
     assert prev_entry.role == ChunkWindowRole.Adjacent
 
 
-def test_build_reading_window_respects_max_window_chunks() -> None:
-    """The window never grows past the configured chunk budget."""
+def test_build_reading_window_includes_every_embedding_candidate() -> None:
+    """The window is not capped in total size — every embedding candidate given is included."""
     target = _chunk("target", "Điều 5.")
     candidates = tuple(_chunk(f"cand{i}", f"Nội dung {i}") for i in range(5))
     chunks_by_id = {chunk.chunk_id: chunk for chunk in (target, *candidates)}
     provision_index = build_provision_index([target, *candidates])
 
-    window = build_reading_window(target, chunks_by_id, provision_index, candidates, max_window_chunks=3)
+    window = build_reading_window(target, chunks_by_id, provision_index, candidates)
 
-    assert len(window) == 3
+    assert len(window) == 1 + len(candidates)
     assert window[0].chunk_id == "target"
 
 
@@ -170,14 +186,12 @@ def _baml_fact(**overrides: object) -> BamlLegalFact:
     return BamlLegalFact(**defaults)
 
 
-def test_build_legal_fact_cross_references_real_chunk_provenance() -> None:
-    """unit_ids and source_refs come from the real chunk, not from the LLM."""
-    chunk = _chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
+def test_build_legal_fact_keeps_llm_cited_evidence_as_is() -> None:
+    """chunk_id and quoted_span in evidence come straight from the LLM, untouched."""
+    fact = build_legal_fact(_baml_fact())
 
-    fact = build_legal_fact(_baml_fact(), {"chunk-1": chunk})
-
-    assert fact.evidence[0].unit_ids == chunk.unit_ids
-    assert fact.evidence[0].source_refs == chunk.source_refs
+    assert fact.evidence[0].chunk_id == "chunk-1"
+    assert fact.evidence[0].quoted_span == "phạt tiền từ 4.000.000 đồng"
     assert fact.valid_from is not None
     assert fact.valid_from.isoformat() == "2025-01-01"
     assert fact.valid_to is None
@@ -185,27 +199,18 @@ def test_build_legal_fact_cross_references_real_chunk_provenance() -> None:
 
 def test_build_legal_fact_identity_is_stable_for_identical_identity_fields() -> None:
     """Two facts sharing conduct, subject, document_number, and provision_path share a fact_id."""
-    chunk = _chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
-
-    first = build_legal_fact(_baml_fact(), {"chunk-1": chunk})
-    second = build_legal_fact(_baml_fact(monetary_penalty="5.000.000 đồng"), {"chunk-1": chunk})
+    first = build_legal_fact(_baml_fact())
+    second = build_legal_fact(_baml_fact(monetary_penalty="5.000.000 đồng"))
 
     assert first.fact_id == second.fact_id
     assert first.fact_content_sha256 != second.fact_content_sha256
 
 
-def test_build_legal_fact_rejects_evidence_outside_window() -> None:
-    """A fact citing a chunk_id absent from the window is rejected."""
-    chunk = _chunk("chunk-1", "Phạt tiền.")
+def test_build_legal_fact_trusts_llm_evidence_without_validation() -> None:
+    """No defensive check runs; an empty evidence list simply produces empty evidence."""
+    fact = build_legal_fact(_baml_fact(evidence=[]))
 
-    with pytest.raises(FactExtractionError, match="outside the reading window"):
-        build_legal_fact(_baml_fact(), {"other": chunk})
-
-
-def test_build_legal_fact_rejects_fact_with_no_evidence() -> None:
-    """A fact with an empty evidence list is rejected."""
-    with pytest.raises(FactExtractionError, match="no evidence"):
-        build_legal_fact(_baml_fact(evidence=[]), {})
+    assert fact.evidence == ()
 
 
 class _FakeExtractionClient:
@@ -228,8 +233,8 @@ class _FakeEncoderBackend:
         return np.array([[1.0, 0.0] for _ in sentences])
 
 
-def test_extract_facts_from_document_collects_facts_and_rejections() -> None:
-    """Valid facts are collected and invalid ones are rejected with a reason."""
+def test_extract_facts_from_document_collects_every_fact_per_target() -> None:
+    """Every fact the client returns for a target chunk is collected."""
     from legal_rag.embedding.encoder import EmbeddingEncoder
     from legal_rag.embedding.profiles import EmbeddingProfile
 
@@ -238,16 +243,16 @@ def test_extract_facts_from_document_collects_facts_and_rejections() -> None:
         EmbeddingProfile("p", "m", "r", "m", "r", 2, 512, None),
         _FakeEncoderBackend(),
     )
-    valid_fact = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target", quoted_span="phạt tiền")])
-    invalid_fact = _baml_fact(evidence=[])
-    client = _FakeExtractionClient({"target": (valid_fact, invalid_fact)})
+    fact_one = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target", quoted_span="phạt tiền")])
+    fact_two = _baml_fact(
+        conduct="Hành vi khác", evidence=[BamlEvidenceEntry(chunk_id="target", quoted_span="phạt tiền")]
+    )
+    client = _FakeExtractionClient({"target": (fact_one, fact_two)})
 
-    facts, rejections = extract_facts_from_document([target], client, encoder)
+    facts = extract_facts_from_document([target], client, encoder)
 
-    assert len(facts) == 1
-    assert facts[0].conduct == valid_fact.conduct
-    assert len(rejections) == 1
-    assert rejections[0].target_chunk_id == "target"
+    assert len(facts) == 2
+    assert {fact.conduct for fact in facts} == {fact_one.conduct, fact_two.conduct}
 
 
 def _settings() -> Settings:
@@ -265,12 +270,9 @@ def _evaluation_settings() -> EvaluationSettings:
     """Build ground-truth synthesis settings for an offline BAML request."""
     return EvaluationSettings(
         embedding_profile="qwen3_0_6b",
-        chunk_quality_threshold=0.6,
         span_match_threshold=0.85,
         bundle_overlap_threshold=0.5,
-        dedup_cosine_threshold=0.9,
         max_quality_retries=2,
-        max_simulator_turns=8,
     )
 
 

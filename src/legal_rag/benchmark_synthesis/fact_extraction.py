@@ -1,4 +1,4 @@
-"""Build bounded reading windows and extract legal facts from chunk text."""
+"""Build reading windows and extract legal facts from chunk text."""
 
 from __future__ import annotations
 
@@ -10,15 +10,14 @@ from typing import Protocol
 
 import numpy as np
 from baml_py.logging import set_log_level
-from loguru import logger
 
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import ChunkWindowEntry, ChunkWindowRole
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.chunker.models import Chunk
 from legal_rag.embedding.encoder import EmbeddingEncoder
-from legal_rag.evaluation.models import EvidenceReference, LegalFact
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import EvaluationSettings, Settings
 
@@ -28,21 +27,7 @@ _ARTICLE_HEADING_PATTERN = re.compile(r"\s*Điều\s+(\d+)\b")
 _ARTICLE_CITATION_PATTERN = re.compile(r"Điều\s+(\d+)\b")
 
 DEFAULT_MAX_EMBEDDING_CANDIDATES = 3
-DEFAULT_MAX_WINDOW_CHUNKS = 6
-
-
-class FactExtractionError(ValueError):
-    """Raised when LLM-produced fact output fails validation against real provenance."""
-
-    @classmethod
-    def no_evidence(cls) -> FactExtractionError:
-        """Build an error for a fact with no supporting evidence entries."""
-        return cls("Legal fact has no evidence entries")
-
-    @classmethod
-    def evidence_outside_window(cls, chunk_id: str) -> FactExtractionError:
-        """Build an error for evidence citing a chunk outside the reading window."""
-        return cls(f"Evidence cites chunk_id {chunk_id!r} outside the reading window")
+DEFAULT_MAX_PRECEDING_CHUNKS = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,14 +35,6 @@ class ProvisionIndex:
     """Maps an article number to the chunk(s) whose text opens that article."""
 
     chunk_ids_by_article: Mapping[str, tuple[str, ...]]
-
-
-@dataclass(frozen=True, slots=True)
-class FactExtractionRejection:
-    """One LLM-produced fact dropped during validation, with an auditable reason."""
-
-    target_chunk_id: str
-    reason: str
 
 
 def build_provision_index(chunks: Sequence[Chunk]) -> ProvisionIndex:
@@ -86,26 +63,29 @@ def build_reading_window(
     provision_index: ProvisionIndex,
     embedding_candidates: Sequence[Chunk] = (),
     *,
-    max_window_chunks: int = DEFAULT_MAX_WINDOW_CHUNKS,
+    max_preceding_chunks: int = DEFAULT_MAX_PRECEDING_CHUNKS,
 ) -> tuple[ChunkWindowEntry, ...]:
-    """Assemble one bounded reading window around a target chunk."""
+    """Assemble one reading window around a target chunk."""
     entries: dict[str, ChunkWindowEntry] = {
         target.chunk_id: ChunkWindowEntry(
             chunk_id=target.chunk_id, role=ChunkWindowRole.Target, provision_path=None, text=target.text
         )
     }
-    for adjacent_id in (target.previous_chunk_id, target.next_chunk_id):
-        if adjacent_id is None or adjacent_id in entries:
-            continue
-        adjacent = chunks_by_id.get(adjacent_id)
-        if adjacent is not None:
-            entries[adjacent_id] = ChunkWindowEntry(
-                chunk_id=adjacent_id, role=ChunkWindowRole.Adjacent, provision_path=None, text=adjacent.text
-            )
+    preceding_id = target.previous_chunk_id
+    for _ in range(max_preceding_chunks):
+        if preceding_id is None or preceding_id in entries:
+            break
+        preceding_chunk = chunks_by_id.get(preceding_id)
+        if preceding_chunk is None:
+            break
+        entries[preceding_id] = ChunkWindowEntry(
+            chunk_id=preceding_id, role=ChunkWindowRole.Adjacent, provision_path=None, text=preceding_chunk.text
+        )
+        preceding_id = preceding_chunk.previous_chunk_id
 
     for article in sorted(cited_articles(target)):
         for chunk_id in provision_index.chunk_ids_by_article.get(article, ()):
-            if chunk_id in entries or len(entries) >= max_window_chunks:
+            if chunk_id in entries:
                 continue
             cited_chunk = chunks_by_id[chunk_id]
             entries[chunk_id] = ChunkWindowEntry(
@@ -116,7 +96,7 @@ def build_reading_window(
             )
 
     for candidate in embedding_candidates:
-        if candidate.chunk_id in entries or len(entries) >= max_window_chunks:
+        if candidate.chunk_id in entries:
             continue
         entries[candidate.chunk_id] = ChunkWindowEntry(
             chunk_id=candidate.chunk_id,
@@ -178,29 +158,11 @@ class BamlFactExtractionClient:
         return tuple(result)
 
 
-def build_legal_fact(raw: BamlLegalFact, chunks_by_id: Mapping[str, Chunk]) -> LegalFact:
-    """Validate one LLM-produced fact against real chunk provenance and assign identity.
-
-    Raises FactExtractionError when the model cited a chunk outside the window
-    or produced an unparsable date; model output is untrusted and must be
-    validated before it becomes a persisted record.
-    """
-    if not raw.evidence:
-        raise FactExtractionError.no_evidence()
-
-    evidence: list[EvidenceReference] = []
-    for entry in raw.evidence:
-        chunk = chunks_by_id.get(entry.chunk_id)
-        if chunk is None:
-            raise FactExtractionError.evidence_outside_window(entry.chunk_id)
-        evidence.append(
-            EvidenceReference(
-                chunk_id=entry.chunk_id,
-                quoted_span=entry.quoted_span,
-                unit_ids=chunk.unit_ids,
-                source_refs=chunk.source_refs,
-            )
-        )
+def build_legal_fact(raw: BamlLegalFact) -> LegalFact:
+    """Assign identity to one LLM-produced fact, trusting its cited provenance."""
+    evidence = tuple(
+        EvidenceReference(chunk_id=entry.chunk_id, quoted_span=entry.quoted_span) for entry in raw.evidence
+    )
 
     valid_from = date.fromisoformat(raw.valid_from) if raw.valid_from else None
     valid_to = date.fromisoformat(raw.valid_to) if raw.valid_to else None
@@ -237,7 +199,7 @@ def build_legal_fact(raw: BamlLegalFact, chunks_by_id: Mapping[str, Chunk]) -> L
         valid_to=valid_to,
         document_number=raw.document_number,
         provision_path=raw.provision_path,
-        evidence=tuple(evidence),
+        evidence=evidence,
     )
 
 
@@ -247,28 +209,26 @@ def extract_facts_from_document(
     encoder: EmbeddingEncoder,
     *,
     max_embedding_candidates: int = DEFAULT_MAX_EMBEDDING_CANDIDATES,
-    max_window_chunks: int = DEFAULT_MAX_WINDOW_CHUNKS,
-) -> tuple[tuple[LegalFact, ...], tuple[FactExtractionRejection, ...]]:
-    """Extract validated legal facts from every chunk of one document."""
+    max_preceding_chunks: int = DEFAULT_MAX_PRECEDING_CHUNKS,
+) -> tuple[LegalFact, ...]:
+    """Extract legal facts from every chunk of one document."""
     chunks_by_id = {chunk.chunk_id: chunk for chunk in chunks}
     provision_index = build_provision_index(chunks)
     vectors = encoder.encode([chunk.text for chunk in chunks])
     vectors_by_chunk_id = {chunk.chunk_id: vectors[index] for index, chunk in enumerate(chunks)}
 
     facts: list[LegalFact] = []
-    rejections: list[FactExtractionRejection] = []
     for target in chunks:
         embedding_candidates = find_embedding_candidates(
             target, chunks, vectors_by_chunk_id, max_candidates=max_embedding_candidates
         )
         window = build_reading_window(
-            target, chunks_by_id, provision_index, embedding_candidates, max_window_chunks=max_window_chunks
+            target,
+            chunks_by_id,
+            provision_index,
+            embedding_candidates,
+            max_preceding_chunks=max_preceding_chunks,
         )
-        for raw_fact in client.extract(window):
-            try:
-                facts.append(build_legal_fact(raw_fact, chunks_by_id))
-            except FactExtractionError as error:
-                logger.warning("Dropped candidate fact from chunk {}: {}", target.chunk_id, error)
-                rejections.append(FactExtractionRejection(target_chunk_id=target.chunk_id, reason=str(error)))
+        facts.extend(build_legal_fact(raw_fact) for raw_fact in client.extract(window))
 
-    return tuple(facts), tuple(rejections)
+    return tuple(facts)

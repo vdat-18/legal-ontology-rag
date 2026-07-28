@@ -1,4 +1,4 @@
-# Evaluation Data
+# Benchmark Synthesis Data
 
 This directory stores generated ground-truth synthesis data. The pipeline
 design, schemas, and implementation plan live in
@@ -13,7 +13,7 @@ design, schemas, and implementation plan live in
 - `reviews/` and `ground_truth/` hold reviewed output, as described in the
   pipeline doc's "Cấu trúc output đề xuất" section.
 
-Generation code lives in `src/legal_rag/evaluation/`, following the phased
+Generation code lives in `src/legal_rag/benchmark_synthesis/`, following the phased
 technical plan in the pipeline doc. Required environment variables are listed
 in `.env.example` under `GROUNDTRUTH_*` and `EMBEDDING_PROFILE`. Do not edit
 packages inside `.venv`.
