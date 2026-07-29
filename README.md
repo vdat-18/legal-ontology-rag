@@ -1,84 +1,71 @@
-# legal-ontology-rag
+# Legal Ontology RAG
 
-Ground-truth synthesis from Vietnamese road traffic legal documents.
+This repository provides multiple retrieval backends over the same versioned legal-document chunks:
 
-## Requirements
+- Graphiti uses Neo4j for temporal entities, relationships, and source provenance.
+- Naive RAG uses Milvus for dense-vector retrieval.
+- Corrective RAG uses Milvus retrieval plus CRAG grading, refinement, optional web search, and answer generation.
+- Attu is an optional Milvus administration UI; it is not part of the application data path.
 
-- Python 3.11+
-- LibreOffice console executable when DOCX files contain legacy EMF/WMF images or DOC/XLS attachments
+## Local Infrastructure
 
-## Setup
-
-Create a virtual environment:
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-python -V
-```
-
-Install the project:
+Copy `.env.example` to `.env`, replace every credential placeholder, and keep the file uncommitted. Services are grouped by Compose profile so each pipeline starts only its own dependencies:
 
 ```powershell
-$env:UV_LINK_MODE="copy"
-uv pip install -e ".[dev]"
+docker compose --profile neo4j up -d neo4j
+docker compose --profile milvus up -d milvus
+docker compose --profile attu up -d attu
 ```
 
-`UV_LINK_MODE=copy` avoids link-related installation issues when the repository
-is inside OneDrive. Pass the LibreOffice console executable through
-`--renderer-executable`; the application path is never embedded in source code.
+Compose waits for etcd and MinIO before starting Milvus, and waits for Milvus before starting Attu. Published ports bind to `127.0.0.1` by default. Override `INFRA_HOST_BIND` only when remote access is intentionally protected by a firewall or private network.
 
-Generate the local BAML client from the versioned definitions:
+The `app` image is a batch CLI image, not a daemon. Start the required backend first, then run a command explicitly:
 
 ```powershell
-baml-cli check --from baml_src
-baml-cli generate --from baml_src --no-tests
+docker compose --profile milvus run --rm app legal-naive-rag-index data/chunks
+docker compose --profile neo4j run --rm app legal-graphiti-index data/chunks --corpus-config data/corpus.json
 ```
 
-`src/legal_rag/baml_client/` is generated code and is intentionally excluded
-from Git. Run these commands after cloning the repository and whenever a file
-in `baml_src/` changes.
+The image contains LibreOffice for legacy DOC/XLS attachment conversion. Pass `--renderer-executable /usr/bin/soffice` to parsing commands that need it. Source code is built into the image so the generated BAML client is not hidden by a host bind mount; rebuild the image after code changes.
 
-## Data
+## Milvus Data Compatibility
 
-Data links are listed in [docs/references/references.md](docs/references/references.md).
+Milvus uses one shared database configured by `MILVUS_DATABASE`. Each retrieval method owns a separate collection inside that database, such as `naive_rag_chunks` and `legal_chunks`, so methods share infrastructure without mixing incompatible schemas or embeddings.
 
-Main data Drive folder:
+When upgrading an existing environment, rename `NAIVE_RAG_MILVUS_URI` to `MILVUS_URI`, `NAIVE_RAG_MILVUS_TOKEN` to `MILVUS_TOKEN`, and `NAIVE_RAG_MILVUS_DATABASE` to `MILVUS_DATABASE`. No automatic data migration runs: keep the previous database value to reuse existing data, or select `legal_rag` and rebuild the method-specific collections there.
 
-<https://drive.google.com/drive/folders/1RhVMqDr98r5IBqArSrzUYBvoNZTjtLxE>
+The naive index stores content, chunker, and embedding-model identity metadata with each chunk. Re-running the indexer resumes missing chunks after a partial run. It fails instead of mixing data when the collection schema, vector dimension, index metric, corpus IDs, chunk content, chunker configuration, or embedding revision differs.
 
-Demo/data Drive folder:
+Collections created before this metadata was introduced are intentionally incompatible. Back them up, then configure the shared `MILVUS_DATABASE` and a method-specific collection name, or explicitly drop and rebuild the old collection.
 
-<https://drive.google.com/drive/folders/1voxi753JGAzF7WfiKLxzIP2rJCLjuSmf>
+Server-backed indexing flushes inserts before final verification. Milvus Lite on Windows currently has a broken flush RPC; set `NAIVE_RAG_MILVUS_FLUSH_AFTER_INSERT=false` only for that local backend.
 
-## Vector Database
+## Corrective RAG
 
-Corrective RAG uses Milvus standalone from Docker Compose, not Milvus Lite.
-Start Milvus before indexing, retrieval, or evaluation:
+Corrective RAG uses the shared Docker Milvus instance, not Milvus Lite. Start Milvus before indexing, retrieval, or evaluation:
 
 ```powershell
-docker compose up -d milvus-etcd milvus-minio milvus-standalone
+docker compose --profile milvus up -d milvus
 ```
 
-Use this setting in `.env`:
+Use these settings in `.env`:
 
 ```env
 EMBEDDING_LOCAL_FILES_ONLY=true
 MILVUS_URI=http://localhost:19530
+MILVUS_TOKEN=root:<MILVUS_ROOT_PASSWORD>
+MILVUS_DATABASE=legal_rag
+CRAG_MILVUS_COLLECTION_NAME=legal_chunks
 MILVUS_INDEX_BATCH_SIZE=32
 ```
 
-Milvus Web UI is available at <http://localhost:9091/webui/>. Because Docker
-Milvus uses its own persistent volumes, index the processed chunks once after
-starting a fresh instance:
+Index the processed chunks once after starting a fresh Milvus database:
 
 ```powershell
 python -m legal_rag.corrective_rag.api.cli index --data-dir data/processed/groundtruth
 ```
 
-## Corrective RAG API
-
-Start the FastAPI server after Milvus is running and the chunks are indexed:
+Start the FastAPI server after Milvus is running and chunks are indexed:
 
 ```powershell
 python -m legal_rag.corrective_rag.api --host 127.0.0.1 --port 8000
@@ -116,78 +103,35 @@ Invoke-RestMethod `
   -Body '{"query":"muc phat vuot den do xe may nghi dinh 168","limit":3}'
 ```
 
-Inside the full CRAG pipeline, web search is used only for `INCORRECT` and
-`AMBIGUOUS` retrieval actions. A `CORRECT` retrieval intentionally keeps
-`web_search_count` at `0`.
+Inside the full CRAG pipeline, web search is used only for `INCORRECT` and `AMBIGUOUS` retrieval actions. A `CORRECT` retrieval intentionally keeps `web_search_count` at `0`.
 
-## Parser Pipeline
+## Operations
 
-Configure the `LLM_*` variables shown in `.env.example`, then parse one DOCX
-into the final enriched source file:
+- Health: Neo4j exposes its browser health endpoint on port 7474; Milvus exposes health and Prometheus metrics on port 9091. Container logs use bounded rotation.
+- Secrets: Neo4j, MinIO, and Milvus have no source-controlled fallback credentials. Milvus authentication is enabled and clients use `MILVUS_TOKEN`.
+- Backup: use Neo4j's supported dump/backup tooling for `neo4j_data`. Use a Milvus Backup release compatible with Milvus 2.4 for collections, or stop Milvus and snapshot `etcd_data`, `minio_data`, and `milvus_data` together. A partial snapshot of only one Milvus volume is not a valid backup.
+- Restore: restore into an isolated environment first, start the matching database version, run the integration smoke tests, and only then replace the active deployment. Keep the original volumes until the restored corpus row IDs and representative queries are verified.
 
-```powershell
-legal-parse `
-  data/raw/road_traffic_legal_documents/168_2024_ND-CP_619502.docx `
-  data/processed/groundtruth/168_2024_ND-CP_619502.parsed.jsonl `
-  --renderer-executable "$env:LOCALAPPDATA/legal-rag-tools/libreoffice-26.2.4.2/app/program/soffice.com"
-```
+Authentication environment variables initialize fresh datastores; they do not reliably rotate credentials already persisted in old volumes. Before reusing an existing Neo4j or Milvus volume, rotate its credential through the database's supported administration API and make `.env` match it, or restore the data into freshly initialized secured volumes.
 
-Each JSONL record is one native paragraph or table in native document order,
-carrying its exact OOXML source reference and content hash. Its `images` field
-contains typed captions for image occurrences at that body position; each
-caption exposes only the Vietnamese semantic description under `description_vi`. Its
-`attachments` field contains metadata and provenance for embedded OLE packages.
-Attachment payloads are written under the sibling `assets/` directory using
-their SHA-256 hashes, while their display icons are excluded from image
-captioning. Supported DOC, DOCX and XLS documents inside attachments are parsed
-into child records immediately after their owning parent record. Child records
-carry the parent attachment ID, archive member path and hash, source format and
-conversion provenance. ZIP members are read with bounded count and byte limits
-without extracting source paths to disk. Legacy DOC and XLS members are converted
-in LibreOffice batches; XLSX rows retain sheet, cell reference, value and formula.
-The pipeline reads native paragraphs, tables, images, and attachments, builds structural context,
-calls the BAML `CaptionImage` function through the configured OpenAI-compatible
-provider, and writes the final JSONL plus attachment assets when present. Table images receive text from their native row. Paragraph
-images use the same paragraph when available. Every image also receives up to
-three source units before and after its body position, labeled by structural
-relation and distance. Parser defaults bound captioning to four concurrent
-requests, 2,048 output tokens, 4,000 context characters, and temperature zero.
-Every caption records the exact source references disclosed to the model.
-
-PNG/JPEG assets are sent directly. Legacy EMF/WMF assets require the explicit
-LibreOffice renderer and are converted to PNG in an isolated temporary
-profile. The same executable converts legacy DOC/XLS attachment members. The
-`--renderer-executable` option may be omitted only when the document contains
-neither legacy image formats nor legacy Office attachments. Captions are model-derived
-enrichment and never modify source hashes or native source records. Any parser
-stage failure aborts the output instead of silently producing a partial result.
-
-The prompt, multimodal input, and typed output schema live in `baml_src/`.
-Regenerate the local Python client after changing BAML files:
+Run opt-in datastore smoke tests against running services with:
 
 ```powershell
-baml-cli check --from baml_src
-baml-cli generate --from baml_src --no-tests
+$env:RUN_INFRA_INTEGRATION="1"
+.venv\Scripts\python.exe -m pytest -q tests/integration/test_datastores.py
 ```
 
 ## Checks
 
-Run before committing:
+Regenerate the local BAML client after changing or pulling files under `baml_src/`:
 
-```bash
-ruff format .
-ruff check .
-pytest
+```powershell
+.venv\Scripts\baml-cli.exe generate
 ```
 
-## Project Layout
-
-```text
-baml_src/                    Versioned BAML definitions
-src/legal_rag/parser/        Document parser and enrichment pipeline
-src/legal_rag/baml_client/   Generated BAML Python client (Git-ignored)
-data/config/                 Corpus selection config
-data/raw/                    Raw legal document archive
-docs/references/             External data and research links
-tests/parser/                Offline parser tests
+```powershell
+.venv\Scripts\ruff.exe format --check .
+.venv\Scripts\ruff.exe check .
+.venv\Scripts\python.exe -m pytest -q
+docker compose config --quiet
 ```

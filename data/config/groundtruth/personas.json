@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0.0",
+  "personas": [
+    { "id": "tai_xe_ca_nhan", "description_vi": "Tài xế cá nhân" },
+    { "id": "chu_doanh_nghiep_van_tai", "description_vi": "Chủ doanh nghiệp vận tải" },
+    { "id": "can_bo_xu_phat", "description_vi": "Cán bộ xử phạt" },
+    { "id": "luat_su", "description_vi": "Luật sư" },
+    { "id": "nguoi_hoc_lai", "description_vi": "Người học lái" }
+  ]
+}

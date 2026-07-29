@@ -43,3 +43,7 @@ tempCodeRunnerFile.py
 
 src/legal_rag/baml_client/
 data/raw/road_traffic_legal_documents/
+
+# Naive RAG
+*.db
+milvus_naive_rag.db

@@ -38,6 +38,9 @@ class RAGConfig:
     llm_timeout_seconds: float
     embedding_profile: str
     milvus_uri: str
+    milvus_token: str | None
+    milvus_database: str
+    milvus_collection_name: str
     index_batch_size: int
     evaluator_upper_threshold: float
     evaluator_lower_threshold: float
@@ -76,6 +79,9 @@ class RAGConfig:
             llm_timeout_seconds=llm_settings.llm_timeout_seconds,
             embedding_profile=chunker_settings.embedding_profile,
             milvus_uri=values.get("MILVUS_URI", _DEFAULT_MILVUS_URI),
+            milvus_token=values.get("MILVUS_TOKEN", "").strip() or None,
+            milvus_database=values.get("MILVUS_DATABASE", "default").strip() or "default",
+            milvus_collection_name=values.get("CRAG_MILVUS_COLLECTION_NAME", "legal_chunks").strip() or "legal_chunks",
             index_batch_size=_read_int(values, "MILVUS_INDEX_BATCH_SIZE", 32),
             evaluator_upper_threshold=_read_float(values, "CRAG_EVALUATOR_UPPER_THRESHOLD", 0.70),
             evaluator_lower_threshold=_read_float(values, "CRAG_EVALUATOR_LOWER_THRESHOLD", 0.35),

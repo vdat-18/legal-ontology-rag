@@ -5,7 +5,9 @@ This file is the main coding guide for this repository.
 ## Workflow
 
 - Read the related code, tests, config, and docs before editing.
+- Review the existing architecture and coding style before implementing changes.
 - Keep each change small and focused.
+- Do not refactor or reformat unrelated code; leave existing code unchanged unless modification is required.
 - State important assumptions and tradeoffs.
 - Add or update tests for changed behavior.
 - Run the relevant checks before handoff.
@@ -14,7 +16,7 @@ This file is the main coding guide for this repository.
 
 - Use Ruff for formatting and linting.
 - Use type hints at public APIs and system boundaries.
-- Add short docstrings for modules, classes, functions, and methods.
+- Keep docstrings and comments concise and on one line.
 - Use `pathlib` for filesystem paths.
 - Use context managers for managed resources.
 - Use the project logging style. Do not use `print()` for diagnostics.
@@ -22,6 +24,7 @@ This file is the main coding guide for this repository.
 
 ## Design
 
+- Keep code clean, minimal, and production-ready.
 - Prefer simple code over flexible code that is not needed yet.
 - Prefer explicit data flow over hidden global state.
 - Prefer direct code over helper functions. Add a helper only when it is reused or encapsulates a cohesive, non-trivial operation.
@@ -33,6 +36,7 @@ This file is the main coding guide for this repository.
 ## Data And Security
 
 - Validate only genuinely untrusted input at external system boundaries.
+- Do not catch errors with `try/except`; let exceptions propagate naturally.
 - Keep secrets out of code, docs, tests, logs, and committed config.
 - Do not log credentials, personal data, or full document contents.
 - Do not build shell commands or SQL queries with string interpolation.
@@ -41,9 +45,8 @@ This file is the main coding guide for this repository.
 
 ## Heuristics
 
-- Do not use keyword matching, handcrafted scores, or rule engines for semantic decisions.
-- Use regex only for small lexical or syntax parsing tasks.
-- Put changeable values in typed config, environment variables, or versioned data files.
+- Do not use regex, keyword matching, handcrafted scores, or rule engines for implementations.
+- Do not hardcode changeable values; put them in typed config, environment variables, or versioned data files.
 
 ## Checks
 
@@ -53,7 +56,6 @@ Run these before committing when possible:
 ruff format --check .
 ruff check .
 pytest
-pre-commit run --all-files
 ```
 
 Do not weaken tests or checks only to make them pass.

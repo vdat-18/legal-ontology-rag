@@ -28,16 +28,22 @@ class LegalVectorDB:
         self.embedder = embedding_model
 
         logger.info("Connecting to Milvus at: {}", self.config.milvus_uri)
-        self.client = MilvusClient(
-            uri=self.config.milvus_uri,
-            grpc_options={
+        connection_options: dict[str, Any] = {
+            "uri": self.config.milvus_uri,
+            "grpc_options": {
                 "grpc.keepalive_time_ms": 60000,
                 "grpc.keepalive_timeout_ms": 20000,
                 "grpc.keepalive_permit_without_calls": False,
             },
-        )
+        }
+        if self.config.milvus_token is not None:
+            connection_options["token"] = self.config.milvus_token
+        self.client = MilvusClient(**connection_options)
+        if self.config.milvus_database not in self.client.list_databases():
+            self.client.create_database(self.config.milvus_database)
+        self.client.use_database(self.config.milvus_database)
 
-        self.collection_name = "legal_chunks"
+        self.collection_name = self.config.milvus_collection_name
         self._ensure_collection()
 
     def _ensure_collection(self) -> None:

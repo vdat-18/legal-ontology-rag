@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0.0",
+  "query_styles": ["standard", "no_diacritics", "misspelled", "keyword_style"],
+  "query_lengths": ["short", "medium", "long"],
+  "query_forms": ["specific", "abstract"],
+  "bundle_answerability_values": ["answerable", "partially_answerable"]
+}

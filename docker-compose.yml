@@ -1,18 +1,22 @@
-# Neo4j backend for Graphiti and Milvus standalone for vector search.
-# Reads runtime values from .env where available. Start with:
-#   docker compose up -d
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: ${CONTAINER_LOG_MAX_SIZE:-10m}
+    max-file: ${CONTAINER_LOG_MAX_FILES:-3}
+
 services:
   neo4j:
+    profiles: [neo4j]
     image: neo4j:5.26
     container_name: legal-rag-neo4j
     ports:
-      - "7474:7474" # HTTP browser (http://localhost:7474)
-      - "7687:7687" # Bolt (driver connection)
+      - "${INFRA_HOST_BIND:-127.0.0.1}:${NEO4J_HTTP_PORT:-7474}:7474"
+      - "${INFRA_HOST_BIND:-127.0.0.1}:${NEO4J_BOLT_PORT:-7687}:7687"
     environment:
-      - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-password}
-      - NEO4J_server_memory_heap_initial__size=512m
-      - NEO4J_server_memory_heap_max__size=1G
-      - NEO4J_server_memory_pagecache_size=512m
+      NEO4J_AUTH: ${NEO4J_USER:?Set NEO4J_USER}/${NEO4J_PASSWORD:?Set NEO4J_PASSWORD}
+      NEO4J_server_memory_heap_initial__size: ${NEO4J_HEAP_INITIAL_SIZE:-512m}
+      NEO4J_server_memory_heap_max__size: ${NEO4J_HEAP_MAX_SIZE:-1G}
+      NEO4J_server_memory_pagecache_size: ${NEO4J_PAGECACHE_SIZE:-512m}
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
@@ -22,76 +26,121 @@ services:
       timeout: 10s
       retries: 20
       start_period: 10s
+    logging: *default-logging
     restart: unless-stopped
 
-  milvus-etcd:
-    image: quay.io/coreos/etcd:v3.5.18
-    container_name: legal-rag-milvus-etcd
+  etcd:
+    profiles: [milvus, attu]
+    image: quay.io/coreos/etcd:v3.5.16
+    container_name: legal-rag-etcd
     environment:
-      - ETCD_AUTO_COMPACTION_MODE=revision
-      - ETCD_AUTO_COMPACTION_RETENTION=1000
-      - ETCD_QUOTA_BACKEND_BYTES=4294967296
-      - ETCD_SNAPSHOT_COUNT=50000
-    command: etcd -advertise-client-urls=http://milvus-etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
     volumes:
-      - milvus_etcd:/etcd
+      - etcd_data:/etcd
+    command: >-
+      etcd -advertise-client-urls=http://127.0.0.1:2379
+      -listen-client-urls http://0.0.0.0:2379
+      --data-dir /etcd
     healthcheck:
       test: ["CMD", "etcdctl", "endpoint", "health"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    logging: *default-logging
     restart: unless-stopped
 
-  milvus-minio:
-    image: minio/minio:RELEASE.2024-05-28T17-19-04Z
-    container_name: legal-rag-milvus-minio
+  minio:
+    profiles: [milvus, attu]
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    container_name: legal-rag-minio
     environment:
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-    command: minio server /minio_data --console-address ":9001"
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${INFRA_HOST_BIND:-127.0.0.1}:${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
-      - milvus_minio:/minio_data
+      - minio_data:/minio_data
+    command: minio server /minio_data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    logging: *default-logging
     restart: unless-stopped
 
-  milvus-standalone:
-    image: milvusdb/milvus:v2.5.27
-    container_name: legal-rag-milvus-standalone
+  milvus:
+    profiles: [milvus, attu]
+    image: milvusdb/milvus:v2.4.15
+    container_name: legal-rag-milvus
     command: ["milvus", "run", "standalone"]
-    security_opt:
-      - seccomp:unconfined
     environment:
-      ETCD_ENDPOINTS: milvus-etcd:2379
-      MINIO_ADDRESS: milvus-minio:9000
-      MINIO_REGION: us-east-1
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+      COMMON_SECURITY_AUTHORIZATIONENABLED: "true"
+      COMMON_SECURITY_DEFAULTROOTPASSWORD: ${MILVUS_ROOT_PASSWORD:?Set MILVUS_ROOT_PASSWORD}
     ports:
-      - "19530:19530"
-      - "9091:9091"
+      - "${INFRA_HOST_BIND:-127.0.0.1}:${MILVUS_GRPC_PORT:-19530}:19530"
+      - "${INFRA_HOST_BIND:-127.0.0.1}:${MILVUS_METRICS_PORT:-9091}:9091"
     volumes:
       - milvus_data:/var/lib/milvus
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
-      interval: 30s
-      start_period: 90s
-      timeout: 20s
-      retries: 3
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
     depends_on:
-      milvus-etcd:
+      etcd:
         condition: service_healthy
-      milvus-minio:
+      minio:
         condition: service_healthy
+    logging: *default-logging
     restart: unless-stopped
 
+  attu:
+    profiles: [attu]
+    image: zilliz/attu:v2.4.3
+    container_name: legal-rag-attu
+    environment:
+      MILVUS_URL: milvus:19530
+    ports:
+      - "${INFRA_HOST_BIND:-127.0.0.1}:${ATTU_PORT:-3000}:3000"
+    depends_on:
+      milvus:
+        condition: service_healthy
+    logging: *default-logging
+    restart: unless-stopped
+
+  app:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: legal-rag-app
+    init: true
+    env_file:
+      - .env
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      MILVUS_URI: http://milvus:19530
+      MILVUS_TOKEN: ${MILVUS_TOKEN:?Set MILVUS_TOKEN}
+    volumes:
+      - ./data:/app/data
+      - huggingface_cache:/root/.cache/huggingface
+    logging: *default-logging
+
 volumes:
-  milvus_data:
-  milvus_etcd:
-  milvus_minio:
   neo4j_data:
   neo4j_logs:
+  etcd_data:
+  minio_data:
+  milvus_data:
+  huggingface_cache:
