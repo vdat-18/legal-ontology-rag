@@ -97,6 +97,30 @@ def test_screen_chunks_batches_calls_by_batch_size() -> None:
     assert all(record.has_penalty_content for record in records)
 
 
+def test_screen_chunks_calls_on_batch_screened_after_each_batch() -> None:
+    """on_batch_screened receives just the newly screened batch's records, once per batch."""
+    chunks = [_chunk(f"chunk-{i}", f"Nội dung {i}") for i in range(5)]
+    results_by_chunk_id = {
+        chunk.chunk_id: ChunkScreeningResult(chunk_id=chunk.chunk_id, has_penalty_content=True, reason="")
+        for chunk in chunks
+    }
+
+    class _StaticClient:
+        def screen(self, batch: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            return [results_by_chunk_id[item.chunk_id] for item in batch]
+
+    batches_seen: list[list[str]] = []
+
+    screen_chunks(
+        chunks,
+        _StaticClient(),
+        batch_size=2,
+        on_batch_screened=lambda records: batches_seen.append([record.chunk_id for record in records]),
+    )
+
+    assert batches_seen == [["chunk-0", "chunk-1"], ["chunk-2", "chunk-3"], ["chunk-4"]]
+
+
 def test_screen_chunks_retries_a_failing_batch_then_succeeds() -> None:
     """A batch that raises is retried, and a later successful attempt still produces a verdict."""
     chunk = _chunk("chunk-1", "Điều 6 khoản 9 điểm b quy định mức phạt tiền.")

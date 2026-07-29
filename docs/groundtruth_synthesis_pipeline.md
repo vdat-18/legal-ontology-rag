@@ -116,7 +116,7 @@ có nội dung chế tài bị bỏ qua và ghi vào danh sách loại trừ kè
 chính model đưa ra — thường là mục lục, tiêu đề chương, đoạn dẫn nhập không
 mang chế tài.
 
-Các chunk được gộp theo batch (mặc định 10 chunk/lần gọi) thay vì gọi LLM
+Các chunk được gộp theo batch (mặc định 20 chunk/lần gọi) thay vì gọi LLM
 riêng cho từng chunk, để giảm số lần round-trip. Mỗi chunk trong batch mang
 theo `chunk_id`, và model phải trả về đúng `chunk_id` đó trong từng kết quả —
 kết quả được đối chiếu ngược lại theo `chunk_id`, không dựa vào thứ tự trả về,
@@ -980,7 +980,7 @@ BAML trong `baml_src/`:
 - `chunk_screening.baml` — class `ChunkScreeningItem` (chunk_id, text) và
   `ChunkScreeningResult` (chunk_id, has_penalty_content, reason), function
   `ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[]` gọi
-  theo batch (mặc định 10 chunk/lần, xem `DEFAULT_SCREENING_BATCH_SIZE` trong
+  theo batch (mặc định 20 chunk/lần, xem `DEFAULT_SCREENING_BATCH_SIZE` trong
   `chunk_screening.py`), kèm persona và few-shot examples. Kết quả đối chiếu
   ngược lại theo `chunk_id`, không theo thứ tự mảng trả về.
 - `legal_fact_extraction.baml` — enum `ChunkWindowRole`, class
@@ -1001,7 +1001,10 @@ sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.js
   nguyên các verdict cũ. Một batch gọi LLM lỗi (timeout, rate limit...) được
   thử lại tối đa `DEFAULT_SCREENING_MAX_RETRIES` lần; nếu vẫn lỗi thì batch đó
   bị bỏ qua (log cảnh báo), các chunk còn lại vẫn chạy tiếp — chunk bị bỏ qua
-  sẽ được resume ở lần chạy sau.
+  sẽ được resume ở lần chạy sau. `chunk_screening.jsonl` được ghi lại
+  (atomic) sau **mỗi batch** thay vì chỉ một lần ở cuối, nên nếu tiến trình
+  bị dừng đột ngột giữa chừng (không phải lỗi batch, mà là crash/kill hẳn
+  tiến trình), các batch đã xong trước đó vẫn không mất.
 - `legal-extract-facts` (`fact_extraction_cli.py`): nhận đường dẫn chunk JSONL
   **và** `chunk_screening.jsonl`, lọc lại chunk có `has_penalty_content=true`,
   trích fact, ghi thẳng `legal_facts.jsonl` — không còn ledger, không còn

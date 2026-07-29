@@ -151,7 +151,7 @@ def test_chunk_screening_cli_writes_partial_output_when_a_batch_keeps_failing(
     """A chunk whose batch keeps failing is left out of the output instead of crashing the run."""
     chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
     screening_path = tmp_path / "chunk_screening.jsonl"
-    first_batch = tuple(_chunk(f"chunk-{i}", f"Phạt tiền {i}.") for i in range(10))
+    first_batch = tuple(_chunk(f"chunk-{i}", f"Phạt tiền {i}.") for i in range(20))
     failing_chunk = _chunk("chunk-fail", "Nội dung gây lỗi mạng.")
     write_chunks(chunks_path, (*first_batch, failing_chunk))
 
@@ -179,6 +179,42 @@ def test_chunk_screening_cli_writes_partial_output_when_a_batch_keeps_failing(
     records = read_chunk_screening(screening_path)
     assert [record.chunk_id for record in records] == [chunk.chunk_id for chunk in first_batch]
     assert "chunk-fail" not in {record.chunk_id for record in records}
+
+
+def test_chunk_screening_cli_persists_progress_if_interrupted_mid_document(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A batch already screened is durably written even if the process dies before the run finishes."""
+    chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
+    screening_path = tmp_path / "chunk_screening.jsonl"
+    first_batch = tuple(_chunk(f"chunk-{i}", f"Phạt tiền {i}.") for i in range(20))
+    second_batch = tuple(_chunk(f"chunk-b-{i}", f"Phạt tiền b{i}.") for i in range(20))
+    write_chunks(chunks_path, (*first_batch, *second_batch))
+
+    class _CrashesOnSecondBatchClient:
+        """Succeed on the first batch, then simulate the whole process being killed."""
+
+        def __init__(self, settings: object, evaluation_settings: object) -> None:
+            self._calls = 0
+
+        def screen(self, chunks: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            """Return accepted verdicts on the first call, then raise an uncaught fatal error."""
+            self._calls += 1
+            if self._calls > 1:
+                raise SystemExit
+            return [
+                ChunkScreeningResult(chunk_id=chunk.chunk_id, has_penalty_content=True, reason="Contains penalty.")
+                for chunk in chunks
+            ]
+
+    _configure_cli(monkeypatch, chunks_path, screening_path)
+    monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _CrashesOnSecondBatchClient)
+
+    with pytest.raises(SystemExit):
+        chunk_screening_cli.main()
+
+    records = read_chunk_screening(screening_path)
+    assert [record.chunk_id for record in records] == [chunk.chunk_id for chunk in first_batch]
 
 
 def test_chunk_screening_cli_skips_the_llm_entirely_when_fully_resumed(

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -15,7 +15,7 @@ from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.chunker.models import Chunk
 from legal_rag.settings import EvaluationSettings, Settings
 
-DEFAULT_SCREENING_BATCH_SIZE = 10
+DEFAULT_SCREENING_BATCH_SIZE = 20
 DEFAULT_SCREENING_MAX_RETRIES = 2
 
 CHUNK_SCREENING_SCHEMA_VERSION = "1.0.0"
@@ -70,14 +70,30 @@ class BamlChunkScreeningClient:
         return b.parse.ScreenChunks(raw_output, baml_options={"client_registry": self._registry})
 
 
+def _records_for(
+    chunks: Sequence[Chunk], results_by_chunk_id: dict[str, ChunkScreeningResult]
+) -> tuple[ChunkScreeningRecord, ...]:
+    """Build a verdict record for each of chunks that already has a result."""
+    return tuple(
+        ChunkScreeningRecord(
+            chunk_id=chunk.chunk_id,
+            has_penalty_content=results_by_chunk_id[chunk.chunk_id].has_penalty_content,
+            reason=results_by_chunk_id[chunk.chunk_id].reason,
+        )
+        for chunk in chunks
+        if chunk.chunk_id in results_by_chunk_id
+    )
+
+
 def screen_chunks(
     chunks: Sequence[Chunk],
     client: ChunkScreeningClient,
     *,
     batch_size: int = DEFAULT_SCREENING_BATCH_SIZE,
     max_retries: int = DEFAULT_SCREENING_MAX_RETRIES,
+    on_batch_screened: Callable[[Sequence[ChunkScreeningRecord]], None] | None = None,
 ) -> tuple[ChunkScreeningRecord, ...]:
-    """Screen every chunk, retrying a failed batch up to max_retries times before skipping it."""
+    """Screen every chunk, retrying a failed batch before skipping it; call on_batch_screened after each batch."""
     results_by_chunk_id: dict[str, ChunkScreeningResult] = {}
     for batch_start in range(0, len(chunks), batch_size):
         batch = chunks[batch_start : batch_start + batch_size]
@@ -104,13 +120,7 @@ def screen_chunks(
                 "Skipping chunk-screening batch {}-{} after {} failed attempts", batch_start, batch_end, 1 + max_retries
             )
         logger.debug("Screened {}/{} chunks", len(results_by_chunk_id), len(chunks))
+        if on_batch_screened is not None:
+            on_batch_screened(_records_for(batch, results_by_chunk_id))
 
-    return tuple(
-        ChunkScreeningRecord(
-            chunk_id=chunk.chunk_id,
-            has_penalty_content=results_by_chunk_id[chunk.chunk_id].has_penalty_content,
-            reason=results_by_chunk_id[chunk.chunk_id].reason,
-        )
-        for chunk in chunks
-        if chunk.chunk_id in results_by_chunk_id
-    )
+    return _records_for(chunks, results_by_chunk_id)

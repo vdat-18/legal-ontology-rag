@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from pathlib import Path
 
 from loguru import logger
@@ -17,10 +18,14 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    """Screen chunks not yet in the output file, keeping prior verdicts on resume."""
+    """Screen chunks not yet in the output file, writing progress after every batch so it survives being interrupted."""
     from dotenv import find_dotenv, load_dotenv
 
-    from legal_rag.benchmark_synthesis.chunk_screening import BamlChunkScreeningClient, screen_chunks
+    from legal_rag.benchmark_synthesis.chunk_screening import (
+        BamlChunkScreeningClient,
+        ChunkScreeningRecord,
+        screen_chunks,
+    )
     from legal_rag.benchmark_synthesis.writer import read_chunk_screening, write_chunk_screening
     from legal_rag.chunker.writer import read_chunks
     from legal_rag.settings import EvaluationSettings, Settings
@@ -39,10 +44,17 @@ def main() -> None:
     records_by_chunk_id = {record.chunk_id: record for record in existing_records}
     chunks_to_screen = tuple(chunk for chunk in chunks if chunk.chunk_id not in records_by_chunk_id)
 
+    def _persist_batch(batch_records: Sequence[ChunkScreeningRecord]) -> None:
+        """Merge one screened batch into the running results and rewrite the output file."""
+        records_by_chunk_id.update({record.chunk_id: record for record in batch_records})
+        write_chunk_screening(
+            arguments.screening_output_path,
+            tuple(records_by_chunk_id[chunk.chunk_id] for chunk in chunks if chunk.chunk_id in records_by_chunk_id),
+        )
+
     if chunks_to_screen:
         screening_client = BamlChunkScreeningClient(settings, evaluation_settings)
-        new_records = screen_chunks(chunks_to_screen, screening_client)
-        records_by_chunk_id.update({record.chunk_id: record for record in new_records})
+        screen_chunks(chunks_to_screen, screening_client, on_batch_screened=_persist_batch)
 
     records = tuple(records_by_chunk_id[chunk.chunk_id] for chunk in chunks if chunk.chunk_id in records_by_chunk_id)
     write_chunk_screening(arguments.screening_output_path, records)
