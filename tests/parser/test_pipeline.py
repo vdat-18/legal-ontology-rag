@@ -16,7 +16,7 @@ from legal_rag.parser.images import DocxImage, DocxImageExtraction
 from legal_rag.parser.models import CaptionModelResponse
 from legal_rag.parser.pipeline import ParserPipeline, ParserPipelineError
 from legal_rag.parser.writer import write_parsed_document
-from legal_rag.settings import Settings
+from legal_rag.settings import LlmProvider, Settings
 
 
 class FakeCaptionClient:
@@ -46,6 +46,7 @@ def _settings() -> Settings:
         llm_base_url="http://localhost:20128/v1",
         llm_api_key="test-provider-key",
         llm_model="provider/test-model",
+        llm_provider=LlmProvider.OPENAI,
         llm_timeout_seconds=30,
         image_caption_max_concurrency=1,
         image_caption_max_output_tokens=256,

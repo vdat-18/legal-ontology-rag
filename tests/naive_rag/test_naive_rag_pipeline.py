@@ -14,7 +14,7 @@ from legal_rag.naive_rag import pipeline as pipeline_module
 from legal_rag.naive_rag.connection import build_milvus_client
 from legal_rag.naive_rag.indexer import index_chunks
 from legal_rag.naive_rag.pipeline import NaiveRAGPipeline
-from legal_rag.settings import NaiveRagSettings, Settings
+from legal_rag.settings import LlmProvider, NaiveRagSettings, Settings
 
 
 class _FakeEncoderBackend:
@@ -88,7 +88,11 @@ def test_pipeline_run_retrieves_and_generates_an_answer(monkeypatch: pytest.Monk
         milvus_nlist=1,
     )
     settings = Settings(
-        llm_base_url="http://localhost:20128/v1", llm_api_key="test-key", llm_model="test-model", llm_timeout_seconds=30
+        llm_base_url="http://localhost:20128/v1",
+        llm_api_key="test-key",
+        llm_model="test-model",
+        llm_provider=LlmProvider.OPENAI,
+        llm_timeout_seconds=30,
     )
     monkeypatch.setattr(
         EmbeddingEncoder,

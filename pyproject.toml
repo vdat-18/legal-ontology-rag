@@ -32,6 +32,8 @@ legal-build-evidence-graph = "legal_rag.evidence_graph_cli:main"
 legal-generate-candidates = "legal_rag.candidate_generation_cli:main"
 legal-naive-rag-index = "legal_rag.naive_rag_index_cli:main"
 legal-naive-rag-query = "legal_rag.naive_rag_query_cli:main"
+legal-graphiti-index = "legal_rag.graphiti_index_cli:main"
+legal-graphiti-query = "legal_rag.graphiti_query_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/legal_rag"]
