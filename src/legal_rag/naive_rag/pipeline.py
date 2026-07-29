@@ -41,5 +41,5 @@ class NaiveRAGPipeline:
         k = top_k or self.settings.top_k
         hits = self._retriever.retrieve(query, top_k=k)
         answer = generate_answer(query, hits, self._generation_client)
-        logger.info("Pipeline completed for: {:.60s}", query)
+        logger.info("Naive RAG pipeline completed with {} sources", len(hits))
         return RAGResult(query=query, answer=answer, sources=tuple(hits))

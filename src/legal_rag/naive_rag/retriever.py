@@ -56,5 +56,5 @@ class Retriever:
             )
             for hit in results[0]
         ]
-        logger.debug("Retrieved {} chunks for query: {:.60s}", len(hits), query)
+        logger.debug("Retrieved {} chunks", len(hits))
         return hits

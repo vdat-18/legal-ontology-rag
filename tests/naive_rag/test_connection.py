@@ -5,11 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 from pymilvus import MilvusClient
 
 from legal_rag.chunker.models import Chunk
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.embedding.profiles import EmbeddingProfile
+from legal_rag.naive_rag import connection as connection_module
 from legal_rag.naive_rag.connection import build_milvus_client
 from legal_rag.naive_rag.indexer import index_chunks
 from legal_rag.settings import NaiveRagSettings
@@ -74,6 +76,7 @@ def _settings(tmp_path: Path) -> NaiveRagSettings:
         milvus_uri=str(tmp_path / "naive_rag.db"),
         milvus_database="test_db",
         milvus_nlist=1,
+        milvus_flush_after_insert=False,
     )
 
 
@@ -100,3 +103,45 @@ def test_build_milvus_client_reuses_an_already_created_database(tmp_path: Path) 
     second_client = build_milvus_client(settings)
 
     assert second_client.get_collection_stats(settings.milvus_collection_name)["row_count"] == 1
+
+
+@pytest.mark.parametrize(
+    ("token", "expected_options"),
+    [
+        (None, {"uri": "http://milvus:19530"}),
+        ("root:secret", {"uri": "http://milvus:19530", "token": "root:secret"}),
+    ],
+)
+def test_build_milvus_client_passes_authentication_only_when_configured(
+    monkeypatch: pytest.MonkeyPatch,
+    token: str | None,
+    expected_options: dict[str, str],
+) -> None:
+    """The optional Milvus token is forwarded without inventing fallback credentials."""
+    captured_options: dict[str, str] = {}
+
+    class _FakeMilvusClient:
+        """Record connection options and expose an existing database."""
+
+        def list_databases(self) -> list[str]:
+            """Return the configured database as already present."""
+            return ["naive_rag_b0"]
+
+        def use_database(self, database_name: str) -> None:
+            """Accept the configured database selection."""
+            assert database_name == "naive_rag_b0"
+
+    def fake_client(**options: str) -> _FakeMilvusClient:
+        captured_options.update(options)
+        return _FakeMilvusClient()
+
+    monkeypatch.setattr(connection_module, "MilvusClient", fake_client)
+    settings = NaiveRagSettings(
+        embedding_profile="test-profile",
+        milvus_uri="http://milvus:19530",
+        milvus_token=token,
+    )
+
+    connection_module.build_milvus_client(settings)
+
+    assert captured_options == expected_options

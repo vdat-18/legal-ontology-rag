@@ -82,7 +82,8 @@ def test_index_cli_indexes_every_chunk_file_in_the_directory(monkeypatch: pytest
     )
     monkeypatch.setenv("EMBEDDING_PROFILE", "bge_m3")
     monkeypatch.setenv("NAIVE_RAG_TOP_K", "5")
-    monkeypatch.setenv("MILVUS_URI", milvus_uri)
+    monkeypatch.setenv("NAIVE_RAG_MILVUS_FLUSH_AFTER_INSERT", "false")
+    monkeypatch.setenv("NAIVE_RAG_MILVUS_URI", milvus_uri)
     monkeypatch.setattr(sys, "argv", ["legal-naive-rag-index", str(chunks_dir)])
 
     naive_rag_index_cli.main()
@@ -105,7 +106,8 @@ def test_index_cli_second_run_skips_reindexing(monkeypatch: pytest.MonkeyPatch, 
     )
     monkeypatch.setenv("EMBEDDING_PROFILE", "bge_m3")
     monkeypatch.setenv("NAIVE_RAG_TOP_K", "5")
-    monkeypatch.setenv("MILVUS_URI", milvus_uri)
+    monkeypatch.setenv("NAIVE_RAG_MILVUS_FLUSH_AFTER_INSERT", "false")
+    monkeypatch.setenv("NAIVE_RAG_MILVUS_URI", milvus_uri)
     monkeypatch.setattr(sys, "argv", ["legal-naive-rag-index", str(chunks_dir)])
     naive_rag_index_cli.main()
 

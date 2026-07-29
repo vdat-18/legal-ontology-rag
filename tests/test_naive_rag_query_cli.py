@@ -84,7 +84,13 @@ def _chunk(chunk_id: str, text: str) -> Chunk:
 def test_query_cli_logs_the_generated_answer(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Running the query CLI retrieves the indexed chunk and logs the generated answer."""
     milvus_uri = str(tmp_path / "naive_rag.db")
-    naive_rag_settings = NaiveRagSettings(embedding_profile="bge_m3", top_k=1, milvus_uri=milvus_uri, milvus_nlist=1)
+    naive_rag_settings = NaiveRagSettings(
+        embedding_profile="bge_m3",
+        top_k=1,
+        milvus_uri=milvus_uri,
+        milvus_nlist=1,
+        milvus_flush_after_insert=False,
+    )
     seed_encoder = EmbeddingEncoder(_profile(), _FakeEncoderBackend())
     seed_client = build_milvus_client(naive_rag_settings)
     index_chunks((_chunk("chunk-1", "Phạt tiền từ 4 đến 6 triệu."),), seed_encoder, seed_client, naive_rag_settings)
@@ -101,7 +107,8 @@ def test_query_cli_logs_the_generated_answer(monkeypatch: pytest.MonkeyPatch, tm
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
     monkeypatch.setenv("EMBEDDING_PROFILE", "bge_m3")
     monkeypatch.setenv("NAIVE_RAG_TOP_K", "1")
-    monkeypatch.setenv("MILVUS_URI", milvus_uri)
+    monkeypatch.setenv("NAIVE_RAG_MILVUS_FLUSH_AFTER_INSERT", "false")
+    monkeypatch.setenv("NAIVE_RAG_MILVUS_URI", milvus_uri)
     monkeypatch.setattr(sys, "argv", ["legal-naive-rag-query", "Mức phạt vượt đèn đỏ?"])
 
     messages: list[str] = []

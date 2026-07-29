@@ -77,6 +77,7 @@ def _settings(tmp_path: Path) -> NaiveRagSettings:
         top_k=2,
         milvus_uri=str(tmp_path / "naive_rag.db"),
         milvus_nlist=1,
+        milvus_flush_after_insert=False,
     )
 
 

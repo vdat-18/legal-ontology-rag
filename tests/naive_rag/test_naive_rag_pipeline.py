@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from loguru import logger
 
 from legal_rag.chunker.models import Chunk
 from legal_rag.embedding.encoder import EmbeddingEncoder
@@ -86,6 +87,7 @@ def test_pipeline_run_retrieves_and_generates_an_answer(monkeypatch: pytest.Monk
         top_k=1,
         milvus_uri=str(tmp_path / "naive_rag.db"),
         milvus_nlist=1,
+        milvus_flush_after_insert=False,
     )
     settings = Settings(
         llm_base_url="http://localhost:20128/v1",
@@ -111,3 +113,42 @@ def test_pipeline_run_retrieves_and_generates_an_answer(monkeypatch: pytest.Monk
     assert result.answer == "Phạt tiền từ 4 đến 6 triệu đồng."
     assert len(result.sources) == 1
     assert result.sources[0].chunk_id == "chunk-1"
+
+
+def test_pipeline_does_not_log_the_legal_query(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Legal query text stays out of application logs."""
+    naive_rag_settings = NaiveRagSettings(
+        embedding_profile="bge_m3",
+        top_k=1,
+        milvus_uri=str(tmp_path / "naive_rag.db"),
+        milvus_nlist=1,
+        milvus_flush_after_insert=False,
+    )
+    settings = Settings(
+        llm_base_url="http://localhost:20128/v1",
+        llm_api_key="test-key",
+        llm_model="test-model",
+        llm_timeout_seconds=30,
+    )
+    monkeypatch.setattr(
+        EmbeddingEncoder,
+        "from_profile",
+        classmethod(lambda cls, profile: EmbeddingEncoder(_profile(), _FakeEncoderBackend())),
+    )
+    monkeypatch.setattr(pipeline_module, "BamlGenerationClient", _FakeGenerationClient)
+    seed_client = build_milvus_client(naive_rag_settings)
+    index_chunks(
+        (_chunk("chunk-1", "Indexed legal text."),),
+        EmbeddingEncoder(_profile(), _FakeEncoderBackend()),
+        seed_client,
+        naive_rag_settings,
+    )
+    messages: list[str] = []
+    sink_id = logger.add(lambda message: messages.append(str(message)), level="DEBUG")
+    query = "sensitive legal query"
+    try:
+        NaiveRAGPipeline(settings, naive_rag_settings).run(query)
+    finally:
+        logger.remove(sink_id)
+
+    assert all(query not in message for message in messages)

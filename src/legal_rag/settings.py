@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -114,8 +115,28 @@ class EvaluationSettings:
         return cls(**overrides, embedding_profile=values["EMBEDDING_PROFILE"].strip())
 
 
-_NAIVE_RAG_TUNABLES: dict[str, Callable[[str], int]] = {
+def _parse_boolean(value: str) -> bool:
+    """Parse one JSON boolean from an environment variable."""
+    parsed = json.loads(value.lower())
+    if not isinstance(parsed, bool):
+        msg = f"Expected a boolean, got {value}"
+        raise TypeError(msg)
+    return parsed
+
+
+_NAIVE_RAG_TUNABLES: dict[str, Callable[[str], str | bool | float | int]] = {
     "top_k": int,
+    "milvus_database": str.strip,
+    "milvus_collection_name": str.strip,
+    "milvus_index_type": str.strip,
+    "milvus_metric_type": str.strip,
+    "milvus_nlist": int,
+    "milvus_nprobe": int,
+    "milvus_insert_batch_size": int,
+    "milvus_flush_after_insert": _parse_boolean,
+    "answer_max_output_tokens": int,
+    "answer_temperature": float,
+    "max_response_bytes": int,
 }
 
 
@@ -125,6 +146,7 @@ class NaiveRagSettings:
 
     embedding_profile: str
     milvus_uri: str
+    milvus_token: str | None = field(default=None, repr=False)
     top_k: int = 10
     milvus_database: str = "naive_rag_b0"
     milvus_collection_name: str = "naive_rag_chunks"
@@ -133,9 +155,46 @@ class NaiveRagSettings:
     milvus_nlist: int = 128
     milvus_nprobe: int = 16
     milvus_insert_batch_size: int = 200
+    milvus_flush_after_insert: bool = True
     answer_max_output_tokens: int = 4096
     answer_temperature: float = 0.3
     max_response_bytes: int = 1_048_576
+
+    def __post_init__(self) -> None:
+        """Reject invalid external-service configuration before connecting to Milvus."""
+        required_strings = {
+            "embedding_profile": self.embedding_profile,
+            "milvus_uri": self.milvus_uri,
+            "milvus_database": self.milvus_database,
+            "milvus_collection_name": self.milvus_collection_name,
+            "milvus_index_type": self.milvus_index_type,
+            "milvus_metric_type": self.milvus_metric_type,
+        }
+        for name, value in required_strings.items():
+            if not value:
+                msg = f"{name} must not be empty"
+                raise ValueError(msg)
+
+        positive_values = {
+            "top_k": self.top_k,
+            "milvus_nlist": self.milvus_nlist,
+            "milvus_nprobe": self.milvus_nprobe,
+            "milvus_insert_batch_size": self.milvus_insert_batch_size,
+            "answer_max_output_tokens": self.answer_max_output_tokens,
+            "max_response_bytes": self.max_response_bytes,
+        }
+        for name, value in positive_values.items():
+            if value < 1:
+                msg = f"{name} must be positive, got {value}"
+                raise ValueError(msg)
+
+        if not isinstance(self.milvus_flush_after_insert, bool):
+            msg = "milvus_flush_after_insert must be a boolean"
+            raise TypeError(msg)
+
+        if not isfinite(self.answer_temperature) or not 0 <= self.answer_temperature <= _MAX_LLM_TEMPERATURE:
+            msg = f"answer_temperature must be between 0 and {_MAX_LLM_TEMPERATURE}, got {self.answer_temperature}"
+            raise ValueError(msg)
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] | None = None) -> NaiveRagSettings:
@@ -153,7 +212,8 @@ class NaiveRagSettings:
         return cls(
             **overrides,
             embedding_profile=values["EMBEDDING_PROFILE"].strip(),
-            milvus_uri=values["MILVUS_URI"].strip(),
+            milvus_uri=values["NAIVE_RAG_MILVUS_URI"].strip(),
+            milvus_token=values.get("NAIVE_RAG_MILVUS_TOKEN", "").strip() or None,
         )
 
 
