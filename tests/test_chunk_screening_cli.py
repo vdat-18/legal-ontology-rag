@@ -145,6 +145,42 @@ def test_chunk_screening_cli_resumes_by_skipping_already_screened_chunks(
     assert records[1].has_penalty_content is False
 
 
+def test_chunk_screening_cli_writes_partial_output_when_a_batch_keeps_failing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A chunk whose batch keeps failing is left out of the output instead of crashing the run."""
+    chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
+    screening_path = tmp_path / "chunk_screening.jsonl"
+    first_batch = tuple(_chunk(f"chunk-{i}", f"Phạt tiền {i}.") for i in range(10))
+    failing_chunk = _chunk("chunk-fail", "Nội dung gây lỗi mạng.")
+    write_chunks(chunks_path, (*first_batch, failing_chunk))
+
+    class _FailsForSecondBatchClient:
+        """Succeed on the first batch, raise forever on the batch containing chunk-fail."""
+
+        def __init__(self, settings: object, evaluation_settings: object) -> None:
+            return None
+
+        def screen(self, chunks: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            """Raise for the batch containing chunk-fail, otherwise return accepted verdicts."""
+            if any(chunk.chunk_id == "chunk-fail" for chunk in chunks):
+                msg = "provider timed out"
+                raise TimeoutError(msg)
+            return [
+                ChunkScreeningResult(chunk_id=chunk.chunk_id, has_penalty_content=True, reason="Contains penalty.")
+                for chunk in chunks
+            ]
+
+    _configure_cli(monkeypatch, chunks_path, screening_path)
+    monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _FailsForSecondBatchClient)
+
+    chunk_screening_cli.main()
+
+    records = read_chunk_screening(screening_path)
+    assert [record.chunk_id for record in records] == [chunk.chunk_id for chunk in first_batch]
+    assert "chunk-fail" not in {record.chunk_id for record in records}
+
+
 def test_chunk_screening_cli_skips_the_llm_entirely_when_fully_resumed(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

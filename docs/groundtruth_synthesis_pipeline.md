@@ -137,22 +137,26 @@ xử lý khác nhau:
 
 - **Chunk liền kề bị cắt bởi giới hạn token.** Chunker cắt một điều khoản dài
   thành hai chunk theo `previous_chunk_id`/`next_chunk_id` đã có sẵn trong
-  schema chunk. Gộp bằng cách kéo thêm chunk liền trước/sau vào cùng cửa sổ
-  đọc, thuần cơ học, không cần LLM đoán.
+  schema chunk. Gộp bằng cách kéo thêm tối đa 2 chunk liền trước và 1 chunk
+  liền sau vào cùng cửa sổ đọc, thuần cơ học, không cần LLM đoán.
 - **Chunk không liền kề nhưng cùng một hành vi.** Ví dụ mức phạt tiền nằm ở
   Điều 6 nhưng số điểm trừ giấy phép quy định ở một điều hoặc phụ lục khác.
-  Hai cơ chế bổ sung, tăng dần độ tin cậy cần thiết:
-  1. **Trích dẫn chéo tường minh.** Nếu chunk chứa cụm dẫn chiếu kiểu "theo
-     Điều X", "quy định tại khoản Y Điều Z", trích các số điều/khoản này bằng
-     regex — đây là phân tích từ vựng nhỏ, được phép theo AGENTS.md — rồi tra
-     `provision_path` tương ứng để lấy đúng chunk đó vào cùng cửa sổ đọc.
-     Tất định, không cần LLM cho bước tìm kiếm.
-  2. **Tương đồng embedding trong cùng văn bản.** Khi không có trích dẫn
-     tường minh, lấy các chunk gần nghĩa nhất **trong cùng `source_name`**
-     làm ứng viên đưa vào cửa sổ đọc. Đây là gợi ý, không phải căn cứ: LLM
-     trích xuất fact vẫn phải tự quyết có dùng ứng viên này không, và phải để
-     lại `quoted_span` nếu dùng. Không mở rộng tìm kiếm sang văn bản khác ở
-     bước này — quan hệ khác văn bản thuộc về evidence graph ở mục 4.
+  **Trích dẫn chéo tường minh**: nếu chunk chứa cụm dẫn chiếu kiểu "theo
+  Điều X", "quy định tại khoản Y Điều Z", trích các số điều/khoản này bằng
+  regex — đây là phân tích từ vựng nhỏ, được phép theo AGENTS.md — rồi tra
+  `provision_path` tương ứng để lấy đúng chunk đó vào cùng cửa sổ đọc. Tất
+  định, không cần LLM cho bước tìm kiếm. Không mở rộng tìm kiếm sang văn bản
+  khác ở bước này — quan hệ khác văn bản thuộc về evidence graph ở mục 4.
+  (Cơ chế tương đồng embedding trong cùng văn bản từng có ở đây đã bỏ: ứng
+  viên gợi ý không dựa trên trích dẫn thật dễ đưa ngữ cảnh không liên quan
+  vào cửa sổ đọc.)
+
+Chunk liền trước/trích dẫn được tra trên **toàn bộ chunk gốc của văn bản**,
+không giới hạn trong tập đã qua được cổng sàng lọc — chỉ tập đã lọc mới quyết
+định chunk nào được chọn làm `Target` (tốn LLM call). Một chunk bị cổng sàng
+lọc loại (ví dụ đoạn định nghĩa không nêu mức phạt cụ thể) vẫn có thể được
+kéo vào làm ngữ cảnh `Adjacent`/`CitedProvision` cho một `Target` khác cần nó,
+vì việc tra cứu này thuần cơ học, không tốn thêm LLM call nào.
 
 ### Định danh fact tách khỏi nội dung fact
 
@@ -959,11 +963,10 @@ Module trong `benchmark_synthesis/`:
   reason) cho **mọi** chunk đầu vào, kể cả chunk bị loại — không tự chia
   accepted/excluded trong bộ nhớ, để CLI ghi thẳng ra file cho bước sau đọc
   lại.
-- `fact_extraction.py` — dựng cửa sổ đọc theo ba nguồn ở mục "Gộp chunk khi
+- `fact_extraction.py` — dựng cửa sổ đọc theo hai nguồn ở mục "Gộp chunk khi
   một fact cần nhiều nguồn" (tối đa 2 chunk liền trước qua chuỗi
   `previous_chunk_id`, trích dẫn chéo bằng regex "Điều N" tra theo
-  `build_provision_index`, tương đồng embedding cùng `source_name` qua
-  `find_embedding_candidates`), gọi BAML trích fact, rồi gán `fact_id` và
+  `build_provision_index`), gọi BAML trích fact, rồi gán `fact_id` và
   `fact_content_sha256` qua `sha256_json`. **Tin tưởng hoàn toàn output LLM**
   (xem "Nguyên tắc kiến trúc" ở đầu tài liệu): `evidence.chunk_id` và
   `evidence.quoted_span` được giữ nguyên như LLM trả về, không tra cứu lại
@@ -995,7 +998,10 @@ sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.js
   của một văn bản, ghi `chunk_screening.jsonl` — 1 dòng verdict cho mỗi chunk,
   kể cả chunk bị loại (audit được, khác với bản trước đó không ghi gì). Chạy
   lại (resume) trên cùng output path chỉ sàng lọc chunk chưa có verdict, giữ
-  nguyên các verdict cũ.
+  nguyên các verdict cũ. Một batch gọi LLM lỗi (timeout, rate limit...) được
+  thử lại tối đa `DEFAULT_SCREENING_MAX_RETRIES` lần; nếu vẫn lỗi thì batch đó
+  bị bỏ qua (log cảnh báo), các chunk còn lại vẫn chạy tiếp — chunk bị bỏ qua
+  sẽ được resume ở lần chạy sau.
 - `legal-extract-facts` (`fact_extraction_cli.py`): nhận đường dẫn chunk JSONL
   **và** `chunk_screening.jsonl`, lọc lại chunk có `has_penalty_content=true`,
   trích fact, ghi thẳng `legal_facts.jsonl` — không còn ledger, không còn
@@ -1016,7 +1022,7 @@ Test: `tests/benchmark_synthesis/test_fact_extraction.py`,
 `test_chunk_screening.py`, `test_evaluation_models.py`,
 `test_evaluation_writer.py`, `tests/test_baml_transport.py`,
 `tests/test_chunk_screening_cli.py`, `tests/test_fact_extraction_cli.py`
-(tích hợp CLI đầu-cuối với client và encoder giả mỗi bên). Windowing test
+(tích hợp CLI đầu-cuối với client LLM giả mỗi bên). Windowing test
 trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
 `execute_baml_request` trong `tests/parser/test_baml_captioning.py`.
 

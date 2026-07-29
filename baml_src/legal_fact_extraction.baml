@@ -2,7 +2,6 @@ enum ChunkWindowRole {
   Target
   Adjacent
   CitedProvision
-  EmbeddingCandidate
 }
 
 class ChunkWindowEntry {
@@ -12,9 +11,7 @@ class ChunkWindowEntry {
     kề bị chunker cắt ra từ cùng một điều khoản. CitedProvision là chunk được
     tra theo số điều mà Target nhắc tới, ví dụ "theo Điều X" — nhưng số điều
     này có thể trùng ngẫu nhiên với một luật hoặc nghị định khác, chỉ dùng làm
-    căn cứ nếu nội dung thực sự cùng bối cảnh với Target. EmbeddingCandidate
-    là chunk gợi ý theo độ tương đồng ngữ nghĩa trong cùng văn bản, chỉ dùng
-    khi thật sự liên quan tới Target.
+    căn cứ nếu nội dung thực sự cùng bối cảnh với Target.
   "#)
   provision_path string?
   text string
@@ -69,8 +66,6 @@ function ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[] {
     - Chỉ dùng chunk vai trò CitedProvision nếu nội dung thực sự cùng bối
       cảnh với Target (cùng nghị định hoặc văn bản đang xét); số điều có thể
       trùng ngẫu nhiên với một luật hoặc nghị định khác, nếu vậy thì bỏ qua.
-    - Chỉ dùng chunk vai trò EmbeddingCandidate nếu nội dung của nó thực sự
-      là căn cứ cho fact; nếu không liên quan thì bỏ qua, không ép dùng.
 
     Ví dụ:
 

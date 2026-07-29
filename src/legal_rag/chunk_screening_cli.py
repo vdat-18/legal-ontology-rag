@@ -44,14 +44,14 @@ def main() -> None:
         new_records = screen_chunks(chunks_to_screen, screening_client)
         records_by_chunk_id.update({record.chunk_id: record for record in new_records})
 
-    records = tuple(records_by_chunk_id[chunk.chunk_id] for chunk in chunks)
+    records = tuple(records_by_chunk_id[chunk.chunk_id] for chunk in chunks if chunk.chunk_id in records_by_chunk_id)
     write_chunk_screening(arguments.screening_output_path, records)
     accepted_count = sum(1 for record in records if record.has_penalty_content)
     logger.info(
-        "Chunk screening gate: {} accepted, {} excluded, {} newly screened, wrote {}",
+        "Chunk screening gate: {} accepted, {} excluded, {} still unscreened, wrote {}",
         accepted_count,
         len(records) - accepted_count,
-        len(chunks_to_screen),
+        len(chunks) - len(records),
         arguments.screening_output_path,
     )
 

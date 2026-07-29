@@ -97,6 +97,66 @@ def test_screen_chunks_batches_calls_by_batch_size() -> None:
     assert all(record.has_penalty_content for record in records)
 
 
+def test_screen_chunks_retries_a_failing_batch_then_succeeds() -> None:
+    """A batch that raises is retried, and a later successful attempt still produces a verdict."""
+    chunk = _chunk("chunk-1", "Điều 6 khoản 9 điểm b quy định mức phạt tiền.")
+    attempts = 0
+
+    class _FlakyClient:
+        def screen(self, batch: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            nonlocal attempts
+            attempts += 1
+            if attempts < 2:
+                msg = "provider timed out"
+                raise TimeoutError(msg)
+            return [ChunkScreeningResult(chunk_id="chunk-1", has_penalty_content=True, reason="Nêu rõ mức phạt.")]
+
+    records = screen_chunks([chunk], _FlakyClient())
+
+    assert attempts == 2
+    assert len(records) == 1
+    assert records[0].chunk_id == "chunk-1"
+    assert records[0].has_penalty_content is True
+
+
+def test_screen_chunks_skips_a_batch_that_fails_every_attempt() -> None:
+    """A batch that keeps raising is skipped, but other batches are still screened."""
+    failing = _chunk("chunk-fail", "Nội dung gây lỗi mạng.")
+    ok_one = _chunk("chunk-ok-1", "Điều 6 khoản 9 điểm b quy định mức phạt tiền.")
+    ok_two = _chunk("chunk-ok-2", "Mục lục")
+
+    class _FailsOnlyForOneChunkClient:
+        def screen(self, batch: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            if batch[0].chunk_id == "chunk-fail":
+                msg = "provider timed out"
+                raise TimeoutError(msg)
+            return [
+                ChunkScreeningResult(chunk_id=item.chunk_id, has_penalty_content=True, reason="ok") for item in batch
+            ]
+
+    records = screen_chunks([failing, ok_one, ok_two], _FailsOnlyForOneChunkClient(), batch_size=1)
+
+    assert [record.chunk_id for record in records] == ["chunk-ok-1", "chunk-ok-2"]
+
+
+def test_screen_chunks_respects_max_retries_override() -> None:
+    """max_retries=0 means a single attempt; a failure skips the batch immediately."""
+    chunk = _chunk("chunk-1", "Điều 6 khoản 9 điểm b quy định mức phạt tiền.")
+    attempts = 0
+
+    class _AlwaysFailsClient:
+        def screen(self, batch: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            nonlocal attempts
+            attempts += 1
+            msg = "provider timed out"
+            raise TimeoutError(msg)
+
+    records = screen_chunks([chunk], _AlwaysFailsClient(), max_retries=0)
+
+    assert attempts == 1
+    assert records == ()
+
+
 def _settings() -> Settings:
     """Build runtime settings for an offline BAML request."""
     return Settings(

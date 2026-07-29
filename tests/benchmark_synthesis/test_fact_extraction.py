@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-import numpy as np
 import pytest
 
 from legal_rag.baml_client.types import ChunkWindowRole
@@ -18,7 +17,6 @@ from legal_rag.benchmark_synthesis.fact_extraction import (
     build_reading_window,
     cited_articles,
     extract_facts_from_document,
-    find_embedding_candidates,
 )
 from legal_rag.chunker.models import Chunk
 from legal_rag.settings import EvaluationSettings, Settings
@@ -84,8 +82,8 @@ def test_cited_articles_returns_empty_when_no_citation_present() -> None:
     assert cited_articles(chunk) == frozenset()
 
 
-def test_build_reading_window_includes_target_preceding_and_cited_chunks() -> None:
-    """The window combines target, up to two preceding chunks, and citation-resolved chunks by role."""
+def test_build_reading_window_includes_target_preceding_following_and_cited_chunks() -> None:
+    """The window combines target, preceding chunks, one following chunk, and citation-resolved chunks by role."""
     heading = _chunk("art5", "Điều 5. Thẩm quyền xử phạt.")
     preceding_two = _chunk("prev2", "Phần trước xa hơn.")
     preceding_one = _chunk("prev1", "Phần ngay trước.", previous_chunk_id="prev2")
@@ -101,9 +99,9 @@ def test_build_reading_window_includes_target_preceding_and_cited_chunks() -> No
         "target": ChunkWindowRole.Target,
         "prev1": ChunkWindowRole.Adjacent,
         "prev2": ChunkWindowRole.Adjacent,
+        "next": ChunkWindowRole.Adjacent,
         "art5": ChunkWindowRole.CitedProvision,
     }
-    assert "next" not in roles_by_id
     art5_entry = next(entry for entry in window if entry.chunk_id == "art5")
     assert art5_entry.provision_path == "Điều 5"
 
@@ -123,6 +121,21 @@ def test_build_reading_window_limits_preceding_chunk_depth() -> None:
     assert ids == {"target", "near", "middle"}
 
 
+def test_build_reading_window_limits_following_chunk_depth() -> None:
+    """Walking forward through next_chunk_id stops after max_following_chunks."""
+    target = _chunk("target", "Điều 5.", next_chunk_id="near")
+    near = _chunk("near", "Gần nhất.", next_chunk_id="middle")
+    middle = _chunk("middle", "Giữa.", next_chunk_id="far")
+    far = _chunk("far", "Xa nhất.")
+    chunks_by_id = {chunk.chunk_id: chunk for chunk in (target, near, middle, far)}
+    provision_index = build_provision_index([target, near, middle, far])
+
+    window = build_reading_window(target, chunks_by_id, provision_index, max_following_chunks=2)
+
+    ids = {entry.chunk_id for entry in window}
+    assert ids == {"target", "near", "middle"}
+
+
 def test_build_reading_window_deduplicates_chunk_appearing_in_multiple_roles() -> None:
     """A chunk that is both adjacent and cited only appears once, with its first role."""
     heading = _chunk("prev", "Điều 5. Thẩm quyền xử phạt.")
@@ -135,35 +148,6 @@ def test_build_reading_window_deduplicates_chunk_appearing_in_multiple_roles() -
     assert len(window) == 2
     prev_entry = next(entry for entry in window if entry.chunk_id == "prev")
     assert prev_entry.role == ChunkWindowRole.Adjacent
-
-
-def test_build_reading_window_includes_every_embedding_candidate() -> None:
-    """The window is not capped in total size — every embedding candidate given is included."""
-    target = _chunk("target", "Điều 5.")
-    candidates = tuple(_chunk(f"cand{i}", f"Nội dung {i}") for i in range(5))
-    chunks_by_id = {chunk.chunk_id: chunk for chunk in (target, *candidates)}
-    provision_index = build_provision_index([target, *candidates])
-
-    window = build_reading_window(target, chunks_by_id, provision_index, candidates)
-
-    assert len(window) == 1 + len(candidates)
-    assert window[0].chunk_id == "target"
-
-
-def test_find_embedding_candidates_returns_top_k_by_similarity() -> None:
-    """Candidates are ranked by cosine similarity and truncated to max_candidates."""
-    target = _chunk("target", "target text")
-    close = _chunk("close", "close text")
-    far = _chunk("far", "far text")
-    vectors = {
-        "target": np.array([1.0, 0.0]),
-        "close": np.array([0.9, 0.1]),
-        "far": np.array([0.0, 1.0]),
-    }
-
-    result = find_embedding_candidates(target, [target, close, far], vectors, max_candidates=1)
-
-    assert result == (close,)
 
 
 def _baml_fact(**overrides: object) -> BamlLegalFact:
@@ -225,34 +209,40 @@ class _FakeExtractionClient:
         return self._facts_by_target.get(target_chunk_id, ())
 
 
-class _FakeEncoderBackend:
-    """Return one deterministic vector per input text, ignoring content."""
-
-    def encode(self, sentences: list[str], *, convert_to_numpy: bool, normalize_embeddings: bool) -> np.ndarray:
-        """Return a fixed unit vector for every input sentence."""
-        return np.array([[1.0, 0.0] for _ in sentences])
-
-
 def test_extract_facts_from_document_collects_every_fact_per_target() -> None:
     """Every fact the client returns for a target chunk is collected."""
-    from legal_rag.embedding.encoder import EmbeddingEncoder
-    from legal_rag.embedding.profiles import EmbeddingProfile
-
     target = _chunk("target", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
-    encoder = EmbeddingEncoder(
-        EmbeddingProfile("p", "m", "r", "m", "r", 2, 512, None),
-        _FakeEncoderBackend(),
-    )
     fact_one = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target", quoted_span="phạt tiền")])
     fact_two = _baml_fact(
         conduct="Hành vi khác", evidence=[BamlEvidenceEntry(chunk_id="target", quoted_span="phạt tiền")]
     )
     client = _FakeExtractionClient({"target": (fact_one, fact_two)})
 
-    facts = extract_facts_from_document([target], client, encoder)
+    facts = extract_facts_from_document([target], [target], client)
 
     assert len(facts) == 2
     assert {fact.conduct for fact in facts} == {fact_one.conduct, fact_two.conduct}
+
+
+def test_extract_facts_from_document_resolves_context_excluded_from_target_chunks() -> None:
+    """A preceding chunk missing from target_chunks is still resolved as Adjacent context from document_chunks."""
+    preceding = _chunk("preceding", "Trong Nghị định này, xe cơ giới được hiểu là ô tô, mô tô.")
+    target = _chunk(
+        "target",
+        "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng đối với xe cơ giới.",
+        previous_chunk_id="preceding",
+    )
+    seen_roles: dict[str, ChunkWindowRole] = {}
+
+    class _RecordingClient:
+        def extract(self, window: Sequence[object]) -> tuple[BamlLegalFact, ...]:
+            """Record every window entry's role by chunk_id and return no facts."""
+            seen_roles.update({entry.chunk_id: entry.role for entry in window})
+            return ()
+
+    extract_facts_from_document([target], [preceding, target], _RecordingClient())
+
+    assert seen_roles == {"target": ChunkWindowRole.Target, "preceding": ChunkWindowRole.Adjacent}
 
 
 def _settings() -> Settings:

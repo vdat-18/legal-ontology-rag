@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from typing import Protocol
 
-import numpy as np
 from baml_py.logging import set_log_level
 
 from legal_rag.baml_client.sync_client import b
@@ -17,7 +16,6 @@ from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.chunker.models import Chunk
-from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import EvaluationSettings, Settings
 
@@ -25,8 +23,8 @@ from legal_rag.settings import EvaluationSettings, Settings
 _ARTICLE_HEADING_PATTERN = re.compile(r"\s*Điều\s+(\d+)\b")
 _ARTICLE_CITATION_PATTERN = re.compile(r"Điều\s+(\d+)\b")
 
-DEFAULT_MAX_EMBEDDING_CANDIDATES = 3
 DEFAULT_MAX_PRECEDING_CHUNKS = 2
+DEFAULT_MAX_FOLLOWING_CHUNKS = 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,13 +54,35 @@ def cited_articles(chunk: Chunk) -> frozenset[str]:
     return frozenset(cited)
 
 
+def _walk_adjacent_chunks(
+    start_chunk_id: str | None,
+    chunks_by_id: Mapping[str, Chunk],
+    entries: dict[str, ChunkWindowEntry],
+    *,
+    max_chunks: int,
+    next_chunk_id: Callable[[Chunk], str | None],
+) -> None:
+    """Walk a previous/next chunk chain, adding each hop found to entries as Adjacent context."""
+    chunk_id = start_chunk_id
+    for _ in range(max_chunks):
+        if chunk_id is None or chunk_id in entries:
+            return
+        chunk = chunks_by_id.get(chunk_id)
+        if chunk is None:
+            return
+        entries[chunk_id] = ChunkWindowEntry(
+            chunk_id=chunk_id, role=ChunkWindowRole.Adjacent, provision_path=None, text=chunk.text
+        )
+        chunk_id = next_chunk_id(chunk)
+
+
 def build_reading_window(
     target: Chunk,
     chunks_by_id: Mapping[str, Chunk],
     provision_index: ProvisionIndex,
-    embedding_candidates: Sequence[Chunk] = (),
     *,
     max_preceding_chunks: int = DEFAULT_MAX_PRECEDING_CHUNKS,
+    max_following_chunks: int = DEFAULT_MAX_FOLLOWING_CHUNKS,
 ) -> tuple[ChunkWindowEntry, ...]:
     """Assemble one reading window around a target chunk."""
     entries: dict[str, ChunkWindowEntry] = {
@@ -70,17 +90,20 @@ def build_reading_window(
             chunk_id=target.chunk_id, role=ChunkWindowRole.Target, provision_path=None, text=target.text
         )
     }
-    preceding_id = target.previous_chunk_id
-    for _ in range(max_preceding_chunks):
-        if preceding_id is None or preceding_id in entries:
-            break
-        preceding_chunk = chunks_by_id.get(preceding_id)
-        if preceding_chunk is None:
-            break
-        entries[preceding_id] = ChunkWindowEntry(
-            chunk_id=preceding_id, role=ChunkWindowRole.Adjacent, provision_path=None, text=preceding_chunk.text
-        )
-        preceding_id = preceding_chunk.previous_chunk_id
+    _walk_adjacent_chunks(
+        target.previous_chunk_id,
+        chunks_by_id,
+        entries,
+        max_chunks=max_preceding_chunks,
+        next_chunk_id=lambda chunk: chunk.previous_chunk_id,
+    )
+    _walk_adjacent_chunks(
+        target.next_chunk_id,
+        chunks_by_id,
+        entries,
+        max_chunks=max_following_chunks,
+        next_chunk_id=lambda chunk: chunk.next_chunk_id,
+    )
 
     for article in sorted(cited_articles(target)):
         for chunk_id in provision_index.chunk_ids_by_article.get(article, ()):
@@ -94,35 +117,7 @@ def build_reading_window(
                 text=cited_chunk.text,
             )
 
-    for candidate in embedding_candidates:
-        if candidate.chunk_id in entries:
-            continue
-        entries[candidate.chunk_id] = ChunkWindowEntry(
-            chunk_id=candidate.chunk_id,
-            role=ChunkWindowRole.EmbeddingCandidate,
-            provision_path=None,
-            text=candidate.text,
-        )
-
     return tuple(entries.values())
-
-
-def find_embedding_candidates(
-    target: Chunk,
-    same_document_chunks: Sequence[Chunk],
-    vectors_by_chunk_id: Mapping[str, np.ndarray],
-    *,
-    max_candidates: int = DEFAULT_MAX_EMBEDDING_CANDIDATES,
-) -> tuple[Chunk, ...]:
-    """Return the most similar chunks to a target within the same document."""
-    target_vector = vectors_by_chunk_id[target.chunk_id]
-    scored = [
-        (float(np.dot(target_vector, vectors_by_chunk_id[chunk.chunk_id])), chunk)
-        for chunk in same_document_chunks
-        if chunk.chunk_id != target.chunk_id
-    ]
-    scored.sort(key=lambda item: item[0], reverse=True)
-    return tuple(chunk for _score, chunk in scored[:max_candidates])
 
 
 class FactExtractionClient(Protocol):
@@ -203,30 +198,25 @@ def build_legal_fact(raw: BamlLegalFact) -> LegalFact:
 
 
 def extract_facts_from_document(
-    chunks: Sequence[Chunk],
+    target_chunks: Sequence[Chunk],
+    document_chunks: Sequence[Chunk],
     client: FactExtractionClient,
-    encoder: EmbeddingEncoder,
     *,
-    max_embedding_candidates: int = DEFAULT_MAX_EMBEDDING_CANDIDATES,
     max_preceding_chunks: int = DEFAULT_MAX_PRECEDING_CHUNKS,
+    max_following_chunks: int = DEFAULT_MAX_FOLLOWING_CHUNKS,
 ) -> tuple[LegalFact, ...]:
-    """Extract legal facts from every chunk of one document."""
-    chunks_by_id = {chunk.chunk_id: chunk for chunk in chunks}
-    provision_index = build_provision_index(chunks)
-    vectors = encoder.encode([chunk.text for chunk in chunks])
-    vectors_by_chunk_id = {chunk.chunk_id: vectors[index] for index, chunk in enumerate(chunks)}
+    """Extract legal facts from target_chunks, resolving adjacent/cited context from document_chunks."""
+    chunks_by_id = {chunk.chunk_id: chunk for chunk in document_chunks}
+    provision_index = build_provision_index(document_chunks)
 
     facts: list[LegalFact] = []
-    for target in chunks:
-        embedding_candidates = find_embedding_candidates(
-            target, chunks, vectors_by_chunk_id, max_candidates=max_embedding_candidates
-        )
+    for target in target_chunks:
         window = build_reading_window(
             target,
             chunks_by_id,
             provision_index,
-            embedding_candidates,
             max_preceding_chunks=max_preceding_chunks,
+            max_following_chunks=max_following_chunks,
         )
         facts.extend(build_legal_fact(raw_fact) for raw_fact in client.extract(window))
 

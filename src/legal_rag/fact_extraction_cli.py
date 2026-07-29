@@ -24,8 +24,6 @@ def main() -> None:
     from legal_rag.benchmark_synthesis.fact_extraction import BamlFactExtractionClient, extract_facts_from_document
     from legal_rag.benchmark_synthesis.writer import read_chunk_screening, write_legal_facts
     from legal_rag.chunker.writer import read_chunks
-    from legal_rag.embedding.encoder import EmbeddingEncoder
-    from legal_rag.embedding.profiles import load_configured_embedding_profile
     from legal_rag.settings import EvaluationSettings, Settings
 
     arguments = _parser().parse_args()
@@ -41,10 +39,8 @@ def main() -> None:
     accepted_chunks = tuple(chunk for chunk in chunks if chunk.chunk_id in accepted_chunk_ids)
     logger.info("Loaded {} accepted chunks of {} from {}", len(accepted_chunks), len(chunks), arguments.screening_path)
 
-    profile = load_configured_embedding_profile(evaluation_settings.embedding_profile)
-    encoder = EmbeddingEncoder.from_profile(profile)
     extraction_client = BamlFactExtractionClient(settings, evaluation_settings)
-    facts = extract_facts_from_document(accepted_chunks, extraction_client, encoder)
+    facts = extract_facts_from_document(accepted_chunks, chunks, extraction_client)
     logger.info("Extracted {} legal facts", len(facts))
 
     write_legal_facts(arguments.facts_output_path, facts)

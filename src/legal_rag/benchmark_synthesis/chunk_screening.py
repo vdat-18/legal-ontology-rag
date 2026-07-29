@@ -16,6 +16,7 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.settings import EvaluationSettings, Settings
 
 DEFAULT_SCREENING_BATCH_SIZE = 10
+DEFAULT_SCREENING_MAX_RETRIES = 2
 
 CHUNK_SCREENING_SCHEMA_VERSION = "1.0.0"
 
@@ -74,14 +75,34 @@ def screen_chunks(
     client: ChunkScreeningClient,
     *,
     batch_size: int = DEFAULT_SCREENING_BATCH_SIZE,
+    max_retries: int = DEFAULT_SCREENING_MAX_RETRIES,
 ) -> tuple[ChunkScreeningRecord, ...]:
-    """Screen every chunk and return one verdict record per chunk, in input order."""
+    """Screen every chunk, retrying a failed batch up to max_retries times before skipping it."""
     results_by_chunk_id: dict[str, ChunkScreeningResult] = {}
     for batch_start in range(0, len(chunks), batch_size):
         batch = chunks[batch_start : batch_start + batch_size]
+        batch_end = batch_start + len(batch) - 1
         items = [ChunkScreeningItem(chunk_id=chunk.chunk_id, text=chunk.text) for chunk in batch]
-        for result in client.screen(items):
-            results_by_chunk_id[result.chunk_id] = result
+        for attempt in range(1 + max_retries):
+            try:
+                results = client.screen(items)
+            except Exception as error:
+                logger.warning(
+                    "Chunk-screening batch {}-{} failed on attempt {}/{}: {}",
+                    batch_start,
+                    batch_end,
+                    attempt + 1,
+                    1 + max_retries,
+                    error,
+                )
+                continue
+            for result in results:
+                results_by_chunk_id[result.chunk_id] = result
+            break
+        else:
+            logger.warning(
+                "Skipping chunk-screening batch {}-{} after {} failed attempts", batch_start, batch_end, 1 + max_retries
+            )
         logger.debug("Screened {}/{} chunks", len(results_by_chunk_id), len(chunks))
 
     return tuple(
@@ -91,4 +112,5 @@ def screen_chunks(
             reason=results_by_chunk_id[chunk.chunk_id].reason,
         )
         for chunk in chunks
+        if chunk.chunk_id in results_by_chunk_id
     )
