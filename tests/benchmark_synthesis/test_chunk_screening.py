@@ -10,7 +10,7 @@ from legal_rag.baml_client.types import ChunkScreeningItem, ChunkScreeningResult
 from legal_rag.benchmark_synthesis import chunk_screening
 from legal_rag.benchmark_synthesis.chunk_screening import BamlChunkScreeningClient, screen_chunks
 from legal_rag.chunker.models import Chunk
-from legal_rag.settings import EvaluationSettings, LlmProvider, Settings
+from legal_rag.settings import EvaluationSettings, Settings
 
 
 def _chunk(chunk_id: str, text: str) -> Chunk:
@@ -103,7 +103,6 @@ def _settings() -> Settings:
         llm_base_url="http://localhost:20128/v1",
         llm_api_key="provider-test-key",
         llm_model="provider/test-model",
-        llm_provider=LlmProvider.OPENAI,
         llm_timeout_seconds=30,
     )
 

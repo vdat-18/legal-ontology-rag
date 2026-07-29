@@ -228,7 +228,22 @@ async def index_chunks_concurrent(
             await _add_episode(graphiti_client, chunk, reference_time, corpus_metadata.group_id)
             counts["indexed"] += 1
 
-    await asyncio.gather(*(worker(client) for client in graphiti_clients))
+    tasks = [asyncio.create_task(worker(client)) for client in graphiti_clients]
+    try:
+        done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+        failures: list[BaseException] = []
+        for task in tasks:
+            if task in done and not task.cancelled():
+                failure = task.exception()
+                if failure is not None:
+                    failures.append(failure)
+        if failures:
+            raise failures[0]
+    finally:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
 
     return IndexingSummary(
         indexed=counts["indexed"],

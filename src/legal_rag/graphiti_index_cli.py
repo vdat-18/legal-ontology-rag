@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -11,6 +12,8 @@ from loguru import logger
 
 if TYPE_CHECKING:
     from legal_rag.graphiti_rag.indexer import IndexingSummary
+
+_CLEANUP_ERROR_MESSAGE = "Graphiti cleanup failed"
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -54,11 +57,14 @@ async def _run(chunks_dir: Path, corpus_config_path: Path) -> IndexingSummary:
     date_extraction_client = BamlEffectiveDateClient(settings, graphiti_settings)
 
     api_keys = load_llm_api_keys()
-    graphiti_clients = [
-        build_graphiti(settings, graphiti_settings, profile, api_key=key, embedder=embedder) for key in api_keys
-    ]
-    neo4j_driver = build_neo4j_driver(graphiti_settings)
+    graphiti_clients = []
+    neo4j_driver = None
     try:
+        neo4j_driver = build_neo4j_driver(graphiti_settings)
+        for key in api_keys:
+            # Append immediately so a later construction failure cannot orphan earlier clients.
+            graphiti_client = build_graphiti(settings, graphiti_settings, profile, api_key=key, embedder=embedder)
+            graphiti_clients.append(graphiti_client)
         await graphiti_clients[0].build_indices_and_constraints()
         window_token_budget = graphiti_settings.effective_date_window_token_budget
         if len(graphiti_clients) > 1:
@@ -71,9 +77,17 @@ async def _run(chunks_dir: Path, corpus_config_path: Path) -> IndexingSummary:
                 chunks, corpus_metadata, graphiti_clients[0], neo4j_driver, date_extraction_client, window_token_budget
             )
     finally:
-        for graphiti_client in graphiti_clients:
-            await graphiti_client.close()
-        await neo4j_driver.close()
+        close_operations = [graphiti_client.close() for graphiti_client in graphiti_clients]
+        if neo4j_driver is not None:
+            close_operations.append(neo4j_driver.close())
+        cleanup_results = await asyncio.gather(*close_operations, return_exceptions=True)
+        cleanup_errors = [result for result in cleanup_results if isinstance(result, BaseException)]
+        active_error = sys.exception()
+        if active_error is not None:
+            for cleanup_error in cleanup_errors:
+                active_error.add_note(f"Cleanup failed: {cleanup_error!r}")
+        elif cleanup_errors:
+            raise BaseExceptionGroup(_CLEANUP_ERROR_MESSAGE, cleanup_errors)
 
     logger.info(
         "Indexed {} episodes into group '{}' ({} skipped: {} no-metadata, {} no-date, {} already-indexed)",

@@ -5,19 +5,9 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from enum import StrEnum
+from math import isfinite
 
-
-class LlmProvider(StrEnum):
-    """The OpenAI-compatible provider serving ``LLM_MODEL``.
-
-    Providers differ in the non-standard request fields they accept, so the provider is stated
-    in configuration rather than guessed from the model name, which is unreliable across model
-    aliases and OpenAI-compatible gateways.
-    """
-
-    OPENAI = "openai"
-    DEEPSEEK = "deepseek"
+_MAX_LLM_TEMPERATURE = 2.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,7 +18,6 @@ class Settings:
     llm_api_key: str = field(repr=False)
     llm_model: str
     llm_timeout_seconds: float
-    llm_provider: LlmProvider
     image_caption_max_concurrency: int = 4
     image_caption_max_output_tokens: int = 2048
     image_caption_max_context_characters: int = 4000
@@ -51,7 +40,6 @@ class Settings:
             llm_api_key=values["LLM_API_KEY"].strip(),
             llm_model=values["LLM_MODEL"].strip(),
             llm_timeout_seconds=float(values["LLM_TIMEOUT_SECONDS"]),
-            llm_provider=LlmProvider(values["LLM_PROVIDER"].strip().lower()),
         )
 
 
@@ -165,6 +153,32 @@ class GraphitiSettings:
     citation_max_output_tokens: int = 2048
     extraction_temperature: float = 0.0
     max_response_bytes: int = 1_048_576
+
+    def __post_init__(self) -> None:
+        """Reject invalid external-service limits before they reach Graphiti or an LLM provider."""
+        positive_values = {
+            "search_num_results": self.search_num_results,
+            "max_context_facts": self.max_context_facts,
+            "effective_date_window_token_budget": self.effective_date_window_token_budget,
+            "answer_max_output_tokens": self.answer_max_output_tokens,
+            "query_rewrite_max_output_tokens": self.query_rewrite_max_output_tokens,
+            "effective_date_max_output_tokens": self.effective_date_max_output_tokens,
+            "citation_max_output_tokens": self.citation_max_output_tokens,
+            "max_response_bytes": self.max_response_bytes,
+        }
+        for name, value in positive_values.items():
+            if value < 1:
+                msg = f"{name} must be positive, got {value}"
+                raise ValueError(msg)
+
+        temperatures = {
+            "answer_temperature": self.answer_temperature,
+            "extraction_temperature": self.extraction_temperature,
+        }
+        for name, value in temperatures.items():
+            if not isfinite(value) or not 0 <= value <= _MAX_LLM_TEMPERATURE:
+                msg = f"{name} must be between 0 and {_MAX_LLM_TEMPERATURE}, got {value}"
+                raise ValueError(msg)
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] | None = None) -> GraphitiSettings:

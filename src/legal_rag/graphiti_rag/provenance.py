@@ -45,6 +45,22 @@ class BamlDocumentCitationClient:
         return list(result.document_numbers)
 
 
+def _appears_as_complete_span(text: str, candidate: str) -> bool:
+    """Return whether *candidate* occurs outside a longer legal-document-number token."""
+    if not candidate:
+        return False
+
+    start = text.find(candidate)
+    while start >= 0:
+        end = start + len(candidate)
+        left_is_token = start > 0 and (text[start - 1].isalnum() or text[start - 1] in "/-")
+        right_is_token = end < len(text) and (text[end].isalnum() or text[end] in "/-")
+        if not left_is_token and not right_is_token:
+            return True
+        start = text.find(candidate, start + 1)
+    return False
+
+
 def find_unindexed_document_citations(
     texts: Sequence[str], known_so_hieu: frozenset[str], client: DocumentCitationClient
 ) -> list[str]:
@@ -61,5 +77,5 @@ def find_unindexed_document_citations(
         result is surfaced to the reader as a caveat about the answer's coverage.
     """
     scanned = "\n".join(texts)
-    cited = {number for number in client.extract_citations(scanned) if number in scanned}
+    cited = {number for number in client.extract_citations(scanned) if _appears_as_complete_span(scanned, number)}
     return sorted(cited - known_so_hieu)

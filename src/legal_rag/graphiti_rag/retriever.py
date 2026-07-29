@@ -92,5 +92,5 @@ async def search_facts(
         )
         facts.append(RetrievedFact(fact=edge.fact, sources=sources))
 
-    logger.debug("Retrieved {} candidate facts for query: {:.60s}", len(facts), query)
+    logger.debug("Retrieved {} candidate facts", len(facts))
     return facts

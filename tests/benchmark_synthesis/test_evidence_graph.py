@@ -17,7 +17,7 @@ from legal_rag.benchmark_synthesis.evidence_graph import (
     sample_bundles,
 )
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
-from legal_rag.settings import EvaluationSettings, LlmProvider, Settings
+from legal_rag.settings import EvaluationSettings, Settings
 
 
 def _fact(
@@ -201,7 +201,6 @@ def _settings() -> Settings:
         llm_base_url="http://localhost:20128/v1",
         llm_api_key="provider-test-key",
         llm_model="provider/test-model",
-        llm_provider=LlmProvider.OPENAI,
         llm_timeout_seconds=30,
     )
 

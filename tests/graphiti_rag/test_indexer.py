@@ -47,6 +47,36 @@ class _FakeGraphiti:
             raise ValueError(msg)
 
 
+class _BlockingGraphiti:
+    """Hold one worker in its first episode until the concurrency test releases it."""
+
+    def __init__(self, started: asyncio.Event, release: asyncio.Event) -> None:
+        self.calls: list[dict[str, object]] = []
+        self._started = started
+        self._release = release
+
+    async def add_episode(self, **kwargs: object) -> None:
+        """Record one episode and block so a sibling worker can fail."""
+        self.calls.append(kwargs)
+        self._started.set()
+        await self._release.wait()
+
+
+class _FailAfterSiblingStartsGraphiti:
+    """Fail only after the blocking sibling has begun its first episode."""
+
+    def __init__(self, sibling_started: asyncio.Event) -> None:
+        self.calls: list[dict[str, object]] = []
+        self._sibling_started = sibling_started
+
+    async def add_episode(self, **kwargs: object) -> None:
+        """Wait for the sibling worker, then raise a deterministic indexing failure."""
+        self.calls.append(kwargs)
+        await self._sibling_started.wait()
+        msg = "simulated concurrent failure"
+        raise ValueError(msg)
+
+
 class _FakeEffectiveDateClient:
     """Return a fixed extracted date without making any real LLM call."""
 
@@ -320,6 +350,78 @@ def test_index_chunks_concurrent_propagates_a_failing_add_episode() -> None:
                 chunks, metadata, clients, _FakeNeo4jDriver(), _FakeEffectiveDateClient(), _WINDOW_TOKEN_BUDGET
             )
         )
+
+
+def test_index_chunks_concurrent_cancels_sibling_workers_before_raising() -> None:
+    """A failed worker cannot keep indexing after the concurrent call has returned an error."""
+
+    async def run_scenario() -> None:
+        metadata = CorpusMetadata(
+            group_id="g1",
+            documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=date(2025, 1, 1), amends=None)},
+        )
+        chunks = [_chunk(f"chunk-{index}", "doc.docx", chunk_index=index) for index in range(4)]
+        sibling_started = asyncio.Event()
+        release = asyncio.Event()
+        blocking_client = _BlockingGraphiti(sibling_started, release)
+        failing_client = _FailAfterSiblingStartsGraphiti(sibling_started)
+
+        with pytest.raises(ValueError, match="simulated concurrent failure"):
+            await index_chunks_concurrent(
+                chunks,
+                metadata,
+                [blocking_client, failing_client],
+                _FakeNeo4jDriver(),
+                _FakeEffectiveDateClient(),
+                _WINDOW_TOKEN_BUDGET,
+            )
+
+        release.set()
+        await asyncio.sleep(0)
+        assert len(blocking_client.calls) == 1
+        assert len(failing_client.calls) == 1
+
+    asyncio.run(run_scenario())
+
+
+def test_index_chunks_concurrent_cancels_workers_when_caller_is_cancelled() -> None:
+    """Cancelling the parent waits for worker cancellation before returning control."""
+
+    async def run_scenario() -> None:
+        metadata = CorpusMetadata(
+            group_id="g1",
+            documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=date(2025, 1, 1), amends=None)},
+        )
+        chunks = [_chunk(f"chunk-{index}", "doc.docx", chunk_index=index) for index in range(4)]
+        started = asyncio.Event()
+        release = asyncio.Event()
+        clients = [_BlockingGraphiti(started, release), _BlockingGraphiti(started, release)]
+        operation = asyncio.create_task(
+            index_chunks_concurrent(
+                chunks,
+                metadata,
+                clients,
+                _FakeNeo4jDriver(),
+                _FakeEffectiveDateClient(),
+                _WINDOW_TOKEN_BUDGET,
+            )
+        )
+
+        await started.wait()
+        calls_before_cancel = sum(len(client.calls) for client in clients)
+        operation.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await operation
+
+        live_tasks = [task for task in asyncio.all_tasks() if task is not asyncio.current_task() and not task.done()]
+        assert live_tasks == []
+
+        release.set()
+        await asyncio.sleep(0)
+        assert sum(len(client.calls) for client in clients) == calls_before_cancel
+
+    asyncio.run(run_scenario())
 
 
 if __name__ == "__main__":

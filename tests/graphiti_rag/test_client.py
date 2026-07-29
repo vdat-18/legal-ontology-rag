@@ -2,21 +2,56 @@
 
 from __future__ import annotations
 
-from graphiti_core.llm_client.openai_generic_client import OpenAIGenericClient
+import pytest
 
-from legal_rag.graphiti_rag.client import _LLM_CLIENT_CLASSES, DeepSeekNonThinkingClient, load_llm_api_keys
-from legal_rag.settings import LlmProvider
-
-
-def test_every_supported_provider_maps_to_an_llm_client_class() -> None:
-    """No provider can be configured without a client class, so the lookup never fails at runtime."""
-    assert set(_LLM_CLIENT_CLASSES) == set(LlmProvider)
+from legal_rag.graphiti_rag import client as client_module
+from legal_rag.graphiti_rag.client import build_graphiti, load_llm_api_keys
+from legal_rag.settings import GraphitiSettings, Settings
 
 
-def test_only_deepseek_gets_the_thinking_mode_disabling_client() -> None:
-    """DeepSeek's provider-specific extra_body field is never sent to another provider."""
-    assert _LLM_CLIENT_CLASSES[LlmProvider.DEEPSEEK] is DeepSeekNonThinkingClient
-    assert _LLM_CLIENT_CLASSES[LlmProvider.OPENAI] is OpenAIGenericClient
+def test_build_graphiti_uses_the_generic_openai_compatible_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    """URL, key, model, and timeout are sufficient to construct the provider-neutral client."""
+    captured: dict[str, object] = {}
+
+    def fake_openai_client(**kwargs: object) -> tuple[str, dict[str, object]]:
+        captured["openai"] = kwargs
+        return "openai", kwargs
+
+    def fake_llm_client(**kwargs: object) -> tuple[str, dict[str, object]]:
+        captured["llm"] = kwargs
+        return "llm", kwargs
+
+    def fake_reranker(**kwargs: object) -> tuple[str, dict[str, object]]:
+        return "reranker", kwargs
+
+    def fake_graphiti(**kwargs: object) -> dict[str, object]:
+        return kwargs
+
+    monkeypatch.setattr(client_module, "AsyncOpenAI", fake_openai_client)
+    monkeypatch.setattr(client_module, "OpenAIGenericClient", fake_llm_client)
+    monkeypatch.setattr(client_module, "OpenAIRerankerClient", fake_reranker)
+    monkeypatch.setattr(client_module, "Graphiti", fake_graphiti)
+    settings = Settings("https://example.test/v1", "test-key", "gpt-5.4", 60)
+    graphiti_settings = GraphitiSettings(
+        "qwen3_0_6b",
+        "bolt://localhost:7687",
+        "neo4j",
+        "password",
+    )
+    embedder = object()
+
+    graphiti = build_graphiti(settings, graphiti_settings, object(), embedder=embedder)  # type: ignore[arg-type]
+
+    assert captured["openai"] == {
+        "api_key": "test-key",
+        "base_url": "https://example.test/v1",
+        "timeout": 60,
+    }
+    llm_arguments = captured["llm"]
+    assert isinstance(llm_arguments, dict)
+    assert llm_arguments["config"].model == "gpt-5.4"
+    assert llm_arguments["structured_output_mode"] == "json_object"
+    assert graphiti["embedder"] is embedder
 
 
 def test_load_llm_api_keys_returns_only_the_primary_key_when_no_extras_are_set() -> None:

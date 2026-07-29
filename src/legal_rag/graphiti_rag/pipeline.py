@@ -41,7 +41,7 @@ class GraphitiRAGPipeline:
         settings: Settings,
         graphiti_settings: GraphitiSettings,
         group_id: str,
-        known_so_hieu: frozenset[str] = frozenset(),
+        known_so_hieu: frozenset[str] | None = None,
     ) -> None:
         """Initialize the pipeline from application and Graphiti settings, scoped to one group.
 
@@ -49,8 +49,8 @@ class GraphitiRAGPipeline:
             settings: Application LLM connection settings.
             graphiti_settings: Neo4j connection, embedding profile, and retrieval settings.
             group_id: The Graphiti group to search within.
-            known_so_hieu: Document numbers actually indexed into this group — used to flag
-                answers that cite a document outside this set (see ``graphiti_rag.provenance``).
+            known_so_hieu: Document numbers actually indexed into this group, or ``None`` when
+                corpus coverage is unknown and citation coverage checking must be skipped.
         """
         self._settings = graphiti_settings
         self._group_id = group_id
@@ -83,7 +83,7 @@ class GraphitiRAGPipeline:
 
         rewritten_query = await self._query_rewrite_client.rewrite(query)
         if rewritten_query != query:
-            logger.debug("Rewrote query {!r} -> {!r}", query, rewritten_query)
+            logger.debug("Query rewrite completed")
 
         candidates = await search_facts(
             self._graphiti_client, rewritten_query, self._group_id, self._settings.search_num_results
@@ -92,16 +92,18 @@ class GraphitiRAGPipeline:
         selected = candidates[:fact_budget]
         answer = await asyncio.to_thread(generate_answer, query, selected, self._generation_client)
 
-        unindexed_citations = await asyncio.to_thread(
-            find_unindexed_document_citations,
-            [answer, *(fact.fact for fact in selected)],
-            self._known_so_hieu,
-            self._citation_client,
-        )
+        unindexed_citations: list[str] = []
+        if self._known_so_hieu is not None:
+            unindexed_citations = await asyncio.to_thread(
+                find_unindexed_document_citations,
+                [answer, *(fact.fact for fact in selected)],
+                self._known_so_hieu,
+                self._citation_client,
+            )
         if unindexed_citations:
             logger.warning("Answer cites document(s) outside the indexed corpus: {}", unindexed_citations)
 
-        logger.info("Pipeline completed for: {:.60s}", query)
+        logger.info("Graphiti pipeline completed")
         return GraphitiRAGResult(
             query=query,
             rewritten_query=rewritten_query,

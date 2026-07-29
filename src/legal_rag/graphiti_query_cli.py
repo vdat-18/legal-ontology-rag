@@ -47,7 +47,7 @@ async def _run(query: str, group_id: str, corpus_config_path: Path | None, max_f
     settings = Settings.from_environment()
     graphiti_settings = GraphitiSettings.from_environment()
 
-    known_so_hieu = frozenset()
+    known_so_hieu: frozenset[str] | None = None
     if corpus_config_path is not None:
         corpus_metadata = load_corpus_metadata(corpus_config_path)
         known_so_hieu = frozenset(document.so_hieu for document in corpus_metadata.documents.values())
@@ -58,8 +58,6 @@ async def _run(query: str, group_id: str, corpus_config_path: Path | None, max_f
     finally:
         await pipeline.close()
 
-    if result.rewritten_query != result.query:
-        logger.info("Rewritten query: {}", result.rewritten_query)
     logger.info("Answer: {}", result.answer)
     for fact in result.sources:
         citations = ", ".join(f"{source.source_name}#{source.chunk_id}" for source in fact.sources)

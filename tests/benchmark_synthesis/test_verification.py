@@ -11,7 +11,7 @@ from legal_rag.benchmark_synthesis import verification
 from legal_rag.benchmark_synthesis.candidate_generation import CandidateDraft
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.verification import BamlVerificationClient, verify_candidate
-from legal_rag.settings import EvaluationSettings, LlmProvider, Settings
+from legal_rag.settings import EvaluationSettings, Settings
 
 
 def _fact(fact_id: str = "fact-1") -> LegalFact:
@@ -159,7 +159,6 @@ def _settings() -> Settings:
         llm_base_url="http://localhost:20128/v1",
         llm_api_key="provider-test-key",
         llm_model="provider/test-model",
-        llm_provider=LlmProvider.OPENAI,
         llm_timeout_seconds=30,
     )
 

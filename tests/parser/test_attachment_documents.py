@@ -18,7 +18,7 @@ from legal_rag.parser.attachment_documents import (
 from legal_rag.parser.attachments import ATTACHMENT_SCHEMA_VERSION, DocxAttachment
 from legal_rag.parser.document_source import extract_document_source
 from legal_rag.parser.models import AttachmentChildDocument, ParsedDocument
-from legal_rag.settings import LlmProvider, Settings
+from legal_rag.settings import Settings
 
 
 def _settings(**overrides: int) -> Settings:
@@ -27,7 +27,6 @@ def _settings(**overrides: int) -> Settings:
         "llm_base_url": "http://localhost/v1",
         "llm_api_key": "test-key",
         "llm_model": "test-model",
-        "llm_provider": LlmProvider.OPENAI,
         "llm_timeout_seconds": 30,
         **overrides,
     }

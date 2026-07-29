@@ -2,77 +2,18 @@
 
 from __future__ import annotations
 
-import json
 import os
 from collections.abc import Mapping
-from typing import Any
 
-import openai
 from graphiti_core import Graphiti
 from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
-from graphiti_core.llm_client.config import DEFAULT_MAX_TOKENS, LLMConfig, ModelSize
-from graphiti_core.llm_client.errors import EmptyResponseError, RateLimitError
-from graphiti_core.llm_client.openai_generic_client import DEFAULT_MODEL, OpenAIGenericClient
-from graphiti_core.prompts.models import Message
+from graphiti_core.llm_client.config import LLMConfig
+from graphiti_core.llm_client.openai_generic_client import OpenAIGenericClient
 from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletionMessageParam
-from pydantic import BaseModel
 
 from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.graphiti_rag.embedder import QwenGraphitiEmbedder
-from legal_rag.settings import GraphitiSettings, LlmProvider, Settings
-
-
-class DeepSeekNonThinkingClient(OpenAIGenericClient):
-    """OpenAIGenericClient variant that disables DeepSeek's "thinking" mode on every call.
-
-    DeepSeek's thinking (reasoning) mode spends completion tokens on ``reasoning_content``
-    before the final answer, which is unnecessary for Graphiti's short extraction/dedup
-    calls and multiplies both latency and cost across a full-corpus indexing run. DeepSeek
-    supports an OpenAI-incompatible ``thinking: {"type": "disabled"}`` request field (not
-    exposed by ``OpenAIGenericClient``), passed here via the ``openai`` SDK's ``extra_body``.
-    """
-
-    async def _generate_response(
-        self,
-        messages: list[Message],
-        response_model: type[BaseModel] | None = None,
-        max_tokens: int = DEFAULT_MAX_TOKENS,
-        model_size: ModelSize = ModelSize.medium,
-    ) -> dict[str, Any]:
-        """Call the chat completion endpoint with DeepSeek's thinking mode disabled."""
-        openai_messages: list[ChatCompletionMessageParam] = []
-        for message in messages:
-            message.content = self._clean_input(message.content)
-            if message.role == "user":
-                openai_messages.append({"role": "user", "content": message.content})
-            elif message.role == "system":
-                openai_messages.append({"role": "system", "content": message.content})
-        try:
-            response = await self.client.chat.completions.create(
-                model=self.model or DEFAULT_MODEL,
-                messages=openai_messages,
-                temperature=self.temperature,
-                max_tokens=max_tokens,
-                response_format=self._build_response_format(response_model),
-                extra_body={"thinking": {"type": "disabled"}},
-            )
-        except openai.RateLimitError as error:
-            raise RateLimitError from error
-        result = response.choices[0].message.content or ""
-        if not result:
-            raise EmptyResponseError("LLM returned an empty response")  # noqa: TRY003
-        return json.loads(self._strip_code_fences(result))
-
-
-# ``thinking: {"type": "disabled"}`` is a DeepSeek-specific extension field, not part of the
-# OpenAI-compatible API, so it is only sent to DeepSeek. The provider comes from typed
-# configuration rather than being sniffed from the model name, which is unreliable across
-# model aliases and OpenAI-compatible gateways.
-_LLM_CLIENT_CLASSES: dict[LlmProvider, type[OpenAIGenericClient]] = {
-    LlmProvider.OPENAI: OpenAIGenericClient,
-    LlmProvider.DEEPSEEK: DeepSeekNonThinkingClient,
-}
+from legal_rag.settings import GraphitiSettings, Settings
 
 
 def build_graphiti(
@@ -106,8 +47,7 @@ def build_graphiti(
     openai_client = AsyncOpenAI(
         api_key=llm_config.api_key, base_url=llm_config.base_url, timeout=settings.llm_timeout_seconds
     )
-    llm_client_cls = _LLM_CLIENT_CLASSES[settings.llm_provider]
-    llm_client = llm_client_cls(config=llm_config, client=openai_client, structured_output_mode="json_object")
+    llm_client = OpenAIGenericClient(config=llm_config, client=openai_client, structured_output_mode="json_object")
     resolved_embedder = embedder or QwenGraphitiEmbedder.from_profile(profile)
     return Graphiti(
         uri=graphiti_settings.neo4j_uri,

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from legal_rag.graphiti_rag.provenance import find_unindexed_document_citations
 
 
@@ -65,6 +67,16 @@ def test_discards_a_document_number_the_model_did_not_copy_from_the_text() -> No
     result = find_unindexed_document_citations(["Theo Nghị định 100/2019/NĐ-CP."], frozenset(), client)
 
     assert result == ["100/2019/NĐ-CP"]
+
+
+@pytest.mark.parametrize("hallucinated", ["68/2024/NĐ-CP", "168/2024/NĐ-C", "168/2024"])
+def test_discards_a_document_number_copied_from_inside_a_longer_number(hallucinated: str) -> None:
+    """A model-returned substring is not accepted as an independently cited document number."""
+    client = _FakeDocumentCitationClient([hallucinated])
+
+    result = find_unindexed_document_citations(["Nghị định 168/2024/NĐ-CP."], frozenset(), client)
+
+    assert result == []
 
 
 def test_returns_empty_when_no_document_is_cited() -> None:

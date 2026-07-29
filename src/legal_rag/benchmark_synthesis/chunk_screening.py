@@ -16,17 +16,25 @@ from legal_rag.settings import EvaluationSettings, Settings
 
 DEFAULT_SCREENING_BATCH_SIZE = 8
 
+CHUNK_SCREENING_SCHEMA_VERSION = "1.0.0"
+
 
 @dataclass(frozen=True, slots=True)
-class ExcludedChunk:
-    """One chunk excluded from fact extraction, with an auditable reason."""
+class ChunkScreeningRecord:
+    """One chunk's screening verdict, persisted for the next pipeline stage to read."""
 
     chunk_id: str
+    has_penalty_content: bool
     reason: str
 
     def to_dict(self) -> dict[str, Any]:
-        """Return a JSON-serializable exclusion record."""
-        return {"chunk_id": self.chunk_id, "reason": self.reason}
+        """Return a JSON-serializable screening record."""
+        return {
+            "schema_version": CHUNK_SCREENING_SCHEMA_VERSION,
+            "chunk_id": self.chunk_id,
+            "has_penalty_content": self.has_penalty_content,
+            "reason": self.reason,
+        }
 
 
 class ChunkScreeningClient(Protocol):
@@ -65,8 +73,8 @@ def screen_chunks(
     client: ChunkScreeningClient,
     *,
     batch_size: int = DEFAULT_SCREENING_BATCH_SIZE,
-) -> tuple[tuple[Chunk, ...], tuple[ExcludedChunk, ...]]:
-    """Split chunks into those worth reading for fact extraction and those excluded."""
+) -> tuple[ChunkScreeningRecord, ...]:
+    """Screen every chunk and return one verdict record per chunk, in input order."""
     results_by_chunk_id: dict[str, ChunkScreeningResult] = {}
     for batch_start in range(0, len(chunks), batch_size):
         batch = chunks[batch_start : batch_start + batch_size]
@@ -74,12 +82,11 @@ def screen_chunks(
         for result in client.screen(items):
             results_by_chunk_id[result.chunk_id] = result
 
-    accepted: list[Chunk] = []
-    excluded: list[ExcludedChunk] = []
-    for chunk in chunks:
-        result = results_by_chunk_id[chunk.chunk_id]
-        if result.has_penalty_content:
-            accepted.append(chunk)
-        else:
-            excluded.append(ExcludedChunk(chunk_id=chunk.chunk_id, reason=result.reason))
-    return tuple(accepted), tuple(excluded)
+    return tuple(
+        ChunkScreeningRecord(
+            chunk_id=chunk.chunk_id,
+            has_penalty_content=results_by_chunk_id[chunk.chunk_id].has_penalty_content,
+            reason=results_by_chunk_id[chunk.chunk_id].reason,
+        )
+        for chunk in chunks
+    )
