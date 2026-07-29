@@ -35,13 +35,13 @@ This file is the main coding guide for this repository.
 
 ## Data And Security
 
-- Validate only genuinely untrusted input at external system boundaries.
+- Do not add custom validation unless explicitly requested; rely on typed frameworks and native exceptions.
 - Do not catch errors with `try/except`; let exceptions propagate naturally.
 - Keep secrets out of code, docs, tests, logs, and committed config.
 - Do not log credentials, personal data, or full document contents.
 - Do not build shell commands or SQL queries with string interpolation.
 - Use explicit timeouts and bounded concurrency for external services.
-- Treat model and tool output as untrusted. Validate it before use.
+- Parse model and tool output with typed interfaces and let invalid data raise naturally.
 
 ## Heuristics
 
