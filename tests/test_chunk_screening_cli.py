@@ -11,7 +11,8 @@ import pytest
 from legal_rag import chunk_screening_cli
 from legal_rag.baml_client.types import ChunkScreeningItem, ChunkScreeningResult
 from legal_rag.benchmark_synthesis import chunk_screening
-from legal_rag.benchmark_synthesis.writer import read_chunk_screening
+from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
+from legal_rag.benchmark_synthesis.writer import read_chunk_screening, write_chunk_screening
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
 
@@ -97,3 +98,74 @@ def test_chunk_screening_cli_writes_one_verdict_per_chunk(monkeypatch: pytest.Mo
     assert records[0].has_penalty_content is True
     assert records[1].has_penalty_content is False
     assert records[1].reason == "Table of contents."
+
+
+def test_chunk_screening_cli_resumes_by_skipping_already_screened_chunks(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A chunk with a prior verdict is kept unchanged and is not screened again."""
+    chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
+    screening_path = tmp_path / "chunk_screening.jsonl"
+    write_chunks(
+        chunks_path,
+        (
+            _chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."),
+            _chunk("chunk-2", "MỤC LỤC"),
+        ),
+    )
+    write_chunk_screening(
+        screening_path,
+        [ChunkScreeningRecord(chunk_id="chunk-1", has_penalty_content=True, reason="Đã sàng lọc trước đó.")],
+    )
+    screened_chunk_ids: list[str] = []
+
+    class _ResumingClient:
+        """Screen only the chunks still passed to it, recording their ids."""
+
+        def __init__(self, settings: object, evaluation_settings: object) -> None:
+            return None
+
+        def screen(self, chunks: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            """Record screened chunk ids and return a fixed verdict for each."""
+            screened_chunk_ids.extend(chunk.chunk_id for chunk in chunks)
+            return [
+                ChunkScreeningResult(chunk_id=chunk.chunk_id, has_penalty_content=False, reason="Table of contents.")
+                for chunk in chunks
+            ]
+
+    _configure_cli(monkeypatch, chunks_path, screening_path)
+    monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _ResumingClient)
+
+    chunk_screening_cli.main()
+
+    assert screened_chunk_ids == ["chunk-2"]
+    records = read_chunk_screening(screening_path)
+    assert [record.chunk_id for record in records] == ["chunk-1", "chunk-2"]
+    assert records[0].reason == "Đã sàng lọc trước đó."
+    assert records[1].has_penalty_content is False
+
+
+def test_chunk_screening_cli_skips_the_llm_entirely_when_fully_resumed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """When every chunk already has a verdict, the LLM client is never constructed."""
+    chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
+    screening_path = tmp_path / "chunk_screening.jsonl"
+    write_chunks(chunks_path, (_chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."),))
+    write_chunk_screening(
+        screening_path,
+        [ChunkScreeningRecord(chunk_id="chunk-1", has_penalty_content=True, reason="Đã sàng lọc trước đó.")],
+    )
+
+    def _fail(*args: object, **kwargs: object) -> None:
+        msg = "BamlChunkScreeningClient must not be constructed when every chunk is resumed"
+        raise AssertionError(msg)
+
+    _configure_cli(monkeypatch, chunks_path, screening_path)
+    monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _fail)
+
+    chunk_screening_cli.main()
+
+    records = read_chunk_screening(screening_path)
+    assert [record.chunk_id for record in records] == ["chunk-1"]
+    assert records[0].reason == "Đã sàng lọc trước đó."

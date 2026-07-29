@@ -17,11 +17,11 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    """Screen every chunk of one document and write its verdict for later stages to read."""
+    """Screen chunks not yet in the output file, keeping prior verdicts on resume."""
     from dotenv import find_dotenv, load_dotenv
 
     from legal_rag.benchmark_synthesis.chunk_screening import BamlChunkScreeningClient, screen_chunks
-    from legal_rag.benchmark_synthesis.writer import write_chunk_screening
+    from legal_rag.benchmark_synthesis.writer import read_chunk_screening, write_chunk_screening
     from legal_rag.chunker.writer import read_chunks
     from legal_rag.settings import EvaluationSettings, Settings
 
@@ -33,15 +33,25 @@ def main() -> None:
     evaluation_settings = EvaluationSettings.from_environment()
 
     chunks = read_chunks(arguments.chunks_path)
-    screening_client = BamlChunkScreeningClient(settings, evaluation_settings)
-    records = screen_chunks(chunks, screening_client)
+    existing_records = (
+        read_chunk_screening(arguments.screening_output_path) if arguments.screening_output_path.exists() else ()
+    )
+    records_by_chunk_id = {record.chunk_id: record for record in existing_records}
+    chunks_to_screen = tuple(chunk for chunk in chunks if chunk.chunk_id not in records_by_chunk_id)
 
+    if chunks_to_screen:
+        screening_client = BamlChunkScreeningClient(settings, evaluation_settings)
+        new_records = screen_chunks(chunks_to_screen, screening_client)
+        records_by_chunk_id.update({record.chunk_id: record for record in new_records})
+
+    records = tuple(records_by_chunk_id[chunk.chunk_id] for chunk in chunks)
     write_chunk_screening(arguments.screening_output_path, records)
     accepted_count = sum(1 for record in records if record.has_penalty_content)
     logger.info(
-        "Chunk screening gate: {} accepted, {} excluded, wrote {}",
+        "Chunk screening gate: {} accepted, {} excluded, {} newly screened, wrote {}",
         accepted_count,
         len(records) - accepted_count,
+        len(chunks_to_screen),
         arguments.screening_output_path,
     )
 

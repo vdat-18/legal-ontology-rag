@@ -993,7 +993,9 @@ sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.js
 
 - `legal-screen-chunks` (`chunk_screening_cli.py`): nhận đường dẫn chunk JSONL
   của một văn bản, ghi `chunk_screening.jsonl` — 1 dòng verdict cho mỗi chunk,
-  kể cả chunk bị loại (audit được, khác với bản trước đó không ghi gì).
+  kể cả chunk bị loại (audit được, khác với bản trước đó không ghi gì). Chạy
+  lại (resume) trên cùng output path chỉ sàng lọc chunk chưa có verdict, giữ
+  nguyên các verdict cũ.
 - `legal-extract-facts` (`fact_extraction_cli.py`): nhận đường dẫn chunk JSONL
   **và** `chunk_screening.jsonl`, lọc lại chunk có `has_penalty_content=true`,
   trích fact, ghi thẳng `legal_facts.jsonl` — không còn ledger, không còn
