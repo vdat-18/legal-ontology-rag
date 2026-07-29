@@ -14,7 +14,7 @@ from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.chunker.models import Chunk
 from legal_rag.settings import EvaluationSettings, Settings
 
-DEFAULT_SCREENING_BATCH_SIZE = 8
+DEFAULT_SCREENING_BATCH_SIZE = 10
 
 CHUNK_SCREENING_SCHEMA_VERSION = "1.0.0"
 

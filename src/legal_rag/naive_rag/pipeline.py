@@ -37,15 +37,7 @@ class NaiveRAGPipeline:
         logger.info("NaiveRAGPipeline initialized")
 
     def run(self, query: str, top_k: int | None = None) -> RAGResult:
-        """Execute the full pipeline for a single query.
-
-        Args:
-            query: Natural-language question.
-            top_k: Override the default number of retrieved chunks.
-
-        Returns:
-            Result containing the answer and source chunks.
-        """
+        """Retrieve chunks for query and generate an answer, optionally overriding top_k."""
         k = top_k or self.settings.top_k
         hits = self._retriever.retrieve(query, top_k=k)
         answer = generate_answer(query, hits, self._generation_client)

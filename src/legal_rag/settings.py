@@ -43,23 +43,41 @@ class Settings:
         )
 
 
+_CHUNKER_TUNABLES: dict[str, Callable[[str], int]] = {
+    "max_tokens": int,
+    "split_overlap_tokens": int,
+}
+
+
 @dataclass(frozen=True, slots=True)
 class ChunkerSettings:
     """Embedding profile selection and token budgets for chunking."""
 
     embedding_profile: str
-    max_tokens: int
-    split_overlap_tokens: int
+    max_tokens: int = 512
+    split_overlap_tokens: int = 64
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] | None = None) -> ChunkerSettings:
-        """Load chunker settings from process environment variables."""
+        """Load chunker settings from process environment variables.
+
+        Every tunable above is overridable as ``CHUNK_<FIELD_NAME>`` and keeps its declared
+        default otherwise, so no declared value can be silently ignored by the loader.
+        """
         values = os.environ if environment is None else environment
-        return cls(
-            embedding_profile=values["EMBEDDING_PROFILE"].strip(),
-            max_tokens=int(values["CHUNK_MAX_TOKENS"]),
-            split_overlap_tokens=int(values["CHUNK_SPLIT_OVERLAP_TOKENS"]),
-        )
+        overrides = {
+            name: converter(values[f"CHUNK_{name.upper()}"])
+            for name, converter in _CHUNKER_TUNABLES.items()
+            if f"CHUNK_{name.upper()}" in values
+        }
+        return cls(**overrides, embedding_profile=values["EMBEDDING_PROFILE"].strip())
+
+
+_EVALUATION_TUNABLES: dict[str, Callable[[str], float | int]] = {
+    "span_match_threshold": float,
+    "bundle_overlap_threshold": float,
+    "max_quality_retries": int,
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,9 +85,9 @@ class EvaluationSettings:
     """Threshold and batch configuration for ground-truth synthesis."""
 
     embedding_profile: str
-    span_match_threshold: float
-    bundle_overlap_threshold: float
-    max_quality_retries: int
+    span_match_threshold: float = 0.85
+    bundle_overlap_threshold: float = 0.5
+    max_quality_retries: int = 2
     chunk_screening_max_output_tokens: int = 2048
     chunk_screening_temperature: float = 0.0
     fact_extraction_max_output_tokens: int = 4096
@@ -82,14 +100,23 @@ class EvaluationSettings:
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] | None = None) -> EvaluationSettings:
-        """Load ground-truth synthesis settings from process environment variables."""
+        """Load ground-truth synthesis settings from process environment variables.
+
+        Every tunable above is overridable as ``GROUNDTRUTH_<FIELD_NAME>`` and keeps its declared
+        default otherwise, so no declared value can be silently ignored by the loader.
+        """
         values = os.environ if environment is None else environment
-        return cls(
-            embedding_profile=values["EMBEDDING_PROFILE"].strip(),
-            span_match_threshold=float(values["GROUNDTRUTH_SPAN_MATCH_THRESHOLD"]),
-            bundle_overlap_threshold=float(values["GROUNDTRUTH_BUNDLE_OVERLAP_THRESHOLD"]),
-            max_quality_retries=int(values["GROUNDTRUTH_MAX_QUALITY_RETRIES"]),
-        )
+        overrides = {
+            name: converter(values[f"GROUNDTRUTH_{name.upper()}"])
+            for name, converter in _EVALUATION_TUNABLES.items()
+            if f"GROUNDTRUTH_{name.upper()}" in values
+        }
+        return cls(**overrides, embedding_profile=values["EMBEDDING_PROFILE"].strip())
+
+
+_NAIVE_RAG_TUNABLES: dict[str, Callable[[str], int]] = {
+    "top_k": int,
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,8 +124,8 @@ class NaiveRagSettings:
     """Retrieval, indexing, and generation settings for the naive RAG baseline."""
 
     embedding_profile: str
-    top_k: int
     milvus_uri: str
+    top_k: int = 10
     milvus_database: str = "naive_rag_b0"
     milvus_collection_name: str = "naive_rag_chunks"
     milvus_index_type: str = "IVF_FLAT"
@@ -112,11 +139,20 @@ class NaiveRagSettings:
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] | None = None) -> NaiveRagSettings:
-        """Load naive RAG baseline settings from process environment variables."""
+        """Load naive RAG baseline settings from process environment variables.
+
+        Every tunable above is overridable as ``NAIVE_RAG_<FIELD_NAME>`` and keeps its declared
+        default otherwise, so no declared value can be silently ignored by the loader.
+        """
         values = os.environ if environment is None else environment
+        overrides = {
+            name: converter(values[f"NAIVE_RAG_{name.upper()}"])
+            for name, converter in _NAIVE_RAG_TUNABLES.items()
+            if f"NAIVE_RAG_{name.upper()}" in values
+        }
         return cls(
+            **overrides,
             embedding_profile=values["EMBEDDING_PROFILE"].strip(),
-            top_k=int(values["NAIVE_RAG_TOP_K"]),
             milvus_uri=values["MILVUS_URI"].strip(),
         )
 

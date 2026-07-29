@@ -21,8 +21,7 @@ from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import EvaluationSettings, Settings
 
-# Small lexical parsing task, not a semantic decision: locate "Điều N" mentions
-# to resolve explicit cross-references between chunks of the same document.
+# Lexical parsing, not a semantic decision: locate "Điều N" cross-references.
 _ARTICLE_HEADING_PATTERN = re.compile(r"\s*Điều\s+(\d+)\b")
 _ARTICLE_CITATION_PATTERN = re.compile(r"Điều\s+(\d+)\b")
 

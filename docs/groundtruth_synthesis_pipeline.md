@@ -116,7 +116,7 @@ có nội dung chế tài bị bỏ qua và ghi vào danh sách loại trừ kè
 chính model đưa ra — thường là mục lục, tiêu đề chương, đoạn dẫn nhập không
 mang chế tài.
 
-Các chunk được gộp theo batch (mặc định 8 chunk/lần gọi) thay vì gọi LLM
+Các chunk được gộp theo batch (mặc định 10 chunk/lần gọi) thay vì gọi LLM
 riêng cho từng chunk, để giảm số lần round-trip. Mỗi chunk trong batch mang
 theo `chunk_id`, và model phải trả về đúng `chunk_id` đó trong từng kết quả —
 kết quả được đối chiếu ngược lại theo `chunk_id`, không dựa vào thứ tự trả về,
@@ -977,7 +977,7 @@ BAML trong `baml_src/`:
 - `chunk_screening.baml` — class `ChunkScreeningItem` (chunk_id, text) và
   `ChunkScreeningResult` (chunk_id, has_penalty_content, reason), function
   `ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[]` gọi
-  theo batch (mặc định 8 chunk/lần, xem `DEFAULT_SCREENING_BATCH_SIZE` trong
+  theo batch (mặc định 10 chunk/lần, xem `DEFAULT_SCREENING_BATCH_SIZE` trong
   `chunk_screening.py`), kèm persona và few-shot examples. Kết quả đối chiếu
   ngược lại theo `chunk_id`, không theo thứ tự mảng trả về.
 - `legal_fact_extraction.baml` — enum `ChunkWindowRole`, class

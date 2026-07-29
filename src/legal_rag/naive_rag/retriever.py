@@ -32,15 +32,7 @@ class Retriever:
         self.settings = settings
 
     def retrieve(self, query: str, top_k: int = 10) -> list[RetrievedChunk]:
-        """Search for the *top_k* chunks most similar to *query*.
-
-        Args:
-            query: Natural-language question.
-            top_k: Number of results to return.
-
-        Returns:
-            Ranked list of retrieved chunks with similarity scores.
-        """
+        """Return the top_k chunks most similar to query, ranked by similarity score."""
         query_vec = self.encoder.encode_query([query])[0].tolist()
 
         results = self.client.search(
