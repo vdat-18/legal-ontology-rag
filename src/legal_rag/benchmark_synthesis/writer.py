@@ -16,11 +16,36 @@ from legal_rag.benchmark_synthesis.candidate_generation import (
     RequiredClaim,
 )
 from legal_rag.benchmark_synthesis.candidate_record import CandidateRecord
+from legal_rag.benchmark_synthesis.chunk_screening import CHUNK_SCREENING_SCHEMA_VERSION, ChunkScreeningRecord
 from legal_rag.benchmark_synthesis.evidence_graph import EVIDENCE_RELATION_SCHEMA_VERSION, EvidenceRelation
 from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import SCENARIO_SCHEMA_VERSION, Scenario
 from legal_rag.benchmark_synthesis.verification import VerificationResult
 from legal_rag.io_utils import write_jsonl_atomic
+
+
+def write_chunk_screening(output_path: Path, records: Sequence[ChunkScreeningRecord]) -> None:
+    """Atomically replace one UTF-8 JSONL output with chunk-screening records."""
+    write_jsonl_atomic(output_path, (record.to_dict() for record in records))
+
+
+def read_chunk_screening(input_path: Path) -> tuple[ChunkScreeningRecord, ...]:
+    """Read a chunk-screening JSONL file back into typed records."""
+    records: list[ChunkScreeningRecord] = []
+    with input_path.open(encoding="utf-8") as source_file:
+        for line in source_file:
+            payload = json.loads(line)
+            if payload["schema_version"] != CHUNK_SCREENING_SCHEMA_VERSION:
+                msg = f"Unsupported chunk-screening schema: {payload['schema_version']}"
+                raise ValueError(msg)
+            records.append(
+                ChunkScreeningRecord(
+                    chunk_id=payload["chunk_id"],
+                    has_penalty_content=payload["has_penalty_content"],
+                    reason=payload["reason"],
+                )
+            )
+    return tuple(records)
 
 
 def write_legal_facts(output_path: Path, facts: Sequence[LegalFact]) -> None:

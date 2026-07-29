@@ -53,8 +53,8 @@ class _FakeScreeningClient:
         return [self._results_by_chunk_id[chunk.chunk_id] for chunk in chunks]
 
 
-def test_screen_chunks_splits_accepted_and_excluded() -> None:
-    """Chunks with penalty content are accepted; the rest are excluded with the model's reason."""
+def test_screen_chunks_returns_one_record_per_chunk_in_order() -> None:
+    """Every chunk gets a verdict record, in input order, with the model's reason."""
     high = _chunk("chunk-high", "Điều 6 khoản 9 điểm b quy định mức phạt tiền.")
     low = _chunk("chunk-low", "Mục lục")
     client = _FakeScreeningClient(
@@ -68,12 +68,12 @@ def test_screen_chunks_splits_accepted_and_excluded() -> None:
         }
     )
 
-    accepted, excluded = screen_chunks([high, low], client)
+    records = screen_chunks([high, low], client)
 
-    assert accepted == (high,)
-    assert len(excluded) == 1
-    assert excluded[0].chunk_id == "chunk-low"
-    assert excluded[0].reason == "Đây là mục lục, không có chế tài."
+    assert [record.chunk_id for record in records] == ["chunk-high", "chunk-low"]
+    assert records[0].has_penalty_content is True
+    assert records[1].has_penalty_content is False
+    assert records[1].reason == "Đây là mục lục, không có chế tài."
 
 
 def test_screen_chunks_batches_calls_by_batch_size() -> None:
@@ -90,11 +90,11 @@ def test_screen_chunks_batches_calls_by_batch_size() -> None:
             calls.append(len(batch))
             return [results_by_chunk_id[item.chunk_id] for item in batch]
 
-    accepted, excluded = screen_chunks(chunks, _CountingClient(), batch_size=2)
+    records = screen_chunks(chunks, _CountingClient(), batch_size=2)
 
     assert calls == [2, 2, 1]
-    assert accepted == tuple(chunks)
-    assert excluded == ()
+    assert [record.chunk_id for record in records] == [chunk.chunk_id for chunk in chunks]
+    assert all(record.has_penalty_content for record in records)
 
 
 def _settings() -> Settings:

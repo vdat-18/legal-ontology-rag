@@ -3,18 +3,17 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
 import pytest
 
 from legal_rag import fact_extraction_cli
-from legal_rag.baml_client.types import ChunkScreeningItem, ChunkScreeningResult
 from legal_rag.baml_client.types import EvidenceEntry as BamlEvidenceEntry
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
-from legal_rag.benchmark_synthesis import chunk_screening, fact_extraction
-from legal_rag.benchmark_synthesis.writer import read_legal_facts
+from legal_rag.benchmark_synthesis import fact_extraction
+from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
+from legal_rag.benchmark_synthesis.writer import read_legal_facts, write_chunk_screening
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
 
@@ -46,20 +45,6 @@ def _chunk(chunk_id: str, text: str) -> Chunk:
         previous_chunk_id=None,
         next_chunk_id=None,
     )
-
-
-class _AlwaysHasPenaltyContentClient:
-    """Accept every chunk as having penalty content, ignoring settings."""
-
-    def __init__(self, settings: object, evaluation_settings: object) -> None:
-        return None
-
-    def screen(self, chunks: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
-        """Return a positive screening result for every chunk in the batch."""
-        return [
-            ChunkScreeningResult(chunk_id=chunk.chunk_id, has_penalty_content=True, reason="Contains penalty content.")
-            for chunk in chunks
-        ]
 
 
 class _OneFactExtractionClient:
@@ -100,6 +85,7 @@ class _FakeEncoderBackend:
 def _configure_cli(
     monkeypatch: pytest.MonkeyPatch,
     chunks_path: Path,
+    screening_path: Path,
     facts_output_path: Path,
 ) -> None:
     """Set deterministic CLI arguments, environment, and fake LLM/embedding clients."""
@@ -111,25 +97,60 @@ def _configure_cli(
     monkeypatch.setenv("GROUNDTRUTH_SPAN_MATCH_THRESHOLD", "0.85")
     monkeypatch.setenv("GROUNDTRUTH_BUNDLE_OVERLAP_THRESHOLD", "0.5")
     monkeypatch.setenv("GROUNDTRUTH_MAX_QUALITY_RETRIES", "2")
-    monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _AlwaysHasPenaltyContentClient)
     monkeypatch.setattr(fact_extraction, "BamlFactExtractionClient", _OneFactExtractionClient)
     from legal_rag.embedding.encoder import EmbeddingEncoder
 
     monkeypatch.setattr(
         EmbeddingEncoder, "from_profile", lambda profile: EmbeddingEncoder(profile, _FakeEncoderBackend())
     )
-    monkeypatch.setattr(sys, "argv", ["legal-extract-facts", str(chunks_path), str(facts_output_path)])
+    monkeypatch.setattr(
+        sys, "argv", ["legal-extract-facts", str(chunks_path), str(screening_path), str(facts_output_path)]
+    )
 
 
 def test_fact_extraction_cli_extracts_and_writes_facts(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """The command reads chunks, extracts one fact, and writes it directly, with no review step."""
+    """The command reads accepted chunks from the screening file, extracts one fact, and writes it directly."""
     chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
+    screening_path = tmp_path / "chunk_screening.jsonl"
     facts_path = tmp_path / "legal_facts.jsonl"
     write_chunks(chunks_path, (_chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."),))
-    _configure_cli(monkeypatch, chunks_path, facts_path)
+    write_chunk_screening(
+        screening_path,
+        [ChunkScreeningRecord(chunk_id="chunk-1", has_penalty_content=True, reason="Contains penalty content.")],
+    )
+    _configure_cli(monkeypatch, chunks_path, screening_path, facts_path)
 
     fact_extraction_cli.main()
 
     facts = read_legal_facts(facts_path)
     assert len(facts) == 1
     assert facts[0].conduct == "Vượt đèn đỏ"
+
+
+def test_fact_extraction_cli_skips_chunks_excluded_by_screening(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A chunk marked has_penalty_content=False in the screening file never reaches extraction."""
+    chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
+    screening_path = tmp_path / "chunk_screening.jsonl"
+    facts_path = tmp_path / "legal_facts.jsonl"
+    write_chunks(
+        chunks_path,
+        (
+            _chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."),
+            _chunk("chunk-2", "MỤC LỤC"),
+        ),
+    )
+    write_chunk_screening(
+        screening_path,
+        [
+            ChunkScreeningRecord(chunk_id="chunk-1", has_penalty_content=True, reason="Contains penalty content."),
+            ChunkScreeningRecord(chunk_id="chunk-2", has_penalty_content=False, reason="Table of contents."),
+        ],
+    )
+    _configure_cli(monkeypatch, chunks_path, screening_path, facts_path)
+
+    fact_extraction_cli.main()
+
+    facts = read_legal_facts(facts_path)
+    assert len(facts) == 1

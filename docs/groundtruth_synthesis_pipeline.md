@@ -954,9 +954,11 @@ Module trong `benchmark_synthesis/`:
 - `models.py` — `LegalFact`, `EvidenceReference` dạng
   `@dataclass(frozen=True, slots=True)` với `to_dict()`, hằng
   `LEGAL_FACT_SCHEMA_VERSION`, theo đúng khuôn `chunker/models.py`.
-- `chunk_screening.py` — gọi BAML hỏi nhị phân "có nội dung chế tài không",
-  lọc theo `has_penalty_content`, ghi danh sách chunk bị loại kèm lý do do
-  model đưa ra.
+- `chunk_screening.py` — gọi BAML hỏi nhị phân "có nội dung chế tài không"
+  theo batch, trả về `ChunkScreeningRecord` (chunk_id, has_penalty_content,
+  reason) cho **mọi** chunk đầu vào, kể cả chunk bị loại — không tự chia
+  accepted/excluded trong bộ nhớ, để CLI ghi thẳng ra file cho bước sau đọc
+  lại.
 - `fact_extraction.py` — dựng cửa sổ đọc theo ba nguồn ở mục "Gộp chunk khi
   một fact cần nhiều nguồn" (tối đa 2 chunk liền trước qua chuỗi
   `previous_chunk_id`, trích dẫn chéo bằng regex "Điều N" tra theo
@@ -967,8 +969,8 @@ Module trong `benchmark_synthesis/`:
   `evidence.quoted_span` được giữ nguyên như LLM trả về, không tra cứu lại
   chunk gốc để gán thêm `unit_ids`/`source_refs` (đã bỏ hai field này khỏi
   `EvidenceReference` vì không có nơi nào trong pipeline đọc lại chúng).
-- `writer.py` — đọc/ghi JSONL nguyên tử cho `legal_facts.jsonl`, dùng lại
-  `io_utils.write_jsonl_atomic`.
+- `writer.py` — đọc/ghi JSONL nguyên tử cho `chunk_screening.jsonl` và
+  `legal_facts.jsonl`, dùng lại `io_utils.write_jsonl_atomic`.
 
 BAML trong `baml_src/`:
 
@@ -985,10 +987,17 @@ BAML trong `baml_src/`:
   trùng ngẫu nhiên với luật khác — regex chỉ đề xuất ứng viên, LLM tự quyết
   định có dùng hay không).
 
-CLI: `legal-extract-facts` (`fact_extraction_cli.py`) chạy nối tiếp cổng sàng
-lọc chunk và trích xuất fact trong một lần gọi; nhận đường dẫn chunk JSONL
-của một văn bản, ghi thẳng `legal_facts.jsonl` — không còn ledger, không còn
-bước duyệt tay.
+CLI tách thành hai bước riêng, nối nhau qua file — theo đúng cách các phase
+sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.jsonl`
+→ `single_turn.jsonl`), không gọi ngầm trong cùng 1 process nữa:
+
+- `legal-screen-chunks` (`chunk_screening_cli.py`): nhận đường dẫn chunk JSONL
+  của một văn bản, ghi `chunk_screening.jsonl` — 1 dòng verdict cho mỗi chunk,
+  kể cả chunk bị loại (audit được, khác với bản trước đó không ghi gì).
+- `legal-extract-facts` (`fact_extraction_cli.py`): nhận đường dẫn chunk JSONL
+  **và** `chunk_screening.jsonl`, lọc lại chunk có `has_penalty_content=true`,
+  trích fact, ghi thẳng `legal_facts.jsonl` — không còn ledger, không còn
+  bước duyệt tay.
 
 Hạ tầng dùng chung mới phát sinh khi triển khai, ngoài phạm vi ban đầu của
 Phase 1 nhưng cần thiết để nó chạy được:
@@ -1004,9 +1013,10 @@ Phase 1 nhưng cần thiết để nó chạy được:
 Test: `tests/benchmark_synthesis/test_fact_extraction.py`,
 `test_chunk_screening.py`, `test_evaluation_models.py`,
 `test_evaluation_writer.py`, `tests/test_baml_transport.py`,
-`tests/test_fact_extraction_cli.py` (tích hợp CLI đầu-cuối với client và encoder
-giả). Windowing test trực tiếp không cần mock; các BAML client wrapper test
-theo mẫu mock `execute_baml_request` trong `tests/parser/test_baml_captioning.py`.
+`tests/test_chunk_screening_cli.py`, `tests/test_fact_extraction_cli.py`
+(tích hợp CLI đầu-cuối với client và encoder giả mỗi bên). Windowing test
+trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
+`execute_baml_request` trong `tests/parser/test_baml_captioning.py`.
 
 ### Phase 2 — Evidence graph và scenario sampling (mục 6, 7) ✅ Đã triển khai
 
@@ -1245,3 +1255,14 @@ là so khớp tất định thuần Python, không qua `deepeval`.
   Phase 3.
 - `pyproject.toml`: thêm console script `legal-generate-candidates`
   (Phase 3). ✅ **Đã áp dụng.**
+- Tách cổng sàng lọc chunk ra khỏi `legal-extract-facts` thành CLI riêng
+  `legal-screen-chunks` (`chunk_screening_cli.py`), ghi kết quả ra
+  `chunk_screening.jsonl` để `legal-extract-facts` đọc lại — thay vì gọi
+  ngầm trong cùng một lần chạy như trước, để bước sàng lọc có audit trail
+  riêng và các phase nối nhau nhất quán qua file, giống mọi ranh giới phase
+  khác trong pipeline. `chunk_screening.py`: `screen_chunks()` đổi trả về
+  từ `(accepted, excluded)` sang `ChunkScreeningRecord` cho mọi chunk (kể cả
+  chunk được chấp nhận), việc lọc `has_penalty_content=true` chuyển sang CLI.
+  `writer.py`: thêm `write_chunk_screening`/`read_chunk_screening`.
+  `pyproject.toml`: thêm console script `legal-screen-chunks`. ✅ **Đã áp
+  dụng**, không nằm trong kế hoạch gốc.
