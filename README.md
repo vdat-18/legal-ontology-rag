@@ -51,6 +51,75 @@ Demo/data Drive folder:
 
 <https://drive.google.com/drive/folders/1voxi753JGAzF7WfiKLxzIP2rJCLjuSmf>
 
+## Vector Database
+
+Corrective RAG uses Milvus standalone from Docker Compose, not Milvus Lite.
+Start Milvus before indexing, retrieval, or evaluation:
+
+```powershell
+docker compose up -d milvus-etcd milvus-minio milvus-standalone
+```
+
+Use this setting in `.env`:
+
+```env
+EMBEDDING_LOCAL_FILES_ONLY=true
+MILVUS_URI=http://localhost:19530
+MILVUS_INDEX_BATCH_SIZE=32
+```
+
+Milvus Web UI is available at <http://localhost:9091/webui/>. Because Docker
+Milvus uses its own persistent volumes, index the processed chunks once after
+starting a fresh instance:
+
+```powershell
+python -m legal_rag.corrective_rag.api.cli index --data-dir data/processed/groundtruth
+```
+
+## Corrective RAG API
+
+Start the FastAPI server after Milvus is running and the chunks are indexed:
+
+```powershell
+python -m legal_rag.corrective_rag.api --host 127.0.0.1 --port 8000
+```
+
+Open the interactive API docs at <http://127.0.0.1:8000/docs>.
+
+Run the full CRAG pipeline:
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://127.0.0.1:8000/crag/query `
+  -ContentType "application/json" `
+  -Body '{"query":"Vuot den do xe may bi phat bao nhieu?","limit":5}'
+```
+
+Run vector-only retrieval from Milvus:
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://127.0.0.1:8000/crag/search `
+  -ContentType "application/json" `
+  -Body '{"query":"muc phat vuot den do xe may","limit":5}'
+```
+
+Test direct web search without loading Milvus or the embedding model:
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://127.0.0.1:8000/crag/web-search `
+  -ContentType "application/json" `
+  -Body '{"query":"muc phat vuot den do xe may nghi dinh 168","limit":3}'
+```
+
+Inside the full CRAG pipeline, web search is used only for `INCORRECT` and
+`AMBIGUOUS` retrieval actions. A `CORRECT` retrieval intentionally keeps
+`web_search_count` at `0`.
+
 ## Parser Pipeline
 
 Configure the `LLM_*` variables shown in `.env.example`, then parse one DOCX
