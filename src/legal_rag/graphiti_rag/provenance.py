@@ -62,20 +62,20 @@ def _appears_as_complete_span(text: str, candidate: str) -> bool:
 
 
 def find_unindexed_document_citations(
-    texts: Sequence[str], known_so_hieu: frozenset[str], client: DocumentCitationClient
+    texts: Sequence[str], known_document_numbers: frozenset[str], client: DocumentCitationClient
 ) -> list[str]:
-    """Return legal document numbers cited in *texts* that aren't in *known_so_hieu*.
+    """Return legal document numbers cited in *texts* that aren't in *known_document_numbers*.
 
     Args:
         texts: Fact or answer text to scan for cited legal documents.
-        known_so_hieu: The ``so_hieu`` values of documents actually indexed into this corpus.
+        known_document_numbers: Document numbers actually indexed into this corpus.
         client: The language-model client that identifies cited documents.
 
     Returns:
-        Sorted, deduplicated document numbers cited in *texts* but absent from *known_so_hieu*.
+        Sorted, deduplicated document numbers cited in *texts* but absent from *known_document_numbers*.
         A returned number the model did not actually copy from *texts* is discarded, since this
         result is surfaced to the reader as a caveat about the answer's coverage.
     """
     scanned = "\n".join(texts)
     cited = {number for number in client.extract_citations(scanned) if _appears_as_complete_span(scanned, number)}
-    return sorted(cited - known_so_hieu)
+    return sorted(cited - known_document_numbers)

@@ -149,6 +149,7 @@ def test_load_corpus_metadata_reads_group_id_and_documents(tmp_path: Path) -> No
     metadata = load_corpus_metadata(corpus_config)
 
     assert metadata.group_id == "traffic_penalty_groundtruth_v1"
+    assert metadata.documents["168_2024_ND-CP.docx"].document_number == "168/2024/NĐ-CP"
     assert metadata.documents["168_2024_ND-CP.docx"].effective_date == date(2025, 1, 1)
     assert metadata.documents["238_2026_ND-CP.docx"].effective_date is None
     assert metadata.documents["238_2026_ND-CP.docx"].amends == "168/2024/NĐ-CP"
@@ -173,7 +174,7 @@ def test_index_chunks_skips_when_effective_date_is_missing() -> None:
     """A chunk whose document has no known effective_date is skipped, not defaulted to now."""
     metadata = CorpusMetadata(
         group_id="g1",
-        documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=None, amends=None)},
+        documents={"doc.docx": CorpusDocument(document_number="1/2024", effective_date=None, amends=None)},
     )
     chunk = _chunk("chunk-1", "doc.docx")
 
@@ -191,7 +192,7 @@ def test_index_chunks_falls_back_to_extracted_effective_date_when_config_date_is
     """A null config effective_date is resolved from the date extraction client's own result."""
     metadata = CorpusMetadata(
         group_id="g1",
-        documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=None, amends=None)},
+        documents={"doc.docx": CorpusDocument(document_number="1/2024", effective_date=None, amends=None)},
     )
     chunk = _chunk("chunk-1", "doc.docx")
     graphiti = _FakeGraphiti()
@@ -210,7 +211,9 @@ def test_index_chunks_adds_one_episode_named_by_its_chunk_id() -> None:
     """A valid chunk is added as one Graphiti episode named by its stable chunk_id."""
     metadata = CorpusMetadata(
         group_id="traffic_penalty_groundtruth_v1",
-        documents={"doc.docx": CorpusDocument(so_hieu="168/2024/NĐ-CP", effective_date=date(2025, 1, 1), amends=None)},
+        documents={
+            "doc.docx": CorpusDocument(document_number="168/2024/NĐ-CP", effective_date=date(2025, 1, 1), amends=None)
+        },
     )
     chunk = _chunk("chunk-abc123", "doc.docx", chunk_index=3, text="Phạt tiền từ 4 đến 6 triệu.")
     graphiti = _FakeGraphiti()
@@ -236,7 +239,7 @@ def test_index_chunks_skips_when_episode_already_indexed() -> None:
     """A chunk whose stable chunk_id already exists in the group is skipped."""
     metadata = CorpusMetadata(
         group_id="g1",
-        documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=date(2025, 1, 1), amends=None)},
+        documents={"doc.docx": CorpusDocument(document_number="1/2024", effective_date=date(2025, 1, 1), amends=None)},
     )
     chunk = _chunk("chunk-1", "doc.docx", chunk_index=0)
     graphiti = _FakeGraphiti()
@@ -257,7 +260,7 @@ def test_index_chunks_propagates_a_failing_add_episode() -> None:
     """A failing add_episode raises out of the run rather than being swallowed as a skip."""
     metadata = CorpusMetadata(
         group_id="g1",
-        documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=date(2025, 1, 1), amends=None)},
+        documents={"doc.docx": CorpusDocument(document_number="1/2024", effective_date=date(2025, 1, 1), amends=None)},
     )
     chunk = _chunk("chunk-1", "doc.docx")
     graphiti = _FakeGraphiti(always_fail=True)
@@ -276,7 +279,7 @@ def test_index_chunks_propagates_a_configuration_error_without_special_casing() 
     """A configuration error (bad Neo4j credentials, ...) surfaces on the first attempt, not retried."""
     metadata = CorpusMetadata(
         group_id="g1",
-        documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=date(2025, 1, 1), amends=None)},
+        documents={"doc.docx": CorpusDocument(document_number="1/2024", effective_date=date(2025, 1, 1), amends=None)},
     )
     chunk = _chunk("chunk-1", "doc.docx")
     graphiti = _FakeGraphiti(fail_with=neo4j.exceptions.AuthError("bad credentials"))
@@ -295,7 +298,7 @@ def test_index_chunks_concurrent_distributes_work_across_all_clients() -> None:
     """All chunks are indexed, and more than one client picks up work from the shared queue."""
     metadata = CorpusMetadata(
         group_id="g1",
-        documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=date(2025, 1, 1), amends=None)},
+        documents={"doc.docx": CorpusDocument(document_number="1/2024", effective_date=date(2025, 1, 1), amends=None)},
     )
     chunks = [_chunk(f"chunk-{i}", "doc.docx", chunk_index=i) for i in range(6)]
     clients = [_FakeGraphiti(), _FakeGraphiti()]
@@ -317,7 +320,7 @@ def test_index_chunks_concurrent_skips_no_metadata_and_no_date_chunks() -> None:
     """Ineligible chunks are still filtered out before being handed to any worker."""
     metadata = CorpusMetadata(
         group_id="g1",
-        documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=date(2025, 1, 1), amends=None)},
+        documents={"doc.docx": CorpusDocument(document_number="1/2024", effective_date=date(2025, 1, 1), amends=None)},
     )
     chunks = [
         _chunk("chunk-1", "doc.docx", chunk_index=0),
@@ -339,7 +342,7 @@ def test_index_chunks_concurrent_propagates_a_failing_add_episode() -> None:
     """A worker whose add_episode fails propagates the error instead of counting it as a skip."""
     metadata = CorpusMetadata(
         group_id="g1",
-        documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=date(2025, 1, 1), amends=None)},
+        documents={"doc.docx": CorpusDocument(document_number="1/2024", effective_date=date(2025, 1, 1), amends=None)},
     )
     chunks = [_chunk("chunk-1", "doc.docx", chunk_index=0)]
     clients = [_FakeGraphiti(always_fail=True)]
@@ -358,7 +361,9 @@ def test_index_chunks_concurrent_cancels_sibling_workers_before_raising() -> Non
     async def run_scenario() -> None:
         metadata = CorpusMetadata(
             group_id="g1",
-            documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=date(2025, 1, 1), amends=None)},
+            documents={
+                "doc.docx": CorpusDocument(document_number="1/2024", effective_date=date(2025, 1, 1), amends=None)
+            },
         )
         chunks = [_chunk(f"chunk-{index}", "doc.docx", chunk_index=index) for index in range(4)]
         sibling_started = asyncio.Event()
@@ -390,7 +395,9 @@ def test_index_chunks_concurrent_cancels_workers_when_caller_is_cancelled() -> N
     async def run_scenario() -> None:
         metadata = CorpusMetadata(
             group_id="g1",
-            documents={"doc.docx": CorpusDocument(so_hieu="1/2024", effective_date=date(2025, 1, 1), amends=None)},
+            documents={
+                "doc.docx": CorpusDocument(document_number="1/2024", effective_date=date(2025, 1, 1), amends=None)
+            },
         )
         chunks = [_chunk(f"chunk-{index}", "doc.docx", chunk_index=index) for index in range(4)]
         started = asyncio.Event()

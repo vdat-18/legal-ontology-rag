@@ -24,7 +24,7 @@ from legal_rag.settings import GraphitiSettings
 class CorpusDocument:
     """Temporal and identifying metadata for one legal document in a ground-truth corpus."""
 
-    so_hieu: str
+    document_number: str
     effective_date: date | None
     amends: str | None
 
@@ -52,7 +52,7 @@ def load_corpus_metadata(corpus_config_path: Path) -> CorpusMetadata:
     config = json.loads(corpus_config_path.read_text(encoding="utf-8"))
     documents = {
         document["file"]: CorpusDocument(
-            so_hieu=document["so_hieu"],
+            document_number=document["so_hieu"],
             effective_date=date.fromisoformat(document["effective_date"]) if document["effective_date"] else None,
             amends=document["amends"],
         )

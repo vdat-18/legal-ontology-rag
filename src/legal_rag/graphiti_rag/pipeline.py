@@ -41,7 +41,7 @@ class GraphitiRAGPipeline:
         settings: Settings,
         graphiti_settings: GraphitiSettings,
         group_id: str,
-        known_so_hieu: frozenset[str] | None = None,
+        known_document_numbers: frozenset[str] | None = None,
     ) -> None:
         """Initialize the pipeline from application and Graphiti settings, scoped to one group.
 
@@ -49,12 +49,12 @@ class GraphitiRAGPipeline:
             settings: Application LLM connection settings.
             graphiti_settings: Neo4j connection, embedding profile, and retrieval settings.
             group_id: The Graphiti group to search within.
-            known_so_hieu: Document numbers actually indexed into this group, or ``None`` when
+            known_document_numbers: Document numbers actually indexed into this group, or ``None`` when
                 corpus coverage is unknown and citation coverage checking must be skipped.
         """
         self._settings = graphiti_settings
         self._group_id = group_id
-        self._known_so_hieu = known_so_hieu
+        self._known_document_numbers = known_document_numbers
         profile = load_configured_embedding_profile(graphiti_settings.embedding_profile)
         self._graphiti_client = build_graphiti(settings, graphiti_settings, profile)
         self._generation_client = BamlGenerationClient(settings, graphiti_settings)
@@ -93,11 +93,11 @@ class GraphitiRAGPipeline:
         answer = await asyncio.to_thread(generate_answer, query, selected, self._generation_client)
 
         unindexed_citations: list[str] = []
-        if self._known_so_hieu is not None:
+        if self._known_document_numbers is not None:
             unindexed_citations = await asyncio.to_thread(
                 find_unindexed_document_citations,
                 [answer, *(fact.fact for fact in selected)],
-                self._known_so_hieu,
+                self._known_document_numbers,
                 self._citation_client,
             )
         if unindexed_citations:

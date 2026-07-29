@@ -26,13 +26,13 @@ def test_query_run_preserves_unknown_corpus_and_closes_pipeline(monkeypatch: pyt
             settings: object,
             graphiti_settings: object,
             group_id: str,
-            known_so_hieu: frozenset[str] | None,
+            known_document_numbers: frozenset[str] | None,
         ) -> None:
             captured.update(
                 settings=settings,
                 graphiti_settings=graphiti_settings,
                 group_id=group_id,
-                known_so_hieu=known_so_hieu,
+                known_document_numbers=known_document_numbers,
             )
 
         async def run(self, query: str, max_facts: int | None = None) -> GraphitiRAGResult:
@@ -54,7 +54,7 @@ def test_query_run_preserves_unknown_corpus_and_closes_pipeline(monkeypatch: pyt
     finally:
         logger.remove(sink_id)
 
-    assert captured["known_so_hieu"] is None
+    assert captured["known_document_numbers"] is None
     assert captured["group_id"] == "group-1"
     assert captured["max_facts"] == 4
     assert captured["closed"] is True

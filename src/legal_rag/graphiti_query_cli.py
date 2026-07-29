@@ -47,12 +47,12 @@ async def _run(query: str, group_id: str, corpus_config_path: Path | None, max_f
     settings = Settings.from_environment()
     graphiti_settings = GraphitiSettings.from_environment()
 
-    known_so_hieu: frozenset[str] | None = None
+    known_document_numbers: frozenset[str] | None = None
     if corpus_config_path is not None:
         corpus_metadata = load_corpus_metadata(corpus_config_path)
-        known_so_hieu = frozenset(document.so_hieu for document in corpus_metadata.documents.values())
+        known_document_numbers = frozenset(document.document_number for document in corpus_metadata.documents.values())
 
-    pipeline = GraphitiRAGPipeline(settings, graphiti_settings, group_id, known_so_hieu=known_so_hieu)
+    pipeline = GraphitiRAGPipeline(settings, graphiti_settings, group_id, known_document_numbers=known_document_numbers)
     try:
         result = await pipeline.run(query, max_facts=max_facts)
     finally:

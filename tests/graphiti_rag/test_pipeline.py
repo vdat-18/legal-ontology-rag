@@ -83,7 +83,7 @@ def _settings() -> tuple[Settings, GraphitiSettings]:
 
 def _build_pipeline(
     monkeypatch: pytest.MonkeyPatch,
-    known_so_hieu: frozenset[str] | None,
+    known_document_numbers: frozenset[str] | None,
     citation_client: _FakeCitationClient,
 ) -> tuple[GraphitiRAGPipeline, _FakeGraphiti, _FakeRewriteClient, _FakeGenerationClient, list[tuple[object, ...]]]:
     """Replace external boundaries and construct one deterministic pipeline."""
@@ -107,7 +107,9 @@ def _build_pipeline(
     monkeypatch.setattr(pipeline_module, "BamlDocumentCitationClient", lambda *_args: citation_client)
     monkeypatch.setattr(pipeline_module, "search_facts", fake_search)
     settings, graphiti_settings = _settings()
-    pipeline = GraphitiRAGPipeline(settings, graphiti_settings, "group-1", known_so_hieu=known_so_hieu)
+    pipeline = GraphitiRAGPipeline(
+        settings, graphiti_settings, "group-1", known_document_numbers=known_document_numbers
+    )
     return pipeline, graphiti, rewrite_client, generation_client, search_calls
 
 

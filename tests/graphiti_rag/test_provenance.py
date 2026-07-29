@@ -21,7 +21,7 @@ class _FakeDocumentCitationClient:
 
 
 def test_returns_empty_when_all_citations_are_known() -> None:
-    """A citation matching a known so_hieu is not flagged."""
+    """A citation matching a known document number is not flagged."""
     client = _FakeDocumentCitationClient(["168/2024/NĐ-CP"])
 
     result = find_unindexed_document_citations(
@@ -32,7 +32,7 @@ def test_returns_empty_when_all_citations_are_known() -> None:
 
 
 def test_flags_a_citation_not_in_the_known_set() -> None:
-    """A document number not in known_so_hieu is flagged."""
+    """A document number not in the known document-number set is flagged."""
     client = _FakeDocumentCitationClient(["100/2019/NĐ-CP"])
 
     result = find_unindexed_document_citations(["sửa đổi Nghị định số 100/2019/NĐ-CP"], frozenset(), client)
