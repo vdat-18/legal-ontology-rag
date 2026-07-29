@@ -11,7 +11,7 @@ from loguru import logger
 from legal_rag.graphiti_rag import pipeline as pipeline_module
 from legal_rag.graphiti_rag.pipeline import GraphitiRAGPipeline
 from legal_rag.graphiti_rag.retriever import FactSource, RetrievedFact
-from legal_rag.settings import GraphitiSettings, Settings
+from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
 
 
 class _FakeGraphiti:
@@ -62,7 +62,7 @@ class _FakeCitationClient:
         return list(self._citations)
 
 
-def _settings() -> tuple[Settings, GraphitiSettings]:
+def _settings() -> tuple[Settings, Neo4jSettings, GraphitiSettings]:
     """Build valid settings without loading process environment variables."""
     return (
         Settings(
@@ -71,11 +71,13 @@ def _settings() -> tuple[Settings, GraphitiSettings]:
             llm_model="provider/test-model",
             llm_timeout_seconds=30,
         ),
+        Neo4jSettings(
+            uri="bolt://localhost:7687",
+            user="neo4j",
+            password="example-password",  # noqa: S106
+        ),
         GraphitiSettings(
             embedding_profile="qwen3_0_6b",
-            neo4j_uri="bolt://localhost:7687",
-            neo4j_user="neo4j",
-            neo4j_password="password",  # noqa: S106
             max_context_facts=1,
         ),
     )
@@ -106,9 +108,13 @@ def _build_pipeline(
     monkeypatch.setattr(pipeline_module, "BamlGenerationClient", lambda *_args: generation_client)
     monkeypatch.setattr(pipeline_module, "BamlDocumentCitationClient", lambda *_args: citation_client)
     monkeypatch.setattr(pipeline_module, "search_facts", fake_search)
-    settings, graphiti_settings = _settings()
+    settings, neo4j_settings, graphiti_settings = _settings()
     pipeline = GraphitiRAGPipeline(
-        settings, graphiti_settings, "group-1", known_document_numbers=known_document_numbers
+        settings,
+        neo4j_settings,
+        graphiti_settings,
+        "group-1",
+        known_document_numbers=known_document_numbers,
     )
     return pipeline, graphiti, rewrite_client, generation_client, search_calls
 

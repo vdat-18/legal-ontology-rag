@@ -77,15 +77,19 @@ def _chunk(
     )
 
 
-def _settings(tmp_path: Path) -> NaiveRagSettings:
-    """Build naive RAG settings pointed at a temporary Milvus Lite database."""
+def _settings() -> NaiveRagSettings:
+    """Build naive RAG settings for a Milvus Lite index."""
     return NaiveRagSettings(
         embedding_profile="test-profile",
         top_k=2,
-        milvus_uri=str(tmp_path / "naive_rag.db"),
         milvus_nlist=1,
         milvus_flush_after_insert=False,
     )
+
+
+def _milvus_uri(tmp_path: Path) -> str:
+    """Return one temporary Milvus Lite URI."""
+    return str(tmp_path / "naive_rag.db")
 
 
 def test_truncate_varchar_keeps_short_text_unchanged() -> None:
@@ -106,8 +110,8 @@ def test_index_chunks_inserts_one_row_per_chunk(tmp_path: Path) -> None:
     """Indexing a fresh collection inserts exactly one row per input chunk."""
     chunks = (_chunk("chunk-1", "First chunk."), _chunk("chunk-2", "Second chunk."))
     encoder = EmbeddingEncoder(_profile(), _FakeEncoderBackend())
-    settings = _settings(tmp_path)
-    client = MilvusClient(uri=settings.milvus_uri)
+    settings = _settings()
+    client = MilvusClient(uri=_milvus_uri(tmp_path))
 
     total = index_chunks(chunks, encoder, client, settings)
 
@@ -120,8 +124,8 @@ def test_index_chunks_is_a_no_op_when_the_matching_corpus_is_complete(tmp_path: 
     chunks = (_chunk("chunk-1", "First chunk."),)
     backend = _FakeEncoderBackend()
     encoder = EmbeddingEncoder(_profile(), backend)
-    settings = _settings(tmp_path)
-    client = MilvusClient(uri=settings.milvus_uri)
+    settings = _settings()
+    client = MilvusClient(uri=_milvus_uri(tmp_path))
     index_chunks(chunks, encoder, client, settings)
     backend.calls.clear()
 
@@ -137,8 +141,8 @@ def test_index_chunks_resumes_a_partially_indexed_corpus(tmp_path: Path) -> None
     chunks = (_chunk("chunk-1", "Chunk one."), _chunk("chunk-2", "Chunk two."))
     backend = _FakeEncoderBackend()
     encoder = EmbeddingEncoder(_profile(), backend)
-    settings = _settings(tmp_path)
-    client = MilvusClient(uri=settings.milvus_uri)
+    settings = _settings()
+    client = MilvusClient(uri=_milvus_uri(tmp_path))
     index_chunks(chunks[:1], encoder, client, settings)
     backend.calls.clear()
 
@@ -153,8 +157,8 @@ def test_index_chunks_rejects_rows_outside_the_current_corpus(tmp_path: Path) ->
     """A smaller or different corpus cannot silently reuse a collection containing stale rows."""
     chunks = (_chunk("chunk-1", "Chunk one."), _chunk("chunk-2", "Chunk two."))
     encoder = EmbeddingEncoder(_profile(), _FakeEncoderBackend())
-    settings = _settings(tmp_path)
-    client = MilvusClient(uri=settings.milvus_uri)
+    settings = _settings()
+    client = MilvusClient(uri=_milvus_uri(tmp_path))
     index_chunks(chunks, encoder, client, settings)
 
     with pytest.raises(ValueError, match="outside the current corpus"):
@@ -171,8 +175,8 @@ def test_index_chunks_rejects_rows_outside_the_current_corpus(tmp_path: Path) ->
 def test_index_chunks_rejects_stale_chunk_metadata(tmp_path: Path, changed_chunk: Chunk) -> None:
     """A reused chunk ID cannot hide changed content or chunker configuration."""
     encoder = EmbeddingEncoder(_profile(), _FakeEncoderBackend())
-    settings = _settings(tmp_path)
-    client = MilvusClient(uri=settings.milvus_uri)
+    settings = _settings()
+    client = MilvusClient(uri=_milvus_uri(tmp_path))
     index_chunks((_chunk("chunk-1", "Same text."),), encoder, client, settings)
 
     with pytest.raises(ValueError, match="stale metadata"):
@@ -181,8 +185,8 @@ def test_index_chunks_rejects_stale_chunk_metadata(tmp_path: Path, changed_chunk
 
 def test_index_chunks_rejects_a_changed_embedding_model_revision(tmp_path: Path) -> None:
     """Rows embedded by another model revision cannot be mixed into the collection."""
-    settings = _settings(tmp_path)
-    client = MilvusClient(uri=settings.milvus_uri)
+    settings = _settings()
+    client = MilvusClient(uri=_milvus_uri(tmp_path))
     index_chunks(
         (_chunk("chunk-1", "Same text."),),
         EmbeddingEncoder(_profile(), _FakeEncoderBackend()),
@@ -201,8 +205,8 @@ def test_index_chunks_rejects_a_changed_embedding_model_revision(tmp_path: Path)
 
 def test_index_chunks_rejects_an_incompatible_vector_dimension(tmp_path: Path) -> None:
     """An existing collection must match the configured embedding vector dimension."""
-    settings = _settings(tmp_path)
-    client = MilvusClient(uri=settings.milvus_uri)
+    settings = _settings()
+    client = MilvusClient(uri=_milvus_uri(tmp_path))
     index_chunks(
         (_chunk("chunk-1", "Same text."),),
         EmbeddingEncoder(_profile(), _FakeEncoderBackend()),
@@ -221,8 +225,8 @@ def test_index_chunks_rejects_an_incompatible_vector_dimension(tmp_path: Path) -
 
 def test_index_chunks_rejects_an_incompatible_metric(tmp_path: Path) -> None:
     """An existing vector index must use the retrieval metric in typed settings."""
-    settings = _settings(tmp_path)
-    client = MilvusClient(uri=settings.milvus_uri)
+    settings = _settings()
+    client = MilvusClient(uri=_milvus_uri(tmp_path))
     encoder = EmbeddingEncoder(_profile(), _FakeEncoderBackend())
     chunks = (_chunk("chunk-1", "Same text."),)
     index_chunks(chunks, encoder, client, settings)
@@ -235,8 +239,8 @@ def test_index_chunks_rejects_duplicate_input_ids(tmp_path: Path) -> None:
     """Duplicate primary keys are rejected before collection creation or embedding."""
     duplicate_chunks = (_chunk("chunk-1", "One."), _chunk("chunk-1", "Two."))
     encoder = EmbeddingEncoder(_profile(), _FakeEncoderBackend())
-    settings = _settings(tmp_path)
-    client = MilvusClient(uri=settings.milvus_uri)
+    settings = _settings()
+    client = MilvusClient(uri=_milvus_uri(tmp_path))
 
     with pytest.raises(ValueError, match="duplicate chunk_id"):
         index_chunks(duplicate_chunks, encoder, client, settings)
@@ -245,8 +249,8 @@ def test_index_chunks_rejects_duplicate_input_ids(tmp_path: Path) -> None:
 def test_index_chunks_rejects_an_empty_corpus(tmp_path: Path) -> None:
     """An empty input directory cannot be reported as a successful index."""
     encoder = EmbeddingEncoder(_profile(), _FakeEncoderBackend())
-    settings = _settings(tmp_path)
-    client = MilvusClient(uri=settings.milvus_uri)
+    settings = _settings()
+    client = MilvusClient(uri=_milvus_uri(tmp_path))
 
     with pytest.raises(ValueError, match="no chunks"):
         index_chunks((), encoder, client, settings)

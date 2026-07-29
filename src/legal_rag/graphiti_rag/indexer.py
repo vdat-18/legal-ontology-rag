@@ -12,12 +12,11 @@ from pathlib import Path
 from graphiti_core import Graphiti
 from graphiti_core.nodes import EpisodeType
 from loguru import logger
-from neo4j import AsyncDriver, AsyncGraphDatabase
+from neo4j import AsyncDriver
 
 from legal_rag.chunker.models import Chunk
 from legal_rag.graphiti_rag.effective_date import EffectiveDateClient, extract_effective_date
 from legal_rag.graphiti_rag.ontology import EDGE_TYPES, ENTITY_TYPES
-from legal_rag.settings import GraphitiSettings
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,11 +58,6 @@ def load_corpus_metadata(corpus_config_path: Path) -> CorpusMetadata:
         for document in config["documents"]
     }
     return CorpusMetadata(group_id=config["group_id"], documents=documents)
-
-
-def build_neo4j_driver(settings: GraphitiSettings) -> AsyncDriver:
-    """Open an async Neo4j driver used for the episode-existence idempotency check."""
-    return AsyncGraphDatabase.driver(settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password))
 
 
 async def _episode_already_indexed(neo4j_driver: AsyncDriver, name: str, group_id: str) -> bool:

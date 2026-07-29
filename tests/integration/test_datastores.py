@@ -18,8 +18,8 @@ pytestmark = pytest.mark.skipif(
 def test_milvus_accepts_authenticated_client_connections() -> None:
     """Milvus authentication permits the configured client to list databases."""
     client = MilvusClient(
-        uri=os.environ["NAIVE_RAG_MILVUS_URI"],
-        token=os.environ["NAIVE_RAG_MILVUS_TOKEN"],
+        uri=os.environ["MILVUS_URI"],
+        token=os.environ["MILVUS_TOKEN"],
     )
     try:
         assert client.list_databases()

@@ -11,29 +11,14 @@ from legal_rag.settings import _GRAPHITI_TUNABLES, GraphitiSettings
 
 def test_graphiti_settings_load_from_environment() -> None:
     """Graphiti settings parse from process environment variables."""
-    settings = GraphitiSettings.from_environment(
-        {
-            "EMBEDDING_PROFILE": "qwen3_0_6b",
-            "NEO4J_URI": "bolt://localhost:7687",
-            "NEO4J_USER": "neo4j",
-            "NEO4J_PASSWORD": "password",
-        }
-    )
+    settings = GraphitiSettings.from_environment({"EMBEDDING_PROFILE": "qwen3_0_6b"})
 
     assert settings.embedding_profile == "qwen3_0_6b"
-    assert settings.neo4j_uri == "bolt://localhost:7687"
-    assert settings.neo4j_user == "neo4j"
-    assert settings.neo4j_password == "password"  # noqa: S105
 
 
 def test_every_declared_tunable_is_overridable_from_the_environment() -> None:
     """No declared tunable can be silently ignored: each maps to a GRAPHITI_<FIELD_NAME> variable."""
-    base = {
-        "EMBEDDING_PROFILE": "qwen3_0_6b",
-        "NEO4J_URI": "bolt://localhost:7687",
-        "NEO4J_USER": "neo4j",
-        "NEO4J_PASSWORD": "password",
-    }
+    base = {"EMBEDDING_PROFILE": "qwen3_0_6b"}
     defaults = GraphitiSettings.from_environment(base)
 
     for name, converter in _GRAPHITI_TUNABLES.items():
@@ -73,9 +58,6 @@ def test_graphiti_settings_reject_invalid_numeric_values(name: str, value: str) 
     """Invalid service limits fail at the environment boundary with the setting name."""
     environment = {
         "EMBEDDING_PROFILE": "qwen3_0_6b",
-        "NEO4J_URI": "bolt://localhost:7687",
-        "NEO4J_USER": "neo4j",
-        "NEO4J_PASSWORD": "password",
         f"GRAPHITI_{name.upper()}": value,
     }
 

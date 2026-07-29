@@ -34,20 +34,21 @@ async def _run(chunks_dir: Path, corpus_config_path: Path) -> IndexingSummary:
     one key is available, so a client done with a short document keeps helping instead of
     sitting idle — see ``graphiti_rag.indexer.index_chunks_concurrent``.
     """
+    from legal_rag.datastores.neo4j import build_neo4j_driver
     from legal_rag.embedding.profiles import load_configured_embedding_profile
     from legal_rag.graphiti_rag.client import build_graphiti, load_llm_api_keys
     from legal_rag.graphiti_rag.effective_date import BamlEffectiveDateClient
     from legal_rag.graphiti_rag.embedder import QwenGraphitiEmbedder
     from legal_rag.graphiti_rag.indexer import (
-        build_neo4j_driver,
         index_chunks,
         index_chunks_concurrent,
         load_corpus_metadata,
     )
     from legal_rag.naive_rag.indexer import load_chunks
-    from legal_rag.settings import GraphitiSettings, Settings
+    from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
 
     settings = Settings.from_environment()
+    neo4j_settings = Neo4jSettings.from_environment()
     graphiti_settings = GraphitiSettings.from_environment()
 
     chunks = load_chunks(chunks_dir)
@@ -60,10 +61,17 @@ async def _run(chunks_dir: Path, corpus_config_path: Path) -> IndexingSummary:
     graphiti_clients = []
     neo4j_driver = None
     try:
-        neo4j_driver = build_neo4j_driver(graphiti_settings)
+        neo4j_driver = build_neo4j_driver(neo4j_settings)
         for key in api_keys:
             # Append immediately so a later construction failure cannot orphan earlier clients.
-            graphiti_client = build_graphiti(settings, graphiti_settings, profile, api_key=key, embedder=embedder)
+            graphiti_client = build_graphiti(
+                settings,
+                neo4j_settings,
+                graphiti_settings,
+                profile,
+                api_key=key,
+                embedder=embedder,
+            )
             graphiti_clients.append(graphiti_client)
         await graphiti_clients[0].build_indices_and_constraints()
         window_token_budget = graphiti_settings.effective_date_window_token_budget

@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from legal_rag import graphiti_index_cli
+from legal_rag.datastores import neo4j as neo4j_module
 from legal_rag.embedding import profiles as profile_module
 from legal_rag.graphiti_rag import client as client_module
 from legal_rag.graphiti_rag import effective_date as effective_date_module
@@ -15,7 +16,7 @@ from legal_rag.graphiti_rag import embedder as embedder_module
 from legal_rag.graphiti_rag import indexer as indexer_module
 from legal_rag.graphiti_rag.indexer import CorpusMetadata, IndexingSummary
 from legal_rag.naive_rag import indexer as naive_indexer_module
-from legal_rag.settings import GraphitiSettings, Settings
+from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
 
 
 class _FakeGraphiti:
@@ -63,9 +64,6 @@ def _configure_cli(
     """Replace external boundaries for one deterministic multi-client CLI run."""
     graphiti_settings = GraphitiSettings(
         embedding_profile="qwen3_0_6b",
-        neo4j_uri="bolt://localhost:7687",
-        neo4j_user="neo4j",
-        neo4j_password="password",  # noqa: S106
     )
     metadata = CorpusMetadata(group_id="group-1", documents={})
     concurrent_calls: list[tuple[object, ...]] = []
@@ -88,6 +86,7 @@ def _configure_cli(
         raise AssertionError(msg)
 
     monkeypatch.setattr(Settings, "from_environment", classmethod(lambda cls: object()))
+    monkeypatch.setattr(Neo4jSettings, "from_environment", classmethod(lambda cls: object()))
     monkeypatch.setattr(GraphitiSettings, "from_environment", classmethod(lambda cls: graphiti_settings))
     monkeypatch.setattr(naive_indexer_module, "load_chunks", lambda _path: [object()])
     monkeypatch.setattr(indexer_module, "load_corpus_metadata", lambda _path: metadata)
@@ -100,7 +99,7 @@ def _configure_cli(
         client_module, "load_llm_api_keys", lambda: [f"key-{index}" for index in range(len(build_results))]
     )
     monkeypatch.setattr(client_module, "build_graphiti", fake_build_graphiti)
-    monkeypatch.setattr(indexer_module, "build_neo4j_driver", lambda _settings: driver)
+    monkeypatch.setattr(neo4j_module, "build_neo4j_driver", lambda _settings: driver)
     monkeypatch.setattr(indexer_module, "index_chunks_concurrent", fake_index_concurrent)
     monkeypatch.setattr(indexer_module, "index_chunks", fail_single_index)
     return concurrent_calls

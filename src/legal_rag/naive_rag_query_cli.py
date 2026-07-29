@@ -20,16 +20,17 @@ def main() -> None:
     from dotenv import find_dotenv, load_dotenv
 
     from legal_rag.naive_rag.pipeline import NaiveRAGPipeline
-    from legal_rag.settings import NaiveRagSettings, Settings
+    from legal_rag.settings import MilvusSettings, NaiveRagSettings, Settings
 
     arguments = _parser().parse_args()
     dotenv_path = find_dotenv(usecwd=True)
     if dotenv_path:
         load_dotenv(dotenv_path)
     settings = Settings.from_environment()
+    milvus_settings = MilvusSettings.from_environment()
     naive_rag_settings = NaiveRagSettings.from_environment()
 
-    pipeline = NaiveRAGPipeline(settings, naive_rag_settings)
+    pipeline = NaiveRAGPipeline(settings, milvus_settings, naive_rag_settings)
     result = pipeline.run(arguments.query, top_k=arguments.top_k)
 
     logger.info("Answer: {}", result.answer)

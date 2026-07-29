@@ -13,11 +13,12 @@ from openai import AsyncOpenAI
 
 from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.graphiti_rag.embedder import QwenGraphitiEmbedder
-from legal_rag.settings import GraphitiSettings, Settings
+from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
 
 
 def build_graphiti(
     settings: Settings,
+    neo4j_settings: Neo4jSettings,
     graphiti_settings: GraphitiSettings,
     profile: EmbeddingProfile,
     api_key: str | None = None,
@@ -27,7 +28,8 @@ def build_graphiti(
 
     Args:
         settings: Application LLM connection settings.
-        graphiti_settings: Neo4j connection and embedding profile selection.
+        neo4j_settings: Shared Neo4j connection settings.
+        graphiti_settings: Graphiti embedding profile selection and algorithm settings.
         profile: The embedding profile to encode text with, when *embedder* isn't already built.
         api_key: Overrides ``settings.llm_api_key`` when given — lets multiple Graphiti
             clients each use a distinct LLM API key, for running several concurrent indexing
@@ -50,9 +52,9 @@ def build_graphiti(
     llm_client = OpenAIGenericClient(config=llm_config, client=openai_client, structured_output_mode="json_object")
     resolved_embedder = embedder or QwenGraphitiEmbedder.from_profile(profile)
     return Graphiti(
-        uri=graphiti_settings.neo4j_uri,
-        user=graphiti_settings.neo4j_user,
-        password=graphiti_settings.neo4j_password,
+        uri=neo4j_settings.uri,
+        user=neo4j_settings.user,
+        password=neo4j_settings.password,
         llm_client=llm_client,
         embedder=resolved_embedder,
         cross_encoder=OpenAIRerankerClient(config=llm_config, client=openai_client),

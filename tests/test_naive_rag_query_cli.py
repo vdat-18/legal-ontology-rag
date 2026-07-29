@@ -11,12 +11,12 @@ from loguru import logger
 
 from legal_rag import naive_rag_query_cli
 from legal_rag.chunker.models import Chunk
+from legal_rag.datastores.milvus import build_milvus_client
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.naive_rag import pipeline as pipeline_module
-from legal_rag.naive_rag.connection import build_milvus_client
 from legal_rag.naive_rag.indexer import index_chunks
-from legal_rag.settings import NaiveRagSettings, Settings
+from legal_rag.settings import MilvusSettings, NaiveRagSettings, Settings
 
 
 class _FakeEncoderBackend:
@@ -87,12 +87,12 @@ def test_query_cli_logs_the_generated_answer(monkeypatch: pytest.MonkeyPatch, tm
     naive_rag_settings = NaiveRagSettings(
         embedding_profile="bge_m3",
         top_k=1,
-        milvus_uri=milvus_uri,
         milvus_nlist=1,
         milvus_flush_after_insert=False,
     )
+    milvus_settings = MilvusSettings(uri=milvus_uri, database="legal_rag")
     seed_encoder = EmbeddingEncoder(_profile(), _FakeEncoderBackend())
-    seed_client = build_milvus_client(naive_rag_settings)
+    seed_client = build_milvus_client(milvus_settings)
     index_chunks((_chunk("chunk-1", "Phạt tiền từ 4 đến 6 triệu."),), seed_encoder, seed_client, naive_rag_settings)
 
     monkeypatch.setattr(
@@ -108,7 +108,9 @@ def test_query_cli_logs_the_generated_answer(monkeypatch: pytest.MonkeyPatch, tm
     monkeypatch.setenv("EMBEDDING_PROFILE", "bge_m3")
     monkeypatch.setenv("NAIVE_RAG_TOP_K", "1")
     monkeypatch.setenv("NAIVE_RAG_MILVUS_FLUSH_AFTER_INSERT", "false")
-    monkeypatch.setenv("NAIVE_RAG_MILVUS_URI", milvus_uri)
+    monkeypatch.setenv("MILVUS_URI", milvus_uri)
+    monkeypatch.setenv("MILVUS_DATABASE", "legal_rag")
+    monkeypatch.setenv("MILVUS_TOKEN", "")
     monkeypatch.setattr(sys, "argv", ["legal-naive-rag-query", "Mức phạt vượt đèn đỏ?"])
 
     messages: list[str] = []

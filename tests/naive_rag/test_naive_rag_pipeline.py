@@ -9,13 +9,13 @@ import pytest
 from loguru import logger
 
 from legal_rag.chunker.models import Chunk
+from legal_rag.datastores.milvus import build_milvus_client
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.naive_rag import pipeline as pipeline_module
-from legal_rag.naive_rag.connection import build_milvus_client
 from legal_rag.naive_rag.indexer import index_chunks
 from legal_rag.naive_rag.pipeline import NaiveRAGPipeline
-from legal_rag.settings import NaiveRagSettings, Settings
+from legal_rag.settings import MilvusSettings, NaiveRagSettings, Settings
 
 
 class _FakeEncoderBackend:
@@ -85,10 +85,10 @@ def test_pipeline_run_retrieves_and_generates_an_answer(monkeypatch: pytest.Monk
     naive_rag_settings = NaiveRagSettings(
         embedding_profile="bge_m3",
         top_k=1,
-        milvus_uri=str(tmp_path / "naive_rag.db"),
         milvus_nlist=1,
         milvus_flush_after_insert=False,
     )
+    milvus_settings = MilvusSettings(uri=str(tmp_path / "naive_rag.db"), database="legal_rag")
     settings = Settings(
         llm_base_url="http://localhost:20128/v1",
         llm_api_key="test-key",
@@ -103,10 +103,10 @@ def test_pipeline_run_retrieves_and_generates_an_answer(monkeypatch: pytest.Monk
     monkeypatch.setattr(pipeline_module, "BamlGenerationClient", _FakeGenerationClient)
 
     seed_encoder = EmbeddingEncoder(_profile(), _FakeEncoderBackend())
-    seed_client = build_milvus_client(naive_rag_settings)
+    seed_client = build_milvus_client(milvus_settings)
     index_chunks((_chunk("chunk-1", "Phạt tiền từ 4 đến 6 triệu."),), seed_encoder, seed_client, naive_rag_settings)
 
-    pipeline = NaiveRAGPipeline(settings, naive_rag_settings)
+    pipeline = NaiveRAGPipeline(settings, milvus_settings, naive_rag_settings)
     result = pipeline.run("Mức phạt vượt đèn đỏ?")
 
     assert result.query == "Mức phạt vượt đèn đỏ?"
@@ -120,10 +120,10 @@ def test_pipeline_does_not_log_the_legal_query(monkeypatch: pytest.MonkeyPatch, 
     naive_rag_settings = NaiveRagSettings(
         embedding_profile="bge_m3",
         top_k=1,
-        milvus_uri=str(tmp_path / "naive_rag.db"),
         milvus_nlist=1,
         milvus_flush_after_insert=False,
     )
+    milvus_settings = MilvusSettings(uri=str(tmp_path / "naive_rag.db"), database="legal_rag")
     settings = Settings(
         llm_base_url="http://localhost:20128/v1",
         llm_api_key="test-key",
@@ -136,7 +136,7 @@ def test_pipeline_does_not_log_the_legal_query(monkeypatch: pytest.MonkeyPatch, 
         classmethod(lambda cls, profile: EmbeddingEncoder(_profile(), _FakeEncoderBackend())),
     )
     monkeypatch.setattr(pipeline_module, "BamlGenerationClient", _FakeGenerationClient)
-    seed_client = build_milvus_client(naive_rag_settings)
+    seed_client = build_milvus_client(milvus_settings)
     index_chunks(
         (_chunk("chunk-1", "Indexed legal text."),),
         EmbeddingEncoder(_profile(), _FakeEncoderBackend()),
@@ -147,7 +147,7 @@ def test_pipeline_does_not_log_the_legal_query(monkeypatch: pytest.MonkeyPatch, 
     sink_id = logger.add(lambda message: messages.append(str(message)), level="DEBUG")
     query = "sensitive legal query"
     try:
-        NaiveRAGPipeline(settings, naive_rag_settings).run(query)
+        NaiveRAGPipeline(settings, milvus_settings, naive_rag_settings).run(query)
     finally:
         logger.remove(sink_id)
 

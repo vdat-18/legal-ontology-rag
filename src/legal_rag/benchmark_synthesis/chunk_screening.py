@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from baml_py.logging import set_log_level
+from loguru import logger
 
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import ChunkScreeningItem, ChunkScreeningResult
@@ -81,6 +82,7 @@ def screen_chunks(
         items = [ChunkScreeningItem(chunk_id=chunk.chunk_id, text=chunk.text) for chunk in batch]
         for result in client.screen(items):
             results_by_chunk_id[result.chunk_id] = result
+        logger.debug("Screened {}/{} chunks", len(results_by_chunk_id), len(chunks))
 
     return tuple(
         ChunkScreeningRecord(

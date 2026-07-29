@@ -11,8 +11,8 @@ This repository provides two retrieval backends over the same versioned legal-do
 Copy `.env.example` to `.env`, replace every credential placeholder, and keep the file uncommitted. Services are grouped by Compose profile so each pipeline starts only its own dependencies:
 
 ```powershell
-docker compose --profile graphiti up -d neo4j
-docker compose --profile naive-rag up -d milvus
+docker compose --profile neo4j up -d neo4j
+docker compose --profile milvus up -d milvus
 docker compose --profile attu up -d attu
 ```
 
@@ -21,24 +21,28 @@ Compose waits for etcd and MinIO before starting Milvus, and waits for Milvus be
 The `app` image is a batch CLI image, not a daemon. Start the required backend first, then run a command explicitly:
 
 ```powershell
-docker compose --profile naive-rag run --rm app legal-naive-rag-index data/chunks
-docker compose --profile graphiti run --rm app legal-graphiti-index data/chunks --corpus-config data/corpus.json
+docker compose --profile milvus run --rm app legal-naive-rag-index data/chunks
+docker compose --profile neo4j run --rm app legal-graphiti-index data/chunks --corpus-config data/corpus.json
 ```
 
 The image contains LibreOffice for legacy DOC/XLS attachment conversion. Pass `--renderer-executable /usr/bin/soffice` to parsing commands that need it. Source code is built into the image so the generated BAML client is not hidden by a host bind mount; rebuild the image after code changes.
 
 ## Milvus data compatibility
 
+Milvus uses one shared database configured by `MILVUS_DATABASE`. Each retrieval method owns a separate collection inside that database, such as `naive_rag_chunks`, so methods share infrastructure without mixing incompatible schemas or embeddings.
+
+When upgrading an existing environment, rename `NAIVE_RAG_MILVUS_URI` to `MILVUS_URI`, `NAIVE_RAG_MILVUS_TOKEN` to `MILVUS_TOKEN`, and `NAIVE_RAG_MILVUS_DATABASE` to `MILVUS_DATABASE`. No automatic data migration runs: keep the previous database value to reuse existing data, or select `legal_rag` and rebuild the method-specific collections there.
+
 The naive index stores content, chunker, and embedding-model identity metadata with each chunk. Re-running the indexer resumes missing chunks after a partial run. It fails instead of mixing data when the collection schema, vector dimension, index metric, corpus IDs, chunk content, chunker configuration, or embedding revision differs.
 
-Collections created before this metadata was introduced are intentionally incompatible. Back them up, then either configure a new `NAIVE_RAG_MILVUS_DATABASE`/`NAIVE_RAG_MILVUS_COLLECTION_NAME` or explicitly drop and rebuild the old collection.
+Collections created before this metadata was introduced are intentionally incompatible. Back them up, then configure the shared `MILVUS_DATABASE` and a method-specific `NAIVE_RAG_MILVUS_COLLECTION_NAME`, or explicitly drop and rebuild the old collection.
 
 Server-backed indexing flushes inserts before final verification. Milvus Lite on Windows currently has a broken flush RPC; set `NAIVE_RAG_MILVUS_FLUSH_AFTER_INSERT=false` only for that local backend.
 
 ## Operations
 
 - Health: Neo4j exposes its browser health endpoint on port 7474; Milvus exposes health and Prometheus metrics on port 9091. Container logs use bounded rotation.
-- Secrets: Neo4j, MinIO, and Milvus have no source-controlled fallback credentials. Milvus authentication is enabled and clients use `NAIVE_RAG_MILVUS_TOKEN`.
+- Secrets: Neo4j, MinIO, and Milvus have no source-controlled fallback credentials. Milvus authentication is enabled and clients use `MILVUS_TOKEN`.
 - Backup: use Neo4j's supported dump/backup tooling for `neo4j_data`. Use a Milvus Backup release compatible with Milvus 2.4 for collections, or stop Milvus and snapshot `etcd_data`, `minio_data`, and `milvus_data` together. A partial snapshot of only one Milvus volume is not a valid backup.
 - Restore: restore into an isolated environment first, start the matching database version, run the integration smoke tests, and only then replace the active deployment. Keep the original volumes until the restored corpus row IDs and representative queries are verified.
 

@@ -10,7 +10,7 @@ from loguru import logger
 from legal_rag import graphiti_query_cli
 from legal_rag.graphiti_rag import pipeline as pipeline_module
 from legal_rag.graphiti_rag.pipeline import GraphitiRAGResult
-from legal_rag.settings import GraphitiSettings, Settings
+from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
 
 
 def test_query_run_preserves_unknown_corpus_and_closes_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -24,12 +24,14 @@ def test_query_run_preserves_unknown_corpus_and_closes_pipeline(monkeypatch: pyt
         def __init__(
             self,
             settings: object,
+            neo4j_settings: object,
             graphiti_settings: object,
             group_id: str,
             known_document_numbers: frozenset[str] | None,
         ) -> None:
             captured.update(
                 settings=settings,
+                neo4j_settings=neo4j_settings,
                 graphiti_settings=graphiti_settings,
                 group_id=group_id,
                 known_document_numbers=known_document_numbers,
@@ -45,6 +47,7 @@ def test_query_run_preserves_unknown_corpus_and_closes_pipeline(monkeypatch: pyt
             captured["closed"] = True
 
     monkeypatch.setattr(Settings, "from_environment", classmethod(lambda cls: object()))
+    monkeypatch.setattr(Neo4jSettings, "from_environment", classmethod(lambda cls: object()))
     monkeypatch.setattr(GraphitiSettings, "from_environment", classmethod(lambda cls: object()))
     monkeypatch.setattr(pipeline_module, "GraphitiRAGPipeline", FakePipeline)
     messages: list[str] = []

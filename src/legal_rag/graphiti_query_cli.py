@@ -42,9 +42,10 @@ async def _run(query: str, group_id: str, corpus_config_path: Path | None, max_f
     """Run the Graphiti RAG pipeline for one query and log the answer, sources, and any caveats."""
     from legal_rag.graphiti_rag.indexer import load_corpus_metadata
     from legal_rag.graphiti_rag.pipeline import GraphitiRAGPipeline
-    from legal_rag.settings import GraphitiSettings, Settings
+    from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
 
     settings = Settings.from_environment()
+    neo4j_settings = Neo4jSettings.from_environment()
     graphiti_settings = GraphitiSettings.from_environment()
 
     known_document_numbers: frozenset[str] | None = None
@@ -52,7 +53,13 @@ async def _run(query: str, group_id: str, corpus_config_path: Path | None, max_f
         corpus_metadata = load_corpus_metadata(corpus_config_path)
         known_document_numbers = frozenset(document.document_number for document in corpus_metadata.documents.values())
 
-    pipeline = GraphitiRAGPipeline(settings, graphiti_settings, group_id, known_document_numbers=known_document_numbers)
+    pipeline = GraphitiRAGPipeline(
+        settings,
+        neo4j_settings,
+        graphiti_settings,
+        group_id,
+        known_document_numbers=known_document_numbers,
+    )
     try:
         result = await pipeline.run(query, max_facts=max_facts)
     finally:

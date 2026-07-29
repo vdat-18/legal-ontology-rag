@@ -14,7 +14,7 @@ from legal_rag.graphiti_rag.provenance import BamlDocumentCitationClient, find_u
 from legal_rag.graphiti_rag.query_rewriter import BamlQueryRewriteClient
 from legal_rag.graphiti_rag.retriever import RetrievedFact, search_facts
 from legal_rag.naive_rag.generator import BamlGenerationClient
-from legal_rag.settings import GraphitiSettings, Settings
+from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +39,7 @@ class GraphitiRAGPipeline:
     def __init__(
         self,
         settings: Settings,
+        neo4j_settings: Neo4jSettings,
         graphiti_settings: GraphitiSettings,
         group_id: str,
         known_document_numbers: frozenset[str] | None = None,
@@ -47,7 +48,8 @@ class GraphitiRAGPipeline:
 
         Args:
             settings: Application LLM connection settings.
-            graphiti_settings: Neo4j connection, embedding profile, and retrieval settings.
+            neo4j_settings: Shared Neo4j connection settings.
+            graphiti_settings: Graphiti embedding profile and retrieval settings.
             group_id: The Graphiti group to search within.
             known_document_numbers: Document numbers actually indexed into this group, or ``None`` when
                 corpus coverage is unknown and citation coverage checking must be skipped.
@@ -56,7 +58,7 @@ class GraphitiRAGPipeline:
         self._group_id = group_id
         self._known_document_numbers = known_document_numbers
         profile = load_configured_embedding_profile(graphiti_settings.embedding_profile)
-        self._graphiti_client = build_graphiti(settings, graphiti_settings, profile)
+        self._graphiti_client = build_graphiti(settings, neo4j_settings, graphiti_settings, profile)
         self._generation_client = BamlGenerationClient(settings, graphiti_settings)
         self._query_rewrite_client = BamlQueryRewriteClient(settings, graphiti_settings)
         self._citation_client = BamlDocumentCitationClient(settings, graphiti_settings)

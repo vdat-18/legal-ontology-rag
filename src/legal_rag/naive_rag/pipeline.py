@@ -6,12 +6,12 @@ from dataclasses import dataclass
 
 from loguru import logger
 
+from legal_rag.datastores.milvus import build_milvus_client
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.embedding.profiles import load_configured_embedding_profile
-from legal_rag.naive_rag.connection import build_milvus_client
 from legal_rag.naive_rag.generator import BamlGenerationClient, generate_answer
 from legal_rag.naive_rag.retriever import RetrievedChunk, Retriever
-from legal_rag.settings import NaiveRagSettings, Settings
+from legal_rag.settings import MilvusSettings, NaiveRagSettings, Settings
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,12 +26,17 @@ class RAGResult:
 class NaiveRAGPipeline:
     """End-to-end retrieve-then-generate pipeline."""
 
-    def __init__(self, settings: Settings, naive_rag_settings: NaiveRagSettings) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        milvus_settings: MilvusSettings,
+        naive_rag_settings: NaiveRagSettings,
+    ) -> None:
         """Initialize the pipeline from application and naive RAG settings."""
         self.settings = naive_rag_settings
         profile = load_configured_embedding_profile(naive_rag_settings.embedding_profile)
         encoder = EmbeddingEncoder.from_profile(profile)
-        client = build_milvus_client(naive_rag_settings)
+        client = build_milvus_client(milvus_settings)
         self._retriever = Retriever(encoder, client, naive_rag_settings)
         self._generation_client = BamlGenerationClient(settings, naive_rag_settings)
         logger.info("NaiveRAGPipeline initialized")

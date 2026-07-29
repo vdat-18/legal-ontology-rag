@@ -44,6 +44,58 @@ class Settings:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class MilvusSettings:
+    """Shared Milvus connection and database settings."""
+
+    uri: str
+    database: str
+    token: str | None = field(default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        """Reject empty Milvus connection identifiers."""
+        for name, value in {"uri": self.uri, "database": self.database}.items():
+            if not value:
+                msg = f"Milvus {name} must not be empty"
+                raise ValueError(msg)
+
+    @classmethod
+    def from_environment(cls, environment: Mapping[str, str] | None = None) -> MilvusSettings:
+        """Load shared Milvus settings from process environment variables."""
+        values = os.environ if environment is None else environment
+        return cls(
+            uri=values["MILVUS_URI"].strip(),
+            database=values["MILVUS_DATABASE"].strip(),
+            token=values.get("MILVUS_TOKEN", "").strip() or None,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class Neo4jSettings:
+    """Shared Neo4j connection settings."""
+
+    uri: str
+    user: str
+    password: str = field(repr=False)
+
+    def __post_init__(self) -> None:
+        """Reject empty Neo4j connection values."""
+        for name, value in {"uri": self.uri, "user": self.user, "password": self.password}.items():
+            if not value:
+                msg = f"Neo4j {name} must not be empty"
+                raise ValueError(msg)
+
+    @classmethod
+    def from_environment(cls, environment: Mapping[str, str] | None = None) -> Neo4jSettings:
+        """Load shared Neo4j settings from process environment variables."""
+        values = os.environ if environment is None else environment
+        return cls(
+            uri=values["NEO4J_URI"].strip(),
+            user=values["NEO4J_USER"].strip(),
+            password=values["NEO4J_PASSWORD"].strip(),
+        )
+
+
 _CHUNKER_TUNABLES: dict[str, Callable[[str], int]] = {
     "max_tokens": int,
     "split_overlap_tokens": int,
@@ -126,7 +178,6 @@ def _parse_boolean(value: str) -> bool:
 
 _NAIVE_RAG_TUNABLES: dict[str, Callable[[str], str | bool | float | int]] = {
     "top_k": int,
-    "milvus_database": str.strip,
     "milvus_collection_name": str.strip,
     "milvus_index_type": str.strip,
     "milvus_metric_type": str.strip,
@@ -145,10 +196,7 @@ class NaiveRagSettings:
     """Retrieval, indexing, and generation settings for the naive RAG baseline."""
 
     embedding_profile: str
-    milvus_uri: str
-    milvus_token: str | None = field(default=None, repr=False)
     top_k: int = 10
-    milvus_database: str = "naive_rag_b0"
     milvus_collection_name: str = "naive_rag_chunks"
     milvus_index_type: str = "IVF_FLAT"
     milvus_metric_type: str = "COSINE"
@@ -164,8 +212,6 @@ class NaiveRagSettings:
         """Reject invalid external-service configuration before connecting to Milvus."""
         required_strings = {
             "embedding_profile": self.embedding_profile,
-            "milvus_uri": self.milvus_uri,
-            "milvus_database": self.milvus_database,
             "milvus_collection_name": self.milvus_collection_name,
             "milvus_index_type": self.milvus_index_type,
             "milvus_metric_type": self.milvus_metric_type,
@@ -212,8 +258,6 @@ class NaiveRagSettings:
         return cls(
             **overrides,
             embedding_profile=values["EMBEDDING_PROFILE"].strip(),
-            milvus_uri=values["NAIVE_RAG_MILVUS_URI"].strip(),
-            milvus_token=values.get("NAIVE_RAG_MILVUS_TOKEN", "").strip() or None,
         )
 
 
@@ -233,12 +277,9 @@ _GRAPHITI_TUNABLES: dict[str, Callable[[str], int | float]] = {
 
 @dataclass(frozen=True, slots=True)
 class GraphitiSettings:
-    """Embedding profile selection and Neo4j connection settings for the Graphiti knowledge graph."""
+    """Graphiti retrieval, extraction, and generation settings."""
 
     embedding_profile: str
-    neo4j_uri: str
-    neo4j_user: str
-    neo4j_password: str = field(repr=False)
     search_num_results: int = 30
     max_context_facts: int = 10
     effective_date_window_token_budget: int = 40_000
@@ -292,7 +333,4 @@ class GraphitiSettings:
         return cls(
             **overrides,
             embedding_profile=values["EMBEDDING_PROFILE"].strip(),
-            neo4j_uri=values["NEO4J_URI"].strip(),
-            neo4j_user=values["NEO4J_USER"].strip(),
-            neo4j_password=values["NEO4J_PASSWORD"].strip(),
         )

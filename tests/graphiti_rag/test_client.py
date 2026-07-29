@@ -6,7 +6,7 @@ import pytest
 
 from legal_rag.graphiti_rag import client as client_module
 from legal_rag.graphiti_rag.client import build_graphiti, load_llm_api_keys
-from legal_rag.settings import GraphitiSettings, Settings
+from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
 
 
 def test_build_graphiti_uses_the_generic_openai_compatible_client(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -32,15 +32,17 @@ def test_build_graphiti_uses_the_generic_openai_compatible_client(monkeypatch: p
     monkeypatch.setattr(client_module, "OpenAIRerankerClient", fake_reranker)
     monkeypatch.setattr(client_module, "Graphiti", fake_graphiti)
     settings = Settings("https://example.test/v1", "test-key", "gpt-5.4", 60)
-    graphiti_settings = GraphitiSettings(
-        "qwen3_0_6b",
-        "bolt://localhost:7687",
-        "neo4j",
-        "password",
-    )
+    neo4j_settings = Neo4jSettings("bolt://localhost:7687", "neo4j", "example-password")
+    graphiti_settings = GraphitiSettings("qwen3_0_6b")
     embedder = object()
 
-    graphiti = build_graphiti(settings, graphiti_settings, object(), embedder=embedder)  # type: ignore[arg-type]
+    graphiti = build_graphiti(  # type: ignore[arg-type]
+        settings,
+        neo4j_settings,
+        graphiti_settings,
+        object(),
+        embedder=embedder,
+    )
 
     assert captured["openai"] == {
         "api_key": "test-key",
@@ -52,6 +54,8 @@ def test_build_graphiti_uses_the_generic_openai_compatible_client(monkeypatch: p
     assert llm_arguments["config"].model == "gpt-5.4"
     assert llm_arguments["structured_output_mode"] == "json_object"
     assert graphiti["embedder"] is embedder
+    assert graphiti["uri"] == neo4j_settings.uri
+    assert graphiti["user"] == neo4j_settings.user
 
 
 def test_load_llm_api_keys_returns_only_the_primary_key_when_no_extras_are_set() -> None:

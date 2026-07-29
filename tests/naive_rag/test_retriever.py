@@ -70,12 +70,11 @@ def _chunk(chunk_id: str, text: str) -> Chunk:
     )
 
 
-def _settings(tmp_path: Path) -> NaiveRagSettings:
-    """Build naive RAG settings pointed at a temporary Milvus Lite database."""
+def _settings() -> NaiveRagSettings:
+    """Build naive RAG retrieval settings."""
     return NaiveRagSettings(
         embedding_profile="test-profile",
         top_k=2,
-        milvus_uri=str(tmp_path / "naive_rag.db"),
         milvus_nlist=1,
         milvus_flush_after_insert=False,
     )
@@ -85,8 +84,8 @@ def test_retrieve_returns_top_k_chunks_with_populated_fields(tmp_path: Path) -> 
     """The retriever returns the requested number of chunks with populated fields."""
     chunks = (_chunk("chunk-1", "Phạt tiền từ 4 đến 6 triệu."), _chunk("chunk-2", "Phạt tiền từ 1 đến 2 triệu."))
     encoder = EmbeddingEncoder(_profile(), _FakeEncoderBackend())
-    settings = _settings(tmp_path)
-    client = MilvusClient(uri=settings.milvus_uri)
+    settings = _settings()
+    client = MilvusClient(uri=str(tmp_path / "naive_rag.db"))
     index_chunks(chunks, encoder, client, settings)
     retriever = Retriever(encoder, client, settings)
 
@@ -102,8 +101,8 @@ def test_retrieve_encodes_the_query_with_query_side_instruction(tmp_path: Path) 
     chunks = (_chunk("chunk-1", "Phạt tiền từ 4 đến 6 triệu."),)
     backend = _FakeEncoderBackend()
     encoder = EmbeddingEncoder(_profile(), backend)
-    settings = _settings(tmp_path)
-    client = MilvusClient(uri=settings.milvus_uri)
+    settings = _settings()
+    client = MilvusClient(uri=str(tmp_path / "naive_rag.db"))
     index_chunks(chunks, encoder, client, settings)
     retriever = Retriever(encoder, client, settings)
     backend.calls.clear()
