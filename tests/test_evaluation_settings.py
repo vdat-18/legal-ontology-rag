@@ -22,7 +22,12 @@ def test_every_declared_tunable_is_overridable_from_the_environment() -> None:
 
     for name, converter in _EVALUATION_TUNABLES.items():
         default = getattr(defaults, name)
-        overridden = converter(str(default + 1))
+        if name.endswith("_threshold"):
+            overridden = converter(str(default / 2))
+        elif name.endswith("_temperature"):
+            overridden = converter("0.5")
+        else:
+            overridden = converter(str(default + 1))
         settings = EvaluationSettings.from_environment({**base, f"GROUNDTRUTH_{name.upper()}": str(overridden)})
 
         assert getattr(settings, name) == overridden, name

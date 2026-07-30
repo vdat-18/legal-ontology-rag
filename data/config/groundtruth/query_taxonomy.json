@@ -1,17 +1,52 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "2.0.0",
   "query_types": [
-    { "id": "penalty_for_conduct", "description_vi": "Mức phạt của một hành vi" },
-    { "id": "penalty_and_points", "description_vi": "Phạt tiền và trừ điểm hoặc tước giấy phép" },
-    { "id": "remedial_measure", "description_vi": "Biện pháp khắc phục hậu quả" },
-    { "id": "subject_and_vehicle", "description_vi": "Đối tượng và loại phương tiện áp dụng" },
-    { "id": "enforcement_authority", "description_vi": "Thẩm quyền xử phạt" },
-    { "id": "procedure", "description_vi": "Trình tự xử lý vi phạm" },
-    { "id": "comparison", "description_vi": "So sánh hai trường hợp gần giống" },
-    { "id": "aggregation", "description_vi": "Tổng hợp nhiều hành vi trong một tình huống" },
-    { "id": "temporal_penalty", "description_vi": "Áp dụng quy định tại một thời điểm" },
-    { "id": "before_after_amendment", "description_vi": "Quy định trước và sau khi sửa đổi" },
-    { "id": "insufficient_evidence", "description_vi": "Không đủ căn cứ để kết luận" },
-    { "id": "out_of_scope", "description_vi": "Câu hỏi ngoài phạm vi xử phạt giao thông đường bộ" }
+    {
+      "id": "penalty_for_conduct",
+      "description_vi": "Mức phạt của một hành vi",
+      "bundle_kinds": ["single_hop", "synthesis", "multi_hop", "temporal"],
+      "required_any_fields": ["monetary_penalty", "additional_penalties"]
+    },
+    {
+      "id": "penalty_and_points",
+      "description_vi": "Phạt tiền và trừ điểm hoặc tước giấy phép",
+      "bundle_kinds": ["single_hop", "synthesis", "multi_hop", "temporal"],
+      "required_all_fields": ["monetary_penalty"],
+      "required_any_fields": ["license_points_deducted", "additional_penalties"]
+    },
+    {
+      "id": "remedial_measure",
+      "description_vi": "Biện pháp khắc phục hậu quả",
+      "bundle_kinds": ["single_hop", "synthesis", "multi_hop"],
+      "required_any_fields": ["remedial_measures"]
+    },
+    {
+      "id": "subject_and_vehicle",
+      "description_vi": "Đối tượng và loại phương tiện áp dụng",
+      "bundle_kinds": ["single_hop", "synthesis", "multi_hop", "temporal"]
+    },
+    {
+      "id": "comparison",
+      "description_vi": "So sánh hai trường hợp gần giống",
+      "bundle_kinds": ["synthesis", "multi_hop", "temporal"],
+      "minimum_facts": 2
+    },
+    {
+      "id": "aggregation",
+      "description_vi": "Tổng hợp nhiều hành vi trong một tình huống",
+      "bundle_kinds": ["synthesis", "multi_hop"],
+      "minimum_facts": 2
+    },
+    {
+      "id": "temporal_penalty",
+      "description_vi": "Áp dụng quy định tại một thời điểm",
+      "bundle_kinds": ["temporal"]
+    },
+    {
+      "id": "before_after_amendment",
+      "description_vi": "Quy định trước và sau khi sửa đổi",
+      "bundle_kinds": ["temporal"],
+      "minimum_facts": 2
+    }
   ]
 }

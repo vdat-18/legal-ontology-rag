@@ -21,7 +21,7 @@ def main() -> None:
     from dotenv import find_dotenv, load_dotenv
 
     from legal_rag.benchmark_synthesis.document_metadata import BamlDocumentMetadataClient, resolve_document_metadata
-    from legal_rag.benchmark_synthesis.writer import write_document_metadata
+    from legal_rag.benchmark_synthesis.writer import read_document_metadata, write_document_metadata
     from legal_rag.chunker.writer import read_chunks
     from legal_rag.settings import EvaluationSettings, Settings
 
@@ -32,9 +32,14 @@ def main() -> None:
     settings = Settings.from_environment()
     evaluation_settings = EvaluationSettings.from_environment()
 
+    if arguments.metadata_output_path.exists():
+        record = read_document_metadata(arguments.metadata_output_path)
+        logger.info("Document metadata already complete for {}, skipping LLM call", record.document_number)
+        return
+
     chunks = read_chunks(arguments.chunks_path)
     client = BamlDocumentMetadataClient(settings, evaluation_settings)
-    record = resolve_document_metadata(chunks, client)
+    record = resolve_document_metadata(chunks, client, max_retries=evaluation_settings.llm_max_retries)
     write_document_metadata(arguments.metadata_output_path, record)
     logger.info(
         "Resolved document {} (valid_from={}, valid_to={}), wrote {}",

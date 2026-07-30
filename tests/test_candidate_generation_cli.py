@@ -17,7 +17,12 @@ from legal_rag.baml_client.types import VerificationResult as BamlVerificationRe
 from legal_rag.benchmark_synthesis import candidate_generation, verification
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
-from legal_rag.benchmark_synthesis.writer import read_candidates, write_legal_facts, write_scenarios
+from legal_rag.benchmark_synthesis.writer import (
+    read_candidate_progress,
+    read_candidates,
+    write_legal_facts,
+    write_scenarios,
+)
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
 
@@ -113,9 +118,13 @@ class _FakeGenerationClient:
         """Always accept the surface phrasing immediately."""
         return BamlSurfaceCritique(passes=True, feedback="", rewritten_query_vi=args[0])
 
-    def evolve(self, query_vi: str, reference_answer_vi: str, operation: EvolutionOperation) -> BamlEvolvedCandidate:
+    def evolve(
+        self, query_vi: str, reference_answer_vi: str, reasoning_vi: str, operation: EvolutionOperation
+    ) -> BamlEvolvedCandidate:
         """Return the query and answer unchanged, tagged by operation."""
-        return BamlEvolvedCandidate(query_vi=query_vi, reference_answer_vi=reference_answer_vi)
+        return BamlEvolvedCandidate(
+            query_vi=query_vi, reference_answer_vi=reference_answer_vi, reasoning_vi=reasoning_vi
+        )
 
 
 class _FakeVerificationClient:
@@ -133,6 +142,7 @@ class _FakeVerificationClient:
             is_answer_grounded=True,
             is_domain_relevant=True,
             is_temporal_correct=True,
+            uses_required_bridge=True,
             necessary_reasoning_hops=1,
             observed_query_type="penalty_for_conduct",
             observed_answerability=Answerability.Answerable,
@@ -226,3 +236,69 @@ def test_candidate_generation_cli_generates_multiple_attempts_per_scenario(
 
     records = read_candidates(candidates_path)
     assert len(records) == 3
+
+
+def test_candidate_generation_cli_resumes_after_failed_evolution_without_repeating_prior_llm_stages(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Generation and critique checkpoints survive an exhausted evolution task."""
+    facts_path = tmp_path / "legal_facts.jsonl"
+    scenarios_path = tmp_path / "scenarios.jsonl"
+    chunks_dir = tmp_path / "chunks"
+    chunks_dir.mkdir()
+    candidates_path = tmp_path / "single_turn.jsonl"
+    progress_path = tmp_path / "single_turn.progress.jsonl"
+    write_legal_facts(facts_path, [_fact()])
+    write_scenarios(scenarios_path, [_scenario()])
+    write_chunks(chunks_dir / "168_2024_ND-CP.chunks.jsonl", [_chunk()])
+
+    class _EvolutionFailsClient(_FakeGenerationClient):
+        """Complete generation and critique, then exhaust evolution retries."""
+
+        def evolve(
+            self, query_vi: str, reference_answer_vi: str, reasoning_vi: str, operation: EvolutionOperation
+        ) -> BamlEvolvedCandidate:
+            msg = "evolution unavailable"
+            raise TimeoutError(msg)
+
+    _configure_cli(monkeypatch, facts_path, scenarios_path, chunks_dir, candidates_path, candidates_per_scenario=1)
+    monkeypatch.setattr(candidate_generation, "BamlCandidateGenerationClient", _EvolutionFailsClient)
+
+    with pytest.raises(RuntimeError, match="candidate generation left 1 incomplete"):
+        candidate_generation_cli.main()
+
+    progress = read_candidate_progress(progress_path)
+    assert len(progress) == 1
+    assert progress[0].completed is False
+    assert progress[0].draft.surface_refined is True
+    assert progress[0].draft.evolutions == ()
+
+    evolve_calls: list[EvolutionOperation] = []
+
+    class _ResumeAtEvolutionClient(_FakeGenerationClient):
+        """Fail if completed stages repeat and finish the remaining evolutions."""
+
+        def generate(self, *args: object, **kwargs: object) -> BamlGeneratedCandidate:
+            msg = "generation must be resumed from checkpoint"
+            raise AssertionError(msg)
+
+        def critique_surface(self, *args: object, **kwargs: object) -> BamlSurfaceCritique:
+            msg = "critique must be resumed from checkpoint"
+            raise AssertionError(msg)
+
+        def evolve(
+            self, query_vi: str, reference_answer_vi: str, reasoning_vi: str, operation: EvolutionOperation
+        ) -> BamlEvolvedCandidate:
+            evolve_calls.append(operation)
+            return BamlEvolvedCandidate(
+                query_vi=query_vi,
+                reference_answer_vi=reference_answer_vi,
+                reasoning_vi=reasoning_vi,
+            )
+
+    monkeypatch.setattr(candidate_generation, "BamlCandidateGenerationClient", _ResumeAtEvolutionClient)
+    candidate_generation_cli.main()
+
+    assert evolve_calls == [EvolutionOperation.Concretizing, EvolutionOperation.Reasoning]
+    assert read_candidate_progress(progress_path)[0].completed is True
+    assert len(read_candidates(candidates_path)) == 1

@@ -54,7 +54,12 @@ def main() -> None:
 
     if chunks_to_screen:
         screening_client = BamlChunkScreeningClient(settings, evaluation_settings)
-        screen_chunks(chunks_to_screen, screening_client, on_batch_screened=_persist_batch)
+        screen_chunks(
+            chunks_to_screen,
+            screening_client,
+            max_retries=evaluation_settings.llm_max_retries,
+            on_batch_screened=_persist_batch,
+        )
 
     records = tuple(records_by_chunk_id[chunk.chunk_id] for chunk in chunks if chunk.chunk_id in records_by_chunk_id)
     write_chunk_screening(arguments.screening_output_path, records)

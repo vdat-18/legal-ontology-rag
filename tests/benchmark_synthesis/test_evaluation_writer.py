@@ -254,6 +254,14 @@ def test_candidates_round_trip_with_full_verification(tmp_path: Path) -> None:
     assert records == (record,)
     assert records[0].review_status == "automatically_verified"
 
+    payload = record.to_dict()
+    assert payload["requested_query_type"] == "penalty_for_conduct"
+    assert payload["requested_answerability"] == "answerable"
+    assert payload["requested_reasoning_hops"] == 1
+    assert payload["query_type"] == record.verification.observed_query_type
+    assert payload["answerability"] == record.verification.observed_answerability
+    assert payload["reasoning_hops"] == record.verification.necessary_reasoning_hops
+
 
 def test_candidates_round_trip_rejected_by_binding_gate_has_no_verification(tmp_path: Path) -> None:
     """A candidate rejected at gate 1 never reaches verification; None survives the round trip."""

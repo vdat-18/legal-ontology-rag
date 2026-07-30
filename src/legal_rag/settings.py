@@ -130,6 +130,18 @@ _EVALUATION_TUNABLES: dict[str, Callable[[str], float | int]] = {
     "span_match_threshold": float,
     "bundle_overlap_threshold": float,
     "max_quality_retries": int,
+    "llm_max_retries": int,
+    "chunk_screening_max_output_tokens": int,
+    "chunk_screening_temperature": float,
+    "document_metadata_max_output_tokens": int,
+    "document_metadata_temperature": float,
+    "fact_extraction_max_output_tokens": int,
+    "fact_extraction_temperature": float,
+    "candidate_generation_max_output_tokens": int,
+    "candidate_generation_temperature": float,
+    "verification_max_output_tokens": int,
+    "verification_temperature": float,
+    "max_response_bytes": int,
 }
 
 
@@ -141,6 +153,7 @@ class EvaluationSettings:
     span_match_threshold: float = 0.85
     bundle_overlap_threshold: float = 0.5
     max_quality_retries: int = 2
+    llm_max_retries: int = 2
     chunk_screening_max_output_tokens: int = 2048
     chunk_screening_temperature: float = 0.0
     document_metadata_max_output_tokens: int = 1024
@@ -152,6 +165,51 @@ class EvaluationSettings:
     verification_max_output_tokens: int = 1024
     verification_temperature: float = 0.0
     max_response_bytes: int = 1_048_576
+
+    def __post_init__(self) -> None:
+        """Reject invalid synthesis thresholds and LLM bounds before work starts."""
+        if not self.embedding_profile:
+            msg = "embedding_profile must not be empty"
+            raise ValueError(msg)
+        unit_interval_values = {
+            "span_match_threshold": self.span_match_threshold,
+            "bundle_overlap_threshold": self.bundle_overlap_threshold,
+        }
+        for name, value in unit_interval_values.items():
+            if not isfinite(value) or not 0 <= value <= 1:
+                msg = f"{name} must be between 0 and 1, got {value}"
+                raise ValueError(msg)
+        non_negative_values = {
+            "max_quality_retries": self.max_quality_retries,
+            "llm_max_retries": self.llm_max_retries,
+        }
+        for name, value in non_negative_values.items():
+            if value < 0:
+                msg = f"{name} must not be negative, got {value}"
+                raise ValueError(msg)
+        positive_values = {
+            "chunk_screening_max_output_tokens": self.chunk_screening_max_output_tokens,
+            "document_metadata_max_output_tokens": self.document_metadata_max_output_tokens,
+            "fact_extraction_max_output_tokens": self.fact_extraction_max_output_tokens,
+            "candidate_generation_max_output_tokens": self.candidate_generation_max_output_tokens,
+            "verification_max_output_tokens": self.verification_max_output_tokens,
+            "max_response_bytes": self.max_response_bytes,
+        }
+        for name, value in positive_values.items():
+            if value < 1:
+                msg = f"{name} must be positive, got {value}"
+                raise ValueError(msg)
+        temperatures = {
+            "chunk_screening_temperature": self.chunk_screening_temperature,
+            "document_metadata_temperature": self.document_metadata_temperature,
+            "fact_extraction_temperature": self.fact_extraction_temperature,
+            "candidate_generation_temperature": self.candidate_generation_temperature,
+            "verification_temperature": self.verification_temperature,
+        }
+        for name, value in temperatures.items():
+            if not isfinite(value) or not 0 <= value <= _MAX_LLM_TEMPERATURE:
+                msg = f"{name} must be between 0 and {_MAX_LLM_TEMPERATURE}, got {value}"
+                raise ValueError(msg)
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] | None = None) -> EvaluationSettings:

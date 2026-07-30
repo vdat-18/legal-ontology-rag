@@ -12,6 +12,7 @@ class VerificationResult {
   is_answer_grounded bool @description(#"Mọi nội dung trong đáp án có được evidence hỗ trợ, không bỏ sót chế tài."#)
   is_domain_relevant bool @description(#"Câu hỏi có thuộc phạm vi xử phạt vi phạm giao thông đường bộ tại Việt Nam."#)
   is_temporal_correct bool @description(#"as_of_date, nếu có, nằm trong khoảng hiệu lực của mọi fact liên quan."#)
+  uses_required_bridge bool @description(#"Câu hỏi và đáp án dùng bridge được cung cấp; true nếu bridge rỗng."#)
   necessary_reasoning_hops int @description(#"
     Số fact thực sự cần thiết để trả lời, sau khi thử bỏ từng fact xem đáp án
     còn đủ căn cứ không. Có thể khác số fact đã khai trong scenario.
@@ -29,6 +30,7 @@ function VerifyCandidate(
   claims: ClaimReference[],
   as_of_date: string?,
   declared_reasoning_hops: int,
+  bridge: string[],
   query_type_catalog: string[]
 ) -> VerificationResult {
   client OpenAICompatibleProvider
@@ -60,14 +62,18 @@ function VerifyCandidate(
        nhiêu tiền", một mình fact_1 đã đủ căn cứ trả lời — trả về
        necessary_reasoning_hops=1, không phải 2, dù bundle được chọn có 2
        fact.
-    8. observed_query_type: chọn đúng một giá trị trong danh sách sau, dựa
+    8. uses_required_bridge: nếu bridge dưới đây không rỗng, câu hỏi và đáp án
+       có thực sự dùng cầu nối đó để kết hợp các fact không. Nếu bridge rỗng,
+       trả về true.
+    9. observed_query_type: chọn đúng một giá trị trong danh sách sau, dựa
        theo nội dung câu hỏi thực tế, không dựa theo nhãn đã gán trước:
        {{ query_type_catalog }}
-    9. observed_answerability: đánh giá độc lập câu hỏi này answerable,
+    10. observed_answerability: đánh giá độc lập câu hỏi này answerable,
        partially answerable, underspecified, hay unanswerable dựa trên
        evidence thực có, không dựa theo nhãn đã gán trước.
 
     {% if as_of_date %}Thời điểm áp dụng: {{ as_of_date }}{% endif %}
+    Bridge bắt buộc: {{ bridge }}
 
     Câu hỏi:
     {{ query_vi }}

@@ -111,7 +111,13 @@ def main() -> None:
 
     if remaining_pairs:
         relation_client = BamlEvidenceRelationClient(settings, evaluation_settings)
-        confirm_evidence_relations(facts, remaining_pairs, relation_client, on_pair_confirmed=_persist_pair)
+        confirm_evidence_relations(
+            facts,
+            remaining_pairs,
+            relation_client,
+            max_retries=evaluation_settings.llm_max_retries,
+            on_pair_confirmed=_persist_pair,
+        )
 
     relations = tuple(relations_by_id.values())
     write_evidence_relations(arguments.relations_output_path, relations)

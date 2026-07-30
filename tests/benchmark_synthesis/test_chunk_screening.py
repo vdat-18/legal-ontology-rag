@@ -158,9 +158,8 @@ def test_screen_chunks_skips_a_batch_that_fails_every_attempt() -> None:
                 ChunkScreeningResult(chunk_id=item.chunk_id, has_penalty_content=True, reason="ok") for item in batch
             ]
 
-    records = screen_chunks([failing, ok_one, ok_two], _FailsOnlyForOneChunkClient(), batch_size=1)
-
-    assert [record.chunk_id for record in records] == ["chunk-ok-1", "chunk-ok-2"]
+    with pytest.raises(RuntimeError, match="chunk screening left 1 incomplete"):
+        screen_chunks([failing, ok_one, ok_two], _FailsOnlyForOneChunkClient(), batch_size=1)
 
 
 def test_screen_chunks_respects_max_retries_override() -> None:
@@ -175,10 +174,10 @@ def test_screen_chunks_respects_max_retries_override() -> None:
             msg = "provider timed out"
             raise TimeoutError(msg)
 
-    records = screen_chunks([chunk], _AlwaysFailsClient(), max_retries=0)
+    with pytest.raises(RuntimeError, match="chunk screening left 1 incomplete"):
+        screen_chunks([chunk], _AlwaysFailsClient(), max_retries=0)
 
     assert attempts == 1
-    assert records == ()
 
 
 def _settings() -> Settings:

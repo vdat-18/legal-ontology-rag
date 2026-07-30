@@ -13,6 +13,7 @@ from legal_rag.benchmark_synthesis.document_metadata import (
     BamlDocumentMetadataClient,
     resolve_document_metadata,
 )
+from legal_rag.benchmark_synthesis.llm_execution import LlmTaskExhaustedError
 from legal_rag.chunker.models import Chunk, RecordScope
 from legal_rag.settings import EvaluationSettings, Settings
 
@@ -112,8 +113,10 @@ def test_resolve_document_metadata_raises_on_a_malformed_date() -> None:
     chunks = [_chunk("c1", "Số: 168/2024/NĐ-CP")]
     client = _RecordingMetadataClient(_baml_metadata(valid_from="ngày 01 tháng 01 năm 2025"))
 
-    with pytest.raises(ValueError, match="Invalid isoformat string"):
+    with pytest.raises(LlmTaskExhaustedError, match="document_metadata:source-hash") as exc_info:
         resolve_document_metadata(chunks, client)
+
+    assert isinstance(exc_info.value.__cause__, ValueError)
 
 
 def test_baml_document_metadata_client_parses_typed_result(monkeypatch: pytest.MonkeyPatch) -> None:

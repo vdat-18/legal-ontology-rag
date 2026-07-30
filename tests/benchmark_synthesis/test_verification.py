@@ -69,6 +69,7 @@ def _verification_result(**overrides: object) -> BamlVerificationResult:
         "is_answer_grounded": True,
         "is_domain_relevant": True,
         "is_temporal_correct": True,
+        "uses_required_bridge": True,
         "necessary_reasoning_hops": 1,
         "observed_query_type": "penalty_for_conduct",
         "observed_answerability": Answerability.Answerable,
@@ -142,6 +143,16 @@ def test_verify_candidate_carries_necessary_reasoning_hops_unmodified() -> None:
     assert result.necessary_reasoning_hops == 1
 
 
+def test_verify_candidate_fails_when_observed_hops_do_not_match_scenario() -> None:
+    """A candidate fails when its declared multi-hop difficulty is not actually necessary."""
+    client = _FakeVerificationClient(_verification_result(necessary_reasoning_hops=2))
+
+    result = verify_candidate(_draft(), {"fact-1": _fact()}, ["penalty_for_conduct"], client, verifier_model="m")
+
+    assert result.passed is False
+    assert result.necessary_reasoning_hops == 2
+
+
 def test_verify_candidate_carries_observed_query_type_from_catalog() -> None:
     """The relabeled query_type is the verifier's own choice, not the declared label."""
     client = _FakeVerificationClient(_verification_result(observed_query_type="out_of_scope"))
@@ -182,6 +193,7 @@ def test_baml_verification_client_parses_typed_result(monkeypatch: pytest.Monkey
         lambda *args, **kwargs: (
             '{"is_standalone":true,"is_specific":true,"is_question_grounded":true,'
             '"is_answer_grounded":true,"is_domain_relevant":true,"is_temporal_correct":true,'
+            '"uses_required_bridge":true,'
             '"necessary_reasoning_hops":1,"observed_query_type":"penalty_for_conduct",'
             '"observed_answerability":"Answerable","reasoning":"ok"}'
         ),
@@ -203,7 +215,7 @@ def test_baml_verification_client_parses_typed_result(monkeypatch: pytest.Monkey
     )
     claim = BamlClaimReference(claim="c", fact_id="fact-1", evidence_chunk_ids=["chunk-1"])
 
-    result = client.verify("q", "a", "r", [fact_context], [claim], None, 1, ["penalty_for_conduct"])
+    result = client.verify("q", "a", "r", [fact_context], [claim], None, 1, [], ["penalty_for_conduct"])
 
     assert result.is_standalone is True
     assert result.observed_answerability == Answerability.Answerable

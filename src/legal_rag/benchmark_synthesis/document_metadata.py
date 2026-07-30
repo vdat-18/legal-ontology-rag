@@ -12,13 +12,16 @@ from baml_py.logging import set_log_level
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import DocumentMetadata as BamlDocumentMetadata
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
 from legal_rag.chunker.models import Chunk
 from legal_rag.settings import EvaluationSettings, Settings
 
 DEFAULT_OPENING_CHUNK_COUNT = 3
 DEFAULT_CLOSING_CHUNK_COUNT = 5
+DEFAULT_METADATA_MAX_RETRIES = 2
 
 DOCUMENT_METADATA_SCHEMA_VERSION = "1.0.0"
+DOCUMENT_METADATA_PROMPT_VERSION = "1.0.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,12 +81,22 @@ def resolve_document_metadata(
     *,
     opening_chunk_count: int = DEFAULT_OPENING_CHUNK_COUNT,
     closing_chunk_count: int = DEFAULT_CLOSING_CHUNK_COUNT,
+    max_retries: int = DEFAULT_METADATA_MAX_RETRIES,
 ) -> DocumentMetadataRecord:
     """Resolve one document's metadata from the opening and closing chunks of its main body."""
     body = [chunk.text for chunk in chunks if chunk.record_scope == "root"]
-    resolved = client.resolve(body[:opening_chunk_count], body[-closing_chunk_count:])
-    return DocumentMetadataRecord(
-        document_number=resolved.document_number,
-        valid_from=date.fromisoformat(resolved.valid_from) if resolved.valid_from else None,
-        valid_to=date.fromisoformat(resolved.valid_to) if resolved.valid_to else None,
+    source_key = chunks[0].source_sha256 if chunks else "empty-document"
+
+    def _resolve() -> DocumentMetadataRecord:
+        resolved = client.resolve(body[:opening_chunk_count], body[-closing_chunk_count:])
+        return DocumentMetadataRecord(
+            document_number=resolved.document_number,
+            valid_from=date.fromisoformat(resolved.valid_from) if resolved.valid_from else None,
+            valid_to=date.fromisoformat(resolved.valid_to) if resolved.valid_to else None,
+        )
+
+    return execute_llm_task(
+        f"document_metadata:{source_key}",
+        _resolve,
+        max_retries=max_retries,
     )

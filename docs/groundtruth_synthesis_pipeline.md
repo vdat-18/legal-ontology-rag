@@ -1,5 +1,49 @@
 # Ground-Truth Synthesis Pipeline
 
+## Current hardened run contract
+
+This section is authoritative where older implementation notes below still
+describe retry-then-skip behavior.
+
+- Every LLM work unit has bounded retry and a stable resume key: metadata,
+  screening batch, extraction target, relation pair, generation attempt,
+  critique attempt, evolution operation, and verification attempt.
+- Successful units are written atomically after completion. An exhausted unit
+  is never marked complete; the CLI exits non-zero after preserving prior
+  successful checkpoints.
+- `legal-assemble-groundtruth` validates every selected document and produces
+  corpus-level `legal_facts.jsonl` plus `run_manifest.json`. The evidence graph
+  consumes this assembled fact file.
+- Candidate generation receives answerability, bundle kind, bridge, and hops.
+  Gate 1 rejects fact/chunk references outside the scenario and requires every
+  scenario fact to contribute to a multi-hop candidate.
+- Verifier-observed query type, answerability, and necessary hops are the final
+  labels. Requested labels remain in separate `requested_*` fields for audit.
+- Candidate identity is recomputed after refinement and every evolution from
+  the final query, answer, reasoning, and claims.
+- The MVP taxonomy contains penalty-fact capabilities only. Authority,
+  procedure, and exception queries wait for dedicated fact schemas.
+
+```text
+data/processed/groundtruth/
+|-- <document>.source.jsonl
+|-- <document>.chunks.jsonl
+|-- <document>.chunk_screening.jsonl
+|-- <document>.document_metadata.jsonl
+|-- <document>.legal_facts.jsonl
+`-- <document>.extraction_progress.jsonl
+
+data/benchmark_synthesis/
+|-- legal_facts.jsonl
+|-- run_manifest.json
+|-- evidence_relations.jsonl
+|-- evidence_relation_progress.jsonl
+|-- scenarios.jsonl
+`-- candidates/
+    |-- single_turn.jsonl
+    `-- single_turn.progress.jsonl
+```
+
 ## Mục tiêu và phạm vi
 
 Pipeline này sinh dữ liệu ground truth để đánh giá hệ thống RAG trong phạm vi

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
+from functools import partial
 from typing import Any, Protocol
 
 from baml_py.logging import set_log_level
@@ -15,12 +16,14 @@ from legal_rag.baml_client.types import EvolvedCandidate as BamlEvolvedCandidate
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
 from legal_rag.baml_client.types import SurfaceCritique as BamlSurfaceCritique
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
 from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import EvaluationSettings, Settings
 
-CANDIDATE_SCHEMA_VERSION = "1.0.0"
+CANDIDATE_SCHEMA_VERSION = "1.1.0"
+CANDIDATE_GENERATION_PROMPT_VERSION = "1.1.0"
 
 _EVOLUTION_OPERATION_BY_ID: dict[str, EvolutionOperation] = {
     "concretizing": EvolutionOperation.Concretizing,
@@ -48,12 +51,14 @@ class RequiredClaim:
     claim: str
     fact_id: str
     evidence: tuple[ClaimEvidence, ...]
+    requested_chunk_ids: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable required-claim record."""
         return {
             "claim": self.claim,
             "fact_id": self.fact_id,
+            "requested_chunk_ids": list(self.requested_chunk_ids),
             "evidence": [entry.to_dict() for entry in self.evidence],
         }
 
@@ -103,6 +108,10 @@ class CandidateDraft:
     source_fact_ids: tuple[str, ...]
     source_fact_content_sha256: tuple[str, ...]
     generator_model: str
+    bundle_kind: str = "single_hop"
+    bridge: tuple[str, ...] = ()
+    surface_attempts: int = 0
+    surface_refined: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable candidate-draft record."""
@@ -111,6 +120,8 @@ class CandidateDraft:
             "sample_id": self.sample_id,
             "interaction_type": "single_turn",
             "scenario_id": self.scenario_id,
+            "bundle_kind": self.bundle_kind,
+            "bridge": list(self.bridge),
             "query_vi": self.query_vi,
             "reference_answer_vi": self.reference_answer_vi,
             "reasoning_vi": self.reasoning_vi,
@@ -129,6 +140,8 @@ class CandidateDraft:
             "source_fact_ids": list(self.source_fact_ids),
             "source_fact_content_sha256": list(self.source_fact_content_sha256),
             "generator_model": self.generator_model,
+            "surface_attempts": self.surface_attempts,
+            "surface_refined": self.surface_refined,
         }
 
 
@@ -176,6 +189,10 @@ class CandidateGenerationClient(Protocol):
         query_length: str,
         query_form: str,
         query_type_description: str,
+        answerability: str,
+        bundle_kind: str,
+        bridge: Sequence[str],
+        reasoning_hops: int,
         as_of_date: str | None,
     ) -> BamlGeneratedCandidate:
         """Return one typed generated candidate."""
@@ -193,6 +210,7 @@ class CandidateGenerationClient(Protocol):
         self,
         query_vi: str,
         reference_answer_vi: str,
+        reasoning_vi: str,
         operation: EvolutionOperation,
     ) -> BamlEvolvedCandidate:
         """Return one typed evolved query and answer."""
@@ -223,6 +241,10 @@ class BamlCandidateGenerationClient:
         query_length: str,
         query_form: str,
         query_type_description: str,
+        answerability: str,
+        bundle_kind: str,
+        bridge: Sequence[str],
+        reasoning_hops: int,
         as_of_date: str | None,
     ) -> BamlGeneratedCandidate:
         """Run one bounded BAML call and return its generated typed result."""
@@ -233,6 +255,10 @@ class BamlCandidateGenerationClient:
             query_length,
             query_form,
             query_type_description,
+            answerability,
+            bundle_kind,
+            list(bridge),
+            reasoning_hops,
             as_of_date,
             baml_options={"client_registry": self._registry},
         )
@@ -257,11 +283,16 @@ class BamlCandidateGenerationClient:
         self,
         query_vi: str,
         reference_answer_vi: str,
+        reasoning_vi: str,
         operation: EvolutionOperation,
     ) -> BamlEvolvedCandidate:
         """Run one bounded BAML call and return its generated typed result."""
         request = b.request.EvolveCandidate(
-            query_vi, reference_answer_vi, operation, baml_options={"client_registry": self._registry}
+            query_vi,
+            reference_answer_vi,
+            reasoning_vi,
+            operation,
+            baml_options={"client_registry": self._registry},
         )
         raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
         return b.parse.EvolveCandidate(raw_output, baml_options={"client_registry": self._registry})
@@ -285,6 +316,10 @@ def generate_candidate(
         scenario.query_length,
         scenario.query_form,
         query_type_description,
+        scenario.answerability,
+        scenario.bundle_kind,
+        scenario.bridge,
+        scenario.reasoning_hops,
         scenario.as_of_date.isoformat() if scenario.as_of_date else None,
     )
 
@@ -292,7 +327,12 @@ def generate_candidate(
         RequiredClaim(
             claim=claim.claim,
             fact_id=claim.fact_id,
-            evidence=_claim_evidence(facts_by_id[claim.fact_id], claim.evidence_chunk_ids),
+            requested_chunk_ids=tuple(claim.evidence_chunk_ids),
+            evidence=(
+                _claim_evidence(facts_by_id[claim.fact_id], claim.evidence_chunk_ids)
+                if claim.fact_id in facts_by_id
+                else ()
+            ),
         )
         for claim in raw.required_claims
     )
@@ -307,33 +347,31 @@ def generate_candidate(
         for fact in facts
     )
 
-    return CandidateDraft(
-        sample_id=sha256_json(
-            {
-                "scenario_id": scenario.scenario_id,
-                "query_vi": raw.query_vi,
-                "reference_answer_vi": raw.reference_answer_vi,
-            }
-        ),
-        scenario_id=scenario.scenario_id,
-        query_vi=raw.query_vi,
-        reference_answer_vi=raw.reference_answer_vi,
-        reasoning_vi=raw.reasoning_vi,
-        required_claims=required_claims,
-        answer_fields=answer_fields,
-        evolutions=(),
-        gold_chunk_ids=scenario.gold_chunk_ids,
-        query_type=scenario.query_type,
-        query_form=scenario.query_form,
-        persona=scenario.persona,
-        query_style=scenario.query_style,
-        query_length=scenario.query_length,
-        answerability=scenario.answerability,
-        reasoning_hops=scenario.reasoning_hops,
-        as_of_date=scenario.as_of_date,
-        source_fact_ids=scenario.fact_ids,
-        source_fact_content_sha256=tuple(fact.fact_content_sha256 for fact in facts),
-        generator_model=generator_model,
+    return _with_identity(
+        CandidateDraft(
+            sample_id="",
+            scenario_id=scenario.scenario_id,
+            bundle_kind=scenario.bundle_kind,
+            bridge=scenario.bridge,
+            query_vi=raw.query_vi,
+            reference_answer_vi=raw.reference_answer_vi,
+            reasoning_vi=raw.reasoning_vi,
+            required_claims=required_claims,
+            answer_fields=answer_fields,
+            evolutions=(),
+            gold_chunk_ids=scenario.gold_chunk_ids,
+            query_type=scenario.query_type,
+            query_form=scenario.query_form,
+            persona=scenario.persona,
+            query_style=scenario.query_style,
+            query_length=scenario.query_length,
+            answerability=scenario.answerability,
+            reasoning_hops=scenario.reasoning_hops,
+            as_of_date=scenario.as_of_date,
+            source_fact_ids=scenario.fact_ids,
+            source_fact_content_sha256=tuple(fact.fact_content_sha256 for fact in facts),
+            generator_model=generator_model,
+        )
     )
 
 
@@ -342,33 +380,100 @@ def refine_surface(
     client: CandidateGenerationClient,
     *,
     max_retries: int,
+    llm_max_retries: int = 0,
+    on_attempt: Callable[[CandidateDraft], None] | None = None,
 ) -> CandidateDraft:
     """Rewrite only the question's surface phrasing until it matches style, bounded by max_retries.
 
     Claims, evidence, and answer_fields are frozen for the whole loop; only
     query_vi can change.
     """
+    if draft.surface_refined:
+        return draft
     query_vi = draft.query_vi
-    for _attempt in range(max_retries):
-        critique = client.critique_surface(query_vi, draft.query_style, draft.query_length, draft.query_form)
+    attempts = draft.surface_attempts
+    for _attempt in range(attempts, max_retries):
+        critique = execute_llm_task(
+            f"{draft.scenario_id}:surface:{attempts}",
+            partial(client.critique_surface, query_vi, draft.query_style, draft.query_length, draft.query_form),
+            max_retries=llm_max_retries,
+        )
+        attempts += 1
         if critique.passes:
-            break
+            refined = _with_identity(replace(draft, query_vi=query_vi, surface_attempts=attempts, surface_refined=True))
+            if on_attempt is not None:
+                on_attempt(refined)
+            return refined
         query_vi = critique.rewritten_query_vi
-    return replace(draft, query_vi=query_vi)
+        draft = _with_identity(replace(draft, query_vi=query_vi, surface_attempts=attempts))
+        if on_attempt is not None:
+            on_attempt(draft)
+    refined = _with_identity(replace(draft, query_vi=query_vi, surface_attempts=attempts, surface_refined=True))
+    if on_attempt is not None:
+        on_attempt(refined)
+    return refined
 
 
 def evolve_candidate(
     draft: CandidateDraft,
     operations: Sequence[str],
     client: CandidateGenerationClient,
+    *,
+    llm_max_retries: int = 0,
+    on_operation_applied: Callable[[CandidateDraft], None] | None = None,
 ) -> CandidateDraft:
     """Apply a bounded sequence of evidence-preserving evolution operations."""
     query_vi = draft.query_vi
     reference_answer_vi = draft.reference_answer_vi
+    reasoning_vi = draft.reasoning_vi
     applied = list(draft.evolutions)
-    for operation_id in operations:
-        result = client.evolve(query_vi, reference_answer_vi, _EVOLUTION_OPERATION_BY_ID[operation_id])
+    for operation_id in operations[len(applied) :]:
+        result = execute_llm_task(
+            f"{draft.scenario_id}:evolution:{len(applied)}:{operation_id}",
+            partial(
+                client.evolve,
+                query_vi,
+                reference_answer_vi,
+                reasoning_vi,
+                _EVOLUTION_OPERATION_BY_ID[operation_id],
+            ),
+            max_retries=llm_max_retries,
+        )
         query_vi = result.query_vi
         reference_answer_vi = result.reference_answer_vi
+        reasoning_vi = result.reasoning_vi
         applied.append(operation_id)
-    return replace(draft, query_vi=query_vi, reference_answer_vi=reference_answer_vi, evolutions=tuple(applied))
+        draft = _with_identity(
+            replace(
+                draft,
+                query_vi=query_vi,
+                reference_answer_vi=reference_answer_vi,
+                reasoning_vi=reasoning_vi,
+                evolutions=tuple(applied),
+            )
+        )
+        if on_operation_applied is not None:
+            on_operation_applied(draft)
+    return _with_identity(
+        replace(
+            draft,
+            query_vi=query_vi,
+            reference_answer_vi=reference_answer_vi,
+            reasoning_vi=reasoning_vi,
+            evolutions=tuple(applied),
+        )
+    )
+
+
+def _with_identity(draft: CandidateDraft) -> CandidateDraft:
+    """Return a draft whose identity reflects its current final-facing content."""
+    sample_id = sha256_json(
+        {
+            "scenario_id": draft.scenario_id,
+            "query_vi": draft.query_vi,
+            "reference_answer_vi": draft.reference_answer_vi,
+            "reasoning_vi": draft.reasoning_vi,
+            "required_claims": [claim.to_dict() for claim in draft.required_claims],
+        }
+    )
+    return replace(draft, sample_id=sample_id)

@@ -239,6 +239,7 @@ def test_refine_surface_stops_once_critique_passes() -> None:
 
     assert client.calls == 2
     assert refined.query_vi == "oto vuot den do"
+    assert refined.sample_id != draft.sample_id
 
 
 def test_refine_surface_respects_max_retries_cap() -> None:
@@ -278,7 +279,9 @@ class _FakeEvolutionClient:
         """Unused in evolution tests."""
         raise NotImplementedError
 
-    def evolve(self, query_vi: str, reference_answer_vi: str, operation: EvolutionOperation) -> BamlEvolvedCandidate:
+    def evolve(
+        self, query_vi: str, reference_answer_vi: str, reasoning_vi: str, operation: EvolutionOperation
+    ) -> BamlEvolvedCandidate:
         """Return the configured evolved candidate for this operation."""
         return self._evolved_by_operation[operation]
 
@@ -289,10 +292,10 @@ def test_evolve_candidate_applies_operations_in_sequence_and_records_them() -> N
     client = _FakeEvolutionClient(
         {
             EvolutionOperation.Concretizing: BamlEvolvedCandidate(
-                query_vi="q-concrete", reference_answer_vi="a-concrete"
+                query_vi="q-concrete", reference_answer_vi="a-concrete", reasoning_vi="r-concrete"
             ),
             EvolutionOperation.Reasoning: BamlEvolvedCandidate(
-                query_vi="q-reasoning", reference_answer_vi="a-reasoning"
+                query_vi="q-reasoning", reference_answer_vi="a-reasoning", reasoning_vi="r-reasoning"
             ),
         }
     )
@@ -302,13 +305,19 @@ def test_evolve_candidate_applies_operations_in_sequence_and_records_them() -> N
     assert evolved.evolutions == ("concretizing", "reasoning")
     assert evolved.query_vi == "q-reasoning"
     assert evolved.reference_answer_vi == "a-reasoning"
+    assert evolved.reasoning_vi == "r-reasoning"
+    assert evolved.sample_id != draft.sample_id
 
 
 def test_evolve_candidate_never_changes_claims_or_answer_fields() -> None:
     """Evolution only touches query_vi and reference_answer_vi, never evidence."""
     draft = _draft_for_refinement()
     client = _FakeEvolutionClient(
-        {EvolutionOperation.Hypothetical: BamlEvolvedCandidate(query_vi="q-hyp", reference_answer_vi="a-hyp")}
+        {
+            EvolutionOperation.Hypothetical: BamlEvolvedCandidate(
+                query_vi="q-hyp", reference_answer_vi="a-hyp", reasoning_vi="r-hyp"
+            )
+        }
     )
 
     evolved = evolve_candidate(draft, ["hypothetical"], client)
@@ -364,7 +373,19 @@ def test_baml_candidate_generation_client_parses_typed_result(monkeypatch: pytes
         evidence_chunk_ids=["chunk-1"],
     )
 
-    result = client.generate([fact_context], "Tài xế cá nhân", "standard", "short", "specific", "Mức phạt", None)
+    result = client.generate(
+        [fact_context],
+        "Tài xế cá nhân",
+        "standard",
+        "short",
+        "specific",
+        "Mức phạt",
+        "answerable",
+        "single_hop",
+        [],
+        1,
+        None,
+    )
 
     assert result.query_vi == "q"
     assert result.required_claims[0].fact_id == "fact-1"

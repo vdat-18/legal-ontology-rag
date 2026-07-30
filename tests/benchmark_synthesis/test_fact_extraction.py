@@ -300,9 +300,17 @@ def test_extract_facts_from_document_skips_a_target_that_fails_every_attempt() -
                 raise TimeoutError(msg)
             return (fact,)
 
-    facts = extract_facts_from_document([failing, ok], [failing, ok], _FailsForOneChunkClient(), _metadata())
+    persisted: list[str] = []
+    with pytest.raises(RuntimeError, match="fact extraction left 1 incomplete"):
+        extract_facts_from_document(
+            [failing, ok],
+            [failing, ok],
+            _FailsForOneChunkClient(),
+            _metadata(),
+            on_target_processed=lambda chunk_id, _facts: persisted.append(chunk_id),
+        )
 
-    assert [f.source_chunk_id for f in facts] == ["chunk-ok"]
+    assert persisted == ["chunk-ok"]
 
 
 def test_extract_facts_from_document_calls_on_target_processed_after_each_target() -> None:

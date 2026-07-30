@@ -24,6 +24,8 @@ _ANSWERABILITY_BY_BAML_ENUM: dict[str, str] = {
     "Unanswerable": "unanswerable",
 }
 
+CANDIDATE_VERIFICATION_PROMPT_VERSION = "1.1.0"
+
 
 @dataclass(frozen=True, slots=True)
 class VerificationResult:
@@ -41,6 +43,7 @@ class VerificationResult:
     observed_answerability: str
     reasoning: str
     verifier_model: str
+    uses_required_bridge: bool = True
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable verification record."""
@@ -52,6 +55,7 @@ class VerificationResult:
             "is_answer_grounded": self.is_answer_grounded,
             "is_domain_relevant": self.is_domain_relevant,
             "is_temporal_correct": self.is_temporal_correct,
+            "uses_required_bridge": self.uses_required_bridge,
             "necessary_reasoning_hops": self.necessary_reasoning_hops,
             "observed_query_type": self.observed_query_type,
             "observed_answerability": self.observed_answerability,
@@ -81,6 +85,7 @@ class VerificationClient(Protocol):
         claims: Sequence[BamlClaimReference],
         as_of_date: str | None,
         declared_reasoning_hops: int,
+        bridge: Sequence[str],
         query_type_catalog: Sequence[str],
     ) -> BamlVerificationResult:
         """Return one typed verification result."""
@@ -112,6 +117,7 @@ class BamlVerificationClient:
         claims: Sequence[BamlClaimReference],
         as_of_date: str | None,
         declared_reasoning_hops: int,
+        bridge: Sequence[str],
         query_type_catalog: Sequence[str],
     ) -> BamlVerificationResult:
         """Run one bounded BAML call and return its generated typed result."""
@@ -123,6 +129,7 @@ class BamlVerificationClient:
             list(claims),
             as_of_date,
             declared_reasoning_hops,
+            list(bridge),
             list(query_type_catalog),
             baml_options={"client_registry": self._registry},
         )
@@ -153,8 +160,12 @@ def verify_candidate(
         [_claim_reference(claim) for claim in draft.required_claims],
         draft.as_of_date.isoformat() if draft.as_of_date else None,
         draft.reasoning_hops,
+        draft.bridge,
         query_type_catalog,
     )
+    if raw.observed_query_type not in query_type_catalog:
+        msg = f"Verifier returned query type outside the supplied catalog: {raw.observed_query_type}"
+        raise ValueError(msg)
 
     passed = (
         raw.is_standalone
@@ -163,6 +174,8 @@ def verify_candidate(
         and raw.is_answer_grounded
         and raw.is_domain_relevant
         and raw.is_temporal_correct
+        and raw.uses_required_bridge
+        and raw.necessary_reasoning_hops == draft.reasoning_hops
     )
 
     return VerificationResult(
@@ -173,6 +186,7 @@ def verify_candidate(
         is_answer_grounded=raw.is_answer_grounded,
         is_domain_relevant=raw.is_domain_relevant,
         is_temporal_correct=raw.is_temporal_correct,
+        uses_required_bridge=raw.uses_required_bridge,
         necessary_reasoning_hops=raw.necessary_reasoning_hops,
         observed_query_type=raw.observed_query_type,
         observed_answerability=_ANSWERABILITY_BY_BAML_ENUM[raw.observed_answerability.value],

@@ -37,6 +37,28 @@ def write_jsonl_atomic(output_path: Path, records: Iterable[Mapping[str, object]
             temporary_path.unlink(missing_ok=True)
 
 
+def write_json_atomic(output_path: Path, record: Mapping[str, object]) -> None:
+    """Atomically replace one UTF-8 JSON file with a stable serialized record."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            newline="\n",
+            dir=output_path.parent,
+            delete=False,
+        ) as temporary_file:
+            temporary_path = Path(temporary_file.name)
+            json.dump(record, temporary_file, ensure_ascii=False, indent=2, sort_keys=True)
+            temporary_file.write("\n")
+        temporary_path.replace(output_path)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+
+
 def _write_jsonl_record(temporary_file: TextIO, record: Mapping[str, object]) -> None:
     """Serialize one record as exactly one physical JSONL line."""
     serialized = json.dumps(record, ensure_ascii=False, separators=(",", ":"), sort_keys=True)

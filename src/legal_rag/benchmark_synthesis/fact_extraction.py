@@ -6,16 +6,22 @@ import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
+from functools import partial
 from typing import Any, Protocol
 
 from baml_py.logging import set_log_level
-from loguru import logger
 
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import ChunkWindowEntry, ChunkWindowRole
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
+from legal_rag.benchmark_synthesis.llm_execution import (
+    IncompleteLlmTasksError,
+    LlmTaskExhaustedError,
+    LlmTaskFailure,
+    execute_llm_task,
+)
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact, build_legal_fact
 from legal_rag.chunker.models import Chunk
 from legal_rag.settings import EvaluationSettings, Settings
@@ -29,6 +35,7 @@ DEFAULT_MAX_FOLLOWING_CHUNKS = 1
 DEFAULT_EXTRACTION_MAX_RETRIES = 2
 
 EXTRACTION_PROGRESS_SCHEMA_VERSION = "1.0.0"
+FACT_EXTRACTION_PROMPT_VERSION = "1.0.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,6 +198,17 @@ def build_extracted_fact(raw: BamlLegalFact, source_chunk_id: str, metadata: Doc
     )
 
 
+def _extract_target_facts(
+    client: FactExtractionClient,
+    window: Sequence[ChunkWindowEntry],
+    source_chunk_id: str,
+    metadata: DocumentMetadataRecord,
+) -> tuple[LegalFact, ...]:
+    """Extract and fully parse one target's facts inside the retry boundary."""
+    raw_facts = client.extract(window)
+    return tuple(build_extracted_fact(raw_fact, source_chunk_id, metadata) for raw_fact in raw_facts)
+
+
 def extract_facts_from_document(
     target_chunks: Sequence[Chunk],
     document_chunks: Sequence[Chunk],
@@ -207,6 +225,7 @@ def extract_facts_from_document(
     provision_index = build_provision_index(document_chunks)
 
     facts: list[LegalFact] = []
+    failures: list[LlmTaskFailure] = []
     for target in target_chunks:
         window = build_reading_window(
             target,
@@ -215,26 +234,20 @@ def extract_facts_from_document(
             max_preceding_chunks=max_preceding_chunks,
             max_following_chunks=max_following_chunks,
         )
-        for attempt in range(1 + max_retries):
-            try:
-                raw_facts = client.extract(window)
-            except Exception as error:
-                logger.warning(
-                    "Fact extraction for chunk {} failed on attempt {}/{}: {}",
-                    target.chunk_id,
-                    attempt + 1,
-                    1 + max_retries,
-                    error,
-                )
-                continue
-            target_facts = tuple(build_extracted_fact(raw_fact, target.chunk_id, metadata) for raw_fact in raw_facts)
+
+        try:
+            target_facts = execute_llm_task(
+                target.chunk_id,
+                partial(_extract_target_facts, client, window, target.chunk_id, metadata),
+                max_retries=max_retries,
+            )
+        except LlmTaskExhaustedError as error:
+            failures.append(LlmTaskFailure(task_key=target.chunk_id, error=str(error)))
+        else:
             facts.extend(target_facts)
             if on_target_processed is not None:
                 on_target_processed(target.chunk_id, target_facts)
-            break
-        else:
-            logger.warning(
-                "Skipping fact extraction for chunk {} after {} failed attempts", target.chunk_id, 1 + max_retries
-            )
-
+    if failures:
+        incomplete_error = IncompleteLlmTasksError.for_stage("fact extraction", failures)
+        raise incomplete_error
     return tuple(facts)

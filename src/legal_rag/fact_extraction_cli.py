@@ -90,11 +90,24 @@ def main() -> None:
         metadata = read_document_metadata(arguments.metadata_path)
         extraction_client = BamlFactExtractionClient(settings, evaluation_settings)
         extract_facts_from_document(
-            remaining_targets, chunks, extraction_client, metadata, on_target_processed=_persist_target
+            remaining_targets,
+            chunks,
+            extraction_client,
+            metadata,
+            max_retries=evaluation_settings.llm_max_retries,
+            on_target_processed=_persist_target,
         )
 
     facts = tuple(facts_by_id.values())
     write_legal_facts(arguments.facts_output_path, facts)
+    write_extraction_progress(
+        arguments.progress_output_path,
+        tuple(
+            ExtractionProgressRecord(chunk_id=chunk.chunk_id)
+            for chunk in chunks
+            if chunk.chunk_id in processed_chunk_ids
+        ),
+    )
     processed_chunk_count = len(processed_chunk_ids & accepted_chunk_ids)
     logger.info(
         "Extracted {} legal facts from {}/{} accepted chunks ({} still unprocessed), wrote {}",

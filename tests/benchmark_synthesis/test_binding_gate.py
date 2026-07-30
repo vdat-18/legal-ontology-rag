@@ -59,7 +59,12 @@ def _fact(fact_id: str = "fact-1", *, evidence_chunk_id: str = "chunk-1") -> Leg
     )
 
 
-def _draft(claims: tuple[RequiredClaim, ...]) -> CandidateDraft:
+def _draft(
+    claims: tuple[RequiredClaim, ...],
+    *,
+    source_fact_ids: tuple[str, ...] = ("fact-1",),
+    reasoning_hops: int = 1,
+) -> CandidateDraft:
     """Build one minimal candidate draft with the given required claims."""
     return CandidateDraft(
         sample_id="sample-1",
@@ -77,10 +82,10 @@ def _draft(claims: tuple[RequiredClaim, ...]) -> CandidateDraft:
         query_style="standard",
         query_length="short",
         answerability="answerable",
-        reasoning_hops=1,
+        reasoning_hops=reasoning_hops,
         as_of_date=None,
-        source_fact_ids=("fact-1",),
-        source_fact_content_sha256=("content-fact-1",),
+        source_fact_ids=source_fact_ids,
+        source_fact_content_sha256=tuple(f"content-{fact_id}" for fact_id in source_fact_ids),
         generator_model="provider/test-model",
     )
 
@@ -142,6 +147,51 @@ def test_check_binding_rejects_unknown_fact_id() -> None:
 
     assert result.passed is False
     assert any("not found" in violation.reason for violation in result.violations)
+
+
+def test_check_binding_rejects_fact_outside_scenario() -> None:
+    """A real fact remains invalid when the scenario did not authorize it."""
+    fact = _fact("fact-2")
+    claim = RequiredClaim(claim="Mức phạt", fact_id="fact-2", evidence=())
+
+    result = check_binding(_draft((claim,)), {"fact-2": fact}, {}, span_match_threshold=_THRESHOLD)
+
+    assert result.passed is False
+    assert any("outside the scenario fact set" in violation.reason for violation in result.violations)
+
+
+def test_check_binding_rejects_one_hallucinated_requested_chunk_among_valid_ids() -> None:
+    """Gate 1 keeps the raw requested ids so a mixed valid/hallucinated list cannot pass."""
+    chunk = _chunk("chunk-1", "Phạt tiền 4.000.000 đồng.")
+    fact = _fact()
+    claim = RequiredClaim(
+        claim="Mức phạt",
+        fact_id="fact-1",
+        requested_chunk_ids=("chunk-1", "chunk-hallucinated"),
+        evidence=(ClaimEvidence(chunk_id="chunk-1", quoted_span="Phạt tiền 4.000.000 đồng."),),
+    )
+
+    result = check_binding(_draft((claim,)), {"fact-1": fact}, {"chunk-1": chunk}, span_match_threshold=_THRESHOLD)
+
+    assert result.passed is False
+    assert any("chunk-hallucinated" in violation.reason for violation in result.violations)
+
+
+def test_check_binding_rejects_multi_hop_candidate_missing_one_scenario_fact() -> None:
+    """Every scenario fact must contribute a claim to a multi-hop candidate."""
+    fact = _fact()
+    chunk = _chunk("chunk-1", "Phạt tiền 4.000.000 đồng.")
+    claim = RequiredClaim(
+        claim="Mức phạt",
+        fact_id="fact-1",
+        evidence=(ClaimEvidence(chunk_id="chunk-1", quoted_span="Phạt tiền 4.000.000 đồng."),),
+    )
+    draft = _draft((claim,), source_fact_ids=("fact-1", "fact-2"), reasoning_hops=2)
+
+    result = check_binding(draft, {"fact-1": fact}, {"chunk-1": chunk}, span_match_threshold=_THRESHOLD)
+
+    assert result.passed is False
+    assert any("fact-2" in violation.reason for violation in result.violations)
 
 
 def test_check_binding_rejects_claim_with_no_evidence() -> None:

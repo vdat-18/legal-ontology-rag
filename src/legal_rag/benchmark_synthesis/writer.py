@@ -15,7 +15,11 @@ from legal_rag.benchmark_synthesis.candidate_generation import (
     FactAnswerFields,
     RequiredClaim,
 )
-from legal_rag.benchmark_synthesis.candidate_record import CandidateRecord
+from legal_rag.benchmark_synthesis.candidate_record import (
+    CANDIDATE_PROGRESS_SCHEMA_VERSION,
+    CandidateProgressRecord,
+    CandidateRecord,
+)
 from legal_rag.benchmark_synthesis.chunk_screening import CHUNK_SCREENING_SCHEMA_VERSION, ChunkScreeningRecord
 from legal_rag.benchmark_synthesis.document_metadata import (
     DOCUMENT_METADATA_SCHEMA_VERSION,
@@ -201,6 +205,7 @@ def read_scenarios(input_path: Path) -> tuple[Scenario, ...]:
             scenarios.append(
                 Scenario(
                     scenario_id=payload["scenario_id"],
+                    bundle_kind=payload["bundle_kind"],
                     query_type=payload["query_type"],
                     query_form=payload["query_form"],
                     answerability=payload["answerability"],
@@ -220,6 +225,40 @@ def read_scenarios(input_path: Path) -> tuple[Scenario, ...]:
 def write_candidates(output_path: Path, records: Sequence[CandidateRecord]) -> None:
     """Atomically replace one UTF-8 JSONL output with candidate records."""
     write_jsonl_atomic(output_path, (record.to_dict() for record in records))
+
+
+def write_candidate_progress(output_path: Path, records: Sequence[CandidateProgressRecord]) -> None:
+    """Atomically replace one UTF-8 JSONL output with candidate checkpoints."""
+    write_jsonl_atomic(output_path, (record.to_dict() for record in records))
+
+
+def read_candidate_progress(input_path: Path) -> tuple[CandidateProgressRecord, ...]:
+    """Read candidate checkpoints back into typed records."""
+    records: list[CandidateProgressRecord] = []
+    with input_path.open(encoding="utf-8") as source_file:
+        for line in source_file:
+            payload = json.loads(line)
+            if payload["schema_version"] != CANDIDATE_PROGRESS_SCHEMA_VERSION:
+                msg = f"Unsupported candidate-progress schema: {payload['schema_version']}"
+                raise ValueError(msg)
+            records.append(
+                CandidateProgressRecord(
+                    task_id=payload["task_id"],
+                    scenario_id=payload["scenario_id"],
+                    attempt_index=payload["attempt_index"],
+                    stage=payload["stage"],
+                    draft=_parse_candidate_draft(payload["draft"]),
+                    binding=(
+                        _parse_binding_check_result(payload["binding"]) if payload["binding"] is not None else None
+                    ),
+                    verification=(
+                        _parse_verification_result(payload["verification"])
+                        if payload["verification"] is not None
+                        else None
+                    ),
+                )
+            )
+    return tuple(records)
 
 
 def read_candidates(input_path: Path) -> tuple[CandidateRecord, ...]:
@@ -250,6 +289,8 @@ def _parse_candidate_draft(payload: dict[str, object]) -> CandidateDraft:
     return CandidateDraft(
         sample_id=payload["sample_id"],
         scenario_id=payload["scenario_id"],
+        bundle_kind=payload["bundle_kind"],
+        bridge=tuple(payload["bridge"]),
         query_vi=payload["query_vi"],
         reference_answer_vi=payload["reference_answer_vi"],
         reasoning_vi=payload["reasoning_vi"],
@@ -257,6 +298,7 @@ def _parse_candidate_draft(payload: dict[str, object]) -> CandidateDraft:
             RequiredClaim(
                 claim=claim["claim"],
                 fact_id=claim["fact_id"],
+                requested_chunk_ids=tuple(claim["requested_chunk_ids"]),
                 evidence=tuple(
                     ClaimEvidence(chunk_id=entry["chunk_id"], quoted_span=entry["quoted_span"])
                     for entry in claim["evidence"]
@@ -276,17 +318,19 @@ def _parse_candidate_draft(payload: dict[str, object]) -> CandidateDraft:
         ),
         evolutions=tuple(payload["evolutions"]),
         gold_chunk_ids=tuple(payload["gold_chunk_ids"]),
-        query_type=payload["query_type"],
+        query_type=payload.get("requested_query_type", payload["query_type"]),
         query_form=payload["query_form"],
         persona=payload["persona"],
         query_style=payload["query_style"],
         query_length=payload["query_length"],
-        answerability=payload["answerability"],
-        reasoning_hops=payload["reasoning_hops"],
+        answerability=payload.get("requested_answerability", payload["answerability"]),
+        reasoning_hops=payload.get("requested_reasoning_hops", payload["reasoning_hops"]),
         as_of_date=_parse_date(payload["as_of_date"]),
         source_fact_ids=tuple(payload["source_fact_ids"]),
         source_fact_content_sha256=tuple(payload["source_fact_content_sha256"]),
         generator_model=payload["generator_model"],
+        surface_attempts=payload["surface_attempts"],
+        surface_refined=payload["surface_refined"],
     )
 
 
@@ -312,6 +356,7 @@ def _parse_verification_result(payload: dict[str, object]) -> VerificationResult
         is_answer_grounded=payload["is_answer_grounded"],
         is_domain_relevant=payload["is_domain_relevant"],
         is_temporal_correct=payload["is_temporal_correct"],
+        uses_required_bridge=payload["uses_required_bridge"],
         necessary_reasoning_hops=payload["necessary_reasoning_hops"],
         observed_query_type=payload["observed_query_type"],
         observed_answerability=payload["observed_answerability"],

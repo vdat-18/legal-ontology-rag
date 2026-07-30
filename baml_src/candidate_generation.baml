@@ -40,6 +40,10 @@ function GenerateSingleTurnCandidate(
   query_length: string,
   query_form: string,
   query_type_description: string,
+  answerability: string,
+  bundle_kind: string,
+  bridge: string[],
+  reasoning_hops: int,
   as_of_date: string?
 ) -> GeneratedSingleTurnCandidate {
   client OpenAICompatibleProvider
@@ -52,6 +56,10 @@ function GenerateSingleTurnCandidate(
 
     Yêu cầu về câu hỏi:
     - Dạng câu hỏi: {{ query_type_description }}
+    - Khả năng trả lời yêu cầu: {{ answerability }}
+    - Loại evidence bundle: {{ bundle_kind }}
+    - Số fact bắt buộc phải dùng: {{ reasoning_hops }}
+    {% if bridge %}- Cầu nối bắt buộc giữa các fact: {{ bridge }}{% endif %}
     - Phong cách: {{ query_form }}
     - Cách gõ: {{ query_style }}
     - Độ dài: {{ query_length }}
@@ -64,6 +72,11 @@ function GenerateSingleTurnCandidate(
       evidence_chunk_ids chỉ được lấy từ evidence_chunk_ids của đúng fact đó.
     - Không dùng kiến thức pháp luật sẵn có của bạn để bổ sung nội dung ngoài
       các fact dưới đây.
+    - Nếu reasoning_hops lớn hơn 1, câu hỏi và đáp án phải thực sự cần đủ số
+      fact đã cung cấp; required_claims phải bao phủ mọi fact.
+    - Với partially_answerable, chỉ trả lời phần evidence hỗ trợ và nêu rõ phần
+      còn thiếu. Không biến nó thành câu answerable hoàn toàn.
+    - Nếu có bridge, câu hỏi và lập luận phải sử dụng đúng cầu nối đó.
 
     Fact pháp lý:
     {% for fact in facts %}
@@ -125,11 +138,13 @@ enum EvolutionOperation {
 class EvolvedCandidate {
   query_vi string
   reference_answer_vi string
+  reasoning_vi string
 }
 
 function EvolveCandidate(
   query_vi: string,
   reference_answer_vi: string,
+  reasoning_vi: string,
   operation: EvolutionOperation
 ) -> EvolvedCandidate {
   client OpenAICompatibleProvider
@@ -150,6 +165,12 @@ function EvolveCandidate(
 
     Đáp án gốc:
     {{ reference_answer_vi }}
+
+    Lập luận gốc:
+    {{ reasoning_vi }}
+
+    Trả về cả lập luận đã cập nhật để luôn nhất quán với câu hỏi và đáp án sau
+    biến đổi.
 
     {{ ctx.output_format }}
   "#

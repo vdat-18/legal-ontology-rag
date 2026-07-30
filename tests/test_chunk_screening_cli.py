@@ -148,7 +148,7 @@ def test_chunk_screening_cli_resumes_by_skipping_already_screened_chunks(
 def test_chunk_screening_cli_writes_partial_output_when_a_batch_keeps_failing(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """A chunk whose batch keeps failing is left out of the output instead of crashing the run."""
+    """A failed batch remains resumable and makes the incomplete command fail."""
     chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
     screening_path = tmp_path / "chunk_screening.jsonl"
     first_batch = tuple(_chunk(f"chunk-{i}", f"Phạt tiền {i}.") for i in range(20))
@@ -174,7 +174,8 @@ def test_chunk_screening_cli_writes_partial_output_when_a_batch_keeps_failing(
     _configure_cli(monkeypatch, chunks_path, screening_path)
     monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _FailsForSecondBatchClient)
 
-    chunk_screening_cli.main()
+    with pytest.raises(RuntimeError, match="chunk screening left 1 incomplete"):
+        chunk_screening_cli.main()
 
     records = read_chunk_screening(screening_path)
     assert [record.chunk_id for record in records] == [chunk.chunk_id for chunk in first_batch]

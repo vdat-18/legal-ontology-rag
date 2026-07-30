@@ -8,12 +8,17 @@ from typing import Any, Literal, Protocol
 
 import numpy as np
 from baml_py.logging import set_log_level
-from loguru import logger
 
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import ConfirmedRelation as BamlConfirmedRelation
 from legal_rag.baml_client.types import LegalFactSummary
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.benchmark_synthesis.llm_execution import (
+    IncompleteLlmTasksError,
+    LlmTaskExhaustedError,
+    LlmTaskFailure,
+    execute_llm_task,
+)
 from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.parser.hashing import sha256_json
@@ -22,6 +27,7 @@ from legal_rag.settings import EvaluationSettings, Settings
 EVIDENCE_RELATION_SCHEMA_VERSION = "1.0.0"
 EVIDENCE_BUNDLE_SCHEMA_VERSION = "1.0.0"
 EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.0.0"
+EVIDENCE_RELATION_PROMPT_VERSION = "1.0.0"
 
 DEFAULT_RELATION_CONFIRMATION_MAX_RETRIES = 2
 
@@ -271,32 +277,27 @@ def confirm_evidence_relations(
     """Confirm every candidate pair, retrying a failed call before skipping it; call on_pair_confirmed after each pair."""
     facts_by_id = {fact.fact_id: fact for fact in facts}
     relations: list[EvidenceRelation] = []
+    failures: list[LlmTaskFailure] = []
     for fact_id_a, fact_id_b in candidate_pairs:
-        for attempt in range(1 + max_retries):
-            try:
-                relation = client.confirm(facts_by_id[fact_id_a], facts_by_id[fact_id_b])
-            except Exception as error:
-                logger.warning(
-                    "Evidence-relation confirmation for pair ({}, {}) failed on attempt {}/{}: {}",
-                    fact_id_a,
-                    fact_id_b,
-                    attempt + 1,
-                    1 + max_retries,
-                    error,
-                )
-                continue
+        task_key = f"{fact_id_a}:{fact_id_b}"
+        try:
+            relation = execute_llm_task(
+                task_key,
+                lambda fact_id_a=fact_id_a, fact_id_b=fact_id_b: client.confirm(
+                    facts_by_id[fact_id_a], facts_by_id[fact_id_b]
+                ),
+                max_retries=max_retries,
+            )
+        except LlmTaskExhaustedError as error:
+            failures.append(LlmTaskFailure(task_key=task_key, error=str(error)))
+        else:
             if relation is not None:
                 relations.append(relation)
             if on_pair_confirmed is not None:
                 on_pair_confirmed((fact_id_a, fact_id_b), relation)
-            break
-        else:
-            logger.warning(
-                "Skipping evidence-relation confirmation for pair ({}, {}) after {} failed attempts",
-                fact_id_a,
-                fact_id_b,
-                1 + max_retries,
-            )
+    if failures:
+        incomplete_error = IncompleteLlmTasksError.for_stage("evidence relation confirmation", failures)
+        raise incomplete_error
     return tuple(relations)
 
 

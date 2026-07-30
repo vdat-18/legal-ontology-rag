@@ -34,6 +34,7 @@ legal-backfill-extraction-progress = "legal_rag.extraction_progress_backfill_cli
 legal-migrate-legal-facts = "legal_rag.legal_fact_migration_cli:main"
 legal-build-evidence-graph = "legal_rag.evidence_graph_cli:main"
 legal-generate-candidates = "legal_rag.candidate_generation_cli:main"
+legal-assemble-groundtruth = "legal_rag.groundtruth_assembly_cli:main"
 legal-naive-rag-index = "legal_rag.naive_rag_index_cli:main"
 legal-naive-rag-query = "legal_rag.naive_rag_query_cli:main"
 legal-graphiti-index = "legal_rag.graphiti_index_cli:main"

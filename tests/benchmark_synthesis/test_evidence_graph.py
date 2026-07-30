@@ -223,13 +223,16 @@ def test_confirm_evidence_relations_skips_a_pair_that_fails_every_attempt() -> N
                 raise TimeoutError(msg)
             return _relation(fact_x.fact_id, fact_y.fact_id)
 
-    relations = confirm_evidence_relations(
-        [fact_a, fact_b, fact_c],
-        [("fact-a", "fact-b"), ("fact-a", "fact-c")],
-        _FailsForOnePairClient(),
-    )
+    persisted: list[tuple[str, str]] = []
+    with pytest.raises(RuntimeError, match="evidence relation confirmation left 1 incomplete"):
+        confirm_evidence_relations(
+            [fact_a, fact_b, fact_c],
+            [("fact-a", "fact-b"), ("fact-a", "fact-c")],
+            _FailsForOnePairClient(),
+            on_pair_confirmed=lambda pair, _relation: persisted.append(pair),
+        )
 
-    assert [(r.from_fact_id, r.to_fact_id) for r in relations] == [("fact-a", "fact-c")]
+    assert persisted == [("fact-a", "fact-c")]
 
 
 def test_classify_bundle_kind_amended_by_is_always_temporal() -> None:
