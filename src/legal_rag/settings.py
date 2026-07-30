@@ -143,6 +143,8 @@ class EvaluationSettings:
     max_quality_retries: int = 2
     chunk_screening_max_output_tokens: int = 2048
     chunk_screening_temperature: float = 0.0
+    document_metadata_max_output_tokens: int = 1024
+    document_metadata_temperature: float = 0.0
     fact_extraction_max_output_tokens: int = 4096
     fact_extraction_temperature: float = 0.0
     candidate_generation_max_output_tokens: int = 2048

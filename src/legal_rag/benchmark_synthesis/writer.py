@@ -17,6 +17,10 @@ from legal_rag.benchmark_synthesis.candidate_generation import (
 )
 from legal_rag.benchmark_synthesis.candidate_record import CandidateRecord
 from legal_rag.benchmark_synthesis.chunk_screening import CHUNK_SCREENING_SCHEMA_VERSION, ChunkScreeningRecord
+from legal_rag.benchmark_synthesis.document_metadata import (
+    DOCUMENT_METADATA_SCHEMA_VERSION,
+    DocumentMetadataRecord,
+)
 from legal_rag.benchmark_synthesis.evidence_graph import EVIDENCE_RELATION_SCHEMA_VERSION, EvidenceRelation
 from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import SCENARIO_SCHEMA_VERSION, Scenario
@@ -46,6 +50,25 @@ def read_chunk_screening(input_path: Path) -> tuple[ChunkScreeningRecord, ...]:
                 )
             )
     return tuple(records)
+
+
+def write_document_metadata(output_path: Path, record: DocumentMetadataRecord) -> None:
+    """Atomically replace one UTF-8 JSONL output with one document's metadata record."""
+    write_jsonl_atomic(output_path, (record.to_dict(),))
+
+
+def read_document_metadata(input_path: Path) -> DocumentMetadataRecord:
+    """Read one document's metadata JSONL file back into a typed record."""
+    with input_path.open(encoding="utf-8") as source_file:
+        payload = json.loads(source_file.readline())
+    if payload["schema_version"] != DOCUMENT_METADATA_SCHEMA_VERSION:
+        msg = f"Unsupported document-metadata schema: {payload['schema_version']}"
+        raise ValueError(msg)
+    return DocumentMetadataRecord(
+        document_number=payload["document_number"],
+        valid_from=_parse_date(payload["valid_from"]),
+        valid_to=_parse_date(payload["valid_to"]),
+    )
 
 
 def write_legal_facts(output_path: Path, facts: Sequence[LegalFact]) -> None:

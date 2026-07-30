@@ -33,9 +33,8 @@ class LegalFact {
   license_points_deducted string?
   additional_penalties string[] @description(#"Hình phạt bổ sung, ví dụ tước giấy phép. Mảng rỗng nếu không có."#)
   remedial_measures string[] @description(#"Biện pháp khắc phục hậu quả. Mảng rỗng nếu không có."#)
-  valid_from string? @description(#"Định dạng YYYY-MM-DD. Null nếu window không nêu ngày hiệu lực."#)
-  valid_to string? @description(#"Định dạng YYYY-MM-DD. Null nếu còn hiệu lực hoặc window không nêu."#)
-  document_number string @description(#"Số hiệu văn bản chứa quy định, ví dụ 168/2024/NĐ-CP."#)
+  valid_from string? @description(#"Định dạng YYYY-MM-DD. Chỉ điền khi window nêu ngày hiệu lực riêng của điều khoản này."#)
+  valid_to string? @description(#"Định dạng YYYY-MM-DD. Chỉ điền khi window nêu ngày hết hiệu lực riêng của điều khoản này."#)
   provision_path string @description(#"Ví dụ: Điều 6 khoản 9 điểm b."#)
   evidence EvidenceEntry[] @description(#"Ít nhất một phần tử. Mọi nội dung của fact phải có căn cứ ở đây."#)
 }

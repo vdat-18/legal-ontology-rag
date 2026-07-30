@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-LEGAL_FACT_SCHEMA_VERSION = "1.1.0"
+from legal_rag.parser.hashing import sha256_json
+
+LEGAL_FACT_SCHEMA_VERSION = "1.2.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,3 +66,56 @@ class LegalFact:
             "provision_path": self.provision_path,
             "evidence": [entry.to_dict() for entry in self.evidence],
         }
+
+
+def build_legal_fact(
+    *,
+    conduct: str,
+    subject: str,
+    conditions: tuple[str, ...],
+    monetary_penalty: str | None,
+    license_points_deducted: str | None,
+    additional_penalties: tuple[str, ...],
+    remedial_measures: tuple[str, ...],
+    valid_from: date | None,
+    valid_to: date | None,
+    document_number: str,
+    provision_path: str,
+    evidence: tuple[EvidenceReference, ...],
+    source_chunk_id: str | None,
+) -> LegalFact:
+    """Assign content-derived identity to one legal fact from its final field values."""
+    identity = {
+        "conduct": conduct,
+        "subject": subject,
+        "document_number": document_number,
+        "provision_path": provision_path,
+    }
+    content = {
+        **identity,
+        "conditions": list(conditions),
+        "monetary_penalty": monetary_penalty,
+        "license_points_deducted": license_points_deducted,
+        "additional_penalties": list(additional_penalties),
+        "remedial_measures": list(remedial_measures),
+        "valid_from": valid_from.isoformat() if valid_from else None,
+        "valid_to": valid_to.isoformat() if valid_to else None,
+        "evidence": [entry.to_dict() for entry in evidence],
+    }
+    return LegalFact(
+        fact_id=sha256_json(identity),
+        fact_content_sha256=sha256_json(content),
+        conduct=conduct,
+        subject=subject,
+        conditions=conditions,
+        monetary_penalty=monetary_penalty,
+        license_points_deducted=license_points_deducted,
+        additional_penalties=additional_penalties,
+        remedial_measures=remedial_measures,
+        valid_from=valid_from,
+        valid_to=valid_to,
+        document_number=document_number,
+        provision_path=provision_path,
+        evidence=evidence,
+        source_chunk_id=source_chunk_id,
+    )

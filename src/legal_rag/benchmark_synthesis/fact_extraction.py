@@ -15,9 +15,9 @@ from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import ChunkWindowEntry, ChunkWindowRole
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
-from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact, build_legal_fact
 from legal_rag.chunker.models import Chunk
-from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import EvaluationSettings, Settings
 
 # Lexical parsing, not a semantic decision: locate "Điều N" cross-references.
@@ -154,36 +154,9 @@ class BamlFactExtractionClient:
         return tuple(result)
 
 
-def build_legal_fact(raw: BamlLegalFact, source_chunk_id: str) -> LegalFact:
-    """Assign identity to one LLM-produced fact, trusting its cited provenance."""
-    evidence = tuple(
-        EvidenceReference(chunk_id=entry.chunk_id, quoted_span=entry.quoted_span) for entry in raw.evidence
-    )
-
-    valid_from = date.fromisoformat(raw.valid_from) if raw.valid_from else None
-    valid_to = date.fromisoformat(raw.valid_to) if raw.valid_to else None
-
-    identity = {
-        "conduct": raw.conduct,
-        "subject": raw.subject,
-        "document_number": raw.document_number,
-        "provision_path": raw.provision_path,
-    }
-    content = {
-        **identity,
-        "conditions": list(raw.conditions),
-        "monetary_penalty": raw.monetary_penalty,
-        "license_points_deducted": raw.license_points_deducted,
-        "additional_penalties": list(raw.additional_penalties),
-        "remedial_measures": list(raw.remedial_measures),
-        "valid_from": raw.valid_from,
-        "valid_to": raw.valid_to,
-        "evidence": [entry.to_dict() for entry in evidence],
-    }
-
-    return LegalFact(
-        fact_id=sha256_json(identity),
-        fact_content_sha256=sha256_json(content),
+def build_extracted_fact(raw: BamlLegalFact, source_chunk_id: str, metadata: DocumentMetadataRecord) -> LegalFact:
+    """Assign identity to one LLM-produced fact, stamping document metadata the window cannot carry."""
+    return build_legal_fact(
         conduct=raw.conduct,
         subject=raw.subject,
         conditions=tuple(raw.conditions),
@@ -191,11 +164,13 @@ def build_legal_fact(raw: BamlLegalFact, source_chunk_id: str) -> LegalFact:
         license_points_deducted=raw.license_points_deducted,
         additional_penalties=tuple(raw.additional_penalties),
         remedial_measures=tuple(raw.remedial_measures),
-        valid_from=valid_from,
-        valid_to=valid_to,
-        document_number=raw.document_number,
+        valid_from=date.fromisoformat(raw.valid_from) if raw.valid_from else metadata.valid_from,
+        valid_to=date.fromisoformat(raw.valid_to) if raw.valid_to else metadata.valid_to,
+        document_number=metadata.document_number,
         provision_path=raw.provision_path,
-        evidence=evidence,
+        evidence=tuple(
+            EvidenceReference(chunk_id=entry.chunk_id, quoted_span=entry.quoted_span) for entry in raw.evidence
+        ),
         source_chunk_id=source_chunk_id,
     )
 
@@ -204,6 +179,7 @@ def extract_facts_from_document(
     target_chunks: Sequence[Chunk],
     document_chunks: Sequence[Chunk],
     client: FactExtractionClient,
+    metadata: DocumentMetadataRecord,
     *,
     max_preceding_chunks: int = DEFAULT_MAX_PRECEDING_CHUNKS,
     max_following_chunks: int = DEFAULT_MAX_FOLLOWING_CHUNKS,
@@ -235,7 +211,7 @@ def extract_facts_from_document(
                     error,
                 )
                 continue
-            target_facts = tuple(build_legal_fact(raw_fact, target.chunk_id) for raw_fact in raw_facts)
+            target_facts = tuple(build_extracted_fact(raw_fact, target.chunk_id, metadata) for raw_fact in raw_facts)
             facts.extend(target_facts)
             if on_target_processed is not None:
                 on_target_processed(target.chunk_id, target_facts)

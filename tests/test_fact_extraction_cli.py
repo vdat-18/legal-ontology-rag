@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -12,8 +13,14 @@ from legal_rag.baml_client.types import EvidenceEntry as BamlEvidenceEntry
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.benchmark_synthesis import fact_extraction
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
+from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
-from legal_rag.benchmark_synthesis.writer import read_legal_facts, write_chunk_screening, write_legal_facts
+from legal_rag.benchmark_synthesis.writer import (
+    read_legal_facts,
+    write_chunk_screening,
+    write_document_metadata,
+    write_legal_facts,
+)
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
 
@@ -88,7 +95,6 @@ class _OneFactExtractionClient:
                 remedial_measures=[],
                 valid_from=None,
                 valid_to=None,
-                document_number="168/2024/NĐ-CP",
                 provision_path="Điều 6 khoản 9 điểm b",
                 evidence=[BamlEvidenceEntry(chunk_id=target_chunk_id, quoted_span="Phạt tiền từ 4.000.000 đồng")],
             ),
@@ -100,8 +106,14 @@ def _configure_cli(
     chunks_path: Path,
     screening_path: Path,
     facts_output_path: Path,
+    *,
+    metadata: DocumentMetadataRecord | None = None,
 ) -> None:
-    """Set deterministic CLI arguments, environment, and fake LLM/embedding clients."""
+    """Set deterministic CLI arguments, environment, document metadata, and fake LLM/embedding clients."""
+    metadata_path = chunks_path.parent / "document_metadata.jsonl"
+    if metadata is None:
+        metadata = DocumentMetadataRecord(document_number="168/2024/NĐ-CP", valid_from=date(2025, 1, 1), valid_to=None)
+    write_document_metadata(metadata_path, metadata)
     monkeypatch.setenv("LLM_BASE_URL", "http://localhost:20128/v1")
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     monkeypatch.setenv("LLM_MODEL", "provider/test-model")
@@ -112,7 +124,15 @@ def _configure_cli(
     monkeypatch.setenv("GROUNDTRUTH_MAX_QUALITY_RETRIES", "2")
     monkeypatch.setattr(fact_extraction, "BamlFactExtractionClient", _OneFactExtractionClient)
     monkeypatch.setattr(
-        sys, "argv", ["legal-extract-facts", str(chunks_path), str(screening_path), str(facts_output_path)]
+        sys,
+        "argv",
+        [
+            "legal-extract-facts",
+            str(chunks_path),
+            str(screening_path),
+            str(metadata_path),
+            str(facts_output_path),
+        ],
     )
 
 
@@ -133,6 +153,33 @@ def test_fact_extraction_cli_extracts_and_writes_facts(monkeypatch: pytest.Monke
     facts = read_legal_facts(facts_path)
     assert len(facts) == 1
     assert facts[0].conduct == "Vượt đèn đỏ"
+
+
+def test_fact_extraction_cli_stamps_document_metadata_onto_every_fact(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The resolved document number and effective dates land on facts the reading window could not supply them for."""
+    chunks_path = tmp_path / "336_2025_ND-CP.chunks.jsonl"
+    screening_path = tmp_path / "chunk_screening.jsonl"
+    facts_path = tmp_path / "legal_facts.jsonl"
+    write_chunks(chunks_path, (_chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."),))
+    write_chunk_screening(
+        screening_path,
+        [ChunkScreeningRecord(chunk_id="chunk-1", has_penalty_content=True, reason="Contains penalty content.")],
+    )
+    _configure_cli(
+        monkeypatch,
+        chunks_path,
+        screening_path,
+        facts_path,
+        metadata=DocumentMetadataRecord(document_number="336/2025/NĐ-CP", valid_from=date(2025, 8, 1), valid_to=None),
+    )
+
+    fact_extraction_cli.main()
+
+    facts = read_legal_facts(facts_path)
+    assert facts[0].document_number == "336/2025/NĐ-CP"
+    assert facts[0].valid_from == date(2025, 8, 1)
 
 
 def test_fact_extraction_cli_uses_excluded_chunk_as_adjacent_context(
@@ -226,7 +273,6 @@ def test_fact_extraction_cli_resumes_by_skipping_already_extracted_chunks(
                     remedial_measures=[],
                     valid_from=None,
                     valid_to=None,
-                    document_number="168/2024/NĐ-CP",
                     provision_path="Điều 6 khoản 10",
                     evidence=[BamlEvidenceEntry(chunk_id=target_chunk_id, quoted_span="Trừ 6 điểm")],
                 ),
@@ -315,7 +361,6 @@ def test_fact_extraction_cli_persists_progress_if_interrupted_mid_document(
                     remedial_measures=[],
                     valid_from=None,
                     valid_to=None,
-                    document_number="168/2024/NĐ-CP",
                     provision_path="Điều 6",
                     evidence=[BamlEvidenceEntry(chunk_id=target_chunk_id, quoted_span="Phạt tiền")],
                 ),

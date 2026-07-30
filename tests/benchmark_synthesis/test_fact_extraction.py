@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import date
 
 import pytest
 
@@ -10,9 +11,10 @@ from legal_rag.baml_client.types import ChunkWindowRole
 from legal_rag.baml_client.types import EvidenceEntry as BamlEvidenceEntry
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.benchmark_synthesis import fact_extraction
+from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
 from legal_rag.benchmark_synthesis.fact_extraction import (
     BamlFactExtractionClient,
-    build_legal_fact,
+    build_extracted_fact,
     build_provision_index,
     build_reading_window,
     cited_articles,
@@ -20,6 +22,17 @@ from legal_rag.benchmark_synthesis.fact_extraction import (
 )
 from legal_rag.chunker.models import Chunk
 from legal_rag.settings import EvaluationSettings, Settings
+
+
+def _metadata(**overrides: object) -> DocumentMetadataRecord:
+    """Build one resolved document-metadata record for fact-extraction tests."""
+    defaults: dict[str, object] = {
+        "document_number": "168/2024/NĐ-CP",
+        "valid_from": date(2025, 1, 1),
+        "valid_to": None,
+    }
+    defaults.update(overrides)
+    return DocumentMetadataRecord(**defaults)
 
 
 def _chunk(
@@ -160,9 +173,8 @@ def _baml_fact(**overrides: object) -> BamlLegalFact:
         "license_points_deducted": "4 điểm",
         "additional_penalties": [],
         "remedial_measures": [],
-        "valid_from": "2025-01-01",
+        "valid_from": None,
         "valid_to": None,
-        "document_number": "168/2024/NĐ-CP",
         "provision_path": "Điều 6 khoản 9 điểm b",
         "evidence": [BamlEvidenceEntry(chunk_id="chunk-1", quoted_span="phạt tiền từ 4.000.000 đồng")],
     }
@@ -170,30 +182,57 @@ def _baml_fact(**overrides: object) -> BamlLegalFact:
     return BamlLegalFact(**defaults)
 
 
-def test_build_legal_fact_keeps_llm_cited_evidence_as_is() -> None:
+def test_build_extracted_fact_keeps_llm_cited_evidence_as_is() -> None:
     """chunk_id and quoted_span in evidence come straight from the LLM, untouched."""
-    fact = build_legal_fact(_baml_fact(), "chunk-1")
+    fact = build_extracted_fact(_baml_fact(), "chunk-1", _metadata())
 
     assert fact.evidence[0].chunk_id == "chunk-1"
     assert fact.evidence[0].quoted_span == "phạt tiền từ 4.000.000 đồng"
-    assert fact.valid_from is not None
-    assert fact.valid_from.isoformat() == "2025-01-01"
-    assert fact.valid_to is None
     assert fact.source_chunk_id == "chunk-1"
 
 
-def test_build_legal_fact_identity_is_stable_for_identical_identity_fields() -> None:
+def test_build_extracted_fact_stamps_document_number_from_metadata() -> None:
+    """document_number comes from the resolved document metadata, never from the reading window."""
+    fact = build_extracted_fact(_baml_fact(), "chunk-1", _metadata(document_number="336/2025/NĐ-CP"))
+
+    assert fact.document_number == "336/2025/NĐ-CP"
+
+
+def test_build_extracted_fact_falls_back_to_document_effective_dates() -> None:
+    """A fact whose window states no effective date inherits the document's."""
+    fact = build_extracted_fact(_baml_fact(), "chunk-1", _metadata(valid_to=date(2027, 12, 31)))
+
+    assert fact.valid_from == date(2025, 1, 1)
+    assert fact.valid_to == date(2027, 12, 31)
+
+
+def test_build_extracted_fact_prefers_provision_effective_date_over_document_date() -> None:
+    """A provision stating its own effective date keeps it instead of the document-wide one."""
+    fact = build_extracted_fact(_baml_fact(valid_from="2026-01-01"), "chunk-1", _metadata())
+
+    assert fact.valid_from == date(2026, 1, 1)
+
+
+def test_build_extracted_fact_identity_is_stable_for_identical_identity_fields() -> None:
     """Two facts sharing conduct, subject, document_number, and provision_path share a fact_id."""
-    first = build_legal_fact(_baml_fact(), "chunk-1")
-    second = build_legal_fact(_baml_fact(monetary_penalty="5.000.000 đồng"), "chunk-1")
+    first = build_extracted_fact(_baml_fact(), "chunk-1", _metadata())
+    second = build_extracted_fact(_baml_fact(monetary_penalty="5.000.000 đồng"), "chunk-1", _metadata())
 
     assert first.fact_id == second.fact_id
     assert first.fact_content_sha256 != second.fact_content_sha256
 
 
-def test_build_legal_fact_trusts_llm_evidence_without_validation() -> None:
+def test_build_extracted_fact_identity_separates_documents_sharing_a_provision_path() -> None:
+    """The same provision path in two documents yields two identities, not one merged fact."""
+    first = build_extracted_fact(_baml_fact(), "chunk-1", _metadata())
+    second = build_extracted_fact(_baml_fact(), "chunk-1", _metadata(document_number="336/2025/NĐ-CP"))
+
+    assert first.fact_id != second.fact_id
+
+
+def test_build_extracted_fact_trusts_llm_evidence_without_validation() -> None:
     """No defensive check runs; an empty evidence list simply produces empty evidence."""
-    fact = build_legal_fact(_baml_fact(evidence=[]), "chunk-1")
+    fact = build_extracted_fact(_baml_fact(evidence=[]), "chunk-1", _metadata())
 
     assert fact.evidence == ()
 
@@ -219,7 +258,7 @@ def test_extract_facts_from_document_collects_every_fact_per_target() -> None:
     )
     client = _FakeExtractionClient({"target": (fact_one, fact_two)})
 
-    facts = extract_facts_from_document([target], [target], client)
+    facts = extract_facts_from_document([target], [target], client, _metadata())
 
     assert len(facts) == 2
     assert {fact.conduct for fact in facts} == {fact_one.conduct, fact_two.conduct}
@@ -240,7 +279,7 @@ def test_extract_facts_from_document_retries_a_failing_target_then_succeeds() ->
                 raise TimeoutError(msg)
             return (fact,)
 
-    facts = extract_facts_from_document([target], [target], _FlakyClient())
+    facts = extract_facts_from_document([target], [target], _FlakyClient(), _metadata())
 
     assert attempts == 2
     assert len(facts) == 1
@@ -261,7 +300,7 @@ def test_extract_facts_from_document_skips_a_target_that_fails_every_attempt() -
                 raise TimeoutError(msg)
             return (fact,)
 
-    facts = extract_facts_from_document([failing, ok], [failing, ok], _FailsForOneChunkClient())
+    facts = extract_facts_from_document([failing, ok], [failing, ok], _FailsForOneChunkClient(), _metadata())
 
     assert [f.source_chunk_id for f in facts] == ["chunk-ok"]
 
@@ -278,6 +317,7 @@ def test_extract_facts_from_document_calls_on_target_processed_after_each_target
         [target_one, target_two],
         [target_one, target_two],
         client,
+        _metadata(),
         on_target_processed=lambda chunk_id, facts: calls.append((chunk_id, len(facts))),
     )
 
@@ -300,7 +340,7 @@ def test_extract_facts_from_document_resolves_context_excluded_from_target_chunk
             seen_roles.update({entry.chunk_id: entry.role for entry in window})
             return ()
 
-    extract_facts_from_document([target], [preceding, target], _RecordingClient())
+    extract_facts_from_document([target], [preceding, target], _RecordingClient(), _metadata())
 
     assert seen_roles == {"target": ChunkWindowRole.Target, "preceding": ChunkWindowRole.Adjacent}
 
@@ -335,7 +375,7 @@ def test_baml_fact_extraction_client_parses_typed_result(monkeypatch: pytest.Mon
             '[{"conduct":"Vượt đèn đỏ","subject":"Người điều khiển ô tô","conditions":[],'
             '"monetary_penalty":"4.000.000 đồng","license_points_deducted":null,'
             '"additional_penalties":[],"remedial_measures":[],"valid_from":null,"valid_to":null,'
-            '"document_number":"168/2024/NĐ-CP","provision_path":"Điều 6",'
+            '"provision_path":"Điều 6",'
             '"evidence":[{"chunk_id":"c1","quoted_span":"4.000.000 đồng"}]}]'
         ),
     )

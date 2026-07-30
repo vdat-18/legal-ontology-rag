@@ -14,6 +14,9 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Extract legal facts from one document's screened chunks.")
     parser.add_argument("chunks_path", type=Path, help="Chunk JSONL path for one document")
     parser.add_argument("screening_path", type=Path, help="Chunk-screening JSONL path from legal-screen-chunks")
+    parser.add_argument(
+        "metadata_path", type=Path, help="Document-metadata JSONL path from legal-resolve-document-metadata"
+    )
     parser.add_argument("facts_output_path", type=Path, help="Destination legal-facts JSONL path")
     return parser
 
@@ -24,7 +27,12 @@ def main() -> None:
 
     from legal_rag.benchmark_synthesis.fact_extraction import BamlFactExtractionClient, extract_facts_from_document
     from legal_rag.benchmark_synthesis.models import LegalFact
-    from legal_rag.benchmark_synthesis.writer import read_chunk_screening, read_legal_facts, write_legal_facts
+    from legal_rag.benchmark_synthesis.writer import (
+        read_chunk_screening,
+        read_document_metadata,
+        read_legal_facts,
+        write_legal_facts,
+    )
     from legal_rag.chunker.writer import read_chunks
     from legal_rag.settings import EvaluationSettings, Settings
 
@@ -61,8 +69,11 @@ def main() -> None:
         logger.debug("Persisted {} fact(s) for chunk {}", len(target_facts), chunk_id)
 
     if remaining_targets:
+        metadata = read_document_metadata(arguments.metadata_path)
         extraction_client = BamlFactExtractionClient(settings, evaluation_settings)
-        extract_facts_from_document(remaining_targets, chunks, extraction_client, on_target_processed=_persist_target)
+        extract_facts_from_document(
+            remaining_targets, chunks, extraction_client, metadata, on_target_processed=_persist_target
+        )
 
     facts = tuple(facts_by_id.values())
     write_legal_facts(arguments.facts_output_path, facts)

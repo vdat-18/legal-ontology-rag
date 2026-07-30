@@ -131,6 +131,28 @@ dồn cụm, khiến một ngưỡng cố định gần như vô nghĩa trong th
 chunk bị loại phải audit được — lý do lấy trực tiếp từ model, không phải câu
 chữ tính toán từ điểm số.
 
+### Metadata cấp văn bản không hỏi qua cửa sổ đọc
+
+`document_number` và ngày hiệu lực là thuộc tính của **văn bản**, không phải của
+chunk: số hiệu in ở phần đầu tài liệu, ngày hiệu lực nằm ở điều khoản thi hành
+gần cuối. Cả hai đều nằm ngoài cửa sổ đọc của một chunk chế tài, nên hỏi model
+trích fact về chúng là hỏi một thông tin nó không thể thấy — thực tế cho ra
+trường rỗng, chuỗi kiểu "Nghị định này", hoặc số hiệu của văn bản bị sửa đổi mà
+văn bản đang đọc nhắc tới.
+
+Vì vậy hai trường này được giải một lần cho mỗi văn bản, bằng một LLM call
+riêng đọc các chunk đầu và cuối của **thân văn bản** (`record_scope == "root"`,
+để phần cuối không rơi vào phụ lục), rồi ghi ra artifact
+`*.document_metadata.jsonl`. Bước trích fact đọc artifact này và dập giá trị vào
+mọi fact của văn bản bằng code — một giá trị duy nhất cho cả văn bản, không thể
+lệch nhau giữa các fact.
+
+`valid_from`/`valid_to` vẫn để model trích fact trả về được: một điều khoản có
+thể tự nêu ngày hiệu lực riêng, muộn hơn ngày của toàn văn bản. Khi model không
+nêu thì lấy ngày của văn bản. Đây là xấp xỉ có ý thức — điều khoản có ngày hiệu
+lực riêng nhưng chỉ nêu ở điều khoản thi hành cuối văn bản sẽ nhận ngày của
+toàn văn bản, vì thông tin đó không nằm trong cửa sổ đọc của nó.
+
 ### Gộp chunk khi một fact cần nhiều nguồn
 
 Một hành vi có thể có căn cứ nằm rải trên nhiều chunk, theo hai kiểu khác nhau,
@@ -792,6 +814,7 @@ hoặc từ chối.
 
 ```text
 data/benchmark_synthesis/
+├── document_metadata.jsonl
 ├── legal_facts.jsonl
 ├── evidence_relations.jsonl
 ├── scenarios.jsonl
@@ -1006,8 +1029,14 @@ sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.js
   (atomic) sau **mỗi batch** thay vì chỉ một lần ở cuối, nên nếu tiến trình
   bị dừng đột ngột giữa chừng (không phải lỗi batch, mà là crash/kill hẳn
   tiến trình), các batch đã xong trước đó vẫn không mất.
-- `legal-extract-facts` (`fact_extraction_cli.py`): nhận đường dẫn chunk JSONL
-  **và** `chunk_screening.jsonl`, lọc lại chunk có `has_penalty_content=true`,
+- `legal-resolve-document-metadata` (`document_metadata_cli.py`): nhận đường dẫn
+  chunk JSONL của một văn bản, gọi LLM **một lần** trên các chunk đầu và cuối
+  của thân văn bản, ghi `document_metadata.jsonl` — một dòng duy nhất mang
+  `document_number`, `valid_from`, `valid_to`. Không có resume: một lần chạy là
+  một call, chạy lại thì tính lại.
+- `legal-extract-facts` (`fact_extraction_cli.py`): nhận đường dẫn chunk JSONL,
+  `chunk_screening.jsonl` **và** `document_metadata.jsonl`, lọc lại chunk có
+  `has_penalty_content=true`,
   trích fact, ghi thẳng `legal_facts.jsonl` — không còn ledger, không còn
   bước duyệt tay. Mỗi `LegalFact` mang thêm `source_chunk_id` — chunk Target
   đã sinh ra fact đó — dùng để resume: chạy lại trên cùng output path chỉ
@@ -1017,6 +1046,20 @@ sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.js
   ở lần sau). File output được ghi lại (atomic) sau **mỗi Target** thay vì chỉ
   một lần ở cuối, nên tiến trình bị crash giữa chừng không mất fact đã trích
   trước đó.
+- `legal-migrate-legal-facts` (`legal_fact_migration_cli.py`): migration một lần
+  từ `LEGAL_FACT_SCHEMA_VERSION` `1.1.0` sang `1.2.0`, cho các
+  `legal_facts.jsonl` đã trích xuất **trước khi** có
+  `document_metadata.jsonl`. Nhận file fact và file metadata, dập lại
+  `document_number` cùng ngày hiệu lực còn trống, tính lại `fact_id` và
+  `fact_content_sha256`, ghi lại tại chỗ dưới schema mới — **không gọi lại LLM
+  trích fact**. Facts trùng định danh sau khi tính lại được hợp nhất theo
+  `fact_id`, đúng ngữ nghĩa định danh nội dung. File không phải schema `1.1.0`
+  bị từ chối, nên chạy lại lần hai không làm hỏng dữ liệu đã migrate.
+
+  Vì `document_number` nằm trong bộ trường định danh, migration này **đổi
+  `fact_id` của mọi fact**. Nó chỉ an toàn khi chưa có artifact nào tham chiếu
+  `fact_id` (`evidence_relations.jsonl`, `scenarios.jsonl`, `single_turn.jsonl`);
+  nếu đã có thì các artifact đó phải sinh lại.
 
 Hạ tầng dùng chung mới phát sinh khi triển khai, ngoài phạm vi ban đầu của
 Phase 1 nhưng cần thiết để nó chạy được:
@@ -1030,9 +1073,11 @@ Phase 1 nhưng cần thiết để nó chạy được:
   đọc đúng file đó làm đầu vào.
 
 Test: `tests/benchmark_synthesis/test_fact_extraction.py`,
-`test_chunk_screening.py`, `test_evaluation_models.py`,
-`test_evaluation_writer.py`, `tests/test_baml_transport.py`,
-`tests/test_chunk_screening_cli.py`, `tests/test_fact_extraction_cli.py`
+`test_chunk_screening.py`, `test_document_metadata.py`,
+`test_evaluation_models.py`, `test_evaluation_writer.py`,
+`tests/test_baml_transport.py`, `tests/test_chunk_screening_cli.py`,
+`tests/test_document_metadata_cli.py`, `tests/test_fact_extraction_cli.py`,
+`tests/test_legal_fact_migration_cli.py`
 (tích hợp CLI đầu-cuối với client LLM giả mỗi bên). Windowing test
 trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
 `execute_baml_request` trong `tests/parser/test_baml_captioning.py`.
@@ -1283,5 +1328,17 @@ là so khớp tất định thuần Python, không qua `deepeval`.
   từ `(accepted, excluded)` sang `ChunkScreeningRecord` cho mọi chunk (kể cả
   chunk được chấp nhận), việc lọc `has_penalty_content=true` chuyển sang CLI.
   `writer.py`: thêm `write_chunk_screening`/`read_chunk_screening`.
-  `pyproject.toml`: thêm console script `legal-screen-chunks`. ✅ **Đã áp
+- `pyproject.toml`: thêm console script `legal-screen-chunks`. ✅ **Đã áp
   dụng**, không nằm trong kế hoạch gốc.
+- Tách metadata cấp văn bản (`document_number`, ngày hiệu lực) ra khỏi output
+  của LLM trích fact thành bước riêng `legal-resolve-document-metadata`
+  (`document_metadata.py`, `document_metadata_cli.py`,
+  `baml_src/document_metadata.baml`), vì đây là thuộc tính của văn bản mà cửa
+  sổ đọc cấp chunk không chứa. `models.py`: thêm `build_legal_fact` làm
+  constructor duy nhất tính `fact_id`/`fact_content_sha256`, để bước trích fact
+  và migration dùng chung một công thức băm; `LEGAL_FACT_SCHEMA_VERSION` lên
+  `1.2.0`. `settings.py`: thêm `document_metadata_max_output_tokens`,
+  `document_metadata_temperature`. `writer.py`: thêm
+  `write_document_metadata`/`read_document_metadata`. `pyproject.toml`: thêm
+  console script `legal-resolve-document-metadata` và
+  `legal-migrate-legal-facts`. ✅ **Đã áp dụng**, không nằm trong kế hoạch gốc.
