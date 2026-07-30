@@ -6,7 +6,7 @@ import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
-from typing import Protocol
+from typing import Any, Protocol
 
 from baml_py.logging import set_log_level
 from loguru import logger
@@ -27,6 +27,22 @@ _ARTICLE_CITATION_PATTERN = re.compile(r"Điều\s+(\d+)\b")
 DEFAULT_MAX_PRECEDING_CHUNKS = 2
 DEFAULT_MAX_FOLLOWING_CHUNKS = 1
 DEFAULT_EXTRACTION_MAX_RETRIES = 2
+
+EXTRACTION_PROGRESS_SCHEMA_VERSION = "1.0.0"
+
+
+@dataclass(frozen=True, slots=True)
+class ExtractionProgressRecord:
+    """One chunk fact extraction has finished reading, recorded whether or not it produced facts."""
+
+    chunk_id: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable extraction-progress record."""
+        return {
+            "schema_version": EXTRACTION_PROGRESS_SCHEMA_VERSION,
+            "chunk_id": self.chunk_id,
+        }
 
 
 @dataclass(frozen=True, slots=True)

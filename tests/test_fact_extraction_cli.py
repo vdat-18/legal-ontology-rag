@@ -14,11 +14,14 @@ from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.benchmark_synthesis import fact_extraction
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
+from legal_rag.benchmark_synthesis.fact_extraction import ExtractionProgressRecord
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.writer import (
+    read_extraction_progress,
     read_legal_facts,
     write_chunk_screening,
     write_document_metadata,
+    write_extraction_progress,
     write_legal_facts,
 )
 from legal_rag.chunker.models import Chunk
@@ -111,6 +114,7 @@ def _configure_cli(
 ) -> None:
     """Set deterministic CLI arguments, environment, document metadata, and fake LLM/embedding clients."""
     metadata_path = chunks_path.parent / "document_metadata.jsonl"
+    progress_path = facts_output_path.parent / "extraction_progress.jsonl"
     if metadata is None:
         metadata = DocumentMetadataRecord(document_number="168/2024/NĐ-CP", valid_from=date(2025, 1, 1), valid_to=None)
     write_document_metadata(metadata_path, metadata)
@@ -132,6 +136,7 @@ def _configure_cli(
             str(screening_path),
             str(metadata_path),
             str(facts_output_path),
+            str(progress_path),
         ],
     )
 
@@ -250,6 +255,7 @@ def test_fact_extraction_cli_resumes_by_skipping_already_extracted_chunks(
         ],
     )
     write_legal_facts(facts_path, [_existing_fact("existing-fact", "chunk-1")])
+    write_extraction_progress(tmp_path / "extraction_progress.jsonl", [ExtractionProgressRecord(chunk_id="chunk-1")])
     extracted_chunk_ids: list[str] = []
 
     class _ResumingClient:
@@ -288,6 +294,44 @@ def test_fact_extraction_cli_resumes_by_skipping_already_extracted_chunks(
     assert {fact.source_chunk_id for fact in facts} == {"chunk-1", "chunk-2"}
 
 
+def test_fact_extraction_cli_does_not_reprocess_a_chunk_that_yielded_no_facts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A chunk the model returned nothing for is recorded as processed, so a second run does not pay for it again."""
+    chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
+    screening_path = tmp_path / "chunk_screening.jsonl"
+    facts_path = tmp_path / "legal_facts.jsonl"
+    write_chunks(chunks_path, (_chunk("chunk-1", "QUYẾT ĐỊNH Kéo dài thời hạn tạm giữ tang vật."),))
+    write_chunk_screening(
+        screening_path,
+        [ChunkScreeningRecord(chunk_id="chunk-1", has_penalty_content=True, reason="Contains penalty content.")],
+    )
+    extraction_calls: list[str] = []
+
+    class _NoFactClient:
+        """Return no facts at all, recording every target it was asked about."""
+
+        def __init__(self, settings: object, evaluation_settings: object) -> None:
+            return None
+
+        def extract(self, window: object) -> tuple[BamlLegalFact, ...]:
+            """Record the target chunk id and return an empty list."""
+            extraction_calls.append(next(iter(window)).chunk_id)
+            return ()
+
+    _configure_cli(monkeypatch, chunks_path, screening_path, facts_path)
+    monkeypatch.setattr(fact_extraction, "BamlFactExtractionClient", _NoFactClient)
+
+    fact_extraction_cli.main()
+    fact_extraction_cli.main()
+
+    assert extraction_calls == ["chunk-1"]
+    assert read_extraction_progress(tmp_path / "extraction_progress.jsonl") == (
+        ExtractionProgressRecord(chunk_id="chunk-1"),
+    )
+    assert read_legal_facts(facts_path) == ()
+
+
 def test_fact_extraction_cli_skips_the_llm_entirely_when_fully_resumed(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -301,6 +345,7 @@ def test_fact_extraction_cli_skips_the_llm_entirely_when_fully_resumed(
         [ChunkScreeningRecord(chunk_id="chunk-1", has_penalty_content=True, reason="Contains penalty content.")],
     )
     write_legal_facts(facts_path, [_existing_fact("existing-fact", "chunk-1")])
+    write_extraction_progress(tmp_path / "extraction_progress.jsonl", [ExtractionProgressRecord(chunk_id="chunk-1")])
 
     def _fail(*args: object, **kwargs: object) -> None:
         msg = "BamlFactExtractionClient must not be constructed when every chunk is resumed"
@@ -375,6 +420,9 @@ def test_fact_extraction_cli_persists_progress_if_interrupted_mid_document(
     facts = read_legal_facts(facts_path)
     assert len(facts) == 1
     assert facts[0].source_chunk_id == "chunk-1"
+    assert read_extraction_progress(tmp_path / "extraction_progress.jsonl") == (
+        ExtractionProgressRecord(chunk_id="chunk-1"),
+    )
 
 
 def test_fact_extraction_cli_skips_chunks_excluded_by_screening(

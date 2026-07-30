@@ -815,8 +815,10 @@ hoặc từ chối.
 ```text
 data/benchmark_synthesis/
 ├── document_metadata.jsonl
+├── extraction_progress.jsonl
 ├── legal_facts.jsonl
 ├── evidence_relations.jsonl
+├── evidence_relation_progress.jsonl
 ├── scenarios.jsonl
 ├── candidates/
 │   ├── single_turn.jsonl
@@ -1039,13 +1041,27 @@ sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.js
   `has_penalty_content=true`,
   trích fact, ghi thẳng `legal_facts.jsonl` — không còn ledger, không còn
   bước duyệt tay. Mỗi `LegalFact` mang thêm `source_chunk_id` — chunk Target
-  đã sinh ra fact đó — dùng để resume: chạy lại trên cùng output path chỉ
-  trích chunk chưa có fact nào gắn `source_chunk_id` tương ứng, giữ nguyên
-  fact cũ. Một lệnh gọi LLM lỗi được thử lại tối đa
+  đã sinh ra fact đó — làm provenance. Resume đọc từ artifact riêng
+  `extraction_progress.jsonl`, ghi một dòng cho **mỗi Target đã đọc xong, kể
+  cả Target trả về danh sách rỗng**. Đây là điểm khác biệt quan trọng: suy
+  "chunk nào đã chạy" từ `source_chunk_id` của fact là sai, vì một Target trả
+  về rỗng hợp lệ (biểu mẫu hành chính, thủ tục không kèm chế tài) không để lại
+  fact nào — trên dữ liệu thật 249/347 Target rơi vào nhóm này, tức 72% công
+  việc đã xong sẽ bị chạy lại. Thứ tự ghi là **facts trước, progress sau**:
+  crash giữa hai lần ghi chỉ làm Target đó chạy lại ở lần sau và fact trùng
+  được khử theo `fact_id`, còn thứ tự ngược lại sẽ mất fact vĩnh viễn.
+  Một lệnh gọi LLM lỗi được thử lại tối đa
   `DEFAULT_EXTRACTION_MAX_RETRIES` lần; nếu vẫn lỗi thì bỏ qua chunk đó (resume
   ở lần sau). File output được ghi lại (atomic) sau **mỗi Target** thay vì chỉ
   một lần ở cuối, nên tiến trình bị crash giữa chừng không mất fact đã trích
   trước đó.
+- `legal-backfill-extraction-progress` (`extraction_progress_backfill_cli.py`):
+  backfill một lần cho các văn bản đã trích fact xong **trước khi** có
+  `extraction_progress.jsonl`. Ghi một dòng progress cho mọi chunk
+  `has_penalty_content=true` trong file screening. Chỉ đúng khi lần chạy trích
+  fact đã hoàn tất cả văn bản; chunk nào bị bỏ qua sau khi retry hết (log
+  `Skipping fact extraction for chunk`) phải truyền qua `--skipped-chunk-id`
+  để lần chạy sau vẫn trích lại.
 - `legal-migrate-legal-facts` (`legal_fact_migration_cli.py`): migration một lần
   từ `LEGAL_FACT_SCHEMA_VERSION` `1.1.0` sang `1.2.0`, cho các
   `legal_facts.jsonl` đã trích xuất **trước khi** có
@@ -1077,6 +1093,7 @@ Test: `tests/benchmark_synthesis/test_fact_extraction.py`,
 `test_evaluation_models.py`, `test_evaluation_writer.py`,
 `tests/test_baml_transport.py`, `tests/test_chunk_screening_cli.py`,
 `tests/test_document_metadata_cli.py`, `tests/test_fact_extraction_cli.py`,
+`tests/test_extraction_progress_backfill_cli.py`,
 `tests/test_legal_fact_migration_cli.py`
 (tích hợp CLI đầu-cuối với client LLM giả mỗi bên). Windowing test
 trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
@@ -1092,6 +1109,17 @@ trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
   khác văn bản mới là `multi_hop`, cùng văn bản hạ xuống `synthesis` — biểu
   diễn trực tiếp bằng logic phân loại, không phải bước "hạ cấp" riêng sau khi
   đã tạo bundle; `sample_bundles` chặn trùng theo `τ`.
+- `confirm_evidence_relations` theo đúng kỷ luật retry-rồi-skip của Phase 1/1.5:
+  một lệnh gọi lỗi được thử lại tối đa `DEFAULT_RELATION_CONFIRMATION_MAX_RETRIES`
+  lần rồi bỏ qua cặp đó; `on_pair_confirmed` được gọi sau **mỗi** cặp, dù cặp
+  đó được xác nhận có quan hệ hay không. Khoá resume của CLI là
+  `evidence_relation_progress.jsonl` (`EvidenceRelationProgressRecord`), không
+  phải `evidence_relations.jsonl` — cùng lý do đã sửa ở `legal-extract-facts`:
+  một cặp bị xác nhận "không liên quan" là kết quả hợp lệ nhưng không sinh ra
+  `EvidenceRelation` nào, nên suy "cặp nào đã kiểm" từ file quan hệ sẽ khiến
+  cặp đó bị gọi LLM lại ở mọi lần chạy sau. `find_candidate_fact_pairs` chạy
+  lại toàn bộ mỗi lần (tất định, rẻ, không gọi LLM) chỉ để xác định danh sách
+  cặp ứng viên; phần tốn kém — xác nhận qua LLM — mới được resume.
 - `scenario_sampling.py` — nạp taxonomy/persona/phân bố từ config, thuật
   toán tham lam theo quota đã mô tả ở mục 5.
 
@@ -1130,16 +1158,25 @@ Config: `data/config/groundtruth/query_taxonomy.json`,
 đúng mục 6; logic *áp dụng* evolution vẫn thuộc Phase 3).
 
 CLI: `legal-build-evidence-graph` (`evidence_graph_cli.py`) — đọc mọi fact từ
-`legal_facts.jsonl`, xác nhận quan hệ, lấy mẫu bundle, sinh scenario, ghi
+`legal_facts.jsonl`, xác nhận quan hệ chưa được kiểm (đọc resume từ
+`evidence_relation_progress.jsonl`), lấy mẫu bundle, sinh scenario, ghi
 `evidence_relations.jsonl` và `scenarios.jsonl`. `scenarios.jsonl` là output
 mới phát sinh khi triển khai, chưa có trong cấu trúc output đề xuất ban đầu
 ở mục 17 — bổ sung vì Phase 3 cần scenario đã chốt và ổn định, không tính
-lại mỗi lần sinh candidate.
+lại mỗi lần sinh candidate. `evidence_relations.jsonl` được ghi lại (atomic)
+sau **mỗi cặp** được xác nhận, theo thứ tự quan hệ trước rồi mới đến progress
+— giống hệt thứ tự đã chọn ở `legal-extract-facts` — nên crash giữa hai lần
+ghi chỉ khiến cặp đó bị kiểm lại, không bao giờ mất quan hệ đã xác nhận.
+Bundle sampling và scenario sampling là code tất định, chạy lại toàn bộ mỗi
+lần trên tập quan hệ hiện có — không cần resume riêng vì không tốn LLM call.
 
-Test: `test_evidence_graph.py`, `test_scenario_sampling.py` (thuật toán tham
+Test: `test_evidence_graph.py` (bao gồm retry/skip/callback theo mẫu
+`test_fact_extraction.py`), `test_scenario_sampling.py` (thuật toán tham
 lam test bằng fixture fact cố định, kiểm quota trần theo `ceil`, kiểm luân
-phiên theo trục ít dùng nhất), `tests/test_evidence_graph_cli.py` (tích hợp
-CLI đầu-cuối).
+phiên theo trục ít dùng nhất), `test_evaluation_writer.py` (round-trip
+`EvidenceRelationProgressRecord`), `tests/test_evidence_graph_cli.py` (tích
+hợp CLI đầu-cuối: resume bỏ qua cặp đã kiểm, ghi tiến độ khi bị ngắt giữa
+chừng, không gọi lại LLM cho cặp đã xác nhận "không liên quan").
 
 ### Phase 3 — Sinh single-turn và hai cổng kiểm chứng (mục 8) ✅ Đã triển khai
 
@@ -1342,3 +1379,10 @@ là so khớp tất định thuần Python, không qua `deepeval`.
   `write_document_metadata`/`read_document_metadata`. `pyproject.toml`: thêm
   console script `legal-resolve-document-metadata` và
   `legal-migrate-legal-facts`. ✅ **Đã áp dụng**, không nằm trong kế hoạch gốc.
+- Tách khoá resume của `legal-extract-facts` khỏi `source_chunk_id` của fact
+  sang artifact riêng `extraction_progress.jsonl`, vì một Target trả về danh
+  sách rỗng là kết quả hợp lệ nhưng không để lại fact nào để suy ra.
+  `fact_extraction.py`: thêm `ExtractionProgressRecord`; `writer.py`: thêm
+  `write_extraction_progress`/`read_extraction_progress`; `pyproject.toml`:
+  thêm console script `legal-backfill-extraction-progress` cho dữ liệu đã
+  trích trước thay đổi này. ✅ **Đã áp dụng**, không nằm trong kế hoạch gốc.

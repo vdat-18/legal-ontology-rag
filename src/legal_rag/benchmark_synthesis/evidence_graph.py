@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
 import numpy as np
 from baml_py.logging import set_log_level
+from loguru import logger
 
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import ConfirmedRelation as BamlConfirmedRelation
@@ -20,6 +21,9 @@ from legal_rag.settings import EvaluationSettings, Settings
 
 EVIDENCE_RELATION_SCHEMA_VERSION = "1.0.0"
 EVIDENCE_BUNDLE_SCHEMA_VERSION = "1.0.0"
+EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.0.0"
+
+DEFAULT_RELATION_CONFIRMATION_MAX_RETRIES = 2
 
 RelationType = Literal[
     "conduct_to_penalty",
@@ -90,6 +94,22 @@ class EvidenceBundle:
             "kind": self.kind,
             "fact_ids": list(self.fact_ids),
             "bridge": list(self.bridge),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceRelationProgressRecord:
+    """One candidate fact pair evidence-relation confirmation has finished checking, related or not."""
+
+    fact_id_a: str
+    fact_id_b: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable evidence-relation-progress record."""
+        return {
+            "schema_version": EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION,
+            "fact_id_a": self.fact_id_a,
+            "fact_id_b": self.fact_id_b,
         }
 
 
@@ -199,14 +219,39 @@ def confirm_evidence_relations(
     facts: Sequence[LegalFact],
     candidate_pairs: Sequence[tuple[str, str]],
     client: EvidenceRelationClient,
+    *,
+    max_retries: int = DEFAULT_RELATION_CONFIRMATION_MAX_RETRIES,
+    on_pair_confirmed: Callable[[tuple[str, str], EvidenceRelation | None], None] | None = None,
 ) -> tuple[EvidenceRelation, ...]:
-    """Confirm every candidate pair, keeping only genuinely related facts."""
+    """Confirm every candidate pair, retrying a failed call before skipping it; call on_pair_confirmed after each pair."""
     facts_by_id = {fact.fact_id: fact for fact in facts}
     relations: list[EvidenceRelation] = []
     for fact_id_a, fact_id_b in candidate_pairs:
-        relation = client.confirm(facts_by_id[fact_id_a], facts_by_id[fact_id_b])
-        if relation is not None:
-            relations.append(relation)
+        for attempt in range(1 + max_retries):
+            try:
+                relation = client.confirm(facts_by_id[fact_id_a], facts_by_id[fact_id_b])
+            except Exception as error:
+                logger.warning(
+                    "Evidence-relation confirmation for pair ({}, {}) failed on attempt {}/{}: {}",
+                    fact_id_a,
+                    fact_id_b,
+                    attempt + 1,
+                    1 + max_retries,
+                    error,
+                )
+                continue
+            if relation is not None:
+                relations.append(relation)
+            if on_pair_confirmed is not None:
+                on_pair_confirmed((fact_id_a, fact_id_b), relation)
+            break
+        else:
+            logger.warning(
+                "Skipping evidence-relation confirmation for pair ({}, {}) after {} failed attempts",
+                fact_id_a,
+                fact_id_b,
+                1 + max_retries,
+            )
     return tuple(relations)
 
 

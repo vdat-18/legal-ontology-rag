@@ -15,6 +15,9 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("facts_path", type=Path, help="Legal-facts JSONL path")
     parser.add_argument("relations_output_path", type=Path, help="Destination evidence-relations JSONL path")
+    parser.add_argument(
+        "relations_progress_output_path", type=Path, help="Destination evidence-relation-progress JSONL path"
+    )
     parser.add_argument("scenarios_output_path", type=Path, help="Destination scenarios JSONL path")
     parser.add_argument("--query-taxonomy", type=Path, required=True, help="Query-taxonomy config JSON path")
     parser.add_argument("--personas", type=Path, required=True, help="Persona config JSON path")
@@ -26,11 +29,13 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    """Confirm evidence relations among facts and sample scenarios from the result."""
+    """Confirm evidence relations not yet checked among facts, then sample scenarios from the result."""
     from dotenv import find_dotenv, load_dotenv
 
     from legal_rag.benchmark_synthesis.evidence_graph import (
         BamlEvidenceRelationClient,
+        EvidenceRelation,
+        EvidenceRelationProgressRecord,
         confirm_evidence_relations,
         find_candidate_fact_pairs,
         sample_bundles,
@@ -42,7 +47,14 @@ def main() -> None:
         load_scenario_distribution,
         sample_scenarios,
     )
-    from legal_rag.benchmark_synthesis.writer import read_legal_facts, write_evidence_relations, write_scenarios
+    from legal_rag.benchmark_synthesis.writer import (
+        read_evidence_relation_progress,
+        read_evidence_relations,
+        read_legal_facts,
+        write_evidence_relation_progress,
+        write_evidence_relations,
+        write_scenarios,
+    )
     from legal_rag.embedding.encoder import EmbeddingEncoder
     from legal_rag.embedding.profiles import load_configured_embedding_profile
     from legal_rag.settings import EvaluationSettings, Settings
@@ -60,13 +72,55 @@ def main() -> None:
     profile = load_configured_embedding_profile(evaluation_settings.embedding_profile)
     encoder = EmbeddingEncoder.from_profile(profile)
     candidate_pairs = find_candidate_fact_pairs(facts, encoder)
-    relation_client = BamlEvidenceRelationClient(settings, evaluation_settings)
-    relations = confirm_evidence_relations(facts, candidate_pairs, relation_client)
-    write_evidence_relations(arguments.relations_output_path, relations)
+
+    existing_relations = (
+        read_evidence_relations(arguments.relations_output_path) if arguments.relations_output_path.exists() else ()
+    )
+    relations_by_id = {relation.relation_id: relation for relation in existing_relations}
+    existing_progress = (
+        read_evidence_relation_progress(arguments.relations_progress_output_path)
+        if arguments.relations_progress_output_path.exists()
+        else ()
+    )
+    checked_pairs = {(record.fact_id_a, record.fact_id_b) for record in existing_progress}
+    remaining_pairs = tuple(pair for pair in candidate_pairs if pair not in checked_pairs)
     logger.info(
-        "Confirmed {} of {} candidate pairs, wrote relations to {}",
+        "Loaded {} candidate pairs; {} already checked, {} remaining",
+        len(candidate_pairs),
+        len(checked_pairs),
+        len(remaining_pairs),
+    )
+
+    def _persist_pair(pair: tuple[str, str], relation: EvidenceRelation | None) -> None:
+        """Rewrite the relations file, then record the pair as checked, so a crash between the two only costs a retry."""
+        if relation is not None:
+            relations_by_id[relation.relation_id] = relation
+        write_evidence_relations(arguments.relations_output_path, tuple(relations_by_id.values()))
+        checked_pairs.add(pair)
+        write_evidence_relation_progress(
+            arguments.relations_progress_output_path,
+            tuple(
+                EvidenceRelationProgressRecord(fact_id_a=fact_id_a, fact_id_b=fact_id_b)
+                for fact_id_a, fact_id_b in candidate_pairs
+                if (fact_id_a, fact_id_b) in checked_pairs
+            ),
+        )
+        logger.debug(
+            "Checked pair ({}, {}): {}", pair[0], pair[1], "related" if relation is not None else "not related"
+        )
+
+    if remaining_pairs:
+        relation_client = BamlEvidenceRelationClient(settings, evaluation_settings)
+        confirm_evidence_relations(facts, remaining_pairs, relation_client, on_pair_confirmed=_persist_pair)
+
+    relations = tuple(relations_by_id.values())
+    write_evidence_relations(arguments.relations_output_path, relations)
+    checked_candidate_count = len(checked_pairs & set(candidate_pairs))
+    logger.info(
+        "Confirmed {} of {} candidate pairs ({} still unchecked), wrote relations to {}",
         len(relations),
         len(candidate_pairs),
+        len(candidate_pairs) - checked_candidate_count,
         arguments.relations_output_path,
     )
 

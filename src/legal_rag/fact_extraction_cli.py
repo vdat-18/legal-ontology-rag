@@ -18,6 +18,7 @@ def _parser() -> argparse.ArgumentParser:
         "metadata_path", type=Path, help="Document-metadata JSONL path from legal-resolve-document-metadata"
     )
     parser.add_argument("facts_output_path", type=Path, help="Destination legal-facts JSONL path")
+    parser.add_argument("progress_output_path", type=Path, help="Destination extraction-progress JSONL path")
     return parser
 
 
@@ -25,12 +26,18 @@ def main() -> None:
     """Extract legal facts from chunks not yet processed, writing progress after every target."""
     from dotenv import find_dotenv, load_dotenv
 
-    from legal_rag.benchmark_synthesis.fact_extraction import BamlFactExtractionClient, extract_facts_from_document
+    from legal_rag.benchmark_synthesis.fact_extraction import (
+        BamlFactExtractionClient,
+        ExtractionProgressRecord,
+        extract_facts_from_document,
+    )
     from legal_rag.benchmark_synthesis.models import LegalFact
     from legal_rag.benchmark_synthesis.writer import (
         read_chunk_screening,
         read_document_metadata,
+        read_extraction_progress,
         read_legal_facts,
+        write_extraction_progress,
         write_legal_facts,
     )
     from legal_rag.chunker.writer import read_chunks
@@ -50,7 +57,10 @@ def main() -> None:
 
     existing_facts = read_legal_facts(arguments.facts_output_path) if arguments.facts_output_path.exists() else ()
     facts_by_id = {fact.fact_id: fact for fact in existing_facts}
-    processed_chunk_ids = {fact.source_chunk_id for fact in existing_facts if fact.source_chunk_id is not None}
+    existing_progress = (
+        read_extraction_progress(arguments.progress_output_path) if arguments.progress_output_path.exists() else ()
+    )
+    processed_chunk_ids = {record.chunk_id for record in existing_progress}
     remaining_targets = tuple(chunk for chunk in accepted_chunks if chunk.chunk_id not in processed_chunk_ids)
     logger.info(
         "Loaded {} accepted chunks of {} from {}; {} already extracted, {} remaining",
@@ -62,10 +72,18 @@ def main() -> None:
     )
 
     def _persist_target(chunk_id: str, target_facts: Sequence[LegalFact]) -> None:
-        """Merge one target's extracted facts into the running results and rewrite the output file."""
+        """Rewrite the facts file, then record the target as processed so a crash between the two only costs a retry."""
         facts_by_id.update({fact.fact_id: fact for fact in target_facts})
-        processed_chunk_ids.add(chunk_id)
         write_legal_facts(arguments.facts_output_path, tuple(facts_by_id.values()))
+        processed_chunk_ids.add(chunk_id)
+        write_extraction_progress(
+            arguments.progress_output_path,
+            tuple(
+                ExtractionProgressRecord(chunk_id=chunk.chunk_id)
+                for chunk in chunks
+                if chunk.chunk_id in processed_chunk_ids
+            ),
+        )
         logger.debug("Persisted {} fact(s) for chunk {}", len(target_facts), chunk_id)
 
     if remaining_targets:
@@ -77,13 +95,13 @@ def main() -> None:
 
     facts = tuple(facts_by_id.values())
     write_legal_facts(arguments.facts_output_path, facts)
-    extracted_chunk_count = len(processed_chunk_ids & accepted_chunk_ids)
+    processed_chunk_count = len(processed_chunk_ids & accepted_chunk_ids)
     logger.info(
-        "Extracted {} legal facts from {}/{} accepted chunks ({} still unextracted), wrote {}",
+        "Extracted {} legal facts from {}/{} accepted chunks ({} still unprocessed), wrote {}",
         len(facts),
-        extracted_chunk_count,
+        processed_chunk_count,
         len(accepted_chunks),
-        len(accepted_chunks) - extracted_chunk_count,
+        len(accepted_chunks) - processed_chunk_count,
         arguments.facts_output_path,
     )
 

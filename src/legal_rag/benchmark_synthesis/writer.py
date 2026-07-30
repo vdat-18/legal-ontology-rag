@@ -21,7 +21,16 @@ from legal_rag.benchmark_synthesis.document_metadata import (
     DOCUMENT_METADATA_SCHEMA_VERSION,
     DocumentMetadataRecord,
 )
-from legal_rag.benchmark_synthesis.evidence_graph import EVIDENCE_RELATION_SCHEMA_VERSION, EvidenceRelation
+from legal_rag.benchmark_synthesis.evidence_graph import (
+    EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION,
+    EVIDENCE_RELATION_SCHEMA_VERSION,
+    EvidenceRelation,
+    EvidenceRelationProgressRecord,
+)
+from legal_rag.benchmark_synthesis.fact_extraction import (
+    EXTRACTION_PROGRESS_SCHEMA_VERSION,
+    ExtractionProgressRecord,
+)
 from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import SCENARIO_SCHEMA_VERSION, Scenario
 from legal_rag.benchmark_synthesis.verification import VerificationResult
@@ -110,6 +119,24 @@ def read_legal_facts(input_path: Path) -> tuple[LegalFact, ...]:
     return tuple(facts)
 
 
+def write_extraction_progress(output_path: Path, records: Sequence[ExtractionProgressRecord]) -> None:
+    """Atomically replace one UTF-8 JSONL output with extraction-progress records."""
+    write_jsonl_atomic(output_path, (record.to_dict() for record in records))
+
+
+def read_extraction_progress(input_path: Path) -> tuple[ExtractionProgressRecord, ...]:
+    """Read an extraction-progress JSONL file back into typed records."""
+    records: list[ExtractionProgressRecord] = []
+    with input_path.open(encoding="utf-8") as source_file:
+        for line in source_file:
+            payload = json.loads(line)
+            if payload["schema_version"] != EXTRACTION_PROGRESS_SCHEMA_VERSION:
+                msg = f"Unsupported extraction-progress schema: {payload['schema_version']}"
+                raise ValueError(msg)
+            records.append(ExtractionProgressRecord(chunk_id=payload["chunk_id"]))
+    return tuple(records)
+
+
 def write_evidence_relations(output_path: Path, relations: Sequence[EvidenceRelation]) -> None:
     """Atomically replace one UTF-8 JSONL output with evidence-relation records."""
     write_jsonl_atomic(output_path, (relation.to_dict() for relation in relations))
@@ -135,6 +162,26 @@ def read_evidence_relations(input_path: Path) -> tuple[EvidenceRelation, ...]:
                 )
             )
     return tuple(relations)
+
+
+def write_evidence_relation_progress(output_path: Path, records: Sequence[EvidenceRelationProgressRecord]) -> None:
+    """Atomically replace one UTF-8 JSONL output with evidence-relation-progress records."""
+    write_jsonl_atomic(output_path, (record.to_dict() for record in records))
+
+
+def read_evidence_relation_progress(input_path: Path) -> tuple[EvidenceRelationProgressRecord, ...]:
+    """Read an evidence-relation-progress JSONL file back into typed records."""
+    records: list[EvidenceRelationProgressRecord] = []
+    with input_path.open(encoding="utf-8") as source_file:
+        for line in source_file:
+            payload = json.loads(line)
+            if payload["schema_version"] != EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION:
+                msg = f"Unsupported evidence-relation-progress schema: {payload['schema_version']}"
+                raise ValueError(msg)
+            records.append(
+                EvidenceRelationProgressRecord(fact_id_a=payload["fact_id_a"], fact_id_b=payload["fact_id_b"])
+            )
+    return tuple(records)
 
 
 def write_scenarios(output_path: Path, scenarios: Sequence[Scenario]) -> None:

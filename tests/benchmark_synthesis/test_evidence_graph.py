@@ -150,6 +150,70 @@ def test_confirm_evidence_relations_drops_unconfirmed_pairs() -> None:
     assert relations == (_relation("fact-a", "fact-b"),)
 
 
+def test_confirm_evidence_relations_calls_on_pair_confirmed_after_each_pair() -> None:
+    """on_pair_confirmed receives the pair and its relation (or None), once per candidate pair."""
+    fact_a, fact_b, fact_c = _fact("fact-a"), _fact("fact-b"), _fact("fact-c")
+    client = _FakeRelationClient(
+        {
+            ("fact-a", "fact-b"): _relation("fact-a", "fact-b"),
+            ("fact-a", "fact-c"): None,
+        }
+    )
+    calls: list[tuple[tuple[str, str], EvidenceRelation | None]] = []
+
+    confirm_evidence_relations(
+        [fact_a, fact_b, fact_c],
+        [("fact-a", "fact-b"), ("fact-a", "fact-c")],
+        client,
+        on_pair_confirmed=lambda pair, relation: calls.append((pair, relation)),
+    )
+
+    assert calls == [
+        (("fact-a", "fact-b"), _relation("fact-a", "fact-b")),
+        (("fact-a", "fact-c"), None),
+    ]
+
+
+def test_confirm_evidence_relations_retries_a_failing_pair_then_succeeds() -> None:
+    """A pair whose confirmation call raises is retried, and a later success still yields its relation."""
+    fact_a, fact_b = _fact("fact-a"), _fact("fact-b")
+    attempts = 0
+
+    class _FlakyClient:
+        def confirm(self, fact_x: LegalFact, fact_y: LegalFact) -> EvidenceRelation | None:
+            nonlocal attempts
+            attempts += 1
+            if attempts < 2:
+                msg = "provider timed out"
+                raise TimeoutError(msg)
+            return _relation("fact-a", "fact-b")
+
+    relations = confirm_evidence_relations([fact_a, fact_b], [("fact-a", "fact-b")], _FlakyClient())
+
+    assert attempts == 2
+    assert relations == (_relation("fact-a", "fact-b"),)
+
+
+def test_confirm_evidence_relations_skips_a_pair_that_fails_every_attempt() -> None:
+    """A pair that keeps raising is skipped, but other pairs are still confirmed."""
+    fact_a, fact_b, fact_c = _fact("fact-a"), _fact("fact-b"), _fact("fact-c")
+
+    class _FailsForOnePairClient:
+        def confirm(self, fact_x: LegalFact, fact_y: LegalFact) -> EvidenceRelation | None:
+            if {fact_x.fact_id, fact_y.fact_id} == {"fact-a", "fact-b"}:
+                msg = "provider timed out"
+                raise TimeoutError(msg)
+            return _relation(fact_x.fact_id, fact_y.fact_id)
+
+    relations = confirm_evidence_relations(
+        [fact_a, fact_b, fact_c],
+        [("fact-a", "fact-b"), ("fact-a", "fact-c")],
+        _FailsForOnePairClient(),
+    )
+
+    assert [(r.from_fact_id, r.to_fact_id) for r in relations] == [("fact-a", "fact-c")]
+
+
 def test_classify_bundle_kind_amended_by_is_always_temporal() -> None:
     """An amendment relation is temporal even within the same document."""
     facts_by_id = {"a": _fact("a", document_number="168/2024/NĐ-CP"), "b": _fact("b", document_number="168/2024/NĐ-CP")}
