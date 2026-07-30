@@ -19,6 +19,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("facts_output_path", type=Path, help="Destination legal-facts JSONL path")
     parser.add_argument("progress_output_path", type=Path, help="Destination extraction-progress JSONL path")
+    parser.add_argument("--synthesis-config", type=Path, required=True, help="Versioned synthesis config JSON path")
     return parser
 
 
@@ -26,6 +27,7 @@ def main() -> None:
     """Extract legal facts from chunks not yet processed, writing progress after every target."""
     from dotenv import find_dotenv, load_dotenv
 
+    from legal_rag.benchmark_synthesis.config import SynthesisSettings
     from legal_rag.benchmark_synthesis.fact_extraction import (
         BamlFactExtractionClient,
         ExtractionProgressRecord,
@@ -41,14 +43,14 @@ def main() -> None:
         write_legal_facts,
     )
     from legal_rag.chunker.writer import read_chunks
-    from legal_rag.settings import EvaluationSettings, Settings
+    from legal_rag.settings import Settings
 
     arguments = _parser().parse_args()
     dotenv_path = find_dotenv(usecwd=True)
     if dotenv_path:
         load_dotenv(dotenv_path)
     settings = Settings.from_environment()
-    evaluation_settings = EvaluationSettings.from_environment()
+    synthesis_settings = SynthesisSettings.from_path(arguments.synthesis_config)
 
     chunks = read_chunks(arguments.chunks_path)
     screening_records = read_chunk_screening(arguments.screening_path)
@@ -88,13 +90,15 @@ def main() -> None:
 
     if remaining_targets:
         metadata = read_document_metadata(arguments.metadata_path)
-        extraction_client = BamlFactExtractionClient(settings, evaluation_settings)
+        extraction_client = BamlFactExtractionClient(settings, synthesis_settings)
         extract_facts_from_document(
             remaining_targets,
             chunks,
             extraction_client,
             metadata,
-            max_retries=evaluation_settings.llm_max_retries,
+            max_preceding_chunks=synthesis_settings.fact_extraction_max_preceding_chunks,
+            max_following_chunks=synthesis_settings.fact_extraction_max_following_chunks,
+            max_retries=synthesis_settings.llm_max_retries,
             on_target_processed=_persist_target,
         )
 

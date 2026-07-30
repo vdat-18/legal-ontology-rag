@@ -14,8 +14,9 @@ from legal_rag.baml_client.types import FactContext
 from legal_rag.baml_client.types import VerificationResult as BamlVerificationResult
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.benchmark_synthesis.candidate_generation import CandidateDraft, RequiredClaim, build_fact_context
+from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.models import LegalFact
-from legal_rag.settings import EvaluationSettings, Settings
+from legal_rag.settings import Settings
 
 _ANSWERABILITY_BY_BAML_ENUM: dict[str, str] = {
     "Answerable": "answerable",
@@ -94,19 +95,19 @@ class VerificationClient(Protocol):
 class BamlVerificationClient:
     """Typed BAML client backed by a runtime OpenAI-compatible provider, distinct from generation."""
 
-    def __init__(self, settings: Settings, evaluation_settings: EvaluationSettings) -> None:
+    def __init__(self, settings: Settings, synthesis_settings: SynthesisSettings) -> None:
         """Create a runtime BAML client from typed, secret-safe configuration."""
         set_log_level("OFF")
         self._registry = build_client_registry(
             base_url=settings.llm_base_url,
             api_key=settings.llm_api_key,
             model=settings.llm_model,
-            max_output_tokens=evaluation_settings.verification_max_output_tokens,
-            temperature=evaluation_settings.verification_temperature,
+            max_output_tokens=synthesis_settings.verification.max_output_tokens,
+            temperature=synthesis_settings.verification.temperature,
             timeout_seconds=settings.llm_timeout_seconds,
         )
         self._timeout_seconds = settings.llm_timeout_seconds
-        self._max_response_bytes = evaluation_settings.max_response_bytes
+        self._max_response_bytes = synthesis_settings.max_response_bytes
 
     def verify(
         self,

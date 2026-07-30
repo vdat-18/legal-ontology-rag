@@ -12,6 +12,7 @@ from loguru import logger
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import ChunkScreeningItem, ChunkScreeningResult
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.llm_execution import (
     IncompleteLlmTasksError,
     LlmTaskExhaustedError,
@@ -19,10 +20,7 @@ from legal_rag.benchmark_synthesis.llm_execution import (
     execute_llm_task,
 )
 from legal_rag.chunker.models import Chunk
-from legal_rag.settings import EvaluationSettings, Settings
-
-DEFAULT_SCREENING_BATCH_SIZE = 20
-DEFAULT_SCREENING_MAX_RETRIES = 2
+from legal_rag.settings import Settings
 
 CHUNK_SCREENING_SCHEMA_VERSION = "1.0.0"
 CHUNK_SCREENING_PROMPT_VERSION = "1.0.0"
@@ -56,19 +54,19 @@ class ChunkScreeningClient(Protocol):
 class BamlChunkScreeningClient:
     """Typed BAML client backed by a runtime OpenAI-compatible provider."""
 
-    def __init__(self, settings: Settings, evaluation_settings: EvaluationSettings) -> None:
+    def __init__(self, settings: Settings, synthesis_settings: SynthesisSettings) -> None:
         """Create a runtime BAML client from typed, secret-safe configuration."""
         set_log_level("OFF")
         self._registry = build_client_registry(
             base_url=settings.llm_base_url,
             api_key=settings.llm_api_key,
             model=settings.llm_model,
-            max_output_tokens=evaluation_settings.chunk_screening_max_output_tokens,
-            temperature=evaluation_settings.chunk_screening_temperature,
+            max_output_tokens=synthesis_settings.chunk_screening.max_output_tokens,
+            temperature=synthesis_settings.chunk_screening.temperature,
             timeout_seconds=settings.llm_timeout_seconds,
         )
         self._timeout_seconds = settings.llm_timeout_seconds
-        self._max_response_bytes = evaluation_settings.max_response_bytes
+        self._max_response_bytes = synthesis_settings.max_response_bytes
 
     def screen(self, chunks: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
         """Run one bounded BAML call over a batch of chunks and return their typed results."""
@@ -110,8 +108,8 @@ def screen_chunks(
     chunks: Sequence[Chunk],
     client: ChunkScreeningClient,
     *,
-    batch_size: int = DEFAULT_SCREENING_BATCH_SIZE,
-    max_retries: int = DEFAULT_SCREENING_MAX_RETRIES,
+    batch_size: int,
+    max_retries: int,
     on_batch_screened: Callable[[Sequence[ChunkScreeningRecord]], None] | None = None,
 ) -> tuple[ChunkScreeningRecord, ...]:
     """Screen every chunk, retrying a failed batch before skipping it; call on_batch_screened after each batch."""

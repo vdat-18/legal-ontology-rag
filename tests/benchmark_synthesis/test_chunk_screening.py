@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from pathlib import Path
 
 import pytest
 
 from legal_rag.baml_client.types import ChunkScreeningItem, ChunkScreeningResult
 from legal_rag.benchmark_synthesis import chunk_screening
 from legal_rag.benchmark_synthesis.chunk_screening import BamlChunkScreeningClient, screen_chunks
+from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.chunker.models import Chunk
-from legal_rag.settings import EvaluationSettings, Settings
+from legal_rag.settings import Settings
+
+_SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
 
 
 def _chunk(chunk_id: str, text: str) -> Chunk:
@@ -68,7 +72,7 @@ def test_screen_chunks_returns_one_record_per_chunk_in_order() -> None:
         }
     )
 
-    records = screen_chunks([high, low], client)
+    records = screen_chunks([high, low], client, batch_size=50, max_retries=2)
 
     assert [record.chunk_id for record in records] == ["chunk-high", "chunk-low"]
     assert records[0].has_penalty_content is True
@@ -90,11 +94,26 @@ def test_screen_chunks_batches_calls_by_batch_size() -> None:
             calls.append(len(batch))
             return [results_by_chunk_id[item.chunk_id] for item in batch]
 
-    records = screen_chunks(chunks, _CountingClient(), batch_size=2)
+    records = screen_chunks(chunks, _CountingClient(), batch_size=2, max_retries=2)
 
     assert calls == [2, 2, 1]
     assert [record.chunk_id for record in records] == [chunk.chunk_id for chunk in chunks]
     assert all(record.has_penalty_content for record in records)
+
+
+def test_screen_chunks_supports_configured_batches_of_fifty() -> None:
+    """The configured production size sends at most fifty chunks in one screening request."""
+    chunks = [_chunk(f"chunk-{i}", f"Nội dung {i}") for i in range(51)]
+    calls: list[int] = []
+
+    class _CountingClient:
+        def screen(self, batch: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            calls.append(len(batch))
+            return [ChunkScreeningResult(chunk_id=item.chunk_id, has_penalty_content=True, reason="") for item in batch]
+
+    screen_chunks(chunks, _CountingClient(), batch_size=50, max_retries=2)
+
+    assert calls == [50, 1]
 
 
 def test_screen_chunks_calls_on_batch_screened_after_each_batch() -> None:
@@ -115,6 +134,7 @@ def test_screen_chunks_calls_on_batch_screened_after_each_batch() -> None:
         chunks,
         _StaticClient(),
         batch_size=2,
+        max_retries=2,
         on_batch_screened=lambda records: batches_seen.append([record.chunk_id for record in records]),
     )
 
@@ -135,7 +155,7 @@ def test_screen_chunks_retries_a_failing_batch_then_succeeds() -> None:
                 raise TimeoutError(msg)
             return [ChunkScreeningResult(chunk_id="chunk-1", has_penalty_content=True, reason="Nêu rõ mức phạt.")]
 
-    records = screen_chunks([chunk], _FlakyClient())
+    records = screen_chunks([chunk], _FlakyClient(), batch_size=50, max_retries=2)
 
     assert attempts == 2
     assert len(records) == 1
@@ -159,7 +179,7 @@ def test_screen_chunks_skips_a_batch_that_fails_every_attempt() -> None:
             ]
 
     with pytest.raises(RuntimeError, match="chunk screening left 1 incomplete"):
-        screen_chunks([failing, ok_one, ok_two], _FailsOnlyForOneChunkClient(), batch_size=1)
+        screen_chunks([failing, ok_one, ok_two], _FailsOnlyForOneChunkClient(), batch_size=1, max_retries=2)
 
 
 def test_screen_chunks_respects_max_retries_override() -> None:
@@ -175,7 +195,7 @@ def test_screen_chunks_respects_max_retries_override() -> None:
             raise TimeoutError(msg)
 
     with pytest.raises(RuntimeError, match="chunk screening left 1 incomplete"):
-        screen_chunks([chunk], _AlwaysFailsClient(), max_retries=0)
+        screen_chunks([chunk], _AlwaysFailsClient(), batch_size=50, max_retries=0)
 
     assert attempts == 1
 
@@ -190,19 +210,14 @@ def _settings() -> Settings:
     )
 
 
-def _evaluation_settings() -> EvaluationSettings:
+def _synthesis_settings() -> SynthesisSettings:
     """Build ground-truth synthesis settings for an offline BAML request."""
-    return EvaluationSettings(
-        embedding_profile="qwen3_0_6b",
-        span_match_threshold=0.85,
-        bundle_overlap_threshold=0.5,
-        max_quality_retries=2,
-    )
+    return SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
 
 
 def test_baml_chunk_screening_client_parses_typed_result(monkeypatch: pytest.MonkeyPatch) -> None:
     """The generated non-stream client returns the typed BAML contract for a batch."""
-    client = BamlChunkScreeningClient(_settings(), _evaluation_settings())
+    client = BamlChunkScreeningClient(_settings(), _synthesis_settings())
     monkeypatch.setattr(
         chunk_screening,
         "execute_baml_request",

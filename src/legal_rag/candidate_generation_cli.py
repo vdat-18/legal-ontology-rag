@@ -28,6 +28,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--candidates-per-scenario", type=int, required=True, help="Number of generation attempts per scenario"
     )
+    parser.add_argument("--synthesis-config", type=Path, required=True, help="Versioned synthesis config JSON path")
     return parser
 
 
@@ -41,6 +42,7 @@ def main() -> None:
         process_candidate_task,
     )
     from legal_rag.benchmark_synthesis.candidate_record import CandidateProgressRecord
+    from legal_rag.benchmark_synthesis.config import SynthesisSettings
     from legal_rag.benchmark_synthesis.llm_execution import (
         IncompleteLlmTasksError,
         LlmTaskExhaustedError,
@@ -61,14 +63,14 @@ def main() -> None:
         write_candidates,
     )
     from legal_rag.chunker.writer import read_chunks
-    from legal_rag.settings import EvaluationSettings, Settings
+    from legal_rag.settings import Settings
 
     arguments = _parser().parse_args()
     dotenv_path = find_dotenv(usecwd=True)
     if dotenv_path:
         load_dotenv(dotenv_path)
     settings = Settings.from_environment()
-    evaluation_settings = EvaluationSettings.from_environment()
+    synthesis_settings = SynthesisSettings.from_path(arguments.synthesis_config)
     progress_output_path = arguments.progress_output or arguments.candidates_output_path.with_suffix(".progress.jsonl")
 
     facts_by_id = {fact.fact_id: fact for fact in read_legal_facts(arguments.facts_path)}
@@ -86,8 +88,8 @@ def main() -> None:
     evolution_config = load_evolution_config(arguments.evolution)
     evolution_operations = evolution_config.operation_ids[: evolution_config.max_rounds]
 
-    generation_client = BamlCandidateGenerationClient(settings, evaluation_settings)
-    verification_client = BamlVerificationClient(settings, evaluation_settings)
+    generation_client = BamlCandidateGenerationClient(settings, synthesis_settings)
+    verification_client = BamlVerificationClient(settings, synthesis_settings)
     context = CandidatePipelineContext(
         facts_by_id=facts_by_id,
         chunks_by_id=chunks_by_id,
@@ -99,9 +101,9 @@ def main() -> None:
         verification_client=verification_client,
         generator_model=settings.llm_model,
         verifier_model=settings.llm_model,
-        span_match_threshold=evaluation_settings.span_match_threshold,
-        max_quality_retries=evaluation_settings.max_quality_retries,
-        llm_max_retries=evaluation_settings.llm_max_retries,
+        span_match_threshold=synthesis_settings.span_match_threshold,
+        max_quality_retries=synthesis_settings.max_quality_retries,
+        llm_max_retries=synthesis_settings.llm_max_retries,
     )
 
     existing_progress = read_candidate_progress(progress_output_path) if progress_output_path.exists() else ()

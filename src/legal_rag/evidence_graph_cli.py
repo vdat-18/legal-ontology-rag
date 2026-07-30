@@ -25,6 +25,7 @@ def _parser() -> argparse.ArgumentParser:
         "--scenario-distribution", type=Path, required=True, help="Scenario-distribution config JSON path"
     )
     parser.add_argument("--total-samples", type=int, required=True, help="Target scenario count across all bundles")
+    parser.add_argument("--synthesis-config", type=Path, required=True, help="Versioned synthesis config JSON path")
     return parser
 
 
@@ -32,6 +33,7 @@ def main() -> None:
     """Confirm evidence relations not yet checked among facts, then sample scenarios from the result."""
     from dotenv import find_dotenv, load_dotenv
 
+    from legal_rag.benchmark_synthesis.config import SynthesisSettings
     from legal_rag.benchmark_synthesis.evidence_graph import (
         BamlEvidenceRelationClient,
         EvidenceRelation,
@@ -57,21 +59,28 @@ def main() -> None:
     )
     from legal_rag.embedding.encoder import EmbeddingEncoder
     from legal_rag.embedding.profiles import load_configured_embedding_profile
-    from legal_rag.settings import EvaluationSettings, Settings
+    from legal_rag.settings import Settings
 
     arguments = _parser().parse_args()
     dotenv_path = find_dotenv(usecwd=True)
     if dotenv_path:
         load_dotenv(dotenv_path)
     settings = Settings.from_environment()
-    evaluation_settings = EvaluationSettings.from_environment()
+    synthesis_settings = SynthesisSettings.from_path(arguments.synthesis_config)
 
     facts = read_legal_facts(arguments.facts_path)
     logger.info("Loaded {} facts from {}", len(facts), arguments.facts_path)
 
-    profile = load_configured_embedding_profile(evaluation_settings.embedding_profile)
+    profile = load_configured_embedding_profile(synthesis_settings.embedding_profile)
     encoder = EmbeddingEncoder.from_profile(profile)
-    candidate_pairs = find_candidate_fact_pairs(facts, encoder)
+    candidate_pairs = find_candidate_fact_pairs(
+        facts,
+        encoder,
+        max_candidates_per_fact=synthesis_settings.relation_max_candidates_per_fact,
+        min_similarity=synthesis_settings.relation_min_similarity,
+        pool_multiplier=synthesis_settings.relation_pool_multiplier,
+        rrf_k=synthesis_settings.relation_rrf_k,
+    )
 
     existing_relations = (
         read_evidence_relations(arguments.relations_output_path) if arguments.relations_output_path.exists() else ()
@@ -110,12 +119,12 @@ def main() -> None:
         )
 
     if remaining_pairs:
-        relation_client = BamlEvidenceRelationClient(settings, evaluation_settings)
+        relation_client = BamlEvidenceRelationClient(settings, synthesis_settings)
         confirm_evidence_relations(
             facts,
             remaining_pairs,
             relation_client,
-            max_retries=evaluation_settings.llm_max_retries,
+            max_retries=synthesis_settings.llm_max_retries,
             on_pair_confirmed=_persist_pair,
         )
 
@@ -130,7 +139,7 @@ def main() -> None:
         arguments.relations_output_path,
     )
 
-    bundles = sample_bundles(facts, relations, overlap_threshold=evaluation_settings.bundle_overlap_threshold)
+    bundles = sample_bundles(facts, relations, overlap_threshold=synthesis_settings.bundle_overlap_threshold)
     scenario_config = ScenarioSamplingConfig(
         query_taxonomy=load_query_taxonomy(arguments.query_taxonomy),
         personas=load_personas(arguments.personas),

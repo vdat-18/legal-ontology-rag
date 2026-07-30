@@ -16,7 +16,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("snapshot", type=Path, help="Frozen corpus snapshot JSON path")
     parser.add_argument("facts_output_path", type=Path, help="Destination corpus-level legal-facts JSONL path")
     parser.add_argument("manifest_output_path", type=Path, help="Destination run manifest JSON path")
-    parser.add_argument("--config", type=Path, action="append", default=[], help="Versioned synthesis config path")
+    parser.add_argument("--synthesis-config", type=Path, required=True, help="Versioned synthesis config JSON path")
+    parser.add_argument("--config", type=Path, action="append", default=[], help="Additional versioned config path")
     return parser
 
 
@@ -38,6 +39,7 @@ def main() -> None:
         arguments.processed_dir,
         arguments.corpus_config,
         arguments.snapshot,
+        arguments.synthesis_config,
         arguments.config,
         llm_model=settings.llm_model,
     )

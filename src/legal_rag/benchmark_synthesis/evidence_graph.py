@@ -13,6 +13,7 @@ from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import ConfirmedRelation as BamlConfirmedRelation
 from legal_rag.baml_client.types import LegalFactSummary
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.llm_execution import (
     IncompleteLlmTasksError,
     LlmTaskExhaustedError,
@@ -22,14 +23,12 @@ from legal_rag.benchmark_synthesis.llm_execution import (
 from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.parser.hashing import sha256_json
-from legal_rag.settings import EvaluationSettings, Settings
+from legal_rag.settings import Settings
 
 EVIDENCE_RELATION_SCHEMA_VERSION = "1.0.0"
 EVIDENCE_BUNDLE_SCHEMA_VERSION = "1.0.0"
 EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.0.0"
 EVIDENCE_RELATION_PROMPT_VERSION = "1.0.0"
-
-DEFAULT_RELATION_CONFIRMATION_MAX_RETRIES = 2
 
 RelationType = Literal[
     "conduct_to_penalty",
@@ -54,11 +53,6 @@ _RELATION_TYPE_BY_BAML_ENUM: dict[str, RelationType] = {
     "AmendedBy": "amended_by",
     "ProcedureSequence": "procedure_sequence",
 }
-
-DEFAULT_MAX_CANDIDATES_PER_FACT = 5
-DEFAULT_MIN_CANDIDATE_SIMILARITY = 0.5
-DEFAULT_RETRIEVAL_POOL_MULTIPLIER = 2
-DEFAULT_RRF_K = 60
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,10 +134,10 @@ def find_candidate_fact_pairs(
     facts: Sequence[LegalFact],
     encoder: EmbeddingEncoder,
     *,
-    max_candidates_per_fact: int = DEFAULT_MAX_CANDIDATES_PER_FACT,
-    min_similarity: float = DEFAULT_MIN_CANDIDATE_SIMILARITY,
-    pool_multiplier: int = DEFAULT_RETRIEVAL_POOL_MULTIPLIER,
-    rrf_k: int = DEFAULT_RRF_K,
+    max_candidates_per_fact: int,
+    min_similarity: float,
+    pool_multiplier: int,
+    rrf_k: int,
 ) -> tuple[tuple[str, str], ...]:
     """Return unique fact_id pairs worth confirming, fusing dense and lexical retrieval with reciprocal rank fusion.
 
@@ -203,19 +197,19 @@ class EvidenceRelationClient(Protocol):
 class BamlEvidenceRelationClient:
     """Typed BAML client backed by a runtime OpenAI-compatible provider."""
 
-    def __init__(self, settings: Settings, evaluation_settings: EvaluationSettings) -> None:
+    def __init__(self, settings: Settings, synthesis_settings: SynthesisSettings) -> None:
         """Create a runtime BAML client from typed, secret-safe configuration."""
         set_log_level("OFF")
         self._registry = build_client_registry(
             base_url=settings.llm_base_url,
             api_key=settings.llm_api_key,
             model=settings.llm_model,
-            max_output_tokens=evaluation_settings.fact_extraction_max_output_tokens,
-            temperature=evaluation_settings.fact_extraction_temperature,
+            max_output_tokens=synthesis_settings.evidence_relation.max_output_tokens,
+            temperature=synthesis_settings.evidence_relation.temperature,
             timeout_seconds=settings.llm_timeout_seconds,
         )
         self._timeout_seconds = settings.llm_timeout_seconds
-        self._max_response_bytes = evaluation_settings.max_response_bytes
+        self._max_response_bytes = synthesis_settings.max_response_bytes
         self._model = settings.llm_model
 
     def confirm(self, fact_a: LegalFact, fact_b: LegalFact) -> EvidenceRelation | None:
@@ -271,7 +265,7 @@ def confirm_evidence_relations(
     candidate_pairs: Sequence[tuple[str, str]],
     client: EvidenceRelationClient,
     *,
-    max_retries: int = DEFAULT_RELATION_CONFIRMATION_MAX_RETRIES,
+    max_retries: int,
     on_pair_confirmed: Callable[[tuple[str, str], EvidenceRelation | None], None] | None = None,
 ) -> tuple[EvidenceRelation, ...]:
     """Confirm every candidate pair, retrying a failed call before skipping it; call on_pair_confirmed after each pair."""

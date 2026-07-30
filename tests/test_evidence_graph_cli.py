@@ -46,7 +46,7 @@ def _fact(fact_id: str, conduct: str) -> LegalFact:
 class _AlwaysRelatedClient:
     """Confirm every candidate pair as a fixed relation type, ignoring settings."""
 
-    def __init__(self, settings: object, evaluation_settings: object) -> None:
+    def __init__(self, settings: object, synthesis_settings: object) -> None:
         return None
 
     def confirm(self, fact_a: LegalFact, fact_b: LegalFact) -> evidence_graph.EvidenceRelation:
@@ -83,10 +83,6 @@ def _configure_cli(
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     monkeypatch.setenv("LLM_MODEL", "provider/test-model")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
-    monkeypatch.setenv("EMBEDDING_PROFILE", "qwen3_0_6b")
-    monkeypatch.setenv("GROUNDTRUTH_SPAN_MATCH_THRESHOLD", "0.85")
-    monkeypatch.setenv("GROUNDTRUTH_BUNDLE_OVERLAP_THRESHOLD", "0.5")
-    monkeypatch.setenv("GROUNDTRUTH_MAX_QUALITY_RETRIES", "2")
     monkeypatch.setattr(evidence_graph, "BamlEvidenceRelationClient", _AlwaysRelatedClient)
     from legal_rag.embedding.encoder import EmbeddingEncoder
 
@@ -110,6 +106,8 @@ def _configure_cli(
             str(_REPO_CONFIG_DIR / "scenario_distribution.json"),
             "--total-samples",
             str(total_samples),
+            "--synthesis-config",
+            str(_REPO_CONFIG_DIR / "synthesis_v1.json"),
         ],
     )
     return relations_progress_path
@@ -158,7 +156,7 @@ def test_evidence_graph_cli_does_not_recheck_a_pair_already_processed(
     class _RecordingClient:
         """Confirm any pair as related, recording every pair it was asked about."""
 
-        def __init__(self, settings: object, evaluation_settings: object) -> None:
+        def __init__(self, settings: object, synthesis_settings: object) -> None:
             return None
 
         def confirm(self, fact_x: LegalFact, fact_y: LegalFact) -> evidence_graph.EvidenceRelation:
@@ -197,7 +195,7 @@ def test_evidence_graph_cli_persists_progress_if_interrupted_mid_run(
     class _CrashesOnSecondPairClient:
         """Succeed on the first candidate pair, then simulate the whole process being killed."""
 
-        def __init__(self, settings: object, evaluation_settings: object) -> None:
+        def __init__(self, settings: object, synthesis_settings: object) -> None:
             self._calls = 0
 
         def confirm(self, fact_x: LegalFact, fact_y: LegalFact) -> evidence_graph.EvidenceRelation:
@@ -238,7 +236,7 @@ def test_evidence_graph_cli_does_not_recheck_a_pair_confirmed_unrelated(
     class _UnrelatedClient:
         """Confirm that no candidate pair is related."""
 
-        def __init__(self, settings: object, evaluation_settings: object) -> None:
+        def __init__(self, settings: object, synthesis_settings: object) -> None:
             return None
 
         def confirm(self, fact_x: LegalFact, fact_y: LegalFact) -> None:

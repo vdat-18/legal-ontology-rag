@@ -27,6 +27,10 @@ from legal_rag.benchmark_synthesis.writer import (
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
 
+_SYNTHESIS_CONFIG_PATH = (
+    Path(__file__).resolve().parent.parent / "data" / "config" / "groundtruth" / "synthesis_v1.json"
+)
+
 
 def _existing_fact(fact_id: str, source_chunk_id: str) -> LegalFact:
     """Build one already-extracted legal fact for resume tests."""
@@ -81,7 +85,7 @@ def _chunk(chunk_id: str, text: str, *, previous_chunk_id: str | None = None) ->
 class _OneFactExtractionClient:
     """Return one valid fact citing the window's target chunk."""
 
-    def __init__(self, settings: object, evaluation_settings: object) -> None:
+    def __init__(self, settings: object, synthesis_settings: object) -> None:
         return None
 
     def extract(self, window: object) -> tuple[BamlLegalFact, ...]:
@@ -122,10 +126,6 @@ def _configure_cli(
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     monkeypatch.setenv("LLM_MODEL", "provider/test-model")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
-    monkeypatch.setenv("EMBEDDING_PROFILE", "qwen3_0_6b")
-    monkeypatch.setenv("GROUNDTRUTH_SPAN_MATCH_THRESHOLD", "0.85")
-    monkeypatch.setenv("GROUNDTRUTH_BUNDLE_OVERLAP_THRESHOLD", "0.5")
-    monkeypatch.setenv("GROUNDTRUTH_MAX_QUALITY_RETRIES", "2")
     monkeypatch.setattr(fact_extraction, "BamlFactExtractionClient", _OneFactExtractionClient)
     monkeypatch.setattr(
         sys,
@@ -137,6 +137,8 @@ def _configure_cli(
             str(metadata_path),
             str(facts_output_path),
             str(progress_path),
+            "--synthesis-config",
+            str(_SYNTHESIS_CONFIG_PATH),
         ],
     )
 
@@ -217,7 +219,7 @@ def test_fact_extraction_cli_uses_excluded_chunk_as_adjacent_context(
     class _RecordingClient:
         """Record every chunk_id seen in the window and return no facts."""
 
-        def __init__(self, settings: object, evaluation_settings: object) -> None:
+        def __init__(self, settings: object, synthesis_settings: object) -> None:
             return None
 
         def extract(self, window: object) -> tuple[BamlLegalFact, ...]:
@@ -261,7 +263,7 @@ def test_fact_extraction_cli_resumes_by_skipping_already_extracted_chunks(
     class _ResumingClient:
         """Extract only the chunks still passed to it, recording their ids."""
 
-        def __init__(self, settings: object, evaluation_settings: object) -> None:
+        def __init__(self, settings: object, synthesis_settings: object) -> None:
             return None
 
         def extract(self, window: object) -> tuple[BamlLegalFact, ...]:
@@ -311,7 +313,7 @@ def test_fact_extraction_cli_does_not_reprocess_a_chunk_that_yielded_no_facts(
     class _NoFactClient:
         """Return no facts at all, recording every target it was asked about."""
 
-        def __init__(self, settings: object, evaluation_settings: object) -> None:
+        def __init__(self, settings: object, synthesis_settings: object) -> None:
             return None
 
         def extract(self, window: object) -> tuple[BamlLegalFact, ...]:
@@ -386,7 +388,7 @@ def test_fact_extraction_cli_persists_progress_if_interrupted_mid_document(
     class _CrashesOnSecondChunkClient:
         """Succeed on the first target, then simulate the whole process being killed."""
 
-        def __init__(self, settings: object, evaluation_settings: object) -> None:
+        def __init__(self, settings: object, synthesis_settings: object) -> None:
             self._calls = 0
 
         def extract(self, window: object) -> tuple[BamlLegalFact, ...]:

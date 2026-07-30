@@ -15,6 +15,7 @@ from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import ChunkWindowEntry, ChunkWindowRole
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
 from legal_rag.benchmark_synthesis.llm_execution import (
     IncompleteLlmTasksError,
@@ -24,15 +25,11 @@ from legal_rag.benchmark_synthesis.llm_execution import (
 )
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact, build_legal_fact
 from legal_rag.chunker.models import Chunk
-from legal_rag.settings import EvaluationSettings, Settings
+from legal_rag.settings import Settings
 
 # Lexical parsing, not a semantic decision: locate "Điều N" cross-references.
 _ARTICLE_HEADING_PATTERN = re.compile(r"\s*Điều\s+(\d+)\b")
 _ARTICLE_CITATION_PATTERN = re.compile(r"Điều\s+(\d+)\b")
-
-DEFAULT_MAX_PRECEDING_CHUNKS = 2
-DEFAULT_MAX_FOLLOWING_CHUNKS = 1
-DEFAULT_EXTRACTION_MAX_RETRIES = 2
 
 EXTRACTION_PROGRESS_SCHEMA_VERSION = "1.0.0"
 FACT_EXTRACTION_PROMPT_VERSION = "1.0.0"
@@ -106,8 +103,8 @@ def build_reading_window(
     chunks_by_id: Mapping[str, Chunk],
     provision_index: ProvisionIndex,
     *,
-    max_preceding_chunks: int = DEFAULT_MAX_PRECEDING_CHUNKS,
-    max_following_chunks: int = DEFAULT_MAX_FOLLOWING_CHUNKS,
+    max_preceding_chunks: int,
+    max_following_chunks: int,
 ) -> tuple[ChunkWindowEntry, ...]:
     """Assemble one reading window around a target chunk."""
     entries: dict[str, ChunkWindowEntry] = {
@@ -155,19 +152,19 @@ class FactExtractionClient(Protocol):
 class BamlFactExtractionClient:
     """Typed BAML client backed by a runtime OpenAI-compatible provider."""
 
-    def __init__(self, settings: Settings, evaluation_settings: EvaluationSettings) -> None:
+    def __init__(self, settings: Settings, synthesis_settings: SynthesisSettings) -> None:
         """Create a runtime BAML client from typed, secret-safe configuration."""
         set_log_level("OFF")
         self._registry = build_client_registry(
             base_url=settings.llm_base_url,
             api_key=settings.llm_api_key,
             model=settings.llm_model,
-            max_output_tokens=evaluation_settings.fact_extraction_max_output_tokens,
-            temperature=evaluation_settings.fact_extraction_temperature,
+            max_output_tokens=synthesis_settings.fact_extraction.max_output_tokens,
+            temperature=synthesis_settings.fact_extraction.temperature,
             timeout_seconds=settings.llm_timeout_seconds,
         )
         self._timeout_seconds = settings.llm_timeout_seconds
-        self._max_response_bytes = evaluation_settings.max_response_bytes
+        self._max_response_bytes = synthesis_settings.max_response_bytes
 
     def extract(self, window: Sequence[ChunkWindowEntry]) -> tuple[BamlLegalFact, ...]:
         """Run one bounded BAML call and return its generated typed result."""
@@ -215,9 +212,9 @@ def extract_facts_from_document(
     client: FactExtractionClient,
     metadata: DocumentMetadataRecord,
     *,
-    max_preceding_chunks: int = DEFAULT_MAX_PRECEDING_CHUNKS,
-    max_following_chunks: int = DEFAULT_MAX_FOLLOWING_CHUNKS,
-    max_retries: int = DEFAULT_EXTRACTION_MAX_RETRIES,
+    max_preceding_chunks: int,
+    max_following_chunks: int,
+    max_retries: int,
     on_target_processed: Callable[[str, tuple[LegalFact, ...]], None] | None = None,
 ) -> tuple[LegalFact, ...]:
     """Extract legal facts from target_chunks, retrying a failed target before skipping it."""

@@ -15,6 +15,10 @@ from legal_rag.benchmark_synthesis.writer import read_document_metadata
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
 
+_SYNTHESIS_CONFIG_PATH = (
+    Path(__file__).resolve().parent.parent / "data" / "config" / "groundtruth" / "synthesis_v1.json"
+)
+
 
 def _chunk(chunk_id: str, text: str) -> Chunk:
     """Build one final chunk as document-metadata CLI input."""
@@ -48,7 +52,7 @@ def _chunk(chunk_id: str, text: str) -> Chunk:
 class _FakeMetadataClient:
     """Return one pre-programmed document-metadata result."""
 
-    def __init__(self, settings: object, evaluation_settings: object) -> None:
+    def __init__(self, settings: object, synthesis_settings: object) -> None:
         return None
 
     def resolve(self, opening_sections: object, closing_sections: object) -> BamlDocumentMetadata:
@@ -71,9 +75,18 @@ def test_document_metadata_cli_resolves_and_writes_one_record(monkeypatch: pytes
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     monkeypatch.setenv("LLM_MODEL", "provider/test-model")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
-    monkeypatch.setenv("EMBEDDING_PROFILE", "qwen3_0_6b")
     monkeypatch.setattr(document_metadata, "BamlDocumentMetadataClient", _FakeMetadataClient)
-    monkeypatch.setattr(sys, "argv", ["legal-resolve-document-metadata", str(chunks_path), str(metadata_path)])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "legal-resolve-document-metadata",
+            str(chunks_path),
+            str(metadata_path),
+            "--synthesis-config",
+            str(_SYNTHESIS_CONFIG_PATH),
+        ],
+    )
 
     document_metadata_cli.main()
 

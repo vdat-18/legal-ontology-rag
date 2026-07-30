@@ -16,11 +16,12 @@ from legal_rag.baml_client.types import EvolvedCandidate as BamlEvolvedCandidate
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
 from legal_rag.baml_client.types import SurfaceCritique as BamlSurfaceCritique
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
 from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.parser.hashing import sha256_json
-from legal_rag.settings import EvaluationSettings, Settings
+from legal_rag.settings import Settings
 
 CANDIDATE_SCHEMA_VERSION = "1.1.0"
 CANDIDATE_GENERATION_PROMPT_VERSION = "1.1.0"
@@ -219,19 +220,35 @@ class CandidateGenerationClient(Protocol):
 class BamlCandidateGenerationClient:
     """Typed BAML client backed by a runtime OpenAI-compatible provider."""
 
-    def __init__(self, settings: Settings, evaluation_settings: EvaluationSettings) -> None:
+    def __init__(self, settings: Settings, synthesis_settings: SynthesisSettings) -> None:
         """Create a runtime BAML client from typed, secret-safe configuration."""
         set_log_level("OFF")
-        self._registry = build_client_registry(
+        self._generation_registry = build_client_registry(
             base_url=settings.llm_base_url,
             api_key=settings.llm_api_key,
             model=settings.llm_model,
-            max_output_tokens=evaluation_settings.candidate_generation_max_output_tokens,
-            temperature=evaluation_settings.candidate_generation_temperature,
+            max_output_tokens=synthesis_settings.candidate_generation.max_output_tokens,
+            temperature=synthesis_settings.candidate_generation.temperature,
+            timeout_seconds=settings.llm_timeout_seconds,
+        )
+        self._critique_registry = build_client_registry(
+            base_url=settings.llm_base_url,
+            api_key=settings.llm_api_key,
+            model=settings.llm_model,
+            max_output_tokens=synthesis_settings.candidate_critique.max_output_tokens,
+            temperature=synthesis_settings.candidate_critique.temperature,
+            timeout_seconds=settings.llm_timeout_seconds,
+        )
+        self._evolution_registry = build_client_registry(
+            base_url=settings.llm_base_url,
+            api_key=settings.llm_api_key,
+            model=settings.llm_model,
+            max_output_tokens=synthesis_settings.candidate_evolution.max_output_tokens,
+            temperature=synthesis_settings.candidate_evolution.temperature,
             timeout_seconds=settings.llm_timeout_seconds,
         )
         self._timeout_seconds = settings.llm_timeout_seconds
-        self._max_response_bytes = evaluation_settings.max_response_bytes
+        self._max_response_bytes = synthesis_settings.max_response_bytes
 
     def generate(
         self,
@@ -260,10 +277,12 @@ class BamlCandidateGenerationClient:
             list(bridge),
             reasoning_hops,
             as_of_date,
-            baml_options={"client_registry": self._registry},
+            baml_options={"client_registry": self._generation_registry},
         )
         raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        return b.parse.GenerateSingleTurnCandidate(raw_output, baml_options={"client_registry": self._registry})
+        return b.parse.GenerateSingleTurnCandidate(
+            raw_output, baml_options={"client_registry": self._generation_registry}
+        )
 
     def critique_surface(
         self,
@@ -274,10 +293,14 @@ class BamlCandidateGenerationClient:
     ) -> BamlSurfaceCritique:
         """Run one bounded BAML call and return its generated typed result."""
         request = b.request.CritiqueSurface(
-            query_vi, query_style, query_length, query_form, baml_options={"client_registry": self._registry}
+            query_vi,
+            query_style,
+            query_length,
+            query_form,
+            baml_options={"client_registry": self._critique_registry},
         )
         raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        return b.parse.CritiqueSurface(raw_output, baml_options={"client_registry": self._registry})
+        return b.parse.CritiqueSurface(raw_output, baml_options={"client_registry": self._critique_registry})
 
     def evolve(
         self,
@@ -292,10 +315,10 @@ class BamlCandidateGenerationClient:
             reference_answer_vi,
             reasoning_vi,
             operation,
-            baml_options={"client_registry": self._registry},
+            baml_options={"client_registry": self._evolution_registry},
         )
         raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        return b.parse.EvolveCandidate(raw_output, baml_options={"client_registry": self._registry})
+        return b.parse.EvolveCandidate(raw_output, baml_options={"client_registry": self._evolution_registry})
 
 
 def generate_candidate(
@@ -380,7 +403,7 @@ def refine_surface(
     client: CandidateGenerationClient,
     *,
     max_retries: int,
-    llm_max_retries: int = 0,
+    llm_max_retries: int,
     on_attempt: Callable[[CandidateDraft], None] | None = None,
 ) -> CandidateDraft:
     """Rewrite only the question's surface phrasing until it matches style, bounded by max_retries.
@@ -419,7 +442,7 @@ def evolve_candidate(
     operations: Sequence[str],
     client: CandidateGenerationClient,
     *,
-    llm_max_retries: int = 0,
+    llm_max_retries: int,
     on_operation_applied: Callable[[CandidateDraft], None] | None = None,
 ) -> CandidateDraft:
     """Apply a bounded sequence of evidence-preserving evolution operations."""

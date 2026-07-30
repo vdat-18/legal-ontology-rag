@@ -12,13 +12,10 @@ from baml_py.logging import set_log_level
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import DocumentMetadata as BamlDocumentMetadata
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
 from legal_rag.chunker.models import Chunk
-from legal_rag.settings import EvaluationSettings, Settings
-
-DEFAULT_OPENING_CHUNK_COUNT = 3
-DEFAULT_CLOSING_CHUNK_COUNT = 5
-DEFAULT_METADATA_MAX_RETRIES = 2
+from legal_rag.settings import Settings
 
 DOCUMENT_METADATA_SCHEMA_VERSION = "1.0.0"
 DOCUMENT_METADATA_PROMPT_VERSION = "1.0.0"
@@ -52,19 +49,19 @@ class DocumentMetadataClient(Protocol):
 class BamlDocumentMetadataClient:
     """Typed BAML client backed by a runtime OpenAI-compatible provider."""
 
-    def __init__(self, settings: Settings, evaluation_settings: EvaluationSettings) -> None:
+    def __init__(self, settings: Settings, synthesis_settings: SynthesisSettings) -> None:
         """Create a runtime BAML client from typed, secret-safe configuration."""
         set_log_level("OFF")
         self._registry = build_client_registry(
             base_url=settings.llm_base_url,
             api_key=settings.llm_api_key,
             model=settings.llm_model,
-            max_output_tokens=evaluation_settings.document_metadata_max_output_tokens,
-            temperature=evaluation_settings.document_metadata_temperature,
+            max_output_tokens=synthesis_settings.document_metadata.max_output_tokens,
+            temperature=synthesis_settings.document_metadata.temperature,
             timeout_seconds=settings.llm_timeout_seconds,
         )
         self._timeout_seconds = settings.llm_timeout_seconds
-        self._max_response_bytes = evaluation_settings.max_response_bytes
+        self._max_response_bytes = synthesis_settings.max_response_bytes
 
     def resolve(self, opening_sections: Sequence[str], closing_sections: Sequence[str]) -> BamlDocumentMetadata:
         """Run one bounded BAML call and return the typed document metadata."""
@@ -79,9 +76,9 @@ def resolve_document_metadata(
     chunks: Sequence[Chunk],
     client: DocumentMetadataClient,
     *,
-    opening_chunk_count: int = DEFAULT_OPENING_CHUNK_COUNT,
-    closing_chunk_count: int = DEFAULT_CLOSING_CHUNK_COUNT,
-    max_retries: int = DEFAULT_METADATA_MAX_RETRIES,
+    opening_chunk_count: int,
+    closing_chunk_count: int,
+    max_retries: int,
 ) -> DocumentMetadataRecord:
     """Resolve one document's metadata from the opening and closing chunks of its main body."""
     body = [chunk.text for chunk in chunks if chunk.record_scope == "root"]

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from legal_rag.baml_client.types import Answerability, FactContext
@@ -9,9 +11,12 @@ from legal_rag.baml_client.types import ClaimReference as BamlClaimReference
 from legal_rag.baml_client.types import VerificationResult as BamlVerificationResult
 from legal_rag.benchmark_synthesis import verification
 from legal_rag.benchmark_synthesis.candidate_generation import CandidateDraft
+from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.verification import BamlVerificationClient, verify_candidate
-from legal_rag.settings import EvaluationSettings, Settings
+from legal_rag.settings import Settings
+
+_SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
 
 
 def _fact(fact_id: str = "fact-1") -> LegalFact:
@@ -174,19 +179,14 @@ def _settings() -> Settings:
     )
 
 
-def _evaluation_settings() -> EvaluationSettings:
+def _synthesis_settings() -> SynthesisSettings:
     """Build ground-truth synthesis settings for an offline BAML request."""
-    return EvaluationSettings(
-        embedding_profile="qwen3_0_6b",
-        span_match_threshold=0.85,
-        bundle_overlap_threshold=0.5,
-        max_quality_retries=2,
-    )
+    return SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
 
 
 def test_baml_verification_client_parses_typed_result(monkeypatch: pytest.MonkeyPatch) -> None:
     """The generated non-stream client returns a typed verification result."""
-    client = BamlVerificationClient(_settings(), _evaluation_settings())
+    client = BamlVerificationClient(_settings(), _synthesis_settings())
     monkeypatch.setattr(
         verification,
         "execute_baml_request",

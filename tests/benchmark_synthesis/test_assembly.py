@@ -24,6 +24,7 @@ from legal_rag.chunker.writer import write_chunks
 
 _DOCUMENT_ID = "168_2024_ND-CP_619502"
 _SPAN = "Phat tien tu 4.000.000 dong den 6.000.000 dong."
+_SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
 
 
 def _chunk() -> Chunk:
@@ -108,6 +109,7 @@ def _assemble(tmp_path: Path, *, facts: tuple[LegalFact, ...] | None = None):
         processed_dir,
         config_path,
         snapshot_path,
+        _SYNTHESIS_CONFIG_PATH,
         [config_path],
         llm_model="provider/test-model",
     )
@@ -123,6 +125,7 @@ def test_assembly_emits_complete_reproducibility_manifest(tmp_path: Path) -> Non
     assert result.manifest["llm_model"] == "provider/test-model"
     assert result.manifest["prompt_versions"]
     assert result.manifest["config_sha256"]
+    assert _SYNTHESIS_CONFIG_PATH.as_posix() in result.manifest["config_sha256"]
 
 
 def test_assembly_rejects_incomplete_extraction_progress(tmp_path: Path) -> None:
@@ -131,7 +134,9 @@ def test_assembly_rejects_incomplete_extraction_progress(tmp_path: Path) -> None
     write_extraction_progress(processed_dir / f"{_DOCUMENT_ID}.extraction_progress.jsonl", [])
 
     with pytest.raises(GroundTruthValidationError, match="progress does not cover"):
-        assemble_groundtruth_corpus(processed_dir, config_path, snapshot_path, [], llm_model="model")
+        assemble_groundtruth_corpus(
+            processed_dir, config_path, snapshot_path, _SYNTHESIS_CONFIG_PATH, [], llm_model="model"
+        )
 
 
 def test_assembly_rejects_missing_evidence_chunk(tmp_path: Path) -> None:

@@ -4,18 +4,22 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import date
+from pathlib import Path
 
 import pytest
 
 from legal_rag.baml_client.types import DocumentMetadata as BamlDocumentMetadata
 from legal_rag.benchmark_synthesis import document_metadata
+from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.document_metadata import (
     BamlDocumentMetadataClient,
     resolve_document_metadata,
 )
 from legal_rag.benchmark_synthesis.llm_execution import LlmTaskExhaustedError
 from legal_rag.chunker.models import Chunk, RecordScope
-from legal_rag.settings import EvaluationSettings, Settings
+from legal_rag.settings import Settings
+
+_SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
 
 
 def _chunk(chunk_id: str, text: str, *, record_scope: RecordScope = "root") -> Chunk:
@@ -78,7 +82,7 @@ def test_resolve_document_metadata_parses_dates_into_typed_record() -> None:
     chunks = [_chunk("c1", "Số: 168/2024/NĐ-CP"), _chunk("c2", "Điều 55. Hiệu lực thi hành.")]
     client = _RecordingMetadataClient(_baml_metadata())
 
-    record = resolve_document_metadata(chunks, client)
+    record = resolve_document_metadata(chunks, client, opening_chunk_count=3, closing_chunk_count=5, max_retries=2)
 
     assert record.document_number == "168/2024/NĐ-CP"
     assert record.valid_from == date(2025, 1, 1)
@@ -90,7 +94,7 @@ def test_resolve_document_metadata_reads_the_opening_and_closing_of_the_document
     chunks = [_chunk(f"c{index}", f"Đoạn {index}") for index in range(10)]
     client = _RecordingMetadataClient(_baml_metadata())
 
-    resolve_document_metadata(chunks, client, opening_chunk_count=2, closing_chunk_count=3)
+    resolve_document_metadata(chunks, client, opening_chunk_count=2, closing_chunk_count=3, max_retries=2)
 
     assert client.opening_sections == ("Đoạn 0", "Đoạn 1")
     assert client.closing_sections == ("Đoạn 7", "Đoạn 8", "Đoạn 9")
@@ -102,7 +106,9 @@ def test_resolve_document_metadata_ignores_attachment_chunks() -> None:
     attachments = [_chunk(f"a{index}", f"Phụ lục {index}", record_scope="attachment_child") for index in range(5)]
     client = _RecordingMetadataClient(_baml_metadata())
 
-    resolve_document_metadata([*body, *attachments], client, opening_chunk_count=1, closing_chunk_count=1)
+    resolve_document_metadata(
+        [*body, *attachments], client, opening_chunk_count=1, closing_chunk_count=1, max_retries=2
+    )
 
     assert client.opening_sections == ("Số: 168/2024/NĐ-CP",)
     assert client.closing_sections == ("Điều 55. Hiệu lực thi hành.",)
@@ -114,7 +120,7 @@ def test_resolve_document_metadata_raises_on_a_malformed_date() -> None:
     client = _RecordingMetadataClient(_baml_metadata(valid_from="ngày 01 tháng 01 năm 2025"))
 
     with pytest.raises(LlmTaskExhaustedError, match="document_metadata:source-hash") as exc_info:
-        resolve_document_metadata(chunks, client)
+        resolve_document_metadata(chunks, client, opening_chunk_count=3, closing_chunk_count=5, max_retries=2)
 
     assert isinstance(exc_info.value.__cause__, ValueError)
 
@@ -128,7 +134,7 @@ def test_baml_document_metadata_client_parses_typed_result(monkeypatch: pytest.M
             llm_model="provider/test-model",
             llm_timeout_seconds=30,
         ),
-        EvaluationSettings(embedding_profile="qwen3_0_6b"),
+        SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH),
     )
     monkeypatch.setattr(
         document_metadata,

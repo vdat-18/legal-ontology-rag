@@ -16,6 +16,10 @@ from legal_rag.benchmark_synthesis.writer import read_chunk_screening, write_chu
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
 
+_SYNTHESIS_CONFIG_PATH = (
+    Path(__file__).resolve().parent.parent / "data" / "config" / "groundtruth" / "synthesis_v1.json"
+)
+
 
 def _chunk(chunk_id: str, text: str) -> Chunk:
     """Build one final chunk as chunk-screening CLI input."""
@@ -49,7 +53,7 @@ def _chunk(chunk_id: str, text: str) -> Chunk:
 class _AlternatingScreeningClient:
     """Accept only the first chunk of every batch, ignoring settings."""
 
-    def __init__(self, settings: object, evaluation_settings: object) -> None:
+    def __init__(self, settings: object, synthesis_settings: object) -> None:
         return None
 
     def screen(self, chunks: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
@@ -70,12 +74,18 @@ def _configure_cli(monkeypatch: pytest.MonkeyPatch, chunks_path: Path, screening
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     monkeypatch.setenv("LLM_MODEL", "provider/test-model")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
-    monkeypatch.setenv("EMBEDDING_PROFILE", "qwen3_0_6b")
-    monkeypatch.setenv("GROUNDTRUTH_SPAN_MATCH_THRESHOLD", "0.85")
-    monkeypatch.setenv("GROUNDTRUTH_BUNDLE_OVERLAP_THRESHOLD", "0.5")
-    monkeypatch.setenv("GROUNDTRUTH_MAX_QUALITY_RETRIES", "2")
     monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _AlternatingScreeningClient)
-    monkeypatch.setattr(sys, "argv", ["legal-screen-chunks", str(chunks_path), str(screening_output_path)])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "legal-screen-chunks",
+            str(chunks_path),
+            str(screening_output_path),
+            "--synthesis-config",
+            str(_SYNTHESIS_CONFIG_PATH),
+        ],
+    )
 
 
 def test_chunk_screening_cli_writes_one_verdict_per_chunk(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -122,7 +132,7 @@ def test_chunk_screening_cli_resumes_by_skipping_already_screened_chunks(
     class _ResumingClient:
         """Screen only the chunks still passed to it, recording their ids."""
 
-        def __init__(self, settings: object, evaluation_settings: object) -> None:
+        def __init__(self, settings: object, synthesis_settings: object) -> None:
             return None
 
         def screen(self, chunks: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
@@ -151,14 +161,14 @@ def test_chunk_screening_cli_writes_partial_output_when_a_batch_keeps_failing(
     """A failed batch remains resumable and makes the incomplete command fail."""
     chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
     screening_path = tmp_path / "chunk_screening.jsonl"
-    first_batch = tuple(_chunk(f"chunk-{i}", f"Phạt tiền {i}.") for i in range(20))
+    first_batch = tuple(_chunk(f"chunk-{i}", f"Phạt tiền {i}.") for i in range(50))
     failing_chunk = _chunk("chunk-fail", "Nội dung gây lỗi mạng.")
     write_chunks(chunks_path, (*first_batch, failing_chunk))
 
-    class _FailsForSecondBatchClient:
-        """Succeed on the first batch, raise forever on the batch containing chunk-fail."""
+    class _FailsForFinalBatchClient:
+        """Succeed on prior batches, then raise forever on the batch containing chunk-fail."""
 
-        def __init__(self, settings: object, evaluation_settings: object) -> None:
+        def __init__(self, settings: object, synthesis_settings: object) -> None:
             return None
 
         def screen(self, chunks: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
@@ -172,7 +182,7 @@ def test_chunk_screening_cli_writes_partial_output_when_a_batch_keeps_failing(
             ]
 
     _configure_cli(monkeypatch, chunks_path, screening_path)
-    monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _FailsForSecondBatchClient)
+    monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _FailsForFinalBatchClient)
 
     with pytest.raises(RuntimeError, match="chunk screening left 1 incomplete"):
         chunk_screening_cli.main()
@@ -188,14 +198,14 @@ def test_chunk_screening_cli_persists_progress_if_interrupted_mid_document(
     """A batch already screened is durably written even if the process dies before the run finishes."""
     chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
     screening_path = tmp_path / "chunk_screening.jsonl"
-    first_batch = tuple(_chunk(f"chunk-{i}", f"Phạt tiền {i}.") for i in range(20))
-    second_batch = tuple(_chunk(f"chunk-b-{i}", f"Phạt tiền b{i}.") for i in range(20))
+    first_batch = tuple(_chunk(f"chunk-{i}", f"Phạt tiền {i}.") for i in range(50))
+    second_batch = tuple(_chunk(f"chunk-b-{i}", f"Phạt tiền b{i}.") for i in range(50))
     write_chunks(chunks_path, (*first_batch, *second_batch))
 
     class _CrashesOnSecondBatchClient:
         """Succeed on the first batch, then simulate the whole process being killed."""
 
-        def __init__(self, settings: object, evaluation_settings: object) -> None:
+        def __init__(self, settings: object, synthesis_settings: object) -> None:
             self._calls = 0
 
         def screen(self, chunks: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:

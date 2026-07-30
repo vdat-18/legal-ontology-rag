@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import date
+from pathlib import Path
 
 import pytest
 
@@ -11,6 +12,7 @@ from legal_rag.baml_client.types import ChunkWindowRole
 from legal_rag.baml_client.types import EvidenceEntry as BamlEvidenceEntry
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.benchmark_synthesis import fact_extraction
+from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
 from legal_rag.benchmark_synthesis.fact_extraction import (
     BamlFactExtractionClient,
@@ -21,7 +23,9 @@ from legal_rag.benchmark_synthesis.fact_extraction import (
     extract_facts_from_document,
 )
 from legal_rag.chunker.models import Chunk
-from legal_rag.settings import EvaluationSettings, Settings
+from legal_rag.settings import Settings
+
+_SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
 
 
 def _metadata(**overrides: object) -> DocumentMetadataRecord:
@@ -105,7 +109,7 @@ def test_build_reading_window_includes_target_preceding_following_and_cited_chun
     chunks_by_id = {chunk.chunk_id: chunk for chunk in (heading, preceding_two, preceding_one, target, following)}
     provision_index = build_provision_index([heading, preceding_two, preceding_one, target, following])
 
-    window = build_reading_window(target, chunks_by_id, provision_index)
+    window = build_reading_window(target, chunks_by_id, provision_index, max_preceding_chunks=2, max_following_chunks=1)
 
     roles_by_id = {entry.chunk_id: entry.role for entry in window}
     assert roles_by_id == {
@@ -128,7 +132,7 @@ def test_build_reading_window_limits_preceding_chunk_depth() -> None:
     chunks_by_id = {chunk.chunk_id: chunk for chunk in (far, middle, near, target)}
     provision_index = build_provision_index([far, middle, near, target])
 
-    window = build_reading_window(target, chunks_by_id, provision_index, max_preceding_chunks=2)
+    window = build_reading_window(target, chunks_by_id, provision_index, max_preceding_chunks=2, max_following_chunks=1)
 
     ids = {entry.chunk_id for entry in window}
     assert ids == {"target", "near", "middle"}
@@ -143,7 +147,7 @@ def test_build_reading_window_limits_following_chunk_depth() -> None:
     chunks_by_id = {chunk.chunk_id: chunk for chunk in (target, near, middle, far)}
     provision_index = build_provision_index([target, near, middle, far])
 
-    window = build_reading_window(target, chunks_by_id, provision_index, max_following_chunks=2)
+    window = build_reading_window(target, chunks_by_id, provision_index, max_preceding_chunks=2, max_following_chunks=2)
 
     ids = {entry.chunk_id for entry in window}
     assert ids == {"target", "near", "middle"}
@@ -156,7 +160,7 @@ def test_build_reading_window_deduplicates_chunk_appearing_in_multiple_roles() -
     chunks_by_id = {chunk.chunk_id: chunk for chunk in (heading, target)}
     provision_index = build_provision_index([heading, target])
 
-    window = build_reading_window(target, chunks_by_id, provision_index)
+    window = build_reading_window(target, chunks_by_id, provision_index, max_preceding_chunks=2, max_following_chunks=1)
 
     assert len(window) == 2
     prev_entry = next(entry for entry in window if entry.chunk_id == "prev")
@@ -258,7 +262,15 @@ def test_extract_facts_from_document_collects_every_fact_per_target() -> None:
     )
     client = _FakeExtractionClient({"target": (fact_one, fact_two)})
 
-    facts = extract_facts_from_document([target], [target], client, _metadata())
+    facts = extract_facts_from_document(
+        [target],
+        [target],
+        client,
+        _metadata(),
+        max_preceding_chunks=2,
+        max_following_chunks=1,
+        max_retries=2,
+    )
 
     assert len(facts) == 2
     assert {fact.conduct for fact in facts} == {fact_one.conduct, fact_two.conduct}
@@ -279,7 +291,15 @@ def test_extract_facts_from_document_retries_a_failing_target_then_succeeds() ->
                 raise TimeoutError(msg)
             return (fact,)
 
-    facts = extract_facts_from_document([target], [target], _FlakyClient(), _metadata())
+    facts = extract_facts_from_document(
+        [target],
+        [target],
+        _FlakyClient(),
+        _metadata(),
+        max_preceding_chunks=2,
+        max_following_chunks=1,
+        max_retries=2,
+    )
 
     assert attempts == 2
     assert len(facts) == 1
@@ -307,6 +327,9 @@ def test_extract_facts_from_document_skips_a_target_that_fails_every_attempt() -
             [failing, ok],
             _FailsForOneChunkClient(),
             _metadata(),
+            max_preceding_chunks=2,
+            max_following_chunks=1,
+            max_retries=2,
             on_target_processed=lambda chunk_id, _facts: persisted.append(chunk_id),
         )
 
@@ -326,6 +349,9 @@ def test_extract_facts_from_document_calls_on_target_processed_after_each_target
         [target_one, target_two],
         client,
         _metadata(),
+        max_preceding_chunks=2,
+        max_following_chunks=1,
+        max_retries=2,
         on_target_processed=lambda chunk_id, facts: calls.append((chunk_id, len(facts))),
     )
 
@@ -348,7 +374,15 @@ def test_extract_facts_from_document_resolves_context_excluded_from_target_chunk
             seen_roles.update({entry.chunk_id: entry.role for entry in window})
             return ()
 
-    extract_facts_from_document([target], [preceding, target], _RecordingClient(), _metadata())
+    extract_facts_from_document(
+        [target],
+        [preceding, target],
+        _RecordingClient(),
+        _metadata(),
+        max_preceding_chunks=2,
+        max_following_chunks=1,
+        max_retries=2,
+    )
 
     assert seen_roles == {"target": ChunkWindowRole.Target, "preceding": ChunkWindowRole.Adjacent}
 
@@ -363,19 +397,14 @@ def _settings() -> Settings:
     )
 
 
-def _evaluation_settings() -> EvaluationSettings:
+def _synthesis_settings() -> SynthesisSettings:
     """Build ground-truth synthesis settings for an offline BAML request."""
-    return EvaluationSettings(
-        embedding_profile="qwen3_0_6b",
-        span_match_threshold=0.85,
-        bundle_overlap_threshold=0.5,
-        max_quality_retries=2,
-    )
+    return SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
 
 
 def test_baml_fact_extraction_client_parses_typed_result(monkeypatch: pytest.MonkeyPatch) -> None:
     """The generated non-stream client returns typed candidate facts."""
-    client = BamlFactExtractionClient(_settings(), _evaluation_settings())
+    client = BamlFactExtractionClient(_settings(), _synthesis_settings())
     monkeypatch.setattr(
         fact_extraction,
         "execute_baml_request",
@@ -389,7 +418,9 @@ def test_baml_fact_extraction_client_parses_typed_result(monkeypatch: pytest.Mon
     )
     target = _chunk("c1", "Vượt đèn đỏ phạt 4.000.000 đồng.")
     provision_index = build_provision_index([target])
-    window = build_reading_window(target, {"c1": target}, provision_index)
+    window = build_reading_window(
+        target, {"c1": target}, provision_index, max_preceding_chunks=2, max_following_chunks=1
+    )
 
     facts = client.extract(window)
 

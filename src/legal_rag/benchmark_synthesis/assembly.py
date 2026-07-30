@@ -46,6 +46,7 @@ def assemble_groundtruth_corpus(
     processed_dir: Path,
     corpus_config_path: Path,
     snapshot_path: Path,
+    synthesis_config_path: Path,
     config_paths: Sequence[Path],
     *,
     llm_model: str,
@@ -77,7 +78,9 @@ def assemble_groundtruth_corpus(
         "evidence_relation": EVIDENCE_RELATION_PROMPT_VERSION,
         "fact_extraction": FACT_EXTRACTION_PROMPT_VERSION,
     }
-    config_hashes = {path.as_posix(): _sha256_file(path) for path in (corpus_config_path, *config_paths)}
+    config_hashes = {
+        path.as_posix(): _sha256_file(path) for path in (corpus_config_path, synthesis_config_path, *config_paths)
+    }
     identity = {
         "chunk_schema_version": CHUNK_SCHEMA_VERSION,
         "chunker_config_sha256": sorted(chunker_config_hashes),

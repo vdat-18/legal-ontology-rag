@@ -23,6 +23,19 @@ describe retry-then-skip behavior.
   the final query, answer, reasoning, and claims.
 - The MVP taxonomy contains penalty-fact capabilities only. Authority,
   procedure, and exception queries wait for dedicated fact schemas.
+- `data/config/groundtruth/synthesis_v1.json` is the single source of truth
+  for embedding selection, retry bounds, quality thresholds, screening batch
+  size, and every synthesis LLM operation's token/temperature bounds.
+- Every LLM-backed synthesis CLI requires `--synthesis-config`; synthesis
+  tunables are not read from `.env`. Existing environment settings for other
+  subsystems remain unchanged; synthesis only reads provider connection,
+  credential, and deployment values from the environment.
+- `legal-assemble-groundtruth` always hashes the required synthesis config in
+  the run manifest, alongside any taxonomy/persona/distribution configs passed
+  through additional `--config` arguments.
+- `groundtruth_corpus_v1.json` is the focused 10-document MVP corpus. The 35
+  existing chunk files correspond to `road_traffic_penalty_scope.json`'s broad
+  `in_scope` list and must not be described as the MVP corpus.
 
 ```text
 data/processed/groundtruth/
@@ -161,11 +174,15 @@ có nội dung chế tài bị bỏ qua và ghi vào danh sách loại trừ kè
 chính model đưa ra — thường là mục lục, tiêu đề chương, đoạn dẫn nhập không
 mang chế tài.
 
-Các chunk được gộp theo batch (mặc định 20 chunk/lần gọi) thay vì gọi LLM
+Các chunk được gộp theo batch (mặc định 50 chunk/lần gọi) thay vì gọi LLM
 riêng cho từng chunk, để giảm số lần round-trip. Mỗi chunk trong batch mang
 theo `chunk_id`, và model phải trả về đúng `chunk_id` đó trong từng kết quả —
 kết quả được đối chiếu ngược lại theo `chunk_id`, không dựa vào thứ tự trả về,
 để tránh lệch kết quả giữa các chunk khi batch lớn.
+
+Screening mặc định cho phép tối đa 16.384 output token. Transport dùng chung
+ghi log `input_tokens`, `output_tokens` và `total_tokens` của từng LLM response
+nếu OpenAI-compatible provider trả trường `usage`.
 
 Cổng rẻ này đứng trước để bảo vệ hai công đoạn đắt phía sau: LLM call trích
 xuất và thời gian chuyên gia duyệt fact. Câu hỏi nhị phân này thay cho cách
@@ -1007,19 +1024,15 @@ hai module cũ gọi vào đây, rồi `benchmark_synthesis/writer.py` dùng l�
 đổi cross-cutting nhỏ, nên làm thành một commit riêng trước khi viết code
 Phase 1.
 
-**Cấu hình.** Thêm `EvaluationSettings` vào `settings.py`, theo đúng mẫu
-`ChunkerSettings` — nạp từ biến môi trường:
-`span_match_threshold` (mặc định `0.85`), `bundle_overlap_threshold` (`τ`),
-`max_quality_retries`.
-Danh sách persona, query taxonomy, phân bố scenario và evolution nằm ở file
-JSON versioned dưới `data/config/groundtruth/`. **Đã đổi so với dự tính ban
-đầu:** không dùng `importlib.resources` như `embedding/profiles.py`, vì
-`data/config/` nằm ngoài cây package `src/legal_rag/` nên không phải là tài
-nguyên gói hợp lệ. Các CLI nhận đường dẫn config qua tham số dòng lệnh tường
-minh (`--query-taxonomy`, `--personas`, `--scenario-distribution`), đọc bằng
-`Path.read_text` + `json.loads` thuần — đúng phong cách các CLI hiện có
-(`legal-chunk`, `legal-extract-facts`) vốn luôn nhận đường dẫn tường minh,
-không có đường dẫn ngầm định.
+**Cấu hình.** `SynthesisSettings` nằm trong
+`benchmark_synthesis/config.py` và đọc từ file JSON versioned được truyền rõ
+qua `--synthesis-config`. File này sở hữu embedding profile, retry, threshold,
+batch size, giới hạn output và temperature cho từng LLM operation. Trong luồng
+synthesis, `.env` chỉ cung cấp provider/credential/deployment settings; cấu hình
+env của các subsystem khác không thuộc thay đổi này. Persona, query taxonomy,
+phân bố scenario và evolution tiếp tục nằm ở các file JSON versioned riêng dưới
+`data/config/groundtruth/`. Các CLI đọc bằng `Path.read_text` + `json.loads`,
+không có đường dẫn config ngầm định.
 
 ### Phase 1 — Trích xuất fact (mục 2 ở trên) ✅ Đã triển khai
 
@@ -1050,8 +1063,8 @@ BAML trong `baml_src/`:
 - `chunk_screening.baml` — class `ChunkScreeningItem` (chunk_id, text) và
   `ChunkScreeningResult` (chunk_id, has_penalty_content, reason), function
   `ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[]` gọi
-  theo batch (mặc định 20 chunk/lần, xem `DEFAULT_SCREENING_BATCH_SIZE` trong
-  `chunk_screening.py`), kèm persona và few-shot examples. Kết quả đối chiếu
+  theo batch được quy định bởi `stages.chunk_screening.batch_size` trong
+  `synthesis_v1.json`, kèm persona và few-shot examples. Kết quả đối chiếu
   ngược lại theo `chunk_id`, không theo thứ tự mảng trả về.
 - `legal_fact_extraction.baml` — enum `ChunkWindowRole`, class
   `ChunkWindowEntry`, `EvidenceEntry`, `LegalFact` khớp JSON ở mục 2, function
@@ -1069,17 +1082,18 @@ sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.js
   kể cả chunk bị loại (audit được, khác với bản trước đó không ghi gì). Chạy
   lại (resume) trên cùng output path chỉ sàng lọc chunk chưa có verdict, giữ
   nguyên các verdict cũ. Một batch gọi LLM lỗi (timeout, rate limit...) được
-  thử lại tối đa `DEFAULT_SCREENING_MAX_RETRIES` lần; nếu vẫn lỗi thì batch đó
-  bị bỏ qua (log cảnh báo), các chunk còn lại vẫn chạy tiếp — chunk bị bỏ qua
-  sẽ được resume ở lần chạy sau. `chunk_screening.jsonl` được ghi lại
+  thử lại theo `llm_execution.max_retries` trong synthesis config; nếu vẫn lỗi
+  thì batch đó không được đánh dấu hoàn thành, command thoát lỗi sau khi giữ
+  lại các batch đã thành công để resume ở lần chạy sau. `chunk_screening.jsonl`
+  được ghi lại
   (atomic) sau **mỗi batch** thay vì chỉ một lần ở cuối, nên nếu tiến trình
   bị dừng đột ngột giữa chừng (không phải lỗi batch, mà là crash/kill hẳn
   tiến trình), các batch đã xong trước đó vẫn không mất.
 - `legal-resolve-document-metadata` (`document_metadata_cli.py`): nhận đường dẫn
   chunk JSONL của một văn bản, gọi LLM **một lần** trên các chunk đầu và cuối
   của thân văn bản, ghi `document_metadata.jsonl` — một dòng duy nhất mang
-  `document_number`, `valid_from`, `valid_to`. Không có resume: một lần chạy là
-  một call, chạy lại thì tính lại.
+  `document_number`, `valid_from`, `valid_to`. Nếu output đã tồn tại và hợp lệ,
+  command coi work unit metadata đã hoàn thành và không gọi lại LLM.
 - `legal-extract-facts` (`fact_extraction_cli.py`): nhận đường dẫn chunk JSONL,
   `chunk_screening.jsonl` **và** `document_metadata.jsonl`, lọc lại chunk có
   `has_penalty_content=true`,
@@ -1391,7 +1405,9 @@ là so khớp tất định thuần Python, không qua `deepeval`.
   `langchain-openai` (không còn code nào import sau khi pipeline Ragas cũ bị
   xóa); thêm console script mới cho từng CLI ở các phase sau. ✅ **Đã áp
   dụng** ở Phase 0.
-- `settings.py`: thêm `EvaluationSettings`. ✅ **Đã áp dụng.**
+- `benchmark_synthesis/config.py`: thêm `SynthesisSettings` đọc từ
+  `data/config/groundtruth/synthesis_v1.json`; bỏ synthesis tunables khỏi
+  environment settings. ✅ **Đã áp dụng.**
 - `io_utils.py`: `write_jsonl_atomic` dùng chung; `parser/writer.py` và
   `chunker/writer.py` refactor gọi vào đây. ✅ **Đã áp dụng.**
 - `embedding/encoder.py`: `EmbeddingEncoder` bọc `sentence-transformers`,
@@ -1409,19 +1425,19 @@ là so khớp tất định thuần Python, không qua `deepeval`.
 - `chunk_screening.py` (trước đó `chunk_quality.py`): đổi từ chấm 4 tiêu chí
   liên tục + so ngưỡng sang hỏi nhị phân `has_penalty_content` — LLM đáng tin
   hơn với quyết định nhị phân so với tự hiệu chỉnh điểm số liên tục. Bỏ
-  `chunk_quality_threshold` khỏi `EvaluationSettings`/`.env.example`.
+  `chunk_quality_threshold` khỏi synthesis config.
   ✅ **Đã áp dụng.**
 - `chunker/writer.py`: thêm `read_chunks` — CLI trích xuất fact cần đọc lại
   `*.chunks.jsonl`. ✅ **Đã áp dụng** ở Phase 1, không nằm trong kế hoạch gốc.
 - `pyproject.toml`: thêm console script `legal-extract-facts`,
   `legal-review-facts` (Phase 1), `legal-build-evidence-graph` (Phase 2).
   ✅ **Đã áp dụng.**
-- `data/config/groundtruth/`: bốn file config versioned
+- `data/config/groundtruth/`: năm file config versioned
   (`query_taxonomy.json`, `personas.json`, `scenario_distribution.json`,
-  `evolution.json`). ✅ **Đã áp dụng** ở Phase 2.
-- `settings.py`: thêm `candidate_generation_max_output_tokens`,
-  `candidate_generation_temperature`, `verification_max_output_tokens`,
-  `verification_temperature`. ✅ **Đã áp dụng** ở Phase 3.
+  `evolution.json`, `synthesis_v1.json`). ✅ **Đã áp dụng.**
+- `synthesis_v1.json`: cấu hình riêng cho generation, critique, evolution và
+  verification thay vì dùng environment variables hoặc dùng chung ngầm định.
+  ✅ **Đã áp dụng.**
 - `scenario_sampling.py`: thêm `EvolutionConfig`/`load_evolution_config`,
   `load_query_type_descriptions`, `load_persona_descriptions` — thuần cộng
   thêm, không sửa các hàm/kiểu dữ liệu đã có từ Phase 2. ✅ **Đã áp dụng** ở
@@ -1446,8 +1462,8 @@ là so khớp tất định thuần Python, không qua `deepeval`.
   sổ đọc cấp chunk không chứa. `models.py`: thêm `build_legal_fact` làm
   constructor duy nhất tính `fact_id`/`fact_content_sha256`, để bước trích fact
   và migration dùng chung một công thức băm; `LEGAL_FACT_SCHEMA_VERSION` lên
-  `1.2.0`. `settings.py`: thêm `document_metadata_max_output_tokens`,
-  `document_metadata_temperature`. `writer.py`: thêm
+  `1.2.0`. `synthesis_v1.json`: thêm giới hạn output, temperature và số chunk
+  mở/đóng cho metadata. `writer.py`: thêm
   `write_document_metadata`/`read_document_metadata`. `pyproject.toml`: thêm
   console script `legal-resolve-document-metadata` và
   `legal-migrate-legal-facts`. ✅ **Đã áp dụng**, không nằm trong kế hoạch gốc.

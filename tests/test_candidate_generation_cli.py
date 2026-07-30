@@ -100,7 +100,7 @@ def _scenario() -> Scenario:
 class _FakeGenerationClient:
     """Return a fixed candidate whose evidence is a real, exact quote from the chunk."""
 
-    def __init__(self, settings: object, evaluation_settings: object) -> None:
+    def __init__(self, settings: object, synthesis_settings: object) -> None:
         return None
 
     def generate(self, *args: object, **kwargs: object) -> BamlGeneratedCandidate:
@@ -130,7 +130,7 @@ class _FakeGenerationClient:
 class _FakeVerificationClient:
     """Return a fixed passing verification result, ignoring call arguments."""
 
-    def __init__(self, settings: object, evaluation_settings: object) -> None:
+    def __init__(self, settings: object, synthesis_settings: object) -> None:
         return None
 
     def verify(self, *args: object, **kwargs: object) -> BamlVerificationResult:
@@ -164,11 +164,6 @@ def _configure_cli(
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     monkeypatch.setenv("LLM_MODEL", "provider/test-model")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
-    monkeypatch.setenv("EMBEDDING_PROFILE", "qwen3_0_6b")
-    monkeypatch.setenv("GROUNDTRUTH_CHUNK_QUALITY_THRESHOLD", "0.6")
-    monkeypatch.setenv("GROUNDTRUTH_SPAN_MATCH_THRESHOLD", "0.85")
-    monkeypatch.setenv("GROUNDTRUTH_BUNDLE_OVERLAP_THRESHOLD", "0.5")
-    monkeypatch.setenv("GROUNDTRUTH_MAX_QUALITY_RETRIES", "2")
     monkeypatch.setattr(candidate_generation, "BamlCandidateGenerationClient", _FakeGenerationClient)
     monkeypatch.setattr(verification, "BamlVerificationClient", _FakeVerificationClient)
     monkeypatch.setattr(
@@ -188,6 +183,8 @@ def _configure_cli(
             str(_REPO_CONFIG_DIR / "evolution.json"),
             "--candidates-per-scenario",
             str(candidates_per_scenario),
+            "--synthesis-config",
+            str(_REPO_CONFIG_DIR / "synthesis_v1.json"),
         ],
     )
 
