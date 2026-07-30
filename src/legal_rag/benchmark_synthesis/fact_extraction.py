@@ -9,6 +9,7 @@ from datetime import date
 from typing import Protocol
 
 from baml_py.logging import set_log_level
+from loguru import logger
 
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import ChunkWindowEntry, ChunkWindowRole
@@ -25,6 +26,7 @@ _ARTICLE_CITATION_PATTERN = re.compile(r"Điều\s+(\d+)\b")
 
 DEFAULT_MAX_PRECEDING_CHUNKS = 2
 DEFAULT_MAX_FOLLOWING_CHUNKS = 1
+DEFAULT_EXTRACTION_MAX_RETRIES = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,7 +154,7 @@ class BamlFactExtractionClient:
         return tuple(result)
 
 
-def build_legal_fact(raw: BamlLegalFact) -> LegalFact:
+def build_legal_fact(raw: BamlLegalFact, source_chunk_id: str) -> LegalFact:
     """Assign identity to one LLM-produced fact, trusting its cited provenance."""
     evidence = tuple(
         EvidenceReference(chunk_id=entry.chunk_id, quoted_span=entry.quoted_span) for entry in raw.evidence
@@ -194,6 +196,7 @@ def build_legal_fact(raw: BamlLegalFact) -> LegalFact:
         document_number=raw.document_number,
         provision_path=raw.provision_path,
         evidence=evidence,
+        source_chunk_id=source_chunk_id,
     )
 
 
@@ -204,8 +207,10 @@ def extract_facts_from_document(
     *,
     max_preceding_chunks: int = DEFAULT_MAX_PRECEDING_CHUNKS,
     max_following_chunks: int = DEFAULT_MAX_FOLLOWING_CHUNKS,
+    max_retries: int = DEFAULT_EXTRACTION_MAX_RETRIES,
+    on_target_processed: Callable[[str, tuple[LegalFact, ...]], None] | None = None,
 ) -> tuple[LegalFact, ...]:
-    """Extract legal facts from target_chunks, resolving adjacent/cited context from document_chunks."""
+    """Extract legal facts from target_chunks, retrying a failed target before skipping it."""
     chunks_by_id = {chunk.chunk_id: chunk for chunk in document_chunks}
     provision_index = build_provision_index(document_chunks)
 
@@ -218,6 +223,26 @@ def extract_facts_from_document(
             max_preceding_chunks=max_preceding_chunks,
             max_following_chunks=max_following_chunks,
         )
-        facts.extend(build_legal_fact(raw_fact) for raw_fact in client.extract(window))
+        for attempt in range(1 + max_retries):
+            try:
+                raw_facts = client.extract(window)
+            except Exception as error:
+                logger.warning(
+                    "Fact extraction for chunk {} failed on attempt {}/{}: {}",
+                    target.chunk_id,
+                    attempt + 1,
+                    1 + max_retries,
+                    error,
+                )
+                continue
+            target_facts = tuple(build_legal_fact(raw_fact, target.chunk_id) for raw_fact in raw_facts)
+            facts.extend(target_facts)
+            if on_target_processed is not None:
+                on_target_processed(target.chunk_id, target_facts)
+            break
+        else:
+            logger.warning(
+                "Skipping fact extraction for chunk {} after {} failed attempts", target.chunk_id, 1 + max_retries
+            )
 
     return tuple(facts)

@@ -78,6 +78,7 @@ keyword matching hoặc các luật suy diễn thủ công.
 {
   "fact_id": "...",
   "fact_content_sha256": "...",
+  "source_chunk_id": "...",
   "conduct": "Không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
   "subject": "Người điều khiển ô tô",
   "conditions": [],
@@ -1008,7 +1009,14 @@ sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.js
 - `legal-extract-facts` (`fact_extraction_cli.py`): nhận đường dẫn chunk JSONL
   **và** `chunk_screening.jsonl`, lọc lại chunk có `has_penalty_content=true`,
   trích fact, ghi thẳng `legal_facts.jsonl` — không còn ledger, không còn
-  bước duyệt tay.
+  bước duyệt tay. Mỗi `LegalFact` mang thêm `source_chunk_id` — chunk Target
+  đã sinh ra fact đó — dùng để resume: chạy lại trên cùng output path chỉ
+  trích chunk chưa có fact nào gắn `source_chunk_id` tương ứng, giữ nguyên
+  fact cũ. Một lệnh gọi LLM lỗi được thử lại tối đa
+  `DEFAULT_EXTRACTION_MAX_RETRIES` lần; nếu vẫn lỗi thì bỏ qua chunk đó (resume
+  ở lần sau). File output được ghi lại (atomic) sau **mỗi Target** thay vì chỉ
+  một lần ở cuối, nên tiến trình bị crash giữa chừng không mất fact đã trích
+  trước đó.
 
 Hạ tầng dùng chung mới phát sinh khi triển khai, ngoài phạm vi ban đầu của
 Phase 1 nhưng cần thiết để nó chạy được:

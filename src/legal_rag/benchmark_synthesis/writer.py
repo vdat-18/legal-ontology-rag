@@ -81,6 +81,7 @@ def read_legal_facts(input_path: Path) -> tuple[LegalFact, ...]:
                         EvidenceReference(chunk_id=entry["chunk_id"], quoted_span=entry["quoted_span"])
                         for entry in payload["evidence"]
                     ),
+                    source_chunk_id=payload["source_chunk_id"],
                 )
             )
     return tuple(facts)

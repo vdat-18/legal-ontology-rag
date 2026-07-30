@@ -172,19 +172,20 @@ def _baml_fact(**overrides: object) -> BamlLegalFact:
 
 def test_build_legal_fact_keeps_llm_cited_evidence_as_is() -> None:
     """chunk_id and quoted_span in evidence come straight from the LLM, untouched."""
-    fact = build_legal_fact(_baml_fact())
+    fact = build_legal_fact(_baml_fact(), "chunk-1")
 
     assert fact.evidence[0].chunk_id == "chunk-1"
     assert fact.evidence[0].quoted_span == "phạt tiền từ 4.000.000 đồng"
     assert fact.valid_from is not None
     assert fact.valid_from.isoformat() == "2025-01-01"
     assert fact.valid_to is None
+    assert fact.source_chunk_id == "chunk-1"
 
 
 def test_build_legal_fact_identity_is_stable_for_identical_identity_fields() -> None:
     """Two facts sharing conduct, subject, document_number, and provision_path share a fact_id."""
-    first = build_legal_fact(_baml_fact())
-    second = build_legal_fact(_baml_fact(monetary_penalty="5.000.000 đồng"))
+    first = build_legal_fact(_baml_fact(), "chunk-1")
+    second = build_legal_fact(_baml_fact(monetary_penalty="5.000.000 đồng"), "chunk-1")
 
     assert first.fact_id == second.fact_id
     assert first.fact_content_sha256 != second.fact_content_sha256
@@ -192,7 +193,7 @@ def test_build_legal_fact_identity_is_stable_for_identical_identity_fields() -> 
 
 def test_build_legal_fact_trusts_llm_evidence_without_validation() -> None:
     """No defensive check runs; an empty evidence list simply produces empty evidence."""
-    fact = build_legal_fact(_baml_fact(evidence=[]))
+    fact = build_legal_fact(_baml_fact(evidence=[]), "chunk-1")
 
     assert fact.evidence == ()
 
@@ -222,6 +223,65 @@ def test_extract_facts_from_document_collects_every_fact_per_target() -> None:
 
     assert len(facts) == 2
     assert {fact.conduct for fact in facts} == {fact_one.conduct, fact_two.conduct}
+
+
+def test_extract_facts_from_document_retries_a_failing_target_then_succeeds() -> None:
+    """A target whose extraction call raises is retried, and a later success still produces its facts."""
+    target = _chunk("target", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
+    fact = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target", quoted_span="phạt tiền")])
+    attempts = 0
+
+    class _FlakyClient:
+        def extract(self, window: Sequence[object]) -> tuple[BamlLegalFact, ...]:
+            nonlocal attempts
+            attempts += 1
+            if attempts < 2:
+                msg = "provider timed out"
+                raise TimeoutError(msg)
+            return (fact,)
+
+    facts = extract_facts_from_document([target], [target], _FlakyClient())
+
+    assert attempts == 2
+    assert len(facts) == 1
+    assert facts[0].source_chunk_id == "target"
+
+
+def test_extract_facts_from_document_skips_a_target_that_fails_every_attempt() -> None:
+    """A target that keeps raising is skipped, but other targets are still extracted."""
+    failing = _chunk("chunk-fail", "Nội dung gây lỗi mạng.")
+    ok = _chunk("chunk-ok", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
+    fact = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="chunk-ok", quoted_span="phạt tiền")])
+
+    class _FailsForOneChunkClient:
+        def extract(self, window: Sequence[object]) -> tuple[BamlLegalFact, ...]:
+            target_chunk_id = next(entry.chunk_id for entry in window if entry.role == ChunkWindowRole.Target)
+            if target_chunk_id == "chunk-fail":
+                msg = "provider timed out"
+                raise TimeoutError(msg)
+            return (fact,)
+
+    facts = extract_facts_from_document([failing, ok], [failing, ok], _FailsForOneChunkClient())
+
+    assert [f.source_chunk_id for f in facts] == ["chunk-ok"]
+
+
+def test_extract_facts_from_document_calls_on_target_processed_after_each_target() -> None:
+    """on_target_processed receives the chunk_id and that target's own facts, once per target."""
+    target_one = _chunk("target-1", "Phạt tiền 4.000.000 đồng.")
+    target_two = _chunk("target-2", "Trừ 6 điểm giấy phép lái xe.")
+    fact_one = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target-1", quoted_span="phạt")])
+    client = _FakeExtractionClient({"target-1": (fact_one,), "target-2": ()})
+    calls: list[tuple[str, int]] = []
+
+    extract_facts_from_document(
+        [target_one, target_two],
+        [target_one, target_two],
+        client,
+        on_target_processed=lambda chunk_id, facts: calls.append((chunk_id, len(facts))),
+    )
+
+    assert calls == [("target-1", 1), ("target-2", 0)]
 
 
 def test_extract_facts_from_document_resolves_context_excluded_from_target_chunks() -> None:

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-LEGAL_FACT_SCHEMA_VERSION = "1.0.0"
+LEGAL_FACT_SCHEMA_VERSION = "1.1.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +42,7 @@ class LegalFact:
     document_number: str
     provision_path: str
     evidence: tuple[EvidenceReference, ...]
+    source_chunk_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Return the stable JSON-serializable legal-fact schema."""
@@ -49,6 +50,7 @@ class LegalFact:
             "schema_version": LEGAL_FACT_SCHEMA_VERSION,
             "fact_id": self.fact_id,
             "fact_content_sha256": self.fact_content_sha256,
+            "source_chunk_id": self.source_chunk_id,
             "conduct": self.conduct,
             "subject": self.subject,
             "conditions": list(self.conditions),
