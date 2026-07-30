@@ -51,6 +51,8 @@ _RELATION_TYPE_BY_BAML_ENUM: dict[str, RelationType] = {
 
 DEFAULT_MAX_CANDIDATES_PER_FACT = 5
 DEFAULT_MIN_CANDIDATE_SIMILARITY = 0.5
+DEFAULT_RETRIEVAL_POOL_MULTIPLIER = 2
+DEFAULT_RRF_K = 60
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,27 +120,70 @@ def _fact_embedding_text(fact: LegalFact) -> str:
     return f"{fact.conduct}. {fact.subject}. {fact.provision_path}."
 
 
+def _fact_lexical_tokens(fact: LegalFact) -> list[str]:
+    """Return lowercased whitespace tokens of a fact's canonical text, for lexical retrieval."""
+    return _fact_embedding_text(fact).lower().split()
+
+
+def _top_indices(scored: Sequence[tuple[int, float]], limit: int) -> list[int]:
+    """Return indices ordered by descending score then index, capped at limit."""
+    return [index for index, _ in sorted(scored, key=lambda item: (-item[1], item[0]))[:limit]]
+
+
 def find_candidate_fact_pairs(
     facts: Sequence[LegalFact],
     encoder: EmbeddingEncoder,
     *,
     max_candidates_per_fact: int = DEFAULT_MAX_CANDIDATES_PER_FACT,
     min_similarity: float = DEFAULT_MIN_CANDIDATE_SIMILARITY,
+    pool_multiplier: int = DEFAULT_RETRIEVAL_POOL_MULTIPLIER,
+    rrf_k: int = DEFAULT_RRF_K,
 ) -> tuple[tuple[str, str], ...]:
-    """Return unique fact_id pairs worth confirming as a relation, by embedding similarity."""
+    """Return unique fact_id pairs worth confirming, fusing dense and lexical retrieval with reciprocal rank fusion.
+
+    Dense retrieval finds facts phrased differently about the same thing; lexical
+    retrieval finds near-verbatim restatements, which is how an amending
+    provision quotes the provision it amends. Each leg filters on its own scale —
+    fused RRF scores have no absolute meaning — and RRF merges the survivors.
+    """
+    # Imported here, not at module scope: rank_bm25 ships in the evaluation extra, but this
+    # module is reachable from CLIs that do not need it.
+    from rank_bm25 import BM25Okapi
+
     vectors = encoder.encode([_fact_embedding_text(fact) for fact in facts])
+    corpus = [_fact_lexical_tokens(fact) for fact in facts]
+    bm25 = BM25Okapi(corpus)
+    pool_size = max_candidates_per_fact * pool_multiplier
+
     pairs: set[tuple[str, str]] = set()
     for index, fact in enumerate(facts):
-        scored = [
-            (float(np.dot(vectors[index], vectors[other_index])), other_fact)
-            for other_index, other_fact in enumerate(facts)
-            if other_index != index
-        ]
-        scored.sort(key=lambda item: item[0], reverse=True)
-        for score, other_fact in scored[:max_candidates_per_fact]:
-            if score < min_similarity:
-                continue
-            pairs.add(tuple(sorted((fact.fact_id, other_fact.fact_id))))
+        dense_scores = np.dot(vectors, vectors[index])
+        dense_ranking = _top_indices(
+            [
+                (other, float(dense_scores[other]))
+                for other in range(len(facts))
+                if other != index and float(dense_scores[other]) >= min_similarity
+            ],
+            pool_size,
+        )
+        lexical_scores = bm25.get_scores(corpus[index])
+        lexical_ranking = _top_indices(
+            [
+                (other, float(lexical_scores[other]))
+                for other in range(len(facts))
+                if other != index and float(lexical_scores[other]) > 0.0
+            ],
+            pool_size,
+        )
+
+        fused: dict[int, float] = {}
+        for ranking in (dense_ranking, lexical_ranking):
+            for rank, other_index in enumerate(ranking, start=1):
+                fused[other_index] = fused.get(other_index, 0.0) + 1.0 / (rrf_k + rank)
+
+        best = sorted(fused, key=lambda other_index: (-fused[other_index], other_index))
+        for other_index in best[:max_candidates_per_fact]:
+            pairs.add(tuple(sorted((fact.fact_id, facts[other_index].fact_id))))
     return tuple(sorted(pairs))
 
 

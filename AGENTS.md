@@ -45,7 +45,8 @@ This file is the main coding guide for this repository.
 
 ## Heuristics
 
-- Do not use regex, keyword matching, handcrafted scores, or rule engines for implementations.
+- Do not use regex, keyword matching, handcrafted scores, or rule engines to make a semantic decision that an LLM call should make instead (e.g. classifying, verifying, or scoring content).
+- Retrieval-stage techniques (e.g. BM25, hybrid search, RRF) are allowed for proposing candidates that a downstream LLM call must still confirm; they must not be the final decision.
 - Do not hardcode changeable values; put them in typed config, environment variables, or versioned data files.
 
 ## Checks

@@ -1101,9 +1101,37 @@ trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
 
 ### Phase 2 — Evidence graph và scenario sampling (mục 6, 7) ✅ Đã triển khai
 
-- `evidence_graph.py` — `find_candidate_fact_pairs` dùng `EmbeddingEncoder`
-  tìm cặp fact ứng viên trong toàn bộ fact đã trích xuất (không giới hạn cùng
-  văn bản, vì multi-hop cần đúng cặp khác văn bản); `confirm_evidence_relations`
+- `evidence_graph.py` — `find_candidate_fact_pairs` tìm cặp fact ứng viên trong
+  toàn bộ fact đã trích xuất (không giới hạn cùng văn bản, vì multi-hop cần
+  đúng cặp khác văn bản) bằng **hybrid retrieval + RRF**: một nhánh dense
+  (`EmbeddingEncoder`, ngưỡng `min_similarity`) và một nhánh lexical (BM25,
+  ngưỡng "có ít nhất một token chung"), hợp nhất bằng reciprocal rank fusion
+  rồi lấy top-k. Lý do cần nhánh lexical: một điều khoản sửa đổi **chép lại
+  gần nguyên văn** điều khoản gốc — `336/2025` và `168/2024` trùng nhau 47
+  `provision_path` — nên quan hệ `amended_by` biểu hiện thành trùng lặp từ
+  vựng, thứ mà dense embedding làm nhòe thành "đều nói về phạt giao thông".
+  Mỗi nhánh lọc theo thang điểm của riêng nó trước khi hợp nhất, vì điểm RRF
+  sau hợp nhất không có ý nghĩa tuyệt đối để đặt ngưỡng.
+
+  **Vì sao hybrid search không rơi vào mục "Heuristics" của `AGENTS.md`.**
+  Quy tắc "không regex/keyword matching/handcrafted score" nhắm vào việc dùng
+  chúng để **tự ra quyết định ngữ nghĩa** thay cho LLM — ví dụ chấm điểm liên
+  tục rồi so ngưỡng để quyết "chunk này có chế tài hay không" (chính điều đã
+  bị bỏ ở `chunk_screening.py`, xem mục Phase 1). Hybrid search + RRF ở đây là
+  kỹ thuật **retrieval-stage**: nó chỉ đề cử cặp `fact_id` nào đáng hỏi, còn
+  quyết định "có quan hệ hay không, loại gì" luôn thuộc về
+  `confirm_evidence_relations` (LLM), độc lập với cách cặp đó được đề cử ra
+  sao. Sai ở bước đề cử chỉ gây bỏ sót một quan hệ thật (false negative),
+  không thể tự tạo ra một quan hệ giả — khác với heuristic "embedding
+  candidate" từng bị bỏ ở mục 2, nơi ngữ cảnh sai lọt thẳng vào cửa sổ đọc và
+  có thể khiến LLM trích xuất fact bịa đặt từ đó.
+
+  Cần nhánh lexical vì không có tín hiệu tất định nào nối hai fact với nhau —
+  khác với chunk (có `previous_chunk_id` và trích dẫn "theo Điều X" để tra
+  cứu), một `LegalFact` không mang trường tham chiếu chéo tới fact khác; so
+  mọi cặp bằng LLM (596 fact ⇒ 177.310 lệnh gọi) cũng không khả thi. Hybrid
+  search là công cụ đúng chỗ cho lớp bài toán "đề cử ứng viên trước khi LLM
+  phán quyết", không phải ngoại lệ dò từng trường hợp. `confirm_evidence_relations`
   gọi BAML xác nhận từng cặp và lấy `bridge`; `classify_bundle_kind` áp ràng
   buộc cấu trúc — `amended_by` luôn là `temporal` bất kể văn bản, còn lại thì
   khác văn bản mới là `multi_hop`, cùng văn bản hạ xuống `synthesis` — biểu
@@ -1379,6 +1407,12 @@ là so khớp tất định thuần Python, không qua `deepeval`.
   `write_document_metadata`/`read_document_metadata`. `pyproject.toml`: thêm
   console script `legal-resolve-document-metadata` và
   `legal-migrate-legal-facts`. ✅ **Đã áp dụng**, không nằm trong kế hoạch gốc.
+- `find_candidate_fact_pairs` đổi từ dense-only sang hybrid (dense + BM25) hợp
+  nhất bằng RRF, để bắt được quan hệ `amended_by` biểu hiện qua trùng lặp
+  nguyên văn giữa văn bản sửa đổi và văn bản gốc. `pyproject.toml`: thêm
+  `rank-bm25` vào extra `evaluation` (import lazy trong hàm, vì
+  `evidence_graph.py` nằm trên đường import của các CLI không cần extra này).
+  ✅ **Đã áp dụng**, không nằm trong kế hoạch gốc.
 - Tách khoá resume của `legal-extract-facts` khỏi `source_chunk_id` của fact
   sang artifact riêng `extraction_progress.jsonl`, vì một Target trả về danh
   sách rỗng là kết quả hợp lệ nhưng không để lại fact nào để suy ra.

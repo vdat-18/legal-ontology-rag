@@ -25,13 +25,15 @@ def _fact(
     *,
     document_number: str = "168/2024/NĐ-CP",
     conduct: str = "Vượt đèn đỏ",
+    subject: str = "Người điều khiển ô tô",
+    provision_path: str = "Điều 6",
 ) -> LegalFact:
     """Build one minimal legal fact for evidence-graph tests."""
     return LegalFact(
         fact_id=fact_id,
         fact_content_sha256=f"content-{fact_id}",
         conduct=conduct,
-        subject="Người điều khiển ô tô",
+        subject=subject,
         conditions=(),
         monetary_penalty="4.000.000 đồng",
         license_points_deducted=None,
@@ -40,7 +42,7 @@ def _fact(
         valid_from=None,
         valid_to=None,
         document_number=document_number,
-        provision_path="Điều 6",
+        provision_path=provision_path,
         evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span=""),),
     )
 
@@ -72,10 +74,10 @@ def test_find_candidate_fact_pairs_orders_and_deduplicates_symmetric_pairs() -> 
     assert pairs == (("fact-a", "fact-b"),)
 
 
-def test_find_candidate_fact_pairs_excludes_below_min_similarity() -> None:
-    """Dissimilar facts never become a candidate pair."""
-    fact_a = _fact("fact-a", conduct="Vượt đèn đỏ")
-    fact_b = _fact("fact-b", conduct="Không đội mũ bảo hiểm")
+def test_find_candidate_fact_pairs_excludes_pairs_missed_by_both_legs() -> None:
+    """A pair that is neither dense-similar nor lexically overlapping never becomes a candidate."""
+    fact_a = _fact("fact-a", conduct="Vượt đèn đỏ", subject="Ô tô", provision_path="Điều 6")
+    fact_b = _fact("fact-b", conduct="Chở hàng cồng kềnh", subject="Xe máy", provision_path="Khoản 2")
     encoder = _FakeEncoder(
         {
             evidence_graph._fact_embedding_text(fact_a): np.array([1.0, 0.0]),
@@ -86,6 +88,22 @@ def test_find_candidate_fact_pairs_excludes_below_min_similarity() -> None:
     pairs = find_candidate_fact_pairs([fact_a, fact_b], encoder, min_similarity=0.5)
 
     assert pairs == ()
+
+
+def test_find_candidate_fact_pairs_recovers_a_lexical_match_the_dense_leg_rejects() -> None:
+    """Near-verbatim restatement is proposed even when the dense leg scores it below min_similarity."""
+    original = _fact("fact-original", conduct="Không chấp hành hiệu lệnh của đèn tín hiệu giao thông")
+    amending = _fact("fact-amending", conduct="Không chấp hành hiệu lệnh của đèn tín hiệu giao thông")
+    encoder = _FakeEncoder(
+        {
+            evidence_graph._fact_embedding_text(original): np.array([1.0, 0.0]),
+            evidence_graph._fact_embedding_text(amending): np.array([0.0, 1.0]),
+        }
+    )
+
+    pairs = find_candidate_fact_pairs([original, amending], encoder, min_similarity=0.9)
+
+    assert pairs == (("fact-amending", "fact-original"),)
 
 
 def test_find_candidate_fact_pairs_respects_max_candidates_per_fact() -> None:
