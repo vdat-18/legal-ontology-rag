@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 
 from baml_py import ClientRegistry, HTTPRequest
 from baml_py.logging import set_log_level
+from loguru import logger
 
 if TYPE_CHECKING:
     from legal_rag.settings import Settings
@@ -165,4 +166,21 @@ def _openai_response_content(response_bytes: bytes) -> str:
         if isinstance(provider_error, dict) and provider_error.get("code") == HTTPStatus.TOO_MANY_REQUESTS:
             raise BamlRateLimitError.provider_rate_limited(json.dumps(provider_error, ensure_ascii=False))
         raise BamlTransportError(json.dumps(provider_error, ensure_ascii=False))
+    _log_token_usage(response)
     return response["choices"][0]["message"]["content"]
+
+
+def _log_token_usage(response: dict[str, Any]) -> None:
+    """Log standard OpenAI-compatible token usage for one successful LLM response."""
+    usage = response.get("usage")
+    model = response.get("model", "unknown")
+    if not isinstance(usage, dict):
+        logger.warning("LLM token usage unavailable: model={}", model)
+        return
+    logger.info(
+        "LLM token usage: model={} input_tokens={} output_tokens={} total_tokens={}",
+        model,
+        usage.get("prompt_tokens"),
+        usage.get("completion_tokens"),
+        usage.get("total_tokens"),
+    )

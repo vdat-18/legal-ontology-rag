@@ -1,5 +1,67 @@
 # Ground-Truth Synthesis Pipeline
 
+## Current hardened run contract
+
+This section is authoritative where older implementation notes below still
+describe retry-then-skip behavior.
+
+- Every LLM work unit has bounded retry and a stable resume key: metadata,
+  screening batch, extraction batch, relation pair, generation attempt,
+  critique attempt, evolution operation, and verification attempt.
+- Successful units are written atomically after completion. An exhausted unit
+  is never marked complete; the CLI exits non-zero after preserving prior
+  successful checkpoints.
+- `legal-assemble-groundtruth` validates every selected document and produces
+  corpus-level `legal_facts.jsonl` plus `run_manifest.json`. The evidence graph
+  consumes this assembled fact file.
+- Candidate generation receives answerability, bundle kind, bridge, and hops.
+  Gate 1 rejects fact/chunk references outside the scenario and requires every
+  scenario fact to contribute to a multi-hop candidate.
+- Verifier-observed query type, answerability, and necessary hops are the final
+  labels. Requested labels remain in separate `requested_*` fields for audit.
+- Candidate identity is recomputed after refinement and every evolution from
+  the final query, answer, reasoning, and claims.
+- The MVP taxonomy contains penalty-fact capabilities only. Authority,
+  procedure, and exception queries wait for dedicated fact schemas.
+- `data/config/groundtruth/synthesis_v1.json` is the single source of truth
+  for embedding selection, retry bounds and delay, quality thresholds,
+  screening and fact-extraction batch sizes, and every synthesis LLM
+  operation's token/temperature bounds.
+- Fact extraction sends up to five independent reading windows per LLM call.
+  A response must contain exactly one result per target id. Successful batches
+  write facts once and then mark every target in that batch in
+  `extraction_progress.jsonl`; exhausted batches remain resumable.
+- Every LLM-backed synthesis CLI requires `--synthesis-config`; synthesis
+  tunables are not read from `.env`. Existing environment settings for other
+  subsystems remain unchanged; synthesis only reads provider connection,
+  credential, and deployment values from the environment.
+- `legal-assemble-groundtruth` always hashes the required synthesis config in
+  the run manifest, alongside any taxonomy/persona/distribution configs passed
+  through additional `--config` arguments.
+- `groundtruth_corpus_v1.json` contains all 35 documents in
+  `road_traffic_penalty_scope.json`'s broad `in_scope` list; its corpus snapshot
+  freezes that complete selection for reproducible synthesis runs.
+
+```text
+data/processed/groundtruth/
+|-- <document>.source.jsonl
+|-- <document>.chunks.jsonl
+|-- <document>.chunk_screening.jsonl
+|-- <document>.document_metadata.jsonl
+|-- <document>.legal_facts.jsonl
+`-- <document>.extraction_progress.jsonl
+
+data/benchmark_synthesis/
+|-- legal_facts.jsonl
+|-- run_manifest.json
+|-- evidence_relations.jsonl
+|-- evidence_relation_progress.jsonl
+|-- scenarios.jsonl
+`-- candidates/
+    |-- single_turn.jsonl
+    `-- single_turn.progress.jsonl
+```
+
 ## Mục tiêu và phạm vi
 
 Pipeline này sinh dữ liệu ground truth để đánh giá hệ thống RAG trong phạm vi
@@ -78,6 +140,7 @@ keyword matching hoặc các luật suy diễn thủ công.
 {
   "fact_id": "...",
   "fact_content_sha256": "...",
+  "source_chunk_id": "...",
   "conduct": "Không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
   "subject": "Người điều khiển ô tô",
   "conditions": [],
@@ -116,11 +179,15 @@ có nội dung chế tài bị bỏ qua và ghi vào danh sách loại trừ kè
 chính model đưa ra — thường là mục lục, tiêu đề chương, đoạn dẫn nhập không
 mang chế tài.
 
-Các chunk được gộp theo batch (mặc định 20 chunk/lần gọi) thay vì gọi LLM
+Các chunk được gộp theo batch (mặc định 50 chunk/lần gọi) thay vì gọi LLM
 riêng cho từng chunk, để giảm số lần round-trip. Mỗi chunk trong batch mang
 theo `chunk_id`, và model phải trả về đúng `chunk_id` đó trong từng kết quả —
 kết quả được đối chiếu ngược lại theo `chunk_id`, không dựa vào thứ tự trả về,
 để tránh lệch kết quả giữa các chunk khi batch lớn.
+
+Screening mặc định cho phép tối đa 16.384 output token. Transport dùng chung
+ghi log `input_tokens`, `output_tokens` và `total_tokens` của từng LLM response
+nếu OpenAI-compatible provider trả trường `usage`.
 
 Cổng rẻ này đứng trước để bảo vệ hai công đoạn đắt phía sau: LLM call trích
 xuất và thời gian chuyên gia duyệt fact. Câu hỏi nhị phân này thay cho cách
@@ -130,32 +197,41 @@ dồn cụm, khiến một ngưỡng cố định gần như vô nghĩa trong th
 chunk bị loại phải audit được — lý do lấy trực tiếp từ model, không phải câu
 chữ tính toán từ điểm số.
 
+### Metadata cấp văn bản không hỏi qua cửa sổ đọc
+
+`document_number` và ngày hiệu lực là thuộc tính của **văn bản**, không phải của
+chunk: số hiệu in ở phần đầu tài liệu, ngày hiệu lực nằm ở điều khoản thi hành
+gần cuối. Cả hai đều nằm ngoài cửa sổ đọc của một chunk chế tài, nên hỏi model
+trích fact về chúng là hỏi một thông tin nó không thể thấy — thực tế cho ra
+trường rỗng, chuỗi kiểu "Nghị định này", hoặc số hiệu của văn bản bị sửa đổi mà
+văn bản đang đọc nhắc tới.
+
+Vì vậy hai trường này được giải một lần cho mỗi văn bản, bằng một LLM call
+riêng đọc các chunk đầu và cuối của **thân văn bản** (`record_scope == "root"`,
+để phần cuối không rơi vào phụ lục), rồi ghi ra artifact
+`*.document_metadata.jsonl`. Bước trích fact đọc artifact này và dập giá trị vào
+mọi fact của văn bản bằng code — một giá trị duy nhất cho cả văn bản, không thể
+lệch nhau giữa các fact.
+
+`valid_from`/`valid_to` vẫn để model trích fact trả về được: một điều khoản có
+thể tự nêu ngày hiệu lực riêng, muộn hơn ngày của toàn văn bản. Khi model không
+nêu thì lấy ngày của văn bản. Đây là xấp xỉ có ý thức — điều khoản có ngày hiệu
+lực riêng nhưng chỉ nêu ở điều khoản thi hành cuối văn bản sẽ nhận ngày của
+toàn văn bản, vì thông tin đó không nằm trong cửa sổ đọc của nó.
+
 ### Gộp chunk khi một fact cần nhiều nguồn
 
-Một hành vi có thể có căn cứ nằm rải trên nhiều chunk, theo hai kiểu khác nhau,
-xử lý khác nhau:
+Trong fact extraction, cửa sổ đọc tạm thời chỉ mở rộng theo chunk liền kề:
 
 - **Chunk liền kề bị cắt bởi giới hạn token.** Chunker cắt một điều khoản dài
   thành hai chunk theo `previous_chunk_id`/`next_chunk_id` đã có sẵn trong
-  schema chunk. Gộp bằng cách kéo thêm tối đa 2 chunk liền trước và 1 chunk
+  schema chunk. Gộp bằng cách kéo thêm tối đa 1 chunk liền trước và 1 chunk
   liền sau vào cùng cửa sổ đọc, thuần cơ học, không cần LLM đoán.
-- **Chunk không liền kề nhưng cùng một hành vi.** Ví dụ mức phạt tiền nằm ở
-  Điều 6 nhưng số điểm trừ giấy phép quy định ở một điều hoặc phụ lục khác.
-  **Trích dẫn chéo tường minh**: nếu chunk chứa cụm dẫn chiếu kiểu "theo
-  Điều X", "quy định tại khoản Y Điều Z", trích các số điều/khoản này bằng
-  regex — đây là phân tích từ vựng nhỏ, được phép theo AGENTS.md — rồi tra
-  `provision_path` tương ứng để lấy đúng chunk đó vào cùng cửa sổ đọc. Tất
-  định, không cần LLM cho bước tìm kiếm. Không mở rộng tìm kiếm sang văn bản
-  khác ở bước này — quan hệ khác văn bản thuộc về evidence graph ở mục 4.
-  (Cơ chế tương đồng embedding trong cùng văn bản từng có ở đây đã bỏ: ứng
-  viên gợi ý không dựa trên trích dẫn thật dễ đưa ngữ cảnh không liên quan
-  vào cửa sổ đọc.)
-
-Chunk liền trước/trích dẫn được tra trên **toàn bộ chunk gốc của văn bản**,
+Chunk liền kề được tra trên **toàn bộ chunk gốc của văn bản**,
 không giới hạn trong tập đã qua được cổng sàng lọc — chỉ tập đã lọc mới quyết
 định chunk nào được chọn làm `Target` (tốn LLM call). Một chunk bị cổng sàng
 lọc loại (ví dụ đoạn định nghĩa không nêu mức phạt cụ thể) vẫn có thể được
-kéo vào làm ngữ cảnh `Adjacent`/`CitedProvision` cho một `Target` khác cần nó,
+kéo vào làm ngữ cảnh `Adjacent` cho một `Target` liền kề,
 vì việc tra cứu này thuần cơ học, không tốn thêm LLM call nào.
 
 ### Định danh fact tách khỏi nội dung fact
@@ -791,8 +867,11 @@ hoặc từ chối.
 
 ```text
 data/benchmark_synthesis/
+├── document_metadata.jsonl
+├── extraction_progress.jsonl
 ├── legal_facts.jsonl
 ├── evidence_relations.jsonl
+├── evidence_relation_progress.jsonl
 ├── scenarios.jsonl
 ├── candidates/
 │   ├── single_turn.jsonl
@@ -937,19 +1016,15 @@ hai module cũ gọi vào đây, rồi `benchmark_synthesis/writer.py` dùng l�
 đổi cross-cutting nhỏ, nên làm thành một commit riêng trước khi viết code
 Phase 1.
 
-**Cấu hình.** Thêm `EvaluationSettings` vào `settings.py`, theo đúng mẫu
-`ChunkerSettings` — nạp từ biến môi trường:
-`span_match_threshold` (mặc định `0.85`), `bundle_overlap_threshold` (`τ`),
-`max_quality_retries`.
-Danh sách persona, query taxonomy, phân bố scenario và evolution nằm ở file
-JSON versioned dưới `data/config/groundtruth/`. **Đã đổi so với dự tính ban
-đầu:** không dùng `importlib.resources` như `embedding/profiles.py`, vì
-`data/config/` nằm ngoài cây package `src/legal_rag/` nên không phải là tài
-nguyên gói hợp lệ. Các CLI nhận đường dẫn config qua tham số dòng lệnh tường
-minh (`--query-taxonomy`, `--personas`, `--scenario-distribution`), đọc bằng
-`Path.read_text` + `json.loads` thuần — đúng phong cách các CLI hiện có
-(`legal-chunk`, `legal-extract-facts`) vốn luôn nhận đường dẫn tường minh,
-không có đường dẫn ngầm định.
+**Cấu hình.** `SynthesisSettings` nằm trong
+`benchmark_synthesis/config.py` và đọc từ file JSON versioned được truyền rõ
+qua `--synthesis-config`. File này sở hữu embedding profile, retry, thời gian
+chờ giữa các attempt, threshold, batch size, giới hạn output và temperature cho từng LLM operation. Trong luồng
+synthesis, `.env` chỉ cung cấp provider/credential/deployment settings; cấu hình
+env của các subsystem khác không thuộc thay đổi này. Persona, query taxonomy,
+phân bố scenario và evolution tiếp tục nằm ở các file JSON versioned riêng dưới
+`data/config/groundtruth/`. Các CLI đọc bằng `Path.read_text` + `json.loads`,
+không có đường dẫn config ngầm định.
 
 ### Phase 1 — Trích xuất fact (mục 2 ở trên) ✅ Đã triển khai
 
@@ -963,10 +1038,9 @@ Module trong `benchmark_synthesis/`:
   reason) cho **mọi** chunk đầu vào, kể cả chunk bị loại — không tự chia
   accepted/excluded trong bộ nhớ, để CLI ghi thẳng ra file cho bước sau đọc
   lại.
-- `fact_extraction.py` — dựng cửa sổ đọc theo hai nguồn ở mục "Gộp chunk khi
-  một fact cần nhiều nguồn" (tối đa 2 chunk liền trước qua chuỗi
-  `previous_chunk_id`, trích dẫn chéo bằng regex "Điều N" tra theo
-  `build_provision_index`), gọi BAML trích fact, rồi gán `fact_id` và
+- `fact_extraction.py` — dựng cửa sổ đọc gồm `Target`, tối đa 1 chunk
+  liền trước qua `previous_chunk_id` và 1 chunk liền sau qua
+  `next_chunk_id`, gọi BAML trích fact, rồi gán `fact_id` và
   `fact_content_sha256` qua `sha256_json`. **Tin tưởng hoàn toàn output LLM**
   (xem "Nguyên tắc kiến trúc" ở đầu tài liệu): `evidence.chunk_id` và
   `evidence.quoted_span` được giữ nguyên như LLM trả về, không tra cứu lại
@@ -980,15 +1054,13 @@ BAML trong `baml_src/`:
 - `chunk_screening.baml` — class `ChunkScreeningItem` (chunk_id, text) và
   `ChunkScreeningResult` (chunk_id, has_penalty_content, reason), function
   `ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[]` gọi
-  theo batch (mặc định 20 chunk/lần, xem `DEFAULT_SCREENING_BATCH_SIZE` trong
-  `chunk_screening.py`), kèm persona và few-shot examples. Kết quả đối chiếu
+  theo batch được quy định bởi `stages.chunk_screening.batch_size` trong
+  `synthesis_v1.json`, kèm persona và few-shot examples. Kết quả đối chiếu
   ngược lại theo `chunk_id`, không theo thứ tự mảng trả về.
 - `legal_fact_extraction.baml` — enum `ChunkWindowRole`, class
   `ChunkWindowEntry`, `EvidenceEntry`, `LegalFact` khớp JSON ở mục 2, function
-  `ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[]`, kèm persona,
-  few-shot examples, và cảnh báo cho vai trò `CitedProvision` (số điều có thể
-  trùng ngẫu nhiên với luật khác — regex chỉ đề xuất ứng viên, LLM tự quyết
-  định có dùng hay không).
+  `ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[]`, kèm persona
+  và few-shot examples. Window chỉ có vai trò `Target` và `Adjacent`.
 
 CLI tách thành hai bước riêng, nối nhau qua file — theo đúng cách các phase
 sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.jsonl`
@@ -999,16 +1071,58 @@ sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.js
   kể cả chunk bị loại (audit được, khác với bản trước đó không ghi gì). Chạy
   lại (resume) trên cùng output path chỉ sàng lọc chunk chưa có verdict, giữ
   nguyên các verdict cũ. Một batch gọi LLM lỗi (timeout, rate limit...) được
-  thử lại tối đa `DEFAULT_SCREENING_MAX_RETRIES` lần; nếu vẫn lỗi thì batch đó
-  bị bỏ qua (log cảnh báo), các chunk còn lại vẫn chạy tiếp — chunk bị bỏ qua
-  sẽ được resume ở lần chạy sau. `chunk_screening.jsonl` được ghi lại
+  thử lại theo `llm_execution.max_retries` trong synthesis config; nếu vẫn lỗi
+  thì batch đó không được đánh dấu hoàn thành, command thoát lỗi sau khi giữ
+  lại các batch đã thành công để resume ở lần chạy sau. `chunk_screening.jsonl`
+  được ghi lại
   (atomic) sau **mỗi batch** thay vì chỉ một lần ở cuối, nên nếu tiến trình
   bị dừng đột ngột giữa chừng (không phải lỗi batch, mà là crash/kill hẳn
   tiến trình), các batch đã xong trước đó vẫn không mất.
-- `legal-extract-facts` (`fact_extraction_cli.py`): nhận đường dẫn chunk JSONL
-  **và** `chunk_screening.jsonl`, lọc lại chunk có `has_penalty_content=true`,
+- `legal-resolve-document-metadata` (`document_metadata_cli.py`): nhận đường dẫn
+  chunk JSONL của một văn bản, gọi LLM **một lần** trên các chunk đầu và cuối
+  của thân văn bản, ghi `document_metadata.jsonl` — một dòng duy nhất mang
+  `document_number`, `valid_from`, `valid_to`. Nếu output đã tồn tại và hợp lệ,
+  command coi work unit metadata đã hoàn thành và không gọi lại LLM.
+- `legal-extract-facts` (`fact_extraction_cli.py`): nhận đường dẫn chunk JSONL,
+  `chunk_screening.jsonl` **và** `document_metadata.jsonl`, lọc lại chunk có
+  `has_penalty_content=true`,
   trích fact, ghi thẳng `legal_facts.jsonl` — không còn ledger, không còn
-  bước duyệt tay.
+  bước duyệt tay. Mỗi `LegalFact` mang thêm `source_chunk_id` — chunk Target
+  đã sinh ra fact đó — làm provenance. Resume đọc từ artifact riêng
+  `extraction_progress.jsonl`, ghi một dòng cho **mỗi Target đã đọc xong, kể
+  cả Target trả về danh sách rỗng**. Đây là điểm khác biệt quan trọng: suy
+  "chunk nào đã chạy" từ `source_chunk_id` của fact là sai, vì một Target trả
+  về rỗng hợp lệ (biểu mẫu hành chính, thủ tục không kèm chế tài) không để lại
+  fact nào — trên dữ liệu thật 249/347 Target rơi vào nhóm này, tức 72% công
+  việc đã xong sẽ bị chạy lại. Thứ tự ghi là **facts trước, progress sau**:
+  crash giữa hai lần ghi chỉ làm Target đó chạy lại ở lần sau và fact trùng
+  được khử theo `fact_id`, còn thứ tự ngược lại sẽ mất fact vĩnh viễn.
+  Một lệnh gọi LLM lỗi được thử lại tối đa
+  `DEFAULT_EXTRACTION_MAX_RETRIES` lần; nếu vẫn lỗi thì bỏ qua chunk đó (resume
+  ở lần sau). File output được ghi lại (atomic) sau **mỗi Target** thay vì chỉ
+  một lần ở cuối, nên tiến trình bị crash giữa chừng không mất fact đã trích
+  trước đó.
+- `legal-backfill-extraction-progress` (`extraction_progress_backfill_cli.py`):
+  backfill một lần cho các văn bản đã trích fact xong **trước khi** có
+  `extraction_progress.jsonl`. Ghi một dòng progress cho mọi chunk
+  `has_penalty_content=true` trong file screening. Chỉ đúng khi lần chạy trích
+  fact đã hoàn tất cả văn bản; chunk nào bị bỏ qua sau khi retry hết (log
+  `Skipping fact extraction for chunk`) phải truyền qua `--skipped-chunk-id`
+  để lần chạy sau vẫn trích lại.
+- `legal-migrate-legal-facts` (`legal_fact_migration_cli.py`): migration một lần
+  từ `LEGAL_FACT_SCHEMA_VERSION` `1.1.0` sang `1.2.0`, cho các
+  `legal_facts.jsonl` đã trích xuất **trước khi** có
+  `document_metadata.jsonl`. Nhận file fact và file metadata, dập lại
+  `document_number` cùng ngày hiệu lực còn trống, tính lại `fact_id` và
+  `fact_content_sha256`, ghi lại tại chỗ dưới schema mới — **không gọi lại LLM
+  trích fact**. Facts trùng định danh sau khi tính lại được hợp nhất theo
+  `fact_id`, đúng ngữ nghĩa định danh nội dung. File không phải schema `1.1.0`
+  bị từ chối, nên chạy lại lần hai không làm hỏng dữ liệu đã migrate.
+
+  Vì `document_number` nằm trong bộ trường định danh, migration này **đổi
+  `fact_id` của mọi fact**. Nó chỉ an toàn khi chưa có artifact nào tham chiếu
+  `fact_id` (`evidence_relations.jsonl`, `scenarios.jsonl`, `single_turn.jsonl`);
+  nếu đã có thì các artifact đó phải sinh lại.
 
 Hạ tầng dùng chung mới phát sinh khi triển khai, ngoài phạm vi ban đầu của
 Phase 1 nhưng cần thiết để nó chạy được:
@@ -1022,23 +1136,65 @@ Phase 1 nhưng cần thiết để nó chạy được:
   đọc đúng file đó làm đầu vào.
 
 Test: `tests/benchmark_synthesis/test_fact_extraction.py`,
-`test_chunk_screening.py`, `test_evaluation_models.py`,
-`test_evaluation_writer.py`, `tests/test_baml_transport.py`,
-`tests/test_chunk_screening_cli.py`, `tests/test_fact_extraction_cli.py`
+`test_chunk_screening.py`, `test_document_metadata.py`,
+`test_evaluation_models.py`, `test_evaluation_writer.py`,
+`tests/test_baml_transport.py`, `tests/test_chunk_screening_cli.py`,
+`tests/test_document_metadata_cli.py`, `tests/test_fact_extraction_cli.py`,
+`tests/test_extraction_progress_backfill_cli.py`,
+`tests/test_legal_fact_migration_cli.py`
 (tích hợp CLI đầu-cuối với client LLM giả mỗi bên). Windowing test
 trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
 `execute_baml_request` trong `tests/parser/test_baml_captioning.py`.
 
 ### Phase 2 — Evidence graph và scenario sampling (mục 6, 7) ✅ Đã triển khai
 
-- `evidence_graph.py` — `find_candidate_fact_pairs` dùng `EmbeddingEncoder`
-  tìm cặp fact ứng viên trong toàn bộ fact đã trích xuất (không giới hạn cùng
-  văn bản, vì multi-hop cần đúng cặp khác văn bản); `confirm_evidence_relations`
+- `evidence_graph.py` — `find_candidate_fact_pairs` tìm cặp fact ứng viên trong
+  toàn bộ fact đã trích xuất (không giới hạn cùng văn bản, vì multi-hop cần
+  đúng cặp khác văn bản) bằng **hybrid retrieval + RRF**: một nhánh dense
+  (`EmbeddingEncoder`, ngưỡng `min_similarity`) và một nhánh lexical (BM25,
+  ngưỡng "có ít nhất một token chung"), hợp nhất bằng reciprocal rank fusion
+  rồi lấy top-k. Lý do cần nhánh lexical: một điều khoản sửa đổi **chép lại
+  gần nguyên văn** điều khoản gốc — `336/2025` và `168/2024` trùng nhau 47
+  `provision_path` — nên quan hệ `amended_by` biểu hiện thành trùng lặp từ
+  vựng, thứ mà dense embedding làm nhòe thành "đều nói về phạt giao thông".
+  Mỗi nhánh lọc theo thang điểm của riêng nó trước khi hợp nhất, vì điểm RRF
+  sau hợp nhất không có ý nghĩa tuyệt đối để đặt ngưỡng.
+
+  **Vì sao hybrid search không rơi vào mục "Heuristics" của `AGENTS.md`.**
+  Quy tắc "không regex/keyword matching/handcrafted score" nhắm vào việc dùng
+  chúng để **tự ra quyết định ngữ nghĩa** thay cho LLM — ví dụ chấm điểm liên
+  tục rồi so ngưỡng để quyết "chunk này có chế tài hay không" (chính điều đã
+  bị bỏ ở `chunk_screening.py`, xem mục Phase 1). Hybrid search + RRF ở đây là
+  kỹ thuật **retrieval-stage**: nó chỉ đề cử cặp `fact_id` nào đáng hỏi, còn
+  quyết định "có quan hệ hay không, loại gì" luôn thuộc về
+  `confirm_evidence_relations` (LLM), độc lập với cách cặp đó được đề cử ra
+  sao. Sai ở bước đề cử chỉ gây bỏ sót một quan hệ thật (false negative),
+  không thể tự tạo ra một quan hệ giả — khác với heuristic "embedding
+  candidate" từng bị bỏ ở mục 2, nơi ngữ cảnh sai lọt thẳng vào cửa sổ đọc và
+  có thể khiến LLM trích xuất fact bịa đặt từ đó.
+
+  Cần nhánh lexical vì không có tín hiệu tất định nào nối hai fact với nhau —
+  khác với chunk (có `previous_chunk_id` và trích dẫn "theo Điều X" để tra
+  cứu), một `LegalFact` không mang trường tham chiếu chéo tới fact khác; so
+  mọi cặp bằng LLM (596 fact ⇒ 177.310 lệnh gọi) cũng không khả thi. Hybrid
+  search là công cụ đúng chỗ cho lớp bài toán "đề cử ứng viên trước khi LLM
+  phán quyết", không phải ngoại lệ dò từng trường hợp. `confirm_evidence_relations`
   gọi BAML xác nhận từng cặp và lấy `bridge`; `classify_bundle_kind` áp ràng
   buộc cấu trúc — `amended_by` luôn là `temporal` bất kể văn bản, còn lại thì
   khác văn bản mới là `multi_hop`, cùng văn bản hạ xuống `synthesis` — biểu
   diễn trực tiếp bằng logic phân loại, không phải bước "hạ cấp" riêng sau khi
   đã tạo bundle; `sample_bundles` chặn trùng theo `τ`.
+- `confirm_evidence_relations` theo đúng kỷ luật retry-rồi-skip của Phase 1/1.5:
+  một lệnh gọi lỗi được thử lại tối đa `DEFAULT_RELATION_CONFIRMATION_MAX_RETRIES`
+  lần rồi bỏ qua cặp đó; `on_pair_confirmed` được gọi sau **mỗi** cặp, dù cặp
+  đó được xác nhận có quan hệ hay không. Khoá resume của CLI là
+  `evidence_relation_progress.jsonl` (`EvidenceRelationProgressRecord`), không
+  phải `evidence_relations.jsonl` — cùng lý do đã sửa ở `legal-extract-facts`:
+  một cặp bị xác nhận "không liên quan" là kết quả hợp lệ nhưng không sinh ra
+  `EvidenceRelation` nào, nên suy "cặp nào đã kiểm" từ file quan hệ sẽ khiến
+  cặp đó bị gọi LLM lại ở mọi lần chạy sau. `find_candidate_fact_pairs` chạy
+  lại toàn bộ mỗi lần (tất định, rẻ, không gọi LLM) chỉ để xác định danh sách
+  cặp ứng viên; phần tốn kém — xác nhận qua LLM — mới được resume.
 - `scenario_sampling.py` — nạp taxonomy/persona/phân bố từ config, thuật
   toán tham lam theo quota đã mô tả ở mục 5.
 
@@ -1077,16 +1233,25 @@ Config: `data/config/groundtruth/query_taxonomy.json`,
 đúng mục 6; logic *áp dụng* evolution vẫn thuộc Phase 3).
 
 CLI: `legal-build-evidence-graph` (`evidence_graph_cli.py`) — đọc mọi fact từ
-`legal_facts.jsonl`, xác nhận quan hệ, lấy mẫu bundle, sinh scenario, ghi
+`legal_facts.jsonl`, xác nhận quan hệ chưa được kiểm (đọc resume từ
+`evidence_relation_progress.jsonl`), lấy mẫu bundle, sinh scenario, ghi
 `evidence_relations.jsonl` và `scenarios.jsonl`. `scenarios.jsonl` là output
 mới phát sinh khi triển khai, chưa có trong cấu trúc output đề xuất ban đầu
 ở mục 17 — bổ sung vì Phase 3 cần scenario đã chốt và ổn định, không tính
-lại mỗi lần sinh candidate.
+lại mỗi lần sinh candidate. `evidence_relations.jsonl` được ghi lại (atomic)
+sau **mỗi cặp** được xác nhận, theo thứ tự quan hệ trước rồi mới đến progress
+— giống hệt thứ tự đã chọn ở `legal-extract-facts` — nên crash giữa hai lần
+ghi chỉ khiến cặp đó bị kiểm lại, không bao giờ mất quan hệ đã xác nhận.
+Bundle sampling và scenario sampling là code tất định, chạy lại toàn bộ mỗi
+lần trên tập quan hệ hiện có — không cần resume riêng vì không tốn LLM call.
 
-Test: `test_evidence_graph.py`, `test_scenario_sampling.py` (thuật toán tham
+Test: `test_evidence_graph.py` (bao gồm retry/skip/callback theo mẫu
+`test_fact_extraction.py`), `test_scenario_sampling.py` (thuật toán tham
 lam test bằng fixture fact cố định, kiểm quota trần theo `ceil`, kiểm luân
-phiên theo trục ít dùng nhất), `tests/test_evidence_graph_cli.py` (tích hợp
-CLI đầu-cuối).
+phiên theo trục ít dùng nhất), `test_evaluation_writer.py` (round-trip
+`EvidenceRelationProgressRecord`), `tests/test_evidence_graph_cli.py` (tích
+hợp CLI đầu-cuối: resume bỏ qua cặp đã kiểm, ghi tiến độ khi bị ngắt giữa
+chừng, không gọi lại LLM cho cặp đã xác nhận "không liên quan").
 
 ### Phase 3 — Sinh single-turn và hai cổng kiểm chứng (mục 8) ✅ Đã triển khai
 
@@ -1229,7 +1394,9 @@ cần khai báo dependency trực tiếp ở thời điểm đó.
   `langchain-openai` (không còn code nào import sau khi pipeline Ragas cũ bị
   xóa); thêm console script mới cho từng CLI ở các phase sau. ✅ **Đã áp
   dụng** ở Phase 0.
-- `settings.py`: thêm `EvaluationSettings`. ✅ **Đã áp dụng.**
+- `benchmark_synthesis/config.py`: thêm `SynthesisSettings` đọc từ
+  `data/config/groundtruth/synthesis_v1.json`; bỏ synthesis tunables khỏi
+  environment settings. ✅ **Đã áp dụng.**
 - `io_utils.py`: `write_jsonl_atomic` dùng chung; `parser/writer.py` và
   `chunker/writer.py` refactor gọi vào đây. ✅ **Đã áp dụng.**
 - `embedding/encoder.py`: `EmbeddingEncoder` bọc `sentence-transformers`,
@@ -1247,19 +1414,19 @@ cần khai báo dependency trực tiếp ở thời điểm đó.
 - `chunk_screening.py` (trước đó `chunk_quality.py`): đổi từ chấm 4 tiêu chí
   liên tục + so ngưỡng sang hỏi nhị phân `has_penalty_content` — LLM đáng tin
   hơn với quyết định nhị phân so với tự hiệu chỉnh điểm số liên tục. Bỏ
-  `chunk_quality_threshold` khỏi `EvaluationSettings`/`.env.example`.
+  `chunk_quality_threshold` khỏi synthesis config.
   ✅ **Đã áp dụng.**
 - `chunker/writer.py`: thêm `read_chunks` — CLI trích xuất fact cần đọc lại
   `*.chunks.jsonl`. ✅ **Đã áp dụng** ở Phase 1, không nằm trong kế hoạch gốc.
 - `pyproject.toml`: thêm console script `legal-extract-facts`,
   `legal-review-facts` (Phase 1), `legal-build-evidence-graph` (Phase 2).
   ✅ **Đã áp dụng.**
-- `data/config/groundtruth/`: bốn file config versioned
+- `data/config/groundtruth/`: năm file config versioned
   (`query_taxonomy.json`, `personas.json`, `scenario_distribution.json`,
-  `evolution.json`). ✅ **Đã áp dụng** ở Phase 2.
-- `settings.py`: thêm `candidate_generation_max_output_tokens`,
-  `candidate_generation_temperature`, `verification_max_output_tokens`,
-  `verification_temperature`. ✅ **Đã áp dụng** ở Phase 3.
+  `evolution.json`, `synthesis_v1.json`). ✅ **Đã áp dụng.**
+- `synthesis_v1.json`: cấu hình riêng cho generation, critique, evolution và
+  verification thay vì dùng environment variables hoặc dùng chung ngầm định.
+  ✅ **Đã áp dụng.**
 - `scenario_sampling.py`: thêm `EvolutionConfig`/`load_evolution_config`,
   `load_query_type_descriptions`, `load_persona_descriptions` — thuần cộng
   thêm, không sửa các hàm/kiểu dữ liệu đã có từ Phase 2. ✅ **Đã áp dụng** ở
@@ -1275,5 +1442,30 @@ cần khai báo dependency trực tiếp ở thời điểm đó.
   từ `(accepted, excluded)` sang `ChunkScreeningRecord` cho mọi chunk (kể cả
   chunk được chấp nhận), việc lọc `has_penalty_content=true` chuyển sang CLI.
   `writer.py`: thêm `write_chunk_screening`/`read_chunk_screening`.
-  `pyproject.toml`: thêm console script `legal-screen-chunks`. ✅ **Đã áp
+- `pyproject.toml`: thêm console script `legal-screen-chunks`. ✅ **Đã áp
   dụng**, không nằm trong kế hoạch gốc.
+- Tách metadata cấp văn bản (`document_number`, ngày hiệu lực) ra khỏi output
+  của LLM trích fact thành bước riêng `legal-resolve-document-metadata`
+  (`document_metadata.py`, `document_metadata_cli.py`,
+  `baml_src/document_metadata.baml`), vì đây là thuộc tính của văn bản mà cửa
+  sổ đọc cấp chunk không chứa. `models.py`: thêm `build_legal_fact` làm
+  constructor duy nhất tính `fact_id`/`fact_content_sha256`, để bước trích fact
+  và migration dùng chung một công thức băm; `LEGAL_FACT_SCHEMA_VERSION` lên
+  `1.2.0`. `synthesis_v1.json`: thêm giới hạn output, temperature và số chunk
+  mở/đóng cho metadata. `writer.py`: thêm
+  `write_document_metadata`/`read_document_metadata`. `pyproject.toml`: thêm
+  console script `legal-resolve-document-metadata` và
+  `legal-migrate-legal-facts`. ✅ **Đã áp dụng**, không nằm trong kế hoạch gốc.
+- `find_candidate_fact_pairs` đổi từ dense-only sang hybrid (dense + BM25) hợp
+  nhất bằng RRF, để bắt được quan hệ `amended_by` biểu hiện qua trùng lặp
+  nguyên văn giữa văn bản sửa đổi và văn bản gốc. `pyproject.toml`: thêm
+  `rank-bm25` vào extra `evaluation` (import lazy trong hàm, vì
+  `evidence_graph.py` nằm trên đường import của các CLI không cần extra này).
+  ✅ **Đã áp dụng**, không nằm trong kế hoạch gốc.
+- Tách khoá resume của `legal-extract-facts` khỏi `source_chunk_id` của fact
+  sang artifact riêng `extraction_progress.jsonl`, vì một Target trả về danh
+  sách rỗng là kết quả hợp lệ nhưng không để lại fact nào để suy ra.
+  `fact_extraction.py`: thêm `ExtractionProgressRecord`; `writer.py`: thêm
+  `write_extraction_progress`/`read_extraction_progress`; `pyproject.toml`:
+  thêm console script `legal-backfill-extraction-progress` cho dữ liệu đã
+  trích trước thay đổi này. ✅ **Đã áp dụng**, không nằm trong kế hoạch gốc.

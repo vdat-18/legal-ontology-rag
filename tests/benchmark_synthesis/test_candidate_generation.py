@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -19,9 +21,12 @@ from legal_rag.benchmark_synthesis.candidate_generation import (
     generate_candidate,
     refine_surface,
 )
+from legal_rag.benchmark_synthesis.config import LlmStageSettings, SynthesisSettings
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
-from legal_rag.settings import EvaluationSettings, Settings
+from legal_rag.settings import Settings
+
+_SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
 
 
 def _fact(fact_id: str = "fact-1") -> LegalFact:
@@ -235,10 +240,11 @@ def test_refine_surface_stops_once_critique_passes() -> None:
         ]
     )
 
-    refined = refine_surface(draft, client, max_retries=5)
+    refined = refine_surface(draft, client, max_retries=5, llm_max_retries=0, llm_retry_delay_seconds=0)
 
     assert client.calls == 2
     assert refined.query_vi == "oto vuot den do"
+    assert refined.sample_id != draft.sample_id
 
 
 def test_refine_surface_respects_max_retries_cap() -> None:
@@ -247,7 +253,7 @@ def test_refine_surface_respects_max_retries_cap() -> None:
     always_fails = [BamlSurfaceCritique(passes=False, feedback="x", rewritten_query_vi=f"v{i}") for i in range(10)]
     client = _FakeSurfaceClient(always_fails)
 
-    refine_surface(draft, client, max_retries=3)
+    refine_surface(draft, client, max_retries=3, llm_max_retries=0, llm_retry_delay_seconds=0)
 
     assert client.calls == 3
 
@@ -257,7 +263,7 @@ def test_refine_surface_never_changes_claims_or_answer_fields() -> None:
     draft = _draft_for_refinement()
     client = _FakeSurfaceClient([BamlSurfaceCritique(passes=False, feedback="x", rewritten_query_vi="new query")])
 
-    refined = refine_surface(draft, client, max_retries=1)
+    refined = refine_surface(draft, client, max_retries=1, llm_max_retries=0, llm_retry_delay_seconds=0)
 
     assert refined.required_claims == draft.required_claims
     assert refined.answer_fields == draft.answer_fields
@@ -278,7 +284,9 @@ class _FakeEvolutionClient:
         """Unused in evolution tests."""
         raise NotImplementedError
 
-    def evolve(self, query_vi: str, reference_answer_vi: str, operation: EvolutionOperation) -> BamlEvolvedCandidate:
+    def evolve(
+        self, query_vi: str, reference_answer_vi: str, reasoning_vi: str, operation: EvolutionOperation
+    ) -> BamlEvolvedCandidate:
         """Return the configured evolved candidate for this operation."""
         return self._evolved_by_operation[operation]
 
@@ -289,29 +297,37 @@ def test_evolve_candidate_applies_operations_in_sequence_and_records_them() -> N
     client = _FakeEvolutionClient(
         {
             EvolutionOperation.Concretizing: BamlEvolvedCandidate(
-                query_vi="q-concrete", reference_answer_vi="a-concrete"
+                query_vi="q-concrete", reference_answer_vi="a-concrete", reasoning_vi="r-concrete"
             ),
             EvolutionOperation.Reasoning: BamlEvolvedCandidate(
-                query_vi="q-reasoning", reference_answer_vi="a-reasoning"
+                query_vi="q-reasoning", reference_answer_vi="a-reasoning", reasoning_vi="r-reasoning"
             ),
         }
     )
 
-    evolved = evolve_candidate(draft, ["concretizing", "reasoning"], client)
+    evolved = evolve_candidate(
+        draft, ["concretizing", "reasoning"], client, llm_max_retries=0, llm_retry_delay_seconds=0
+    )
 
     assert evolved.evolutions == ("concretizing", "reasoning")
     assert evolved.query_vi == "q-reasoning"
     assert evolved.reference_answer_vi == "a-reasoning"
+    assert evolved.reasoning_vi == "r-reasoning"
+    assert evolved.sample_id != draft.sample_id
 
 
 def test_evolve_candidate_never_changes_claims_or_answer_fields() -> None:
     """Evolution only touches query_vi and reference_answer_vi, never evidence."""
     draft = _draft_for_refinement()
     client = _FakeEvolutionClient(
-        {EvolutionOperation.Hypothetical: BamlEvolvedCandidate(query_vi="q-hyp", reference_answer_vi="a-hyp")}
+        {
+            EvolutionOperation.Hypothetical: BamlEvolvedCandidate(
+                query_vi="q-hyp", reference_answer_vi="a-hyp", reasoning_vi="r-hyp"
+            )
+        }
     )
 
-    evolved = evolve_candidate(draft, ["hypothetical"], client)
+    evolved = evolve_candidate(draft, ["hypothetical"], client, llm_max_retries=0, llm_retry_delay_seconds=0)
 
     assert evolved.required_claims == draft.required_claims
     assert evolved.answer_fields == draft.answer_fields
@@ -327,19 +343,37 @@ def _settings() -> Settings:
     )
 
 
-def _evaluation_settings() -> EvaluationSettings:
+def _synthesis_settings() -> SynthesisSettings:
     """Build ground-truth synthesis settings for an offline BAML request."""
-    return EvaluationSettings(
-        embedding_profile="qwen3_0_6b",
-        span_match_threshold=0.85,
-        bundle_overlap_threshold=0.5,
-        max_quality_retries=2,
+    return SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+
+
+def test_candidate_client_uses_separate_generation_critique_and_evolution_bounds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Each candidate LLM operation uses its own versioned stage configuration."""
+    configured_tokens: list[int] = []
+
+    def _capture_registry(**kwargs: object) -> object:
+        configured_tokens.append(int(kwargs["max_output_tokens"]))
+        return object()
+
+    settings = replace(
+        _synthesis_settings(),
+        candidate_generation=LlmStageSettings(101, 0.0),
+        candidate_critique=LlmStageSettings(102, 0.0),
+        candidate_evolution=LlmStageSettings(103, 0.0),
     )
+    monkeypatch.setattr(candidate_generation, "build_client_registry", _capture_registry)
+
+    BamlCandidateGenerationClient(_settings(), settings)
+
+    assert configured_tokens == [101, 102, 103]
 
 
 def test_baml_candidate_generation_client_parses_typed_result(monkeypatch: pytest.MonkeyPatch) -> None:
     """The generated non-stream client returns a typed candidate."""
-    client = BamlCandidateGenerationClient(_settings(), _evaluation_settings())
+    client = BamlCandidateGenerationClient(_settings(), _synthesis_settings())
     monkeypatch.setattr(
         candidate_generation,
         "execute_baml_request",
@@ -364,7 +398,19 @@ def test_baml_candidate_generation_client_parses_typed_result(monkeypatch: pytes
         evidence_chunk_ids=["chunk-1"],
     )
 
-    result = client.generate([fact_context], "Tài xế cá nhân", "standard", "short", "specific", "Mức phạt", None)
+    result = client.generate(
+        [fact_context],
+        "Tài xế cá nhân",
+        "standard",
+        "short",
+        "specific",
+        "Mức phạt",
+        "answerable",
+        "single_hop",
+        [],
+        1,
+        None,
+    )
 
     assert result.query_vi == "q"
     assert result.required_claims[0].fact_id == "fact-1"

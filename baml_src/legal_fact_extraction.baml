@@ -1,20 +1,20 @@
 enum ChunkWindowRole {
   Target
   Adjacent
-  CitedProvision
 }
 
 class ChunkWindowEntry {
   chunk_id string
   role ChunkWindowRole @description(#"
     Target là chunk chính đang được đọc để trích fact. Adjacent là chunk liền
-    kề bị chunker cắt ra từ cùng một điều khoản. CitedProvision là chunk được
-    tra theo số điều mà Target nhắc tới, ví dụ "theo Điều X" — nhưng số điều
-    này có thể trùng ngẫu nhiên với một luật hoặc nghị định khác, chỉ dùng làm
-    căn cứ nếu nội dung thực sự cùng bối cảnh với Target.
+    kề bị chunker cắt ra từ cùng một điều khoản.
   "#)
-  provision_path string?
   text string
+}
+
+class FactExtractionBatchItem {
+  target_chunk_id string
+  window ChunkWindowEntry[]
 }
 
 class EvidenceEntry {
@@ -33,14 +33,18 @@ class LegalFact {
   license_points_deducted string?
   additional_penalties string[] @description(#"Hình phạt bổ sung, ví dụ tước giấy phép. Mảng rỗng nếu không có."#)
   remedial_measures string[] @description(#"Biện pháp khắc phục hậu quả. Mảng rỗng nếu không có."#)
-  valid_from string? @description(#"Định dạng YYYY-MM-DD. Null nếu window không nêu ngày hiệu lực."#)
-  valid_to string? @description(#"Định dạng YYYY-MM-DD. Null nếu còn hiệu lực hoặc window không nêu."#)
-  document_number string @description(#"Số hiệu văn bản chứa quy định, ví dụ 168/2024/NĐ-CP."#)
+  valid_from string? @description(#"Định dạng YYYY-MM-DD. Chỉ điền khi window nêu ngày hiệu lực riêng của điều khoản này."#)
+  valid_to string? @description(#"Định dạng YYYY-MM-DD. Chỉ điền khi window nêu ngày hết hiệu lực riêng của điều khoản này."#)
   provision_path string @description(#"Ví dụ: Điều 6 khoản 9 điểm b."#)
   evidence EvidenceEntry[] @description(#"Ít nhất một phần tử. Mọi nội dung của fact phải có căn cứ ở đây."#)
 }
 
-function ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[] {
+class FactExtractionBatchResult {
+  target_chunk_id string @description(#"Phải trùng với một target_chunk_id trong danh sách đầu vào."#)
+  facts LegalFact[]
+}
+
+function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtractionBatchResult[] {
   client OpenAICompatibleProvider
   prompt #"
     {{ _.role("user") }}
@@ -48,9 +52,9 @@ function ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[] {
     Bạn là chuyên gia pháp lý, trích xuất fact xử phạt vi phạm giao thông
     đường bộ có căn cứ xác thực từ văn bản quy phạm pháp luật Việt Nam.
 
-    Đọc các đoạn văn bản luật dưới đây và trích xuất các fact pháp lý nguyên
-    tử về xử phạt vi phạm giao thông đường bộ tại Việt Nam. Chunk vai trò
-    Target là trọng tâm; các chunk khác chỉ là ngữ cảnh hỗ trợ.
+    Đọc từng reading window dưới đây và trích xuất các fact pháp lý nguyên
+    tử về xử phạt vi phạm giao thông đường bộ tại Việt Nam. Trong mỗi window,
+    chunk vai trò Target là trọng tâm; các chunk khác chỉ là ngữ cảnh hỗ trợ.
 
     Nguyên tắc bắt buộc:
     - Chỉ trích xuất nội dung có bằng chứng trực tiếp trong các đoạn dưới đây.
@@ -63,10 +67,9 @@ function ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[] {
       danh sách rỗng thay vì đoán.
     - Một Target có thể sinh ra không, một, hoặc nhiều fact, ví dụ một hàng
       bảng liệt kê nhiều hành vi khác nhau.
-    - Chỉ dùng chunk vai trò CitedProvision nếu nội dung thực sự cùng bối
-      cảnh với Target (cùng nghị định hoặc văn bản đang xét); số điều có thể
-      trùng ngẫu nhiên với một luật hoặc nghị định khác, nếu vậy thì bỏ qua.
-
+    - Trả về đúng một kết quả cho mỗi target_chunk_id, giữ nguyên target_chunk_id.
+      Mảng facts rỗng là kết quả hợp lệ.
+    - Xử lý từng window độc lập. Không trộn nội dung hoặc evidence giữa các window.
     Ví dụ:
 
     Window ví dụ 1:
@@ -92,13 +95,16 @@ function ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[] {
     Kết quả: danh sách rỗng — đây là điều khoản giải thích từ ngữ, không nêu
     hành vi vi phạm hay mức phạt cụ thể nào để trích xuất fact.
 
-    Bây giờ đọc window sau:
+    Bây giờ đọc các window sau:
 
-    Window:
-    {% for entry in window %}
-    [{{ entry.role }}] chunk_id={{ entry.chunk_id }}{% if entry.provision_path %} ({{ entry.provision_path }}){% endif %}
+    {% for item in items %}
+    === target_chunk_id={{ item.target_chunk_id }} ===
+    {% for entry in item.window %}
+    [{{ entry.role }}] chunk_id={{ entry.chunk_id }}
     {{ entry.text }}
     ---
+    {% endfor %}
+    === end target_chunk_id={{ item.target_chunk_id }} ===
     {% endfor %}
 
     {{ ctx.output_format }}

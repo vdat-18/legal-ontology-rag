@@ -21,10 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 vietnamese = ["sentence-transformers>=3.0"]
-evaluation = [
-    "rapidfuzz>=3.0",
-    "sentence-transformers>=3.0",
-]
+evaluation = ["deepeval==4.1.1", "rank-bm25>=0.2.2", "rapidfuzz>=3.0", "sentence-transformers>=3.0"]
 dev = ["ruff==0.15.21", "pytest>=8.0"]
 naive-rag = ["pymilvus>=3.0", "milvus-lite>=2.4", "sentence-transformers>=3.0"]
 corrective-rag = [
@@ -42,9 +39,13 @@ legal-chunk = "legal_rag.chunk_cli:main"
 legal-evaluate = "legal_rag.evaluation.cli:main"
 legal-crag-api = "legal_rag.corrective_rag.api.server:main"
 legal-screen-chunks = "legal_rag.chunk_screening_cli:main"
+legal-resolve-document-metadata = "legal_rag.document_metadata_cli:main"
 legal-extract-facts = "legal_rag.fact_extraction_cli:main"
+legal-backfill-extraction-progress = "legal_rag.extraction_progress_backfill_cli:main"
+legal-migrate-legal-facts = "legal_rag.legal_fact_migration_cli:main"
 legal-build-evidence-graph = "legal_rag.evidence_graph_cli:main"
 legal-generate-candidates = "legal_rag.candidate_generation_cli:main"
+legal-assemble-groundtruth = "legal_rag.groundtruth_assembly_cli:main"
 legal-naive-rag-index = "legal_rag.naive_rag_index_cli:main"
 legal-naive-rag-query = "legal_rag.naive_rag_query_cli:main"
 legal-graphiti-index = "legal_rag.graphiti_index_cli:main"

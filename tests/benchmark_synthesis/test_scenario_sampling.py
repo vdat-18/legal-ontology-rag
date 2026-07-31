@@ -10,6 +10,7 @@ from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import (
     PersonaCatalog,
     QueryTaxonomy,
+    QueryTypeDefinition,
     Scenario,
     ScenarioDistribution,
     ScenarioSamplingConfig,
@@ -60,7 +61,18 @@ def _config(
 ) -> ScenarioSamplingConfig:
     """Build one scenario sampling configuration for tests."""
     return ScenarioSamplingConfig(
-        query_taxonomy=QueryTaxonomy(query_type_ids=query_type_ids),
+        query_taxonomy=QueryTaxonomy(
+            definitions=tuple(
+                QueryTypeDefinition(
+                    query_type_id=query_type_id,
+                    bundle_kinds=("single_hop", "synthesis", "multi_hop", "temporal"),
+                    minimum_facts=1,
+                    required_all_fields=(),
+                    required_any_fields=(),
+                )
+                for query_type_id in query_type_ids
+            )
+        ),
         personas=PersonaCatalog(persona_ids=persona_ids),
         distribution=ScenarioDistribution(
             query_styles=query_styles,
@@ -76,7 +88,7 @@ def test_load_query_taxonomy_reads_repo_config() -> None:
     taxonomy = load_query_taxonomy(_REPO_CONFIG_DIR / "query_taxonomy.json")
 
     assert "penalty_for_conduct" in taxonomy.query_type_ids
-    assert "out_of_scope" in taxonomy.query_type_ids
+    assert "out_of_scope" not in taxonomy.query_type_ids
 
 
 def test_load_personas_reads_repo_config() -> None:
@@ -123,15 +135,14 @@ def test_sample_scenarios_returns_empty_for_no_bundles() -> None:
     assert scenarios == ()
 
 
-def test_sample_scenarios_applies_ceiling_quota_per_bundle() -> None:
-    """Total samples split across bundles round up, matching ceil(total/bundles)."""
+def test_sample_scenarios_stops_at_the_requested_total() -> None:
+    """Ceiling quotas distribute coverage without exceeding the requested total."""
     facts_by_id = {"a": _fact("a"), "b": _fact("b")}
     bundles = [_bundle("bundle-a", ("a",)), _bundle("bundle-b", ("b",))]
 
     scenarios = sample_scenarios(bundles, facts_by_id, _config(), total_samples=3)
 
-    # ceil(3 / 2) = 2 per bundle, so 4 total, not 3.
-    assert len(scenarios) == 4
+    assert len(scenarios) == 3
 
 
 def test_sample_scenarios_sets_reasoning_hops_to_bundle_size() -> None:

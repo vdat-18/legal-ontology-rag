@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
@@ -13,13 +13,22 @@ from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import ConfirmedRelation as BamlConfirmedRelation
 from legal_rag.baml_client.types import LegalFactSummary
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.benchmark_synthesis.config import SynthesisSettings
+from legal_rag.benchmark_synthesis.llm_execution import (
+    IncompleteLlmTasksError,
+    LlmTaskExhaustedError,
+    LlmTaskFailure,
+    execute_llm_task,
+)
 from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.parser.hashing import sha256_json
-from legal_rag.settings import EvaluationSettings, Settings
+from legal_rag.settings import Settings
 
 EVIDENCE_RELATION_SCHEMA_VERSION = "1.0.0"
 EVIDENCE_BUNDLE_SCHEMA_VERSION = "1.0.0"
+EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.0.0"
+EVIDENCE_RELATION_PROMPT_VERSION = "1.0.0"
 
 RelationType = Literal[
     "conduct_to_penalty",
@@ -44,9 +53,6 @@ _RELATION_TYPE_BY_BAML_ENUM: dict[str, RelationType] = {
     "AmendedBy": "amended_by",
     "ProcedureSequence": "procedure_sequence",
 }
-
-DEFAULT_MAX_CANDIDATES_PER_FACT = 5
-DEFAULT_MIN_CANDIDATE_SIMILARITY = 0.5
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,32 +99,91 @@ class EvidenceBundle:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class EvidenceRelationProgressRecord:
+    """One candidate fact pair evidence-relation confirmation has finished checking, related or not."""
+
+    fact_id_a: str
+    fact_id_b: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable evidence-relation-progress record."""
+        return {
+            "schema_version": EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION,
+            "fact_id_a": self.fact_id_a,
+            "fact_id_b": self.fact_id_b,
+        }
+
+
 def _fact_embedding_text(fact: LegalFact) -> str:
     """Return a canonical text representation of a fact for similarity search."""
     return f"{fact.conduct}. {fact.subject}. {fact.provision_path}."
+
+
+def _fact_lexical_tokens(fact: LegalFact) -> list[str]:
+    """Return lowercased whitespace tokens of a fact's canonical text, for lexical retrieval."""
+    return _fact_embedding_text(fact).lower().split()
+
+
+def _top_indices(scored: Sequence[tuple[int, float]], limit: int) -> list[int]:
+    """Return indices ordered by descending score then index, capped at limit."""
+    return [index for index, _ in sorted(scored, key=lambda item: (-item[1], item[0]))[:limit]]
 
 
 def find_candidate_fact_pairs(
     facts: Sequence[LegalFact],
     encoder: EmbeddingEncoder,
     *,
-    max_candidates_per_fact: int = DEFAULT_MAX_CANDIDATES_PER_FACT,
-    min_similarity: float = DEFAULT_MIN_CANDIDATE_SIMILARITY,
+    max_candidates_per_fact: int,
+    min_similarity: float,
+    pool_multiplier: int,
+    rrf_k: int,
 ) -> tuple[tuple[str, str], ...]:
-    """Return unique fact_id pairs worth confirming as a relation, by embedding similarity."""
+    """Return unique fact_id pairs worth confirming, fusing dense and lexical retrieval with reciprocal rank fusion.
+
+    Dense retrieval finds facts phrased differently about the same thing; lexical
+    retrieval finds near-verbatim restatements, which is how an amending
+    provision quotes the provision it amends. Each leg filters on its own scale —
+    fused RRF scores have no absolute meaning — and RRF merges the survivors.
+    """
+    # Imported here, not at module scope: rank_bm25 ships in the evaluation extra, but this
+    # module is reachable from CLIs that do not need it.
+    from rank_bm25 import BM25Okapi
+
     vectors = encoder.encode([_fact_embedding_text(fact) for fact in facts])
+    corpus = [_fact_lexical_tokens(fact) for fact in facts]
+    bm25 = BM25Okapi(corpus)
+    pool_size = max_candidates_per_fact * pool_multiplier
+
     pairs: set[tuple[str, str]] = set()
     for index, fact in enumerate(facts):
-        scored = [
-            (float(np.dot(vectors[index], vectors[other_index])), other_fact)
-            for other_index, other_fact in enumerate(facts)
-            if other_index != index
-        ]
-        scored.sort(key=lambda item: item[0], reverse=True)
-        for score, other_fact in scored[:max_candidates_per_fact]:
-            if score < min_similarity:
-                continue
-            pairs.add(tuple(sorted((fact.fact_id, other_fact.fact_id))))
+        dense_scores = np.dot(vectors, vectors[index])
+        dense_ranking = _top_indices(
+            [
+                (other, float(dense_scores[other]))
+                for other in range(len(facts))
+                if other != index and float(dense_scores[other]) >= min_similarity
+            ],
+            pool_size,
+        )
+        lexical_scores = bm25.get_scores(corpus[index])
+        lexical_ranking = _top_indices(
+            [
+                (other, float(lexical_scores[other]))
+                for other in range(len(facts))
+                if other != index and float(lexical_scores[other]) > 0.0
+            ],
+            pool_size,
+        )
+
+        fused: dict[int, float] = {}
+        for ranking in (dense_ranking, lexical_ranking):
+            for rank, other_index in enumerate(ranking, start=1):
+                fused[other_index] = fused.get(other_index, 0.0) + 1.0 / (rrf_k + rank)
+
+        best = sorted(fused, key=lambda other_index: (-fused[other_index], other_index))
+        for other_index in best[:max_candidates_per_fact]:
+            pairs.add(tuple(sorted((fact.fact_id, facts[other_index].fact_id))))
     return tuple(sorted(pairs))
 
 
@@ -132,19 +197,19 @@ class EvidenceRelationClient(Protocol):
 class BamlEvidenceRelationClient:
     """Typed BAML client backed by a runtime OpenAI-compatible provider."""
 
-    def __init__(self, settings: Settings, evaluation_settings: EvaluationSettings) -> None:
+    def __init__(self, settings: Settings, synthesis_settings: SynthesisSettings) -> None:
         """Create a runtime BAML client from typed, secret-safe configuration."""
         set_log_level("OFF")
         self._registry = build_client_registry(
             base_url=settings.llm_base_url,
             api_key=settings.llm_api_key,
             model=settings.llm_model,
-            max_output_tokens=evaluation_settings.fact_extraction_max_output_tokens,
-            temperature=evaluation_settings.fact_extraction_temperature,
+            max_output_tokens=synthesis_settings.evidence_relation.max_output_tokens,
+            temperature=synthesis_settings.evidence_relation.temperature,
             timeout_seconds=settings.llm_timeout_seconds,
         )
         self._timeout_seconds = settings.llm_timeout_seconds
-        self._max_response_bytes = evaluation_settings.max_response_bytes
+        self._max_response_bytes = synthesis_settings.max_response_bytes
         self._model = settings.llm_model
 
     def confirm(self, fact_a: LegalFact, fact_b: LegalFact) -> EvidenceRelation | None:
@@ -199,14 +264,36 @@ def confirm_evidence_relations(
     facts: Sequence[LegalFact],
     candidate_pairs: Sequence[tuple[str, str]],
     client: EvidenceRelationClient,
+    *,
+    max_retries: int,
+    retry_delay_seconds: float,
+    on_pair_confirmed: Callable[[tuple[str, str], EvidenceRelation | None], None] | None = None,
 ) -> tuple[EvidenceRelation, ...]:
-    """Confirm every candidate pair, keeping only genuinely related facts."""
+    """Confirm every candidate pair, retrying a failed call before skipping it; call on_pair_confirmed after each pair."""
     facts_by_id = {fact.fact_id: fact for fact in facts}
     relations: list[EvidenceRelation] = []
+    failures: list[LlmTaskFailure] = []
     for fact_id_a, fact_id_b in candidate_pairs:
-        relation = client.confirm(facts_by_id[fact_id_a], facts_by_id[fact_id_b])
-        if relation is not None:
-            relations.append(relation)
+        task_key = f"{fact_id_a}:{fact_id_b}"
+        try:
+            relation = execute_llm_task(
+                task_key,
+                lambda fact_id_a=fact_id_a, fact_id_b=fact_id_b: client.confirm(
+                    facts_by_id[fact_id_a], facts_by_id[fact_id_b]
+                ),
+                max_retries=max_retries,
+                retry_delay_seconds=retry_delay_seconds,
+            )
+        except LlmTaskExhaustedError as error:
+            failures.append(LlmTaskFailure(task_key=task_key, error=str(error)))
+        else:
+            if relation is not None:
+                relations.append(relation)
+            if on_pair_confirmed is not None:
+                on_pair_confirmed((fact_id_a, fact_id_b), relation)
+    if failures:
+        incomplete_error = IncompleteLlmTasksError.for_stage("evidence relation confirmation", failures)
+        raise incomplete_error
     return tuple(relations)
 
 

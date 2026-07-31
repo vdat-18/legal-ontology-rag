@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from legal_rag.baml_client.types import Answerability, FactContext
@@ -9,9 +11,12 @@ from legal_rag.baml_client.types import ClaimReference as BamlClaimReference
 from legal_rag.baml_client.types import VerificationResult as BamlVerificationResult
 from legal_rag.benchmark_synthesis import verification
 from legal_rag.benchmark_synthesis.candidate_generation import CandidateDraft
+from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.verification import BamlVerificationClient, verify_candidate
-from legal_rag.settings import EvaluationSettings, Settings
+from legal_rag.settings import Settings
+
+_SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
 
 
 def _fact(fact_id: str = "fact-1") -> LegalFact:
@@ -69,6 +74,7 @@ def _verification_result(**overrides: object) -> BamlVerificationResult:
         "is_answer_grounded": True,
         "is_domain_relevant": True,
         "is_temporal_correct": True,
+        "uses_required_bridge": True,
         "necessary_reasoning_hops": 1,
         "observed_query_type": "penalty_for_conduct",
         "observed_answerability": Answerability.Answerable,
@@ -142,6 +148,16 @@ def test_verify_candidate_carries_necessary_reasoning_hops_unmodified() -> None:
     assert result.necessary_reasoning_hops == 1
 
 
+def test_verify_candidate_fails_when_observed_hops_do_not_match_scenario() -> None:
+    """A candidate fails when its declared multi-hop difficulty is not actually necessary."""
+    client = _FakeVerificationClient(_verification_result(necessary_reasoning_hops=2))
+
+    result = verify_candidate(_draft(), {"fact-1": _fact()}, ["penalty_for_conduct"], client, verifier_model="m")
+
+    assert result.passed is False
+    assert result.necessary_reasoning_hops == 2
+
+
 def test_verify_candidate_carries_observed_query_type_from_catalog() -> None:
     """The relabeled query_type is the verifier's own choice, not the declared label."""
     client = _FakeVerificationClient(_verification_result(observed_query_type="out_of_scope"))
@@ -163,25 +179,21 @@ def _settings() -> Settings:
     )
 
 
-def _evaluation_settings() -> EvaluationSettings:
+def _synthesis_settings() -> SynthesisSettings:
     """Build ground-truth synthesis settings for an offline BAML request."""
-    return EvaluationSettings(
-        embedding_profile="qwen3_0_6b",
-        span_match_threshold=0.85,
-        bundle_overlap_threshold=0.5,
-        max_quality_retries=2,
-    )
+    return SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
 
 
 def test_baml_verification_client_parses_typed_result(monkeypatch: pytest.MonkeyPatch) -> None:
     """The generated non-stream client returns a typed verification result."""
-    client = BamlVerificationClient(_settings(), _evaluation_settings())
+    client = BamlVerificationClient(_settings(), _synthesis_settings())
     monkeypatch.setattr(
         verification,
         "execute_baml_request",
         lambda *args, **kwargs: (
             '{"is_standalone":true,"is_specific":true,"is_question_grounded":true,'
             '"is_answer_grounded":true,"is_domain_relevant":true,"is_temporal_correct":true,'
+            '"uses_required_bridge":true,'
             '"necessary_reasoning_hops":1,"observed_query_type":"penalty_for_conduct",'
             '"observed_answerability":"Answerable","reasoning":"ok"}'
         ),
@@ -203,7 +215,7 @@ def test_baml_verification_client_parses_typed_result(monkeypatch: pytest.Monkey
     )
     claim = BamlClaimReference(claim="c", fact_id="fact-1", evidence_chunk_ids=["chunk-1"])
 
-    result = client.verify("q", "a", "r", [fact_context], [claim], None, 1, ["penalty_for_conduct"])
+    result = client.verify("q", "a", "r", [fact_context], [claim], None, 1, [], ["penalty_for_conduct"])
 
     assert result.is_standalone is True
     assert result.observed_answerability == Answerability.Answerable

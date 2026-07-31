@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0.0",
+  "embedding_profile": "qwen3_0_6b",
+  "llm_execution": {
+    "max_retries": 2,
+    "retry_delay_seconds": 120,
+    "max_response_bytes": 1048576
+  },
+  "quality": {
+    "span_match_threshold": 0.85,
+    "bundle_overlap_threshold": 0.5,
+    "max_retries": 2
+  },
+  "stages": {
+    "chunk_screening": {
+      "batch_size": 50,
+      "max_output_tokens": 16384,
+      "temperature": 0.0
+    },
+    "document_metadata": {
+      "opening_chunk_count": 3,
+      "closing_chunk_count": 5,
+      "max_output_tokens": 1024,
+      "temperature": 0.0
+    },
+    "fact_extraction": {
+      "batch_size": 5,
+      "max_preceding_chunks": 1,
+      "max_following_chunks": 1,
+      "max_output_tokens": 32768,
+      "temperature": 0.0
+    },
+    "evidence_relation": {
+      "max_candidates_per_fact": 5,
+      "min_similarity": 0.5,
+      "pool_multiplier": 2,
+      "rrf_k": 60,
+      "max_output_tokens": 4096,
+      "temperature": 0.0
+    },
+    "candidate_generation": {
+      "max_output_tokens": 2048,
+      "temperature": 0.0
+    },
+    "candidate_critique": {
+      "max_output_tokens": 2048,
+      "temperature": 0.0
+    },
+    "candidate_evolution": {
+      "max_output_tokens": 2048,
+      "temperature": 0.0
+    },
+    "verification": {
+      "max_output_tokens": 1024,
+      "temperature": 0.0
+    }
+  }
+}

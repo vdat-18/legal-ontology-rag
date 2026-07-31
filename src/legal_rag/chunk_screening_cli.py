@@ -14,6 +14,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Screen one document's chunks for penalty content.")
     parser.add_argument("chunks_path", type=Path, help="Chunk JSONL path for one document")
     parser.add_argument("screening_output_path", type=Path, help="Destination chunk-screening JSONL path")
+    parser.add_argument("--synthesis-config", type=Path, required=True, help="Versioned synthesis config JSON path")
     return parser
 
 
@@ -26,16 +27,17 @@ def main() -> None:
         ChunkScreeningRecord,
         screen_chunks,
     )
+    from legal_rag.benchmark_synthesis.config import SynthesisSettings
     from legal_rag.benchmark_synthesis.writer import read_chunk_screening, write_chunk_screening
     from legal_rag.chunker.writer import read_chunks
-    from legal_rag.settings import EvaluationSettings, Settings
+    from legal_rag.settings import Settings
 
     arguments = _parser().parse_args()
     dotenv_path = find_dotenv(usecwd=True)
     if dotenv_path:
         load_dotenv(dotenv_path)
     settings = Settings.from_environment()
-    evaluation_settings = EvaluationSettings.from_environment()
+    synthesis_settings = SynthesisSettings.from_path(arguments.synthesis_config)
 
     chunks = read_chunks(arguments.chunks_path)
     existing_records = (
@@ -53,8 +55,15 @@ def main() -> None:
         )
 
     if chunks_to_screen:
-        screening_client = BamlChunkScreeningClient(settings, evaluation_settings)
-        screen_chunks(chunks_to_screen, screening_client, on_batch_screened=_persist_batch)
+        screening_client = BamlChunkScreeningClient(settings, synthesis_settings)
+        screen_chunks(
+            chunks_to_screen,
+            screening_client,
+            batch_size=synthesis_settings.chunk_screening_batch_size,
+            max_retries=synthesis_settings.llm_max_retries,
+            retry_delay_seconds=synthesis_settings.llm_retry_delay_seconds,
+            on_batch_screened=_persist_batch,
+        )
 
     records = tuple(records_by_chunk_id[chunk.chunk_id] for chunk in chunks if chunk.chunk_id in records_by_chunk_id)
     write_chunk_screening(arguments.screening_output_path, records)

@@ -7,6 +7,7 @@ import json
 
 import pytest
 from baml_py import Image
+from loguru import logger
 
 from legal_rag import baml_transport
 from legal_rag.baml_client.sync_client import b
@@ -184,3 +185,27 @@ def test_openai_response_exposes_full_provider_error() -> None:
     assert '"code": "upstream_error"' in str(error.value)
     assert '"type": "server_error"' in str(error.value)
     assert '"message": "Upstream model unavailable"' in str(error.value)
+
+
+def test_openai_response_logs_token_usage() -> None:
+    """Successful provider responses expose their standard token counts in logs."""
+    messages: list[str] = []
+    sink_id = logger.add(messages.append, format="{message}")
+    response_bytes = json.dumps(
+        {
+            "model": "provider/test-model",
+            "usage": {"prompt_tokens": 30_000, "completion_tokens": 5_000, "total_tokens": 35_000},
+            "choices": [{"message": {"content": "{}"}}],
+        }
+    ).encode()
+
+    try:
+        content = baml_transport._openai_response_content(response_bytes)
+    finally:
+        logger.remove(sink_id)
+
+    assert content == "{}"
+    assert any(
+        "model=provider/test-model input_tokens=30000 output_tokens=5000 total_tokens=35000" in message
+        for message in messages
+    )

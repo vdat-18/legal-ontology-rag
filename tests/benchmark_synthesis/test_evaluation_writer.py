@@ -14,19 +14,27 @@ from legal_rag.benchmark_synthesis.candidate_generation import (
 )
 from legal_rag.benchmark_synthesis.candidate_record import CandidateRecord
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
-from legal_rag.benchmark_synthesis.evidence_graph import EvidenceRelation
+from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
+from legal_rag.benchmark_synthesis.evidence_graph import EvidenceRelation, EvidenceRelationProgressRecord
+from legal_rag.benchmark_synthesis.fact_extraction import ExtractionProgressRecord
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.benchmark_synthesis.verification import VerificationResult
 from legal_rag.benchmark_synthesis.writer import (
     read_candidates,
     read_chunk_screening,
+    read_document_metadata,
+    read_evidence_relation_progress,
     read_evidence_relations,
+    read_extraction_progress,
     read_legal_facts,
     read_scenarios,
     write_candidates,
     write_chunk_screening,
+    write_document_metadata,
+    write_evidence_relation_progress,
     write_evidence_relations,
+    write_extraction_progress,
     write_legal_facts,
     write_scenarios,
 )
@@ -79,6 +87,26 @@ def test_chunk_screening_round_trips_through_jsonl(tmp_path: Path) -> None:
     assert records == (record,)
 
 
+def test_document_metadata_round_trips_through_jsonl(tmp_path: Path) -> None:
+    """A written document-metadata record reads back with identical field values."""
+    output_path = tmp_path / "document_metadata.jsonl"
+    record = DocumentMetadataRecord(document_number="168/2024/NĐ-CP", valid_from=date(2025, 1, 1), valid_to=None)
+
+    write_document_metadata(output_path, record)
+
+    assert read_document_metadata(output_path) == record
+
+
+def test_extraction_progress_round_trips_through_jsonl(tmp_path: Path) -> None:
+    """A written extraction-progress record reads back with identical field values."""
+    output_path = tmp_path / "extraction_progress.jsonl"
+    records = (ExtractionProgressRecord(chunk_id="chunk-1"), ExtractionProgressRecord(chunk_id="chunk-2"))
+
+    write_extraction_progress(output_path, records)
+
+    assert read_extraction_progress(output_path) == records
+
+
 def test_evidence_relations_round_trip_through_jsonl(tmp_path: Path) -> None:
     """A written evidence relation reads back with identical field values."""
     output_path = tmp_path / "evidence_relations.jsonl"
@@ -95,6 +123,19 @@ def test_evidence_relations_round_trip_through_jsonl(tmp_path: Path) -> None:
     relations = read_evidence_relations(output_path)
 
     assert relations == (relation,)
+
+
+def test_evidence_relation_progress_round_trips_through_jsonl(tmp_path: Path) -> None:
+    """A written evidence-relation-progress record reads back with identical field values."""
+    output_path = tmp_path / "evidence_relation_progress.jsonl"
+    records = (
+        EvidenceRelationProgressRecord(fact_id_a="fact-1", fact_id_b="fact-2"),
+        EvidenceRelationProgressRecord(fact_id_a="fact-1", fact_id_b="fact-3"),
+    )
+
+    write_evidence_relation_progress(output_path, records)
+
+    assert read_evidence_relation_progress(output_path) == records
 
 
 def test_scenarios_round_trip_through_jsonl(tmp_path: Path) -> None:
@@ -212,6 +253,14 @@ def test_candidates_round_trip_with_full_verification(tmp_path: Path) -> None:
 
     assert records == (record,)
     assert records[0].review_status == "automatically_verified"
+
+    payload = record.to_dict()
+    assert payload["requested_query_type"] == "penalty_for_conduct"
+    assert payload["requested_answerability"] == "answerable"
+    assert payload["requested_reasoning_hops"] == 1
+    assert payload["query_type"] == record.verification.observed_query_type
+    assert payload["answerability"] == record.verification.observed_answerability
+    assert payload["reasoning_hops"] == record.verification.necessary_reasoning_hops
 
 
 def test_candidates_round_trip_rejected_by_binding_gate_has_no_verification(tmp_path: Path) -> None:

@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 from legal_rag.baml_client.types import ConfirmedRelation as BamlConfirmedRelation
 from legal_rag.baml_client.types import RelationType as BamlRelationType
 from legal_rag.benchmark_synthesis import evidence_graph
+from legal_rag.benchmark_synthesis.config import LlmStageSettings, SynthesisSettings
 from legal_rag.benchmark_synthesis.evidence_graph import (
     BamlEvidenceRelationClient,
     EvidenceRelation,
@@ -17,7 +21,9 @@ from legal_rag.benchmark_synthesis.evidence_graph import (
     sample_bundles,
 )
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
-from legal_rag.settings import EvaluationSettings, Settings
+from legal_rag.settings import Settings
+
+_SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
 
 
 def _fact(
@@ -25,13 +31,15 @@ def _fact(
     *,
     document_number: str = "168/2024/NĐ-CP",
     conduct: str = "Vượt đèn đỏ",
+    subject: str = "Người điều khiển ô tô",
+    provision_path: str = "Điều 6",
 ) -> LegalFact:
     """Build one minimal legal fact for evidence-graph tests."""
     return LegalFact(
         fact_id=fact_id,
         fact_content_sha256=f"content-{fact_id}",
         conduct=conduct,
-        subject="Người điều khiển ô tô",
+        subject=subject,
         conditions=(),
         monetary_penalty="4.000.000 đồng",
         license_points_deducted=None,
@@ -40,7 +48,7 @@ def _fact(
         valid_from=None,
         valid_to=None,
         document_number=document_number,
-        provision_path="Điều 6",
+        provision_path=provision_path,
         evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span=""),),
     )
 
@@ -67,15 +75,22 @@ def test_find_candidate_fact_pairs_orders_and_deduplicates_symmetric_pairs() -> 
         }
     )
 
-    pairs = find_candidate_fact_pairs([fact_a, fact_b], encoder, min_similarity=0.5)
+    pairs = find_candidate_fact_pairs(
+        [fact_a, fact_b],
+        encoder,
+        max_candidates_per_fact=5,
+        min_similarity=0.5,
+        pool_multiplier=2,
+        rrf_k=60,
+    )
 
     assert pairs == (("fact-a", "fact-b"),)
 
 
-def test_find_candidate_fact_pairs_excludes_below_min_similarity() -> None:
-    """Dissimilar facts never become a candidate pair."""
-    fact_a = _fact("fact-a", conduct="Vượt đèn đỏ")
-    fact_b = _fact("fact-b", conduct="Không đội mũ bảo hiểm")
+def test_find_candidate_fact_pairs_excludes_pairs_missed_by_both_legs() -> None:
+    """A pair that is neither dense-similar nor lexically overlapping never becomes a candidate."""
+    fact_a = _fact("fact-a", conduct="Vượt đèn đỏ", subject="Ô tô", provision_path="Điều 6")
+    fact_b = _fact("fact-b", conduct="Chở hàng cồng kềnh", subject="Xe máy", provision_path="Khoản 2")
     encoder = _FakeEncoder(
         {
             evidence_graph._fact_embedding_text(fact_a): np.array([1.0, 0.0]),
@@ -83,9 +98,39 @@ def test_find_candidate_fact_pairs_excludes_below_min_similarity() -> None:
         }
     )
 
-    pairs = find_candidate_fact_pairs([fact_a, fact_b], encoder, min_similarity=0.5)
+    pairs = find_candidate_fact_pairs(
+        [fact_a, fact_b],
+        encoder,
+        max_candidates_per_fact=5,
+        min_similarity=0.5,
+        pool_multiplier=2,
+        rrf_k=60,
+    )
 
     assert pairs == ()
+
+
+def test_find_candidate_fact_pairs_recovers_a_lexical_match_the_dense_leg_rejects() -> None:
+    """Near-verbatim restatement is proposed even when the dense leg scores it below min_similarity."""
+    original = _fact("fact-original", conduct="Không chấp hành hiệu lệnh của đèn tín hiệu giao thông")
+    amending = _fact("fact-amending", conduct="Không chấp hành hiệu lệnh của đèn tín hiệu giao thông")
+    encoder = _FakeEncoder(
+        {
+            evidence_graph._fact_embedding_text(original): np.array([1.0, 0.0]),
+            evidence_graph._fact_embedding_text(amending): np.array([0.0, 1.0]),
+        }
+    )
+
+    pairs = find_candidate_fact_pairs(
+        [original, amending],
+        encoder,
+        max_candidates_per_fact=5,
+        min_similarity=0.9,
+        pool_multiplier=2,
+        rrf_k=60,
+    )
+
+    assert pairs == (("fact-amending", "fact-original"),)
 
 
 def test_find_candidate_fact_pairs_respects_max_candidates_per_fact() -> None:
@@ -100,7 +145,14 @@ def test_find_candidate_fact_pairs_respects_max_candidates_per_fact() -> None:
     }
     encoder = _FakeEncoder(vectors)
 
-    pairs = find_candidate_fact_pairs([anchor, close, farther], encoder, max_candidates_per_fact=1, min_similarity=0.0)
+    pairs = find_candidate_fact_pairs(
+        [anchor, close, farther],
+        encoder,
+        max_candidates_per_fact=1,
+        min_similarity=0.0,
+        pool_multiplier=2,
+        rrf_k=60,
+    )
 
     assert ("anchor", "close") in pairs
     assert ("anchor", "farther") not in pairs
@@ -144,10 +196,91 @@ def test_confirm_evidence_relations_drops_unconfirmed_pairs() -> None:
     )
 
     relations = confirm_evidence_relations(
-        [fact_a, fact_b, fact_c], [("fact-a", "fact-b"), ("fact-a", "fact-c")], client
+        [fact_a, fact_b, fact_c],
+        [("fact-a", "fact-b"), ("fact-a", "fact-c")],
+        client,
+        max_retries=2,
+        retry_delay_seconds=0,
     )
 
     assert relations == (_relation("fact-a", "fact-b"),)
+
+
+def test_confirm_evidence_relations_calls_on_pair_confirmed_after_each_pair() -> None:
+    """on_pair_confirmed receives the pair and its relation (or None), once per candidate pair."""
+    fact_a, fact_b, fact_c = _fact("fact-a"), _fact("fact-b"), _fact("fact-c")
+    client = _FakeRelationClient(
+        {
+            ("fact-a", "fact-b"): _relation("fact-a", "fact-b"),
+            ("fact-a", "fact-c"): None,
+        }
+    )
+    calls: list[tuple[tuple[str, str], EvidenceRelation | None]] = []
+
+    confirm_evidence_relations(
+        [fact_a, fact_b, fact_c],
+        [("fact-a", "fact-b"), ("fact-a", "fact-c")],
+        client,
+        max_retries=2,
+        retry_delay_seconds=0,
+        on_pair_confirmed=lambda pair, relation: calls.append((pair, relation)),
+    )
+
+    assert calls == [
+        (("fact-a", "fact-b"), _relation("fact-a", "fact-b")),
+        (("fact-a", "fact-c"), None),
+    ]
+
+
+def test_confirm_evidence_relations_retries_a_failing_pair_then_succeeds() -> None:
+    """A pair whose confirmation call raises is retried, and a later success still yields its relation."""
+    fact_a, fact_b = _fact("fact-a"), _fact("fact-b")
+    attempts = 0
+
+    class _FlakyClient:
+        def confirm(self, fact_x: LegalFact, fact_y: LegalFact) -> EvidenceRelation | None:
+            nonlocal attempts
+            attempts += 1
+            if attempts < 2:
+                msg = "provider timed out"
+                raise TimeoutError(msg)
+            return _relation("fact-a", "fact-b")
+
+    relations = confirm_evidence_relations(
+        [fact_a, fact_b],
+        [("fact-a", "fact-b")],
+        _FlakyClient(),
+        max_retries=2,
+        retry_delay_seconds=0,
+    )
+
+    assert attempts == 2
+    assert relations == (_relation("fact-a", "fact-b"),)
+
+
+def test_confirm_evidence_relations_skips_a_pair_that_fails_every_attempt() -> None:
+    """A pair that keeps raising is skipped, but other pairs are still confirmed."""
+    fact_a, fact_b, fact_c = _fact("fact-a"), _fact("fact-b"), _fact("fact-c")
+
+    class _FailsForOnePairClient:
+        def confirm(self, fact_x: LegalFact, fact_y: LegalFact) -> EvidenceRelation | None:
+            if {fact_x.fact_id, fact_y.fact_id} == {"fact-a", "fact-b"}:
+                msg = "provider timed out"
+                raise TimeoutError(msg)
+            return _relation(fact_x.fact_id, fact_y.fact_id)
+
+    persisted: list[tuple[str, str]] = []
+    with pytest.raises(RuntimeError, match="evidence relation confirmation left 1 incomplete"):
+        confirm_evidence_relations(
+            [fact_a, fact_b, fact_c],
+            [("fact-a", "fact-b"), ("fact-a", "fact-c")],
+            _FailsForOnePairClient(),
+            max_retries=2,
+            retry_delay_seconds=0,
+            on_pair_confirmed=lambda pair, _relation: persisted.append(pair),
+        )
+
+    assert persisted == [("fact-a", "fact-c")]
 
 
 def test_classify_bundle_kind_amended_by_is_always_temporal() -> None:
@@ -205,19 +338,34 @@ def _settings() -> Settings:
     )
 
 
-def _evaluation_settings() -> EvaluationSettings:
+def _synthesis_settings() -> SynthesisSettings:
     """Build ground-truth synthesis settings for an offline BAML request."""
-    return EvaluationSettings(
-        embedding_profile="qwen3_0_6b",
-        span_match_threshold=0.85,
-        bundle_overlap_threshold=0.5,
-        max_quality_retries=2,
+    return SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+
+
+def test_evidence_relation_client_uses_relation_stage_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Relation confirmation no longer inherits fact-extraction generation bounds."""
+    configured_tokens: list[int] = []
+
+    def _capture_registry(**kwargs: object) -> object:
+        configured_tokens.append(int(kwargs["max_output_tokens"]))
+        return object()
+
+    settings = replace(
+        _synthesis_settings(),
+        fact_extraction=LlmStageSettings(101, 0.0),
+        evidence_relation=LlmStageSettings(202, 0.0),
     )
+    monkeypatch.setattr(evidence_graph, "build_client_registry", _capture_registry)
+
+    BamlEvidenceRelationClient(_settings(), settings)
+
+    assert configured_tokens == [202]
 
 
 def test_baml_evidence_relation_client_translates_confirmed_relation(monkeypatch: pytest.MonkeyPatch) -> None:
     """A confirmed relation from the generated client becomes a persisted EvidenceRelation."""
-    client = BamlEvidenceRelationClient(_settings(), _evaluation_settings())
+    client = BamlEvidenceRelationClient(_settings(), _synthesis_settings())
     monkeypatch.setattr(
         evidence_graph,
         "execute_baml_request",
@@ -236,7 +384,7 @@ def test_baml_evidence_relation_client_translates_confirmed_relation(monkeypatch
 
 def test_baml_evidence_relation_client_returns_none_when_unrelated(monkeypatch: pytest.MonkeyPatch) -> None:
     """An unrelated verdict from the model returns None, not a fabricated relation."""
-    client = BamlEvidenceRelationClient(_settings(), _evaluation_settings())
+    client = BamlEvidenceRelationClient(_settings(), _synthesis_settings())
     monkeypatch.setattr(
         evidence_graph,
         "execute_baml_request",

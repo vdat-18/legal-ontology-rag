@@ -18,7 +18,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from legal_rag.benchmark_synthesis.evidence_graph import EvidenceBundle
+from legal_rag.benchmark_synthesis.evidence_graph import BundleKind, EvidenceBundle
 from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.parser.hashing import sha256_json
 
@@ -26,10 +26,26 @@ SCENARIO_SCHEMA_VERSION = "1.0.0"
 
 
 @dataclass(frozen=True, slots=True)
+class QueryTypeDefinition:
+    """One query type and the evidence-bundle shapes capable of supporting it."""
+
+    query_type_id: str
+    bundle_kinds: tuple[BundleKind, ...]
+    minimum_facts: int
+    required_all_fields: tuple[str, ...]
+    required_any_fields: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class QueryTaxonomy:
     """Versioned catalog of query type identifiers."""
 
-    query_type_ids: tuple[str, ...]
+    definitions: tuple[QueryTypeDefinition, ...]
+
+    @property
+    def query_type_ids(self) -> tuple[str, ...]:
+        """Return query type identifiers in configured order."""
+        return tuple(definition.query_type_id for definition in self.definitions)
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,12 +98,14 @@ class Scenario:
     fact_ids: tuple[str, ...]
     bridge: tuple[str, ...]
     gold_chunk_ids: tuple[str, ...]
+    bundle_kind: BundleKind = "single_hop"
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable scenario record."""
         return {
             "schema_version": SCENARIO_SCHEMA_VERSION,
             "scenario_id": self.scenario_id,
+            "bundle_kind": self.bundle_kind,
             "query_type": self.query_type,
             "query_form": self.query_form,
             "answerability": self.answerability,
@@ -105,7 +123,19 @@ class Scenario:
 def load_query_taxonomy(config_path: Path) -> QueryTaxonomy:
     """Load the versioned query-taxonomy configuration."""
     config = json.loads(config_path.read_text(encoding="utf-8"))
-    return QueryTaxonomy(query_type_ids=tuple(entry["id"] for entry in config["query_types"]))
+    return QueryTaxonomy(
+        definitions=tuple(
+            QueryTypeDefinition(
+                query_type_id=entry["id"],
+                bundle_kinds=tuple(entry["bundle_kinds"]),
+                minimum_facts=entry.get("minimum_facts", 1),
+                required_all_fields=tuple(entry.get("required_all_fields", ())),
+                required_any_fields=tuple(entry.get("required_any_fields", ())),
+            )
+            for entry in config["query_types"]
+            if entry.get("mvp_enabled", True)
+        )
+    )
 
 
 def load_personas(config_path: Path) -> PersonaCatalog:
@@ -182,7 +212,10 @@ def sample_scenarios(
             query_style = _pick_least_used(config.distribution.query_styles, usage_counts["query_style"])
             query_length = _pick_least_used(config.distribution.query_lengths, usage_counts["query_length"])
             query_form = _pick_least_used(config.distribution.query_forms, usage_counts["query_form"])
-            query_type = _pick_least_used(config.query_taxonomy.query_type_ids, usage_counts["query_type"])
+            eligible_query_types = _eligible_query_types(bundle, facts, config.query_taxonomy)
+            if not eligible_query_types:
+                break
+            query_type = _pick_least_used(eligible_query_types, usage_counts["query_type"])
             answerability = _pick_least_used(
                 config.distribution.bundle_answerability_values, usage_counts["answerability"]
             )
@@ -207,6 +240,7 @@ def sample_scenarios(
                             "query_length": query_length,
                         }
                     ),
+                    bundle_kind=bundle.kind,
                     query_type=query_type,
                     query_form=query_form,
                     answerability=answerability,
@@ -220,7 +254,29 @@ def sample_scenarios(
                     gold_chunk_ids=tuple(sorted({evidence.chunk_id for fact in facts for evidence in fact.evidence})),
                 )
             )
+            if len(scenarios) == total_samples:
+                return tuple(scenarios)
     return tuple(scenarios)
+
+
+def _eligible_query_types(
+    bundle: EvidenceBundle,
+    facts: Sequence[LegalFact],
+    taxonomy: QueryTaxonomy,
+) -> tuple[str, ...]:
+    """Return configured query types whose structural requirements match a bundle."""
+    eligible: list[str] = []
+    for definition in taxonomy.definitions:
+        if bundle.kind not in definition.bundle_kinds or len(facts) < definition.minimum_facts:
+            continue
+        if any(not any(getattr(fact, field) for fact in facts) for field in definition.required_all_fields):
+            continue
+        if definition.required_any_fields and not any(
+            getattr(fact, field) for fact in facts for field in definition.required_any_fields
+        ):
+            continue
+        eligible.append(definition.query_type_id)
+    return tuple(eligible)
 
 
 def _pick_persona(

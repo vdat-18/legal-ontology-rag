@@ -126,47 +126,6 @@ class ChunkerSettings:
         return cls(**overrides, embedding_profile=values["EMBEDDING_PROFILE"].strip())
 
 
-_EVALUATION_TUNABLES: dict[str, Callable[[str], float | int]] = {
-    "span_match_threshold": float,
-    "bundle_overlap_threshold": float,
-    "max_quality_retries": int,
-}
-
-
-@dataclass(frozen=True, slots=True)
-class EvaluationSettings:
-    """Threshold and batch configuration for ground-truth synthesis."""
-
-    embedding_profile: str
-    span_match_threshold: float = 0.85
-    bundle_overlap_threshold: float = 0.5
-    max_quality_retries: int = 2
-    chunk_screening_max_output_tokens: int = 2048
-    chunk_screening_temperature: float = 0.0
-    fact_extraction_max_output_tokens: int = 4096
-    fact_extraction_temperature: float = 0.0
-    candidate_generation_max_output_tokens: int = 2048
-    candidate_generation_temperature: float = 0.0
-    verification_max_output_tokens: int = 1024
-    verification_temperature: float = 0.0
-    max_response_bytes: int = 1_048_576
-
-    @classmethod
-    def from_environment(cls, environment: Mapping[str, str] | None = None) -> EvaluationSettings:
-        """Load ground-truth synthesis settings from process environment variables.
-
-        Every tunable above is overridable as ``GROUNDTRUTH_<FIELD_NAME>`` and keeps its declared
-        default otherwise, so no declared value can be silently ignored by the loader.
-        """
-        values = os.environ if environment is None else environment
-        overrides = {
-            name: converter(values[f"GROUNDTRUTH_{name.upper()}"])
-            for name, converter in _EVALUATION_TUNABLES.items()
-            if f"GROUNDTRUTH_{name.upper()}" in values
-        }
-        return cls(**overrides, embedding_profile=values["EMBEDDING_PROFILE"].strip())
-
-
 def _parse_boolean(value: str) -> bool:
     """Parse one JSON boolean from an environment variable."""
     parsed = json.loads(value.lower())
