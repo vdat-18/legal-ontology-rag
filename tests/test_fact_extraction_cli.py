@@ -440,10 +440,10 @@ def test_fact_extraction_cli_persists_progress_if_interrupted_mid_document(
         fact_extraction_cli.main()
 
     facts = read_legal_facts(facts_path)
-    assert len(facts) == 5
-    assert {fact.source_chunk_id for fact in facts} == {f"chunk-{index}" for index in range(1, 6)}
-    assert read_extraction_progress(tmp_path / "extraction_progress.jsonl") == tuple(
-        ExtractionProgressRecord(chunk_id=f"chunk-{index}") for index in range(1, 6)
+    assert len(facts) == 1
+    assert facts[0].source_chunk_id == "chunk-1"
+    assert read_extraction_progress(tmp_path / "extraction_progress.jsonl") == (
+        ExtractionProgressRecord(chunk_id="chunk-1"),
     )
 
 

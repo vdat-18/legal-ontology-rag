@@ -27,7 +27,8 @@ describe retry-then-skip behavior.
   for embedding selection, retry bounds and delay, quality thresholds,
   screening and fact-extraction batch sizes, and every synthesis LLM
   operation's token/temperature bounds.
-- Fact extraction sends up to five independent reading windows per LLM call.
+- Fact extraction sends one reading window per LLM call. The batch-capable
+  interface remains in place, with `batch_size=1`, so each work unit is one target.
   A response must contain exactly one result per target id. Successful batches
   write facts once and then mark every target in that batch in
   `extraction_progress.jsonl`; exhausted batches remain resumable.
