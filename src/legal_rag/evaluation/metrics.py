@@ -149,11 +149,11 @@ def evaluate_samples(
 
 
 def _retrieval_scores(sample: EvaluationSample, k_values: Sequence[int]) -> dict[str, float] | None:
-    reference_ids = sample.expected_chunk_ids or sample.expected_source_names
-    retrieved_ids = sample.retrieved_chunk_ids or sample.retrieved_source_names
-    if not reference_ids or not retrieved_ids:
+    label_pair = _retrieval_label_pair(sample)
+    if label_pair is None:
         return None
 
+    reference_ids, retrieved_ids = label_pair
     reference_set = set(reference_ids)
     relevance_flags = _binary_relevance_flags(retrieved_ids, reference_set)
     relevant_positions = [index for index, is_relevant in enumerate(relevance_flags, 1) if is_relevant]
@@ -161,7 +161,7 @@ def _retrieval_scores(sample: EvaluationSample, k_values: Sequence[int]) -> dict
     scores = {
         "hit": 1.0 if relevant_count else 0.0,
         "mrr": 1.0 / relevant_positions[0] if relevant_positions else 0.0,
-        "precision": relevant_count / len(retrieved_ids),
+        "precision": relevant_count / len(retrieved_ids) if retrieved_ids else 0.0,
         "recall": relevant_count / len(reference_set),
     }
     for k in k_values:
@@ -172,6 +172,15 @@ def _retrieval_scores(sample: EvaluationSample, k_values: Sequence[int]) -> dict
         scores[f"recall@{k}"] = top_k_relevant_count / len(reference_set)
         scores[f"ndcg@{k}"] = _ndcg_at_k(top_k_flags, len(reference_set), k)
     return scores
+
+
+def _retrieval_label_pair(sample: EvaluationSample) -> tuple[tuple[str, ...], tuple[str, ...]] | None:
+    """Return comparable expected and retrieved retrieval labels."""
+    if sample.expected_chunk_ids:
+        return sample.expected_chunk_ids, sample.retrieved_chunk_ids
+    if sample.expected_source_names:
+        return sample.expected_source_names, sample.retrieved_source_names
+    return None
 
 
 def _binary_relevance_flags(retrieved_ids: Sequence[str], reference_set: set[str]) -> list[int]:

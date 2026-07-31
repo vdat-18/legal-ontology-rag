@@ -37,7 +37,7 @@ def handle_index(args: argparse.Namespace) -> None:
 
 def handle_query(args: argparse.Namespace) -> None:
     """Query the Corrective RAG pipeline and output the response."""
-    logger.info(f"Querying Corrective RAG for: '{args.query}'")
+    logger.info("Querying Corrective RAG.")
     try:
         config = RAGConfig.from_env()
         pipeline = CorrectiveRAGPipeline(config)

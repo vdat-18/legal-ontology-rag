@@ -137,7 +137,7 @@ def _handle_run(args: argparse.Namespace) -> None:
     rows: list[dict[str, Any]] = []
     try:
         for index, sample in enumerate(samples, 1):
-            logger.info("Evaluating sample {}/{}: {}", index, len(samples), sample.question)
+            logger.info("Evaluating sample {}/{}", index, len(samples))
             result = pipeline.run(sample.question, limit=args.limit)
             rows.append(_prediction_row(sample, result))
     finally:
@@ -175,7 +175,7 @@ def _handle_retrieve(args: argparse.Namespace) -> None:
     rows: list[dict[str, Any]] = []
     try:
         for index, sample in enumerate(samples, 1):
-            logger.info("Retrieving sample {}/{}: {}", index, len(samples), sample.question)
+            logger.info("Retrieving sample {}/{}", index, len(samples))
             retrieved_chunks = db.search(sample.question, limit=args.limit)
             rows.append(_retrieval_prediction_row(sample, retrieved_chunks))
     finally:

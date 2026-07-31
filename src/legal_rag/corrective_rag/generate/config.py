@@ -14,12 +14,6 @@ from dotenv import load_dotenv
 
 from legal_rag.settings import ChunkerSettings, Settings
 
-_LLM_ENV_DEFAULTS = {
-    "LLM_BASE_URL": "https://api.openai.com/v1",
-    "LLM_API_KEY": "dummy-key",
-    "LLM_MODEL": "gpt-3.5-turbo",
-    "LLM_TIMEOUT_SECONDS": "60.0",
-}
 _CHUNKER_ENV_DEFAULTS = {
     "EMBEDDING_PROFILE": "vietnamese_embedding",
     "CHUNK_MAX_TOKENS": "512",
@@ -41,9 +35,17 @@ class RAGConfig:
     milvus_token: str | None
     milvus_database: str
     milvus_collection_name: str
+    milvus_index_type: str
+    milvus_metric_type: str
+    milvus_nlist: int
+    milvus_nprobe: int
+    milvus_flush_after_insert: bool
     index_batch_size: int
+    evaluator_max_output_tokens: int
+    evaluator_temperature: float
     evaluator_upper_threshold: float
     evaluator_lower_threshold: float
+    max_response_bytes: int
     refinement_max_strips_per_chunk: int
     refinement_strip_max_chars: int
     refinement_top_internal_strips: int
@@ -65,7 +67,7 @@ class RAGConfig:
         if environment is None:
             load_dotenv()
         values = os.environ if environment is None else environment
-        llm_settings = Settings.from_environment(_with_defaults(values, _LLM_ENV_DEFAULTS))
+        llm_settings = Settings.from_environment(values)
         chunker_settings = ChunkerSettings.from_environment(_with_defaults(values, _CHUNKER_ENV_DEFAULTS))
 
         # Ensure data folder exists
@@ -82,9 +84,17 @@ class RAGConfig:
             milvus_token=values.get("MILVUS_TOKEN", "").strip() or None,
             milvus_database=values.get("MILVUS_DATABASE", "default").strip() or "default",
             milvus_collection_name=values.get("CRAG_MILVUS_COLLECTION_NAME", "legal_chunks").strip() or "legal_chunks",
+            milvus_index_type=values.get("CRAG_MILVUS_INDEX_TYPE", "IVF_FLAT").strip() or "IVF_FLAT",
+            milvus_metric_type=values.get("CRAG_MILVUS_METRIC_TYPE", "COSINE").strip() or "COSINE",
+            milvus_nlist=_read_int(values, "CRAG_MILVUS_NLIST", 128),
+            milvus_nprobe=_read_int(values, "CRAG_MILVUS_NPROBE", 16),
+            milvus_flush_after_insert=_read_bool(values, "CRAG_MILVUS_FLUSH_AFTER_INSERT", True),
             index_batch_size=_read_int(values, "MILVUS_INDEX_BATCH_SIZE", 32),
+            evaluator_max_output_tokens=_read_int(values, "CRAG_EVALUATOR_MAX_OUTPUT_TOKENS", 1024),
+            evaluator_temperature=_read_float(values, "CRAG_EVALUATOR_TEMPERATURE", 0.0),
             evaluator_upper_threshold=_read_float(values, "CRAG_EVALUATOR_UPPER_THRESHOLD", 0.70),
             evaluator_lower_threshold=_read_float(values, "CRAG_EVALUATOR_LOWER_THRESHOLD", 0.35),
+            max_response_bytes=_read_int(values, "CRAG_MAX_RESPONSE_BYTES", 1_048_576),
             refinement_max_strips_per_chunk=_read_int(values, "CRAG_REFINEMENT_MAX_STRIPS_PER_CHUNK", 8),
             refinement_strip_max_chars=_read_int(values, "CRAG_REFINEMENT_STRIP_MAX_CHARS", 900),
             refinement_top_internal_strips=_read_int(values, "CRAG_REFINEMENT_TOP_INTERNAL_STRIPS", 6),
@@ -107,18 +117,12 @@ def _with_defaults(values: Mapping[str, str], defaults: Mapping[str, str]) -> Ma
 
 def _read_float(values: Mapping[str, str], name: str, default: float) -> float:
     """Read a float environment variable."""
-    try:
-        return float(values.get(name, str(default)))
-    except ValueError:
-        return default
+    return float(values.get(name, str(default)))
 
 
 def _read_int(values: Mapping[str, str], name: str, default: int) -> int:
     """Read an integer environment variable."""
-    try:
-        return int(values.get(name, str(default)))
-    except ValueError:
-        return default
+    return int(values.get(name, str(default)))
 
 
 def _read_bool(values: Mapping[str, str], name: str, default: bool) -> bool:

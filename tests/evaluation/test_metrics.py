@@ -64,6 +64,50 @@ def test_metrics_to_dict_uses_json_friendly_k_keys() -> None:
     assert data["hit_rate_at_k"] == {"1": 1.0}
 
 
+def test_retrieval_metrics_compare_only_matching_label_types() -> None:
+    """Retrieval scoring never compares chunk IDs against source names."""
+    samples = [
+        EvaluationSample(
+            question="q1",
+            expected_source_names=("source-a",),
+            retrieved_chunk_ids=("chunk-a",),
+            retrieved_source_names=("source-a",),
+        ),
+        EvaluationSample(
+            question="q2",
+            expected_chunk_ids=("chunk-b",),
+            retrieved_source_names=("chunk-b",),
+        ),
+    ]
+
+    metrics = evaluate_samples(samples, k_values=(1,))
+
+    assert metrics.retrieval_sample_count == 2
+    assert metrics.hit_rate == 0.5
+    assert metrics.precision_at_k == {1: 0.5}
+    assert metrics.recall_at_k == {1: 0.5}
+
+
+def test_retrieval_metrics_count_empty_retrieval_as_zero() -> None:
+    """Ground-truth retrieval samples with empty retrieved IDs remain in evaluation."""
+    sample = EvaluationSample(
+        question="q1",
+        expected_chunk_ids=("chunk-a",),
+        retrieved_chunk_ids=(),
+    )
+
+    metrics = evaluate_samples([sample], k_values=(1, 3))
+
+    assert metrics.retrieval_sample_count == 1
+    assert metrics.hit_rate == 0.0
+    assert metrics.mrr == 0.0
+    assert metrics.precision_at_k == {1: 0.0, 3: 0.0}
+    assert metrics.recall_at_k == {1: 0.0, 3: 0.0}
+    assert metrics.ndcg_at_k == {1: 0.0, 3: 0.0}
+    assert metrics.context_precision == 0.0
+    assert metrics.context_recall == 0.0
+
+
 def test_load_jsonl_samples_accepts_pipeline_result_shape(tmp_path) -> None:
     """Loader extracts answer and retrieval fields from a CRAG result-shaped row."""
     path = tmp_path / "predictions.jsonl"

@@ -37,8 +37,8 @@ python -m legal_rag.evaluation score data/evaluation/predictions.jsonl --k-value
 Run retrieval-only evaluation without LLM calls:
 
 ```powershell
-docker compose up -d milvus-etcd milvus-minio milvus-standalone
-python -m legal_rag.corrective_rag.cli index --data-dir data/processed/groundtruth
+docker compose --profile milvus up -d milvus
+python -m legal_rag.corrective_rag.api.cli index --data-dir data/processed/groundtruth
 python -m legal_rag.evaluation retrieve --ground-truth data/evaluation/ground_truth.jsonl --limit 10 --k-values 1,3,5,10
 ```
 
@@ -48,29 +48,7 @@ Run CRAG against reviewed ground truth and score the output:
 python -m legal_rag.evaluation run --ground-truth data/evaluation/ground_truth.jsonl --k-values 1,3,5,10
 ```
 
-Generation code lives in `src/legal_rag/evaluation/`. Use the Python service
-API `generate_groundtruth_candidates(...)` for candidate generation. It uses
-Ragas through the `evaluation` optional dependency. Do not edit packages inside
-`.venv`.
-
-Before running Ragas generation, copy `.env.example` to `.env` and set
-`OPENAI_API_KEY`, `RAGAS_LLM_PROVIDER`, `RAGAS_LLM_MODEL`,
-`RAGAS_EMBEDDING_PROVIDER`, and `RAGAS_EMBEDDING_MODEL`.
-
-Example:
-
-```python
-from datetime import date
-
-from dotenv import load_dotenv
-
-from legal_rag.config import Settings
-from legal_rag.evaluation import generate_groundtruth_candidates
-
-load_dotenv()
-generate_groundtruth_candidates(
-    Settings.from_env(),
-    testset_size=20,
-    as_of_date=date(2025, 2, 1),
-)
-```
+The `src/legal_rag/evaluation/` package only scores existing prediction or
+retrieval JSONL files. Benchmark synthesis code lives in
+`src/legal_rag/benchmark_synthesis/`; it no longer uses Ragas or `RAGAS_*`
+environment variables. Do not edit packages inside `.venv`.

@@ -894,14 +894,14 @@ còn tồn tại; nội dung này được viết lại ở Phase 0.
 **Đổi lại sau đó:** tên `evaluation/` gây hiểu lầm — nó đọc như "đo lường chất
 lượng hệ RAG", trong khi toàn bộ module ở đây chỉ *sinh* dữ liệu ground truth
 (fact → duyệt → evidence graph → scenario → candidate), không đo gì cả. Việc
-đo lường thật (Recall@k, Faithfulness, Answer correctness... qua `deepeval`,
+đo lường thật (Recall@k, Faithfulness, Answer correctness...),
 mục 16) là một mối quan tâm khác, chưa có code, sẽ cần vị trí riêng của nó khi
 tới Phase 8. Do đó `src/legal_rag/evaluation/` và `data/evaluation/` được đổi
 tên thành `src/legal_rag/benchmark_synthesis/` và `data/benchmark_synthesis/`
 — khớp với mục đích thật (sinh benchmark) và không còn xung đột tên với phần
 đánh giá RAG thật sẽ thêm sau. Extra `evaluation` trong `pyproject.toml`
-(nhóm dependency: `deepeval`, `rapidfuzz`, `sentence-transformers`) giữ
-nguyên tên, vì nó sẽ tiếp tục phục vụ cả code synthesis hiện tại lẫn code
+(nhóm dependency hiện dùng: `rapidfuzz`, `sentence-transformers`) giữ
+nguyên tên, vì nó tiếp tục phục vụ cả code synthesis hiện tại lẫn code
 đánh giá RAG thật ở Phase 8.
 
 ### Phase 0 — Hạ tầng dùng chung ✅ Đã triển khai
@@ -925,7 +925,7 @@ phép này là nguồn lỗi tinh vi. `rapidfuzz` nhỏ, thuần Python/C, khôn
 theo dependency nặng — hợp lý theo tiêu chí "thư viện hiện có không đủ" của
 AGENTS.md. Đặt trong extra `evaluation`, không phải dependency chính: toàn bộ
 pipeline synthesis vốn đã được tách khỏi core (parser/chunker) qua extra này,
-nên `rapidfuzz` đi cùng chỗ với `deepeval` và `sentence-transformers` thay vì
+nên `rapidfuzz` đi cùng chỗ với `sentence-transformers` thay vì
 buộc mọi người dùng `legal-parse`/`legal-chunk` phải cài thêm nó.
 
 **Atomic JSONL writer dùng chung.** `parser/writer.py` và `chunker/writer.py`
@@ -1205,9 +1205,9 @@ trình thủ công nằm ngoài phạm vi code, không cần module.
 - `splitting.py` — chia `dev`/`test`/`hidden_test` theo thành phần liên thông
   của evidence graph chứa `fact_id`, không theo từng candidate.
 
-Phần đánh giá retrieval/generator/end-to-end tái dùng `deepeval` (đã có trong
-extra `evaluation`) cho các metric LLM-judge; `Accuracy theo field` ở mục 16
-là so khớp tất định thuần Python, không qua `deepeval`.
+Phần đánh giá retrieval/generator/end-to-end hiện dùng metric tất định thuần
+Python trong `src/legal_rag/evaluation/`; nếu sau này thêm metric LLM-judge thì
+cần khai báo dependency trực tiếp ở thời điểm đó.
 
 ### Tổng hợp thay đổi ngoài `benchmark_synthesis/`
 
@@ -1224,8 +1224,8 @@ là so khớp tất định thuần Python, không qua `deepeval`.
   không bỏ kiểm tra tất định ở tầng candidate. `evidence_graph_cli.py` và
   `candidate_generation_cli.py` không còn lọc theo `approved`, dùng thẳng
   mọi fact trong `legal_facts.jsonl`. ✅ **Đã áp dụng.**
-- `pyproject.toml`: extra `evaluation` đổi thành `deepeval`, `rapidfuzz`,
-  `sentence-transformers` — gỡ `ragas`, `langchain-community`,
+- `pyproject.toml`: extra `evaluation` đổi thành `rapidfuzz`,
+  `sentence-transformers` — gỡ `deepeval`, `ragas`, `langchain-community`,
   `langchain-openai` (không còn code nào import sau khi pipeline Ragas cũ bị
   xóa); thêm console script mới cho từng CLI ở các phase sau. ✅ **Đã áp
   dụng** ở Phase 0.

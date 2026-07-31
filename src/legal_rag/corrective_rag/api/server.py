@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from threading import RLock
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.concurrency import run_in_threadpool
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -191,11 +191,7 @@ def create_app(
     def health(request: Request) -> HealthResponse:
         """Return API health without loading the heavy CRAG pipeline."""
         request_provider = _get_provider(request.app)
-        try:
-            config = request_provider.get_config()
-        except Exception as exc:
-            logger.exception("FastAPI health check failed while loading config.")
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        config = request_provider.get_config()
 
         return HealthResponse(
             status="ok",
@@ -210,40 +206,28 @@ def create_app(
     async def query_crag(payload: QueryRequest, request: Request) -> QueryResponse:
         """Run the full Corrective RAG pipeline for one question."""
         request_provider = _get_provider(request.app)
-        try:
-            pipeline = request_provider.get_pipeline()
-            result = await run_in_threadpool(pipeline.run, payload.query, payload.limit)
-        except Exception as exc:
-            logger.exception("FastAPI CRAG query failed.")
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        pipeline = request_provider.get_pipeline()
+        result = await run_in_threadpool(pipeline.run, payload.query, payload.limit)
         return QueryResponse.model_validate(result)
 
     @fastapi_app.post("/crag/search", response_model=SearchResponse)
     async def search_vector_db(payload: SearchRequest, request: Request) -> SearchResponse:
         """Run vector-only retrieval against the configured Milvus collection."""
         request_provider = _get_provider(request.app)
-        try:
-            pipeline = request_provider.get_pipeline()
-            results = await run_in_threadpool(pipeline.db.search, payload.query, payload.limit)
-        except Exception as exc:
-            logger.exception("FastAPI vector search failed.")
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        pipeline = request_provider.get_pipeline()
+        results = await run_in_threadpool(pipeline.db.search, payload.query, payload.limit)
         return SearchResponse(query=payload.query, limit=payload.limit, results=results)
 
     @fastapi_app.post("/crag/web-search", response_model=WebSearchResponse)
     async def search_web(payload: SearchRequest, request: Request) -> WebSearchResponse:
         """Run direct web search without loading the vector or LLM pipeline."""
         request_provider = _get_provider(request.app)
+        config = request_provider.get_config()
+        web_search = WebSearchProvider(config)
         try:
-            config = request_provider.get_config()
-            web_search = WebSearchProvider(config)
-            try:
-                results = await run_in_threadpool(web_search.search, payload.query)
-            finally:
-                web_search.close()
-        except Exception as exc:
-            logger.exception("FastAPI web search failed.")
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
+            results = await run_in_threadpool(web_search.search, payload.query)
+        finally:
+            web_search.close()
         return WebSearchResponse(
             query=payload.query,
             limit=payload.limit,

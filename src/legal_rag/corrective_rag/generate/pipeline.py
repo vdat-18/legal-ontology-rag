@@ -13,11 +13,15 @@ from legal_rag.corrective_rag.generate.actions import ActionTrigger
 from legal_rag.corrective_rag.generate.config import RAGConfig
 from legal_rag.corrective_rag.generate.generator import ResponseGenerator
 from legal_rag.corrective_rag.generate.grader import CorrectiveGrader
-from legal_rag.corrective_rag.generate.models import GradedChunk, KnowledgeItem
+from legal_rag.corrective_rag.generate.models import GradedChunk, KnowledgeAction, KnowledgeItem
 from legal_rag.corrective_rag.generate.refiner import KnowledgeRefiner
 from legal_rag.corrective_rag.generate.web_search import WebSearchProvider
 from legal_rag.corrective_rag.retrieval.database import LegalVectorDB
 from legal_rag.corrective_rag.retrieval.embeddings import EmbeddingModel
+
+_CORRECT_ACTIONS: set[KnowledgeAction] = {"CORRECT"}
+_AMBIGUOUS_ACTIONS: set[KnowledgeAction] = {"AMBIGUOUS"}
+_USABLE_KNOWLEDGE_ACTIONS: set[KnowledgeAction] = {"CORRECT", "AMBIGUOUS"}
 
 
 class CorrectiveRAGPipeline:
@@ -51,7 +55,7 @@ class CorrectiveRAGPipeline:
         Returns:
             A dictionary containing pipeline metadata and the final answer.
         """
-        logger.info(f"Running Corrective RAG for query: '{query}'")
+        logger.info("Running Corrective RAG query.")
 
         # Step 1: Initial retrieval
         retrieved_chunks = self.db.search(query, limit=limit)
@@ -80,18 +84,36 @@ class CorrectiveRAGPipeline:
 
         if retrieval_action == "CORRECT":
             logger.info("CRAG action: CORRECT. Refining internal retrieved knowledge.")
-            internal_knowledge = self.refiner.refine_internal(query, graded_chunks)
+            internal_knowledge = self.refiner.refine_internal(
+                query,
+                graded_chunks,
+                allowed_actions=_CORRECT_ACTIONS,
+                allowed_strip_actions=_USABLE_KNOWLEDGE_ACTIONS,
+            )
         elif retrieval_action == "INCORRECT":
             logger.info("CRAG action: INCORRECT. Discarding retrieval and searching external knowledge.")
             reformulated_query = self.generator.reformulate_query(query)
             external_documents = self.web_search.search(reformulated_query)
-            external_knowledge = self.refiner.refine_external(query, external_documents)
+            external_knowledge = self.refiner.refine_external(
+                query,
+                external_documents,
+                allowed_strip_actions=_USABLE_KNOWLEDGE_ACTIONS,
+            )
         else:
             logger.info("CRAG action: AMBIGUOUS. Combining internal refinement and external search.")
-            internal_knowledge = self.refiner.refine_internal(query, graded_chunks)
+            internal_knowledge = self.refiner.refine_internal(
+                query,
+                graded_chunks,
+                allowed_actions=_AMBIGUOUS_ACTIONS,
+                allowed_strip_actions=_USABLE_KNOWLEDGE_ACTIONS,
+            )
             reformulated_query = self.generator.reformulate_query(query)
             external_documents = self.web_search.search(reformulated_query)
-            external_knowledge = self.refiner.refine_external(query, external_documents)
+            external_knowledge = self.refiner.refine_external(
+                query,
+                external_documents,
+                allowed_strip_actions=_USABLE_KNOWLEDGE_ACTIONS,
+            )
 
         # Step 4: Final generation from action-selected corrected knowledge
         corrected_knowledge = internal_knowledge + external_knowledge

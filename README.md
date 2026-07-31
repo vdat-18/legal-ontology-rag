@@ -42,6 +42,12 @@ Server-backed indexing flushes inserts before final verification. Milvus Lite on
 
 ## Corrective RAG
 
+Install the CRAG API, Milvus, embedding, and Streamlit runtime dependencies:
+
+```powershell
+.venv\Scripts\python.exe -m pip install -e ".[corrective-rag]"
+```
+
 Corrective RAG uses the shared Docker Milvus instance, not Milvus Lite. Start Milvus before indexing, retrieval, or evaluation:
 
 ```powershell
@@ -56,8 +62,25 @@ MILVUS_URI=http://localhost:19530
 MILVUS_TOKEN=root:<MILVUS_ROOT_PASSWORD>
 MILVUS_DATABASE=legal_rag
 CRAG_MILVUS_COLLECTION_NAME=legal_chunks
+CRAG_MILVUS_INDEX_TYPE=IVF_FLAT
+CRAG_MILVUS_METRIC_TYPE=COSINE
+CRAG_MILVUS_NLIST=128
+CRAG_MILVUS_NPROBE=16
+CRAG_MILVUS_FLUSH_AFTER_INSERT=true
 MILVUS_INDEX_BATCH_SIZE=32
+CRAG_WEB_SEARCH_ALLOWED_DOMAINS=chinhphu.vn,vanban.chinhphu.vn,moj.gov.vn
 ```
+
+Corrective RAG validates its Milvus collection schema, vector dimension, vector
+metric, chunk content hashes, chunker config hash, and embedding
+model/revision metadata before reusing indexed rows. Collections created by an
+older CRAG indexer without these metadata fields are intentionally rejected;
+drop and rebuild `CRAG_MILVUS_COLLECTION_NAME` rather than mixing stale chunks.
+
+When `CRAG_WEB_SEARCH_ENABLED=true`, web search requires a non-empty domain
+allowlist. Only HTTP(S) result URLs are fetched, redirects are checked again at
+their final URL, and loopback, private, link-local, reserved, or multicast
+addresses are blocked.
 
 Index the processed chunks once after starting a fresh Milvus database:
 

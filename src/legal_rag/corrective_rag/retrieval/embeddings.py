@@ -13,6 +13,7 @@ import torch
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 
+from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.embedding.profiles import load_configured_embedding_profile
 
 
@@ -27,7 +28,10 @@ class EmbeddingModel:
         """
         logger.info(f"Loading embedding profile: {profile_id}")
         profile = load_configured_embedding_profile(profile_id)
+        self.profile = profile
+        self.profile_id = profile.profile_id
         self.model_id = profile.model_id
+        self.model_revision = profile.model_revision
         self.dimensions = profile.dimensions
         self.max_input_tokens = profile.max_input_tokens
         self.query_instruction = profile.query_instruction
@@ -43,6 +47,7 @@ class EmbeddingModel:
             device=self.device,
             local_files_only=local_files_only,
         )
+        self.encoder = EmbeddingEncoder(profile, self.model)
         logger.info("Embedding model loaded successfully.")
 
     def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
@@ -58,8 +63,7 @@ class EmbeddingModel:
             return []
 
         logger.info(f"Generating embeddings for {len(texts)} documents...")
-        embeddings = self.model.encode(list(texts), batch_size=32, show_progress_bar=False, convert_to_numpy=True)
-        # Convert numpy array to list of floats
+        embeddings = self.encoder.encode(texts)
         return embeddings.tolist()
 
     def embed_query(self, text: str) -> list[float]:
@@ -71,18 +75,14 @@ class EmbeddingModel:
         Returns:
             A dense vector representation of the query (list of floats).
         """
-        # Apply query instruction if configured (e.g. for Qwen)
-        formatted_query = text
-        if self.query_instruction:
-            formatted_query = f"{self.query_instruction}{text}"
-
-        logger.debug(f"Embedding query: '{formatted_query[:60]}...'")
-        embedding = self.model.encode(formatted_query, convert_to_numpy=True)
+        logger.debug("Embedding one query.")
+        embedding = self.encoder.encode_query([text])[0]
         return embedding.tolist()
 
     def close(self) -> None:
         """Release resources and clear cache."""
         logger.info("Cleaning up embedding model resources...")
+        del self.encoder
         del self.model
         if torch.cuda.is_available():
             torch.cuda.empty_cache()

@@ -8,9 +8,12 @@ from dataclasses import dataclass
 
 from loguru import logger
 
+from legal_rag.corrective_rag.generate.actions import ActionTrigger
 from legal_rag.corrective_rag.generate.config import RAGConfig
 from legal_rag.corrective_rag.generate.grader import CorrectiveGrader
 from legal_rag.corrective_rag.generate.models import GradedChunk, KnowledgeAction, KnowledgeItem, KnowledgeKind
+
+_USABLE_KNOWLEDGE_ACTIONS: set[KnowledgeAction] = {"CORRECT", "AMBIGUOUS"}
 
 
 class KnowledgeRefiner:
@@ -20,6 +23,10 @@ class KnowledgeRefiner:
         """Initialize the refiner."""
         self.config = config
         self.grader = grader
+        self.action_trigger = ActionTrigger(
+            lower_threshold=config.evaluator_lower_threshold,
+            upper_threshold=config.evaluator_upper_threshold,
+        )
 
     def refine_internal(
         self,
@@ -27,8 +34,11 @@ class KnowledgeRefiner:
         graded_chunks: Sequence[GradedChunk],
         *,
         allowed_actions: set[KnowledgeAction] | None = None,
+        allowed_strip_actions: set[KnowledgeAction] | None = None,
     ) -> list[KnowledgeItem]:
         """Select top internal knowledge strips from retrieved chunks."""
+        if allowed_strip_actions is None:
+            allowed_strip_actions = _USABLE_KNOWLEDGE_ACTIONS
         candidates: list[_CandidateStrip] = []
         for chunk_position, graded_chunk in enumerate(graded_chunks):
             if allowed_actions is not None and graded_chunk.action not in allowed_actions:
@@ -43,6 +53,7 @@ class KnowledgeRefiner:
                     chunk_id=str(chunk.get("chunk_id") or "") or None,
                     url=None,
                     source_position=chunk_position,
+                    allowed_actions=allowed_strip_actions,
                 )
             )
 
@@ -50,8 +61,16 @@ class KnowledgeRefiner:
         logger.info("Refined {} internal knowledge items.", len(knowledge))
         return knowledge
 
-    def refine_external(self, query: str, documents: Sequence[Mapping[str, str]]) -> list[KnowledgeItem]:
+    def refine_external(
+        self,
+        query: str,
+        documents: Sequence[Mapping[str, str]],
+        *,
+        allowed_strip_actions: set[KnowledgeAction] | None = None,
+    ) -> list[KnowledgeItem]:
         """Select top external knowledge strips from web documents."""
+        if allowed_strip_actions is None:
+            allowed_strip_actions = _USABLE_KNOWLEDGE_ACTIONS
         candidates: list[_CandidateStrip] = []
         for source_position, document in enumerate(documents):
             candidates.extend(
@@ -63,6 +82,7 @@ class KnowledgeRefiner:
                     chunk_id=None,
                     url=document.get("url"),
                     source_position=source_position,
+                    allowed_actions=allowed_strip_actions,
                 )
             )
 
@@ -80,6 +100,7 @@ class KnowledgeRefiner:
         chunk_id: str | None,
         url: str | None,
         source_position: int,
+        allowed_actions: set[KnowledgeAction],
     ) -> list[_CandidateStrip]:
         strips = _split_strips(
             text,
@@ -90,11 +111,15 @@ class KnowledgeRefiner:
         candidates: list[_CandidateStrip] = []
         for strip_position, strip in enumerate(strips):
             evaluation = self.grader.score_document(query, strip)
+            action = self.action_trigger.classify_score(evaluation.score)
+            if action not in allowed_actions:
+                continue
             candidates.append(
                 _CandidateStrip(
                     text=strip,
                     source_name=source_name,
                     score=evaluation.score,
+                    action=action,
                     kind=kind,
                     source_position=source_position,
                     strip_position=strip_position,
@@ -112,6 +137,7 @@ class _CandidateStrip:
     text: str
     source_name: str
     score: float
+    action: KnowledgeAction
     kind: KnowledgeKind
     source_position: int
     strip_position: int
@@ -124,7 +150,10 @@ def _select_relevant_knowledge(candidates: Sequence[_CandidateStrip], *, top_n: 
     if top_n <= 0:
         return []
 
-    selected = sorted(candidates, key=lambda item: (-item.score, item.source_position, item.strip_position))[:top_n]
+    relevant_candidates = [item for item in candidates if item.score > 0.0]
+    selected = sorted(relevant_candidates, key=lambda item: (-item.score, item.source_position, item.strip_position))[
+        :top_n
+    ]
     return [
         KnowledgeItem(
             text=item.text,

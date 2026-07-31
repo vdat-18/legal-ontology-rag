@@ -37,11 +37,16 @@ class ResponseGenerator:
 
         context = _format_crag_knowledge_context(relevant_chunks)
         system_prompt = (
-            "You are a careful Vietnamese road-traffic-law assistant. "
-            "Answer in Vietnamese. Use only the provided knowledge. "
+            "You are a careful Vietnamese road-traffic-law information assistant. "
+            "Answer in Vietnamese. This task is allowed public legal information, not legal advice or wrongdoing. "
+            "Do not refuse to answer traffic-penalty questions when the provided knowledge contains matching legal "
+            "grounds, sanction ranges, license-point deductions, or remedial measures. "
+            "Use only the provided knowledge. "
             "When Knowledge1 and Knowledge2 are both present, treat Knowledge1 as refined internal corpus knowledge "
             "and Knowledge2 as external corrective knowledge. "
             "Prefer official legal sources. Cite the source name, and cite the URL for web sources. "
+            "If a knowledge item directly answers the question, state the applicable conduct and penalty clearly. "
+            "Do not answer about unrelated conduct just because it appears in the context. "
             "If the provided knowledge is insufficient, say that the available documents do not contain enough information."
         )
         user_prompt = f"REFERENCE KNOWLEDGE:\n{context}\n\nQUESTION:\n{query}"
@@ -49,25 +54,16 @@ class ResponseGenerator:
         payload = {
             "model": self.config.llm_model,
             "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
-            "temperature": 0.2,
+            "temperature": 0.0,
         }
 
-        try:
-            logger.info("Requesting answer generation from LLM...")
-            response = self.client.post("/chat/completions", json=payload)
-            response.raise_for_status()
-            response_json = response.json()
-        except Exception as e:
-            logger.error(f"Error calling LLM for generation: {e}")
-            return f"Da xay ra loi khi ket noi voi mo hinh ngon ngu de tao cau tra loi: {e}"
-        else:
-            choices = response_json.get("choices", [])
-            if not choices:
-                return "Loi: Khong nhan duoc phan hoi tu mo hinh ngon ngu."
-
-            answer = choices[0].get("message", {}).get("content", "").strip()
-            logger.info("Answer generated successfully.")
-            return answer
+        logger.info("Requesting answer generation from LLM...")
+        response = self.client.post("/chat/completions", json=payload)
+        response.raise_for_status()
+        response_json = response.json()
+        answer = _message_content(response_json, "generation")
+        logger.info("Answer generated successfully.")
+        return answer
 
     def reformulate_query(self, query: str) -> str:
         """Rewrite a user question into a compact legal search query."""
@@ -85,23 +81,16 @@ class ResponseGenerator:
             "temperature": 0.3,
         }
 
-        try:
-            logger.info(f"Triggering query reformulation for: '{query}'")
-            response = self.client.post("/chat/completions", json=payload)
-            response.raise_for_status()
-            response_json = response.json()
-        except Exception as e:
-            logger.error(f"Error during query reformulation: {e}")
-            return query
-
-        choices = response_json.get("choices", [])
-        if not choices:
-            return query
-
-        new_query = choices[0].get("message", {}).get("content", "").strip()
-        new_query = new_query.strip("\"'")
-        logger.info(f"Query reformulated to: '{new_query}'")
-        return new_query or query
+        logger.info("Triggering query reformulation.")
+        response = self.client.post("/chat/completions", json=payload)
+        response.raise_for_status()
+        response_json = response.json()
+        new_query = _message_content(response_json, "query reformulation").strip("\"'")
+        if not new_query:
+            msg = "LLM query reformulation response was empty after trimming quotes."
+            raise ValueError(msg)
+        logger.info("Query reformulation completed.")
+        return new_query
 
     def close(self) -> None:
         """Close the HTTP client connection."""
@@ -115,6 +104,20 @@ def _as_mapping(item: Mapping[str, Any] | Any) -> Mapping[str, Any]:
     if is_dataclass(item):
         return asdict(item)
     return {}
+
+
+def _message_content(response_json: dict[str, object], context: str) -> str:
+    """Return the first chat completion message content."""
+    choices = response_json.get("choices")
+    if not isinstance(choices, list) or not choices:
+        msg = f"LLM {context} response did not include choices."
+        raise ValueError(msg)
+    message = choices[0].get("message") if isinstance(choices[0], dict) else None
+    content = message.get("content") if isinstance(message, dict) else None
+    if not isinstance(content, str) or not content.strip():
+        msg = f"LLM {context} response did not include message content."
+        raise ValueError(msg)
+    return content.strip()
 
 
 def _format_crag_knowledge_context(relevant_chunks: Sequence[Mapping[str, Any] | Any]) -> str:
