@@ -12,7 +12,7 @@ RUN apt-get update \
 # Installed as its own layer so it is only invalidated by dependency changes,
 # not by every source edit.
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-install-project --extra evaluation --extra naive-rag --extra vietnamese
+RUN uv sync --frozen --no-install-project --extra api --extra evaluation --extra naive-rag --extra vietnamese
 
 # baml_client/ is git-ignored and must be generated before the project itself
 # can be installed, since legal_rag imports it.
@@ -20,6 +20,6 @@ COPY src/ src/
 COPY baml_src/ baml_src/
 COPY README.md ./
 RUN uv run baml-cli generate --from baml_src --no-tests \
-    && uv sync --frozen --extra evaluation --extra naive-rag --extra vietnamese
+    && uv sync --frozen --extra api --extra evaluation --extra naive-rag --extra vietnamese
 
 CMD ["bash"]
