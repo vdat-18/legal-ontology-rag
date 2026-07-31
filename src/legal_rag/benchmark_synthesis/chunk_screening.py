@@ -110,6 +110,7 @@ def screen_chunks(
     *,
     batch_size: int,
     max_retries: int,
+    retry_delay_seconds: float,
     on_batch_screened: Callable[[Sequence[ChunkScreeningRecord]], None] | None = None,
 ) -> tuple[ChunkScreeningRecord, ...]:
     """Screen every chunk, retrying a failed batch before skipping it; call on_batch_screened after each batch."""
@@ -124,6 +125,7 @@ def screen_chunks(
                 task_key,
                 lambda items=items: _screen_batch(client, items),
                 max_retries=max_retries,
+                retry_delay_seconds=retry_delay_seconds,
             )
         except LlmTaskExhaustedError as error:
             failures.append(LlmTaskFailure(task_key=task_key, error=str(error)))

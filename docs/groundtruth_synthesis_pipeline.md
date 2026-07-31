@@ -6,7 +6,7 @@ This section is authoritative where older implementation notes below still
 describe retry-then-skip behavior.
 
 - Every LLM work unit has bounded retry and a stable resume key: metadata,
-  screening batch, extraction target, relation pair, generation attempt,
+  screening batch, extraction batch, relation pair, generation attempt,
   critique attempt, evolution operation, and verification attempt.
 - Successful units are written atomically after completion. An exhausted unit
   is never marked complete; the CLI exits non-zero after preserving prior
@@ -24,8 +24,13 @@ describe retry-then-skip behavior.
 - The MVP taxonomy contains penalty-fact capabilities only. Authority,
   procedure, and exception queries wait for dedicated fact schemas.
 - `data/config/groundtruth/synthesis_v1.json` is the single source of truth
-  for embedding selection, retry bounds, quality thresholds, screening batch
-  size, and every synthesis LLM operation's token/temperature bounds.
+  for embedding selection, retry bounds and delay, quality thresholds,
+  screening and fact-extraction batch sizes, and every synthesis LLM
+  operation's token/temperature bounds.
+- Fact extraction sends up to five independent reading windows per LLM call.
+  A response must contain exactly one result per target id. Successful batches
+  write facts once and then mark every target in that batch in
+  `extraction_progress.jsonl`; exhausted batches remain resumable.
 - Every LLM-backed synthesis CLI requires `--synthesis-config`; synthesis
   tunables are not read from `.env`. Existing environment settings for other
   subsystems remain unchanged; synthesis only reads provider connection,
@@ -33,9 +38,9 @@ describe retry-then-skip behavior.
 - `legal-assemble-groundtruth` always hashes the required synthesis config in
   the run manifest, alongside any taxonomy/persona/distribution configs passed
   through additional `--config` arguments.
-- `groundtruth_corpus_v1.json` is the focused 10-document MVP corpus. The 35
-  existing chunk files correspond to `road_traffic_penalty_scope.json`'s broad
-  `in_scope` list and must not be described as the MVP corpus.
+- `groundtruth_corpus_v1.json` contains all 35 documents in
+  `road_traffic_penalty_scope.json`'s broad `in_scope` list; its corpus snapshot
+  freezes that complete selection for reproducible synthesis runs.
 
 ```text
 data/processed/groundtruth/
@@ -216,30 +221,17 @@ toàn văn bản, vì thông tin đó không nằm trong cửa sổ đọc của
 
 ### Gộp chunk khi một fact cần nhiều nguồn
 
-Một hành vi có thể có căn cứ nằm rải trên nhiều chunk, theo hai kiểu khác nhau,
-xử lý khác nhau:
+Trong fact extraction, cửa sổ đọc tạm thời chỉ mở rộng theo chunk liền kề:
 
 - **Chunk liền kề bị cắt bởi giới hạn token.** Chunker cắt một điều khoản dài
   thành hai chunk theo `previous_chunk_id`/`next_chunk_id` đã có sẵn trong
-  schema chunk. Gộp bằng cách kéo thêm tối đa 2 chunk liền trước và 1 chunk
+  schema chunk. Gộp bằng cách kéo thêm tối đa 1 chunk liền trước và 1 chunk
   liền sau vào cùng cửa sổ đọc, thuần cơ học, không cần LLM đoán.
-- **Chunk không liền kề nhưng cùng một hành vi.** Ví dụ mức phạt tiền nằm ở
-  Điều 6 nhưng số điểm trừ giấy phép quy định ở một điều hoặc phụ lục khác.
-  **Trích dẫn chéo tường minh**: nếu chunk chứa cụm dẫn chiếu kiểu "theo
-  Điều X", "quy định tại khoản Y Điều Z", trích các số điều/khoản này bằng
-  regex — đây là phân tích từ vựng nhỏ, được phép theo AGENTS.md — rồi tra
-  `provision_path` tương ứng để lấy đúng chunk đó vào cùng cửa sổ đọc. Tất
-  định, không cần LLM cho bước tìm kiếm. Không mở rộng tìm kiếm sang văn bản
-  khác ở bước này — quan hệ khác văn bản thuộc về evidence graph ở mục 4.
-  (Cơ chế tương đồng embedding trong cùng văn bản từng có ở đây đã bỏ: ứng
-  viên gợi ý không dựa trên trích dẫn thật dễ đưa ngữ cảnh không liên quan
-  vào cửa sổ đọc.)
-
-Chunk liền trước/trích dẫn được tra trên **toàn bộ chunk gốc của văn bản**,
+Chunk liền kề được tra trên **toàn bộ chunk gốc của văn bản**,
 không giới hạn trong tập đã qua được cổng sàng lọc — chỉ tập đã lọc mới quyết
 định chunk nào được chọn làm `Target` (tốn LLM call). Một chunk bị cổng sàng
 lọc loại (ví dụ đoạn định nghĩa không nêu mức phạt cụ thể) vẫn có thể được
-kéo vào làm ngữ cảnh `Adjacent`/`CitedProvision` cho một `Target` khác cần nó,
+kéo vào làm ngữ cảnh `Adjacent` cho một `Target` liền kề,
 vì việc tra cứu này thuần cơ học, không tốn thêm LLM call nào.
 
 ### Định danh fact tách khỏi nội dung fact
@@ -1026,8 +1018,8 @@ Phase 1.
 
 **Cấu hình.** `SynthesisSettings` nằm trong
 `benchmark_synthesis/config.py` và đọc từ file JSON versioned được truyền rõ
-qua `--synthesis-config`. File này sở hữu embedding profile, retry, threshold,
-batch size, giới hạn output và temperature cho từng LLM operation. Trong luồng
+qua `--synthesis-config`. File này sở hữu embedding profile, retry, thời gian
+chờ giữa các attempt, threshold, batch size, giới hạn output và temperature cho từng LLM operation. Trong luồng
 synthesis, `.env` chỉ cung cấp provider/credential/deployment settings; cấu hình
 env của các subsystem khác không thuộc thay đổi này. Persona, query taxonomy,
 phân bố scenario và evolution tiếp tục nằm ở các file JSON versioned riêng dưới
@@ -1046,10 +1038,9 @@ Module trong `benchmark_synthesis/`:
   reason) cho **mọi** chunk đầu vào, kể cả chunk bị loại — không tự chia
   accepted/excluded trong bộ nhớ, để CLI ghi thẳng ra file cho bước sau đọc
   lại.
-- `fact_extraction.py` — dựng cửa sổ đọc theo hai nguồn ở mục "Gộp chunk khi
-  một fact cần nhiều nguồn" (tối đa 2 chunk liền trước qua chuỗi
-  `previous_chunk_id`, trích dẫn chéo bằng regex "Điều N" tra theo
-  `build_provision_index`), gọi BAML trích fact, rồi gán `fact_id` và
+- `fact_extraction.py` — dựng cửa sổ đọc gồm `Target`, tối đa 1 chunk
+  liền trước qua `previous_chunk_id` và 1 chunk liền sau qua
+  `next_chunk_id`, gọi BAML trích fact, rồi gán `fact_id` và
   `fact_content_sha256` qua `sha256_json`. **Tin tưởng hoàn toàn output LLM**
   (xem "Nguyên tắc kiến trúc" ở đầu tài liệu): `evidence.chunk_id` và
   `evidence.quoted_span` được giữ nguyên như LLM trả về, không tra cứu lại
@@ -1068,10 +1059,8 @@ BAML trong `baml_src/`:
   ngược lại theo `chunk_id`, không theo thứ tự mảng trả về.
 - `legal_fact_extraction.baml` — enum `ChunkWindowRole`, class
   `ChunkWindowEntry`, `EvidenceEntry`, `LegalFact` khớp JSON ở mục 2, function
-  `ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[]`, kèm persona,
-  few-shot examples, và cảnh báo cho vai trò `CitedProvision` (số điều có thể
-  trùng ngẫu nhiên với luật khác — regex chỉ đề xuất ứng viên, LLM tự quyết
-  định có dùng hay không).
+  `ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[]`, kèm persona
+  và few-shot examples. Window chỉ có vai trò `Target` và `Adjacent`.
 
 CLI tách thành hai bước riêng, nối nhau qua file — theo đúng cách các phase
 sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.jsonl`

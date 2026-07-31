@@ -266,6 +266,7 @@ def confirm_evidence_relations(
     client: EvidenceRelationClient,
     *,
     max_retries: int,
+    retry_delay_seconds: float,
     on_pair_confirmed: Callable[[tuple[str, str], EvidenceRelation | None], None] | None = None,
 ) -> tuple[EvidenceRelation, ...]:
     """Confirm every candidate pair, retrying a failed call before skipping it; call on_pair_confirmed after each pair."""
@@ -281,6 +282,7 @@ def confirm_evidence_relations(
                     facts_by_id[fact_id_a], facts_by_id[fact_id_b]
                 ),
                 max_retries=max_retries,
+                retry_delay_seconds=retry_delay_seconds,
             )
         except LlmTaskExhaustedError as error:
             failures.append(LlmTaskFailure(task_key=task_key, error=str(error)))

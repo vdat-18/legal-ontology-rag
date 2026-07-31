@@ -78,11 +78,14 @@ def _configure_cli(
     total_samples: int,
 ) -> Path:
     """Set deterministic CLI arguments, environment, and fake LLM/embedding clients; return the progress path."""
+    from legal_rag.benchmark_synthesis import llm_execution
+
     relations_progress_path = relations_output_path.parent / "evidence_relation_progress.jsonl"
     monkeypatch.setenv("LLM_BASE_URL", "http://localhost:20128/v1")
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     monkeypatch.setenv("LLM_MODEL", "provider/test-model")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
+    monkeypatch.setattr(llm_execution.time, "sleep", lambda _seconds: None)
     monkeypatch.setattr(evidence_graph, "BamlEvidenceRelationClient", _AlwaysRelatedClient)
     from legal_rag.embedding.encoder import EmbeddingEncoder
 

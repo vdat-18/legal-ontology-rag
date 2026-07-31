@@ -35,6 +35,7 @@ class SynthesisSettings:
 
     embedding_profile: str
     llm_max_retries: int
+    llm_retry_delay_seconds: float
     max_response_bytes: int
     span_match_threshold: float
     bundle_overlap_threshold: float
@@ -42,6 +43,7 @@ class SynthesisSettings:
     chunk_screening_batch_size: int
     document_metadata_opening_chunk_count: int
     document_metadata_closing_chunk_count: int
+    fact_extraction_batch_size: int
     fact_extraction_max_preceding_chunks: int
     fact_extraction_max_following_chunks: int
     relation_max_candidates_per_fact: int
@@ -64,9 +66,10 @@ class SynthesisSettings:
             raise ValueError(msg)
         for name, value in {
             "llm_max_retries": self.llm_max_retries,
+            "llm_retry_delay_seconds": self.llm_retry_delay_seconds,
             "max_quality_retries": self.max_quality_retries,
         }.items():
-            if value < 0:
+            if not isfinite(value) or value < 0:
                 msg = f"{name} must not be negative, got {value}"
                 raise ValueError(msg)
         positive_limits = {
@@ -74,6 +77,7 @@ class SynthesisSettings:
             "chunk_screening_batch_size": self.chunk_screening_batch_size,
             "document_metadata_opening_chunk_count": self.document_metadata_opening_chunk_count,
             "document_metadata_closing_chunk_count": self.document_metadata_closing_chunk_count,
+            "fact_extraction_batch_size": self.fact_extraction_batch_size,
             "relation_max_candidates_per_fact": self.relation_max_candidates_per_fact,
             "relation_pool_multiplier": self.relation_pool_multiplier,
             "relation_rrf_k": self.relation_rrf_k,
@@ -113,6 +117,7 @@ class SynthesisSettings:
         return cls(
             embedding_profile=config["embedding_profile"],
             llm_max_retries=execution["max_retries"],
+            llm_retry_delay_seconds=execution["retry_delay_seconds"],
             max_response_bytes=execution["max_response_bytes"],
             span_match_threshold=quality["span_match_threshold"],
             bundle_overlap_threshold=quality["bundle_overlap_threshold"],
@@ -120,6 +125,7 @@ class SynthesisSettings:
             chunk_screening_batch_size=screening["batch_size"],
             document_metadata_opening_chunk_count=metadata["opening_chunk_count"],
             document_metadata_closing_chunk_count=metadata["closing_chunk_count"],
+            fact_extraction_batch_size=extraction["batch_size"],
             fact_extraction_max_preceding_chunks=extraction["max_preceding_chunks"],
             fact_extraction_max_following_chunks=extraction["max_following_chunks"],
             relation_max_candidates_per_fact=relation["max_candidates_per_fact"],

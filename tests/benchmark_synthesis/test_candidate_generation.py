@@ -240,7 +240,7 @@ def test_refine_surface_stops_once_critique_passes() -> None:
         ]
     )
 
-    refined = refine_surface(draft, client, max_retries=5, llm_max_retries=0)
+    refined = refine_surface(draft, client, max_retries=5, llm_max_retries=0, llm_retry_delay_seconds=0)
 
     assert client.calls == 2
     assert refined.query_vi == "oto vuot den do"
@@ -253,7 +253,7 @@ def test_refine_surface_respects_max_retries_cap() -> None:
     always_fails = [BamlSurfaceCritique(passes=False, feedback="x", rewritten_query_vi=f"v{i}") for i in range(10)]
     client = _FakeSurfaceClient(always_fails)
 
-    refine_surface(draft, client, max_retries=3, llm_max_retries=0)
+    refine_surface(draft, client, max_retries=3, llm_max_retries=0, llm_retry_delay_seconds=0)
 
     assert client.calls == 3
 
@@ -263,7 +263,7 @@ def test_refine_surface_never_changes_claims_or_answer_fields() -> None:
     draft = _draft_for_refinement()
     client = _FakeSurfaceClient([BamlSurfaceCritique(passes=False, feedback="x", rewritten_query_vi="new query")])
 
-    refined = refine_surface(draft, client, max_retries=1, llm_max_retries=0)
+    refined = refine_surface(draft, client, max_retries=1, llm_max_retries=0, llm_retry_delay_seconds=0)
 
     assert refined.required_claims == draft.required_claims
     assert refined.answer_fields == draft.answer_fields
@@ -305,7 +305,9 @@ def test_evolve_candidate_applies_operations_in_sequence_and_records_them() -> N
         }
     )
 
-    evolved = evolve_candidate(draft, ["concretizing", "reasoning"], client, llm_max_retries=0)
+    evolved = evolve_candidate(
+        draft, ["concretizing", "reasoning"], client, llm_max_retries=0, llm_retry_delay_seconds=0
+    )
 
     assert evolved.evolutions == ("concretizing", "reasoning")
     assert evolved.query_vi == "q-reasoning"
@@ -325,7 +327,7 @@ def test_evolve_candidate_never_changes_claims_or_answer_fields() -> None:
         }
     )
 
-    evolved = evolve_candidate(draft, ["hypothetical"], client, llm_max_retries=0)
+    evolved = evolve_candidate(draft, ["hypothetical"], client, llm_max_retries=0, llm_retry_delay_seconds=0)
 
     assert evolved.required_claims == draft.required_claims
     assert evolved.answer_fields == draft.answer_fields

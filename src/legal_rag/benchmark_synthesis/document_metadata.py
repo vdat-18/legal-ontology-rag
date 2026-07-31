@@ -79,6 +79,7 @@ def resolve_document_metadata(
     opening_chunk_count: int,
     closing_chunk_count: int,
     max_retries: int,
+    retry_delay_seconds: float,
 ) -> DocumentMetadataRecord:
     """Resolve one document's metadata from the opening and closing chunks of its main body."""
     body = [chunk.text for chunk in chunks if chunk.record_scope == "root"]
@@ -96,4 +97,5 @@ def resolve_document_metadata(
         f"document_metadata:{source_key}",
         _resolve,
         max_retries=max_retries,
+        retry_delay_seconds=retry_delay_seconds,
     )

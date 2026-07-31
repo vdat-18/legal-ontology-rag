@@ -1,98 +1,148 @@
 {
-  "_comment": "First focused source corpus for ground-truth candidate generation. It is selected from road_traffic_penalty_scope.json and should stay smaller than the broad in_scope set.",
+  "_comment": "Full 35-document source corpus for ground-truth candidate generation, matching the broad in_scope selection.",
   "group_id": "traffic_penalty_groundtruth_v1",
   "scope_source": "data/config/road_traffic_penalty_scope.json",
-  "selection_policy": "Start with core road traffic penalty, driver license point, enforcement, administrative violation, and direct framework documents. Add broader road traffic documents only after the first review batch is stable.",
+  "selection_policy": "Include every document labeled in_scope for the road traffic penalty corpus.",
   "documents": [
     {
+      "file": "105_2026_TT-BCA_m_713073.docx",
+      "selection_reason": "Amends the rules for restoring driver license points."
+    },
+    {
+      "file": "118_2021_ND-CP_477969.docx",
+      "selection_reason": "General decree on implementing the Law on Handling Administrative Violations."
+    },
+    {
+      "file": "12_2025_TT-BCA_645271.docx",
+      "selection_reason": "Regulates driver testing and driver licenses, which can affect road traffic violation handling."
+    },
+    {
+      "file": "13_2025_TT-BCA_m_645302.docx",
+      "selection_reason": "Amends public security circulars on road traffic order and safety."
+    },
+    {
+      "file": "14_2025_TT-BXD_m_664151.docx",
+      "selection_reason": "Regulates driver training and road traffic legal knowledge certificates."
+    },
+    {
+      "file": "151_2024_ND-CP_m_619564.docx",
+      "selection_reason": "Details implementation of the Law on Road Traffic Order and Safety."
+    },
+    {
+      "file": "158_2024_ND-CP_636875.docx",
+      "selection_reason": "Regulates road transport operations, which can be used for road-operation violations."
+    },
+    {
+      "file": "160_2024_ND-CP_m_624017.docx",
+      "selection_reason": "Regulates driver training and testing activities, which may be used for road activity violations."
+    },
+    {
+      "file": "161_2024_ND-CP_623658.docx",
+      "selection_reason": "Regulates dangerous goods transport on roads, which can be used for road transport violations."
+    },
+    {
+      "file": "165_2024_ND-CP_623287.docx",
+      "selection_reason": "Details the Road Law and Article 77 of the Law on Road Traffic Order and Safety."
+    },
+    {
       "file": "168_2024_ND-CP_619502.docx",
-      "so_hieu": "168/2024/NĐ-CP",
-      "loai": "Nghị định",
-      "role": "core_penalty",
-      "effective_date": "2025-01-01",
-      "amends": null,
       "selection_reason": "Core decree on administrative penalties for road traffic violations and driver license points."
     },
     {
-      "file": "238_2026_ND-CP_712521.docx",
-      "so_hieu": "238/2026/NĐ-CP",
-      "loai": "Nghị định",
-      "role": "core_penalty_amendment",
-      "effective_date": null,
-      "amends": "168/2024/NĐ-CP",
-      "selection_reason": "Amends the core road traffic penalty decree."
+      "file": "17_2026_TT-BXD_704696.docx",
+      "selection_reason": "Amends driver training and road traffic legal knowledge certificate rules."
     },
     {
-      "file": "336_2025_ND-CP_670893.docx",
-      "so_hieu": "336/2025/NĐ-CP",
-      "loai": "Nghị định",
-      "role": "road_activity_penalty",
-      "effective_date": null,
-      "amends": null,
-      "selection_reason": "Regulates administrative penalties in road activities."
-    },
-    {
-      "file": "73_2024_TT-BCA_633438.docx",
-      "so_hieu": "73/2024/TT-BCA",
-      "loai": "Thông tư",
-      "role": "enforcement",
-      "effective_date": null,
-      "amends": null,
-      "selection_reason": "Regulates traffic police patrol, control, and violation handling."
-    },
-    {
-      "file": "65_2024_TT-BCA_m_632409.docx",
-      "so_hieu": "65/2024/TT-BCA",
-      "loai": "Thông tư",
-      "role": "point_restoration",
-      "effective_date": null,
-      "amends": null,
-      "selection_reason": "Regulates legal knowledge testing for restoring driver license points."
-    },
-    {
-      "file": "105_2026_TT-BCA_m_713073.docx",
-      "so_hieu": "105/2026/TT-BCA",
-      "loai": "Thông tư",
-      "role": "point_restoration_amendment",
-      "effective_date": null,
-      "amends": "65/2024/TT-BCA",
-      "selection_reason": "Amends the driver license point restoration rules."
-    },
-    {
-      "file": "9303_QD-BCA_m_637615.docx",
-      "so_hieu": "9303/QĐ-BCA",
-      "loai": "Quyết định",
-      "role": "procedure",
-      "effective_date": null,
-      "amends": null,
-      "selection_reason": "Publishes administrative procedures for restoring driver license points."
-    },
-    {
-      "file": "36_2024_QH15_444251.docx",
-      "so_hieu": "36/2024/QH15",
-      "loai": "Luật",
-      "role": "direct_framework_law",
-      "effective_date": null,
-      "amends": null,
-      "selection_reason": "Defines road traffic rules and obligations used to decide whether conduct is a violation."
-    },
-    {
-      "file": "90_VBHN-VPQH_699548.docx",
-      "so_hieu": "90/VBHN-VPQH",
-      "loai": "Văn bản hợp nhất",
-      "role": "administrative_violation_law",
-      "effective_date": null,
-      "amends": null,
-      "selection_reason": "Consolidated Law on Handling Administrative Violations."
+      "file": "184_2025_ND-CP_664032.docx",
+      "selection_reason": "Amends authority provisions, including provisions in Decree 151/2024/ND-CP."
     },
     {
       "file": "189_2025_ND-CP_664429.docx",
-      "so_hieu": "189/2025/NĐ-CP",
-      "loai": "Nghị định",
-      "role": "sanction_authority",
-      "effective_date": null,
-      "amends": null,
       "selection_reason": "Details administrative penalty authority."
+    },
+    {
+      "file": "218_2026_ND-CP_711730.docx",
+      "selection_reason": "Amends the decree on road transport operations."
+    },
+    {
+      "file": "220_2026_ND-CP_701156.docx",
+      "selection_reason": "Amends compulsory insurance rules for motor vehicle owners."
+    },
+    {
+      "file": "236_2026_ND-CP_712588.docx",
+      "selection_reason": "Amends the decree implementing the Law on Road Traffic Order and Safety."
+    },
+    {
+      "file": "238_2026_ND-CP_712521.docx",
+      "selection_reason": "Amends the core decree on road traffic administrative penalties."
+    },
+    {
+      "file": "241_2026_ND-CP_712584.docx",
+      "selection_reason": "Amends the decree detailing the Road Law and Article 77 of the road traffic safety law."
+    },
+    {
+      "file": "336_2025_ND-CP_670893.docx",
+      "selection_reason": "Core decree on administrative penalties in road activities."
+    },
+    {
+      "file": "35_2024_QH15_588811.docx",
+      "selection_reason": "Road Law; provides the legal base for road activities and related violations."
+    },
+    {
+      "file": "36_2024_QH15_444251.docx",
+      "selection_reason": "Law on Road Traffic Order and Safety; defines road traffic rules and obligations."
+    },
+    {
+      "file": "38_2024_TT-BGTVT_m_622477.docx",
+      "selection_reason": "Regulates speed and safe distance on roads."
+    },
+    {
+      "file": "39_2024_TT-BGTVT_m_633952.docx",
+      "selection_reason": "Regulates road load, size limits, oversized vehicles, overloaded vehicles, and related permits."
+    },
+    {
+      "file": "47_2024_TT-BGTVT_m_623286.docx",
+      "selection_reason": "Regulates vehicle inspection and emissions inspection procedures."
+    },
+    {
+      "file": "51_2024_TT-BGTVT_m_633562.docx",
+      "selection_reason": "Issues the national technical regulation on road signs."
+    },
+    {
+      "file": "51_2025_TT-BCA_m_663452.docx",
+      "selection_reason": "Amends vehicle registration and license plate rules."
+    },
+    {
+      "file": "53_2024_TT-BGTVT_m_624420.docx",
+      "selection_reason": "Regulates road vehicle classification, which can affect violation handling."
+    },
+    {
+      "file": "65_2024_TT-BCA_m_632409.docx",
+      "selection_reason": "Regulates legal knowledge testing for restoring driver license points."
+    },
+    {
+      "file": "67_2023_ND-CP_m_578283.docx",
+      "selection_reason": "Regulates compulsory civil liability insurance for motor vehicle owners."
+    },
+    {
+      "file": "68_2025_ND-CP_648513.docx",
+      "selection_reason": "Amends the decree implementing the Law on Handling Administrative Violations."
+    },
+    {
+      "file": "73_2024_TT-BCA_633438.docx",
+      "selection_reason": "Regulates traffic police patrol, control, and handling of road traffic violations."
+    },
+    {
+      "file": "79_2024_TT-BCA_634265.docx",
+      "selection_reason": "Regulates vehicle registration and license plates."
+    },
+    {
+      "file": "90_VBHN-VPQH_699548.docx",
+      "selection_reason": "Consolidated Law on Handling Administrative Violations."
+    },
+    {
+      "file": "9303_QD-BCA_m_637615.docx",
+      "selection_reason": "Publishes administrative procedures for legal knowledge testing to restore driver license points."
     }
   ]
 }

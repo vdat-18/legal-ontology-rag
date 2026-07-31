@@ -70,10 +70,13 @@ class _AlternatingScreeningClient:
 
 def _configure_cli(monkeypatch: pytest.MonkeyPatch, chunks_path: Path, screening_output_path: Path) -> None:
     """Set deterministic CLI arguments, environment, and a fake LLM client."""
+    from legal_rag.benchmark_synthesis import llm_execution
+
     monkeypatch.setenv("LLM_BASE_URL", "http://localhost:20128/v1")
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     monkeypatch.setenv("LLM_MODEL", "provider/test-model")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
+    monkeypatch.setattr(llm_execution.time, "sleep", lambda _seconds: None)
     monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _AlternatingScreeningClient)
     monkeypatch.setattr(
         sys,

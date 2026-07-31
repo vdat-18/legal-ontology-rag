@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import http.client
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TypeVar
@@ -56,7 +57,13 @@ class LlmTaskExhaustedError(RuntimeError):
         return cls(f"LLM task {task_key} exhausted retries")
 
 
-def execute_llm_task(task_key: str, operation: Callable[[], _T], *, max_retries: int) -> _T:
+def execute_llm_task(
+    task_key: str,
+    operation: Callable[[], _T],
+    *,
+    max_retries: int,
+    retry_delay_seconds: float,
+) -> _T:
     """Execute one LLM operation with bounded retries and preserve the final cause."""
     for attempt in range(max_retries + 1):
         try:
@@ -72,4 +79,6 @@ def execute_llm_task(task_key: str, operation: Callable[[], _T], *, max_retries:
             if attempt == max_retries:
                 exhausted_error = LlmTaskExhaustedError.for_task(task_key)
                 raise exhausted_error from error
+            logger.info("Retrying LLM task {} in {} seconds", task_key, retry_delay_seconds)
+            time.sleep(retry_delay_seconds)
     raise AssertionError("unreachable")

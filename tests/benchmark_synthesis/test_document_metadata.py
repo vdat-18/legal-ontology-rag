@@ -82,7 +82,14 @@ def test_resolve_document_metadata_parses_dates_into_typed_record() -> None:
     chunks = [_chunk("c1", "Số: 168/2024/NĐ-CP"), _chunk("c2", "Điều 55. Hiệu lực thi hành.")]
     client = _RecordingMetadataClient(_baml_metadata())
 
-    record = resolve_document_metadata(chunks, client, opening_chunk_count=3, closing_chunk_count=5, max_retries=2)
+    record = resolve_document_metadata(
+        chunks,
+        client,
+        opening_chunk_count=3,
+        closing_chunk_count=5,
+        max_retries=2,
+        retry_delay_seconds=0,
+    )
 
     assert record.document_number == "168/2024/NĐ-CP"
     assert record.valid_from == date(2025, 1, 1)
@@ -94,7 +101,14 @@ def test_resolve_document_metadata_reads_the_opening_and_closing_of_the_document
     chunks = [_chunk(f"c{index}", f"Đoạn {index}") for index in range(10)]
     client = _RecordingMetadataClient(_baml_metadata())
 
-    resolve_document_metadata(chunks, client, opening_chunk_count=2, closing_chunk_count=3, max_retries=2)
+    resolve_document_metadata(
+        chunks,
+        client,
+        opening_chunk_count=2,
+        closing_chunk_count=3,
+        max_retries=2,
+        retry_delay_seconds=0,
+    )
 
     assert client.opening_sections == ("Đoạn 0", "Đoạn 1")
     assert client.closing_sections == ("Đoạn 7", "Đoạn 8", "Đoạn 9")
@@ -107,7 +121,12 @@ def test_resolve_document_metadata_ignores_attachment_chunks() -> None:
     client = _RecordingMetadataClient(_baml_metadata())
 
     resolve_document_metadata(
-        [*body, *attachments], client, opening_chunk_count=1, closing_chunk_count=1, max_retries=2
+        [*body, *attachments],
+        client,
+        opening_chunk_count=1,
+        closing_chunk_count=1,
+        max_retries=2,
+        retry_delay_seconds=0,
     )
 
     assert client.opening_sections == ("Số: 168/2024/NĐ-CP",)
@@ -120,7 +139,14 @@ def test_resolve_document_metadata_raises_on_a_malformed_date() -> None:
     client = _RecordingMetadataClient(_baml_metadata(valid_from="ngày 01 tháng 01 năm 2025"))
 
     with pytest.raises(LlmTaskExhaustedError, match="document_metadata:source-hash") as exc_info:
-        resolve_document_metadata(chunks, client, opening_chunk_count=3, closing_chunk_count=5, max_retries=2)
+        resolve_document_metadata(
+            chunks,
+            client,
+            opening_chunk_count=3,
+            closing_chunk_count=5,
+            max_retries=2,
+            retry_delay_seconds=0,
+        )
 
     assert isinstance(exc_info.value.__cause__, ValueError)
 

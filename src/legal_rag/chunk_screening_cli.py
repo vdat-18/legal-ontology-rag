@@ -61,6 +61,7 @@ def main() -> None:
             screening_client,
             batch_size=synthesis_settings.chunk_screening_batch_size,
             max_retries=synthesis_settings.llm_max_retries,
+            retry_delay_seconds=synthesis_settings.llm_retry_delay_seconds,
             on_batch_screened=_persist_batch,
         )
 

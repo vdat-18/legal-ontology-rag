@@ -38,6 +38,7 @@ class CandidatePipelineContext:
     span_match_threshold: float
     max_quality_retries: int
     llm_max_retries: int
+    llm_retry_delay_seconds: float
 
 
 def process_candidate_task(
@@ -61,6 +62,7 @@ def process_candidate_task(
                 generator_model=context.generator_model,
             ),
             max_retries=context.llm_max_retries,
+            retry_delay_seconds=context.llm_retry_delay_seconds,
         )
         progress = CandidateProgressRecord(task_id, scenario.scenario_id, attempt_index, "generated", draft)
         checkpoint(progress)
@@ -110,6 +112,7 @@ def process_candidate_task(
             verifier_model=context.verifier_model,
         ),
         max_retries=context.llm_max_retries,
+        retry_delay_seconds=context.llm_retry_delay_seconds,
     )
     completed = CandidateProgressRecord(
         task_id,
@@ -149,6 +152,7 @@ def _refine_with_checkpoints(
         context.generation_client,
         max_retries=context.max_quality_retries,
         llm_max_retries=context.llm_max_retries,
+        llm_retry_delay_seconds=context.llm_retry_delay_seconds,
         on_attempt=_checkpoint_draft,
     )
     current = CandidateProgressRecord(
@@ -187,6 +191,7 @@ def _evolve_with_checkpoints(
         context.evolution_operations,
         context.generation_client,
         llm_max_retries=context.llm_max_retries,
+        llm_retry_delay_seconds=context.llm_retry_delay_seconds,
         on_operation_applied=_checkpoint_draft,
     )
     current = CandidateProgressRecord(
