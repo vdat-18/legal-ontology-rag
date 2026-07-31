@@ -293,3 +293,53 @@ class GraphitiSettings:
             **overrides,
             embedding_profile=values["EMBEDDING_PROFILE"].strip(),
         )
+# Imports already present at the top of settings.py: os, Mapping, dataclass, field, isfinite, Callable
+
+
+_REDIS_TUNABLES: dict[str, Callable[[str], str | float | int]] = {
+    "password": str.strip,
+    "socket_timeout_seconds": float,
+    "max_turns": int,
+    "ttl_seconds": int,
+}
+
+
+@dataclass(frozen=True, slots=True)
+class RedisSettings:
+    """Redis connection and conversation history settings."""
+
+    url: str
+    password: str = field(default="", repr=False)
+    socket_timeout_seconds: float = 5.0
+    max_turns: int = 10
+    ttl_seconds: int = 3600
+
+    def __post_init__(self) -> None:
+        """Reject invalid Redis configuration."""
+        if not self.url:
+            msg = "Redis url must not be empty"
+            raise ValueError(msg)
+        if self.max_turns < 1:
+            msg = f"max_turns must be positive, got {self.max_turns}"
+            raise ValueError(msg)
+        if self.ttl_seconds < 1:
+            msg = f"ttl_seconds must be positive, got {self.ttl_seconds}"
+            raise ValueError(msg)
+        if not isfinite(self.socket_timeout_seconds) or self.socket_timeout_seconds <= 0:
+            msg = f"socket_timeout_seconds must be positive, got {self.socket_timeout_seconds}"
+            raise ValueError(msg)
+
+    @classmethod
+    def from_environment(cls, environment: Mapping[str, str] | None = None) -> RedisSettings:
+        """Load Redis settings from process environment variables.
+
+        Every tunable above is overridable as ``REDIS_<FIELD_NAME>`` and keeps its declared
+        default otherwise, so no declared value can be silently ignored by the loader.
+        """
+        values = os.environ if environment is None else environment
+        overrides = {
+            name: converter(values[f"REDIS_{name.upper()}"])
+            for name, converter in _REDIS_TUNABLES.items()
+            if f"REDIS_{name.upper()}" in values
+        }
+        return cls(url=values["REDIS_URL"].strip(), **overrides)

@@ -13,6 +13,8 @@ dist/
 .eggs/
 
 .pytest_cache/
+.pytest_cache_local/
+.pytest_tmp/
 .ruff_cache/
 .mypy_cache/
 .pyre/
@@ -43,6 +45,10 @@ tempCodeRunnerFile.py
 
 src/legal_rag/baml_client/
 data/raw/road_traffic_legal_documents/
+data/evaluation/*metrics.json
+data/evaluation/*predictions.jsonl
+data/benchmark_synthesis/*metrics.json
+data/benchmark_synthesis/*predictions.jsonl
 
 # Naive RAG
 *.db
