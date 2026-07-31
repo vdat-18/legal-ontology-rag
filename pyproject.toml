@@ -21,6 +21,7 @@ dependencies = [
 [project.optional-dependencies]
 vietnamese = ["sentence-transformers>=3.0"]
 evaluation = ["deepeval==4.1.1", "rank-bm25>=0.2.2", "rapidfuzz>=3.0", "sentence-transformers>=3.0"]
+api = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "redis>=5.0"]
 dev = ["ruff==0.15.21", "pytest>=8.0"]
 naive-rag = ["pymilvus>=3.0", "milvus-lite>=2.4", "sentence-transformers>=3.0"]
 
