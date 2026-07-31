@@ -10,6 +10,7 @@ import pytest
 
 from legal_rag import fact_extraction_cli
 from legal_rag.baml_client.types import EvidenceEntry as BamlEvidenceEntry
+from legal_rag.baml_client.types import FactExtractionBatchItem, FactExtractionBatchResult
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.benchmark_synthesis import fact_extraction
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
@@ -88,23 +89,33 @@ class _OneFactExtractionClient:
     def __init__(self, settings: object, synthesis_settings: object) -> None:
         return None
 
-    def extract(self, window: object) -> tuple[BamlLegalFact, ...]:
-        """Return one fact citing the first chunk in the window."""
-        target_chunk_id = next(iter(window)).chunk_id
-        return (
-            BamlLegalFact(
-                conduct="Vượt đèn đỏ",
-                subject="Người điều khiển ô tô",
-                conditions=[],
-                monetary_penalty="4.000.000 đồng đến 6.000.000 đồng",
-                license_points_deducted="4 điểm",
-                additional_penalties=[],
-                remedial_measures=[],
-                valid_from=None,
-                valid_to=None,
-                provision_path="Điều 6 khoản 9 điểm b",
-                evidence=[BamlEvidenceEntry(chunk_id=target_chunk_id, quoted_span="Phạt tiền từ 4.000.000 đồng")],
-            ),
+    def extract_batch(self, items: list[FactExtractionBatchItem]) -> tuple[FactExtractionBatchResult, ...]:
+        """Return one fact for every target in the batch."""
+        return tuple(
+            FactExtractionBatchResult(
+                target_chunk_id=item.target_chunk_id,
+                facts=[
+                    BamlLegalFact(
+                        conduct="Vượt đèn đỏ",
+                        subject="Người điều khiển ô tô",
+                        conditions=[],
+                        monetary_penalty="4.000.000 đồng đến 6.000.000 đồng",
+                        license_points_deducted="4 điểm",
+                        additional_penalties=[],
+                        remedial_measures=[],
+                        valid_from=None,
+                        valid_to=None,
+                        provision_path="Điều 6 khoản 9 điểm b",
+                        evidence=[
+                            BamlEvidenceEntry(
+                                chunk_id=item.target_chunk_id,
+                                quoted_span="Phạt tiền từ 4.000.000 đồng",
+                            )
+                        ],
+                    )
+                ],
+            )
+            for item in items
         )
 
 
@@ -117,6 +128,8 @@ def _configure_cli(
     metadata: DocumentMetadataRecord | None = None,
 ) -> None:
     """Set deterministic CLI arguments, environment, document metadata, and fake LLM/embedding clients."""
+    from legal_rag.benchmark_synthesis import llm_execution
+
     metadata_path = chunks_path.parent / "document_metadata.jsonl"
     progress_path = facts_output_path.parent / "extraction_progress.jsonl"
     if metadata is None:
@@ -126,6 +139,7 @@ def _configure_cli(
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     monkeypatch.setenv("LLM_MODEL", "provider/test-model")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
+    monkeypatch.setattr(llm_execution.time, "sleep", lambda _seconds: None)
     monkeypatch.setattr(fact_extraction, "BamlFactExtractionClient", _OneFactExtractionClient)
     monkeypatch.setattr(
         sys,
@@ -222,10 +236,11 @@ def test_fact_extraction_cli_uses_excluded_chunk_as_adjacent_context(
         def __init__(self, settings: object, synthesis_settings: object) -> None:
             return None
 
-        def extract(self, window: object) -> tuple[BamlLegalFact, ...]:
-            """Record the window's chunk ids."""
-            seen_chunk_ids.extend(entry.chunk_id for entry in window)
-            return ()
+        def extract_batch(self, items: list[FactExtractionBatchItem]) -> tuple[FactExtractionBatchResult, ...]:
+            """Record every window's chunk ids."""
+            for item in items:
+                seen_chunk_ids.extend(entry.chunk_id for entry in item.window)
+            return tuple(FactExtractionBatchResult(target_chunk_id=item.target_chunk_id, facts=[]) for item in items)
 
     _configure_cli(monkeypatch, chunks_path, screening_path, facts_path)
     monkeypatch.setattr(fact_extraction, "BamlFactExtractionClient", _RecordingClient)
@@ -266,24 +281,29 @@ def test_fact_extraction_cli_resumes_by_skipping_already_extracted_chunks(
         def __init__(self, settings: object, synthesis_settings: object) -> None:
             return None
 
-        def extract(self, window: object) -> tuple[BamlLegalFact, ...]:
-            """Record the target chunk id and return one fact citing it."""
-            target_chunk_id = next(iter(window)).chunk_id
-            extracted_chunk_ids.append(target_chunk_id)
-            return (
-                BamlLegalFact(
-                    conduct="Trừ điểm giấy phép",
-                    subject="Người điều khiển ô tô",
-                    conditions=[],
-                    monetary_penalty=None,
-                    license_points_deducted="6 điểm",
-                    additional_penalties=[],
-                    remedial_measures=[],
-                    valid_from=None,
-                    valid_to=None,
-                    provision_path="Điều 6 khoản 10",
-                    evidence=[BamlEvidenceEntry(chunk_id=target_chunk_id, quoted_span="Trừ 6 điểm")],
-                ),
+        def extract_batch(self, items: list[FactExtractionBatchItem]) -> tuple[FactExtractionBatchResult, ...]:
+            """Record target ids and return one fact for each."""
+            extracted_chunk_ids.extend(item.target_chunk_id for item in items)
+            return tuple(
+                FactExtractionBatchResult(
+                    target_chunk_id=item.target_chunk_id,
+                    facts=[
+                        BamlLegalFact(
+                            conduct="Trừ điểm giấy phép",
+                            subject="Người điều khiển ô tô",
+                            conditions=[],
+                            monetary_penalty=None,
+                            license_points_deducted="6 điểm",
+                            additional_penalties=[],
+                            remedial_measures=[],
+                            valid_from=None,
+                            valid_to=None,
+                            provision_path="Điều 6 khoản 10",
+                            evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id, quoted_span="Trừ 6 điểm")],
+                        )
+                    ],
+                )
+                for item in items
             )
 
     _configure_cli(monkeypatch, chunks_path, screening_path, facts_path)
@@ -316,10 +336,10 @@ def test_fact_extraction_cli_does_not_reprocess_a_chunk_that_yielded_no_facts(
         def __init__(self, settings: object, synthesis_settings: object) -> None:
             return None
 
-        def extract(self, window: object) -> tuple[BamlLegalFact, ...]:
-            """Record the target chunk id and return an empty list."""
-            extraction_calls.append(next(iter(window)).chunk_id)
-            return ()
+        def extract_batch(self, items: list[FactExtractionBatchItem]) -> tuple[FactExtractionBatchResult, ...]:
+            """Record target ids and return empty facts for each."""
+            extraction_calls.extend(item.target_chunk_id for item in items)
+            return tuple(FactExtractionBatchResult(target_chunk_id=item.target_chunk_id, facts=[]) for item in items)
 
     _configure_cli(monkeypatch, chunks_path, screening_path, facts_path)
     monkeypatch.setattr(fact_extraction, "BamlFactExtractionClient", _NoFactClient)
@@ -366,64 +386,64 @@ def test_fact_extraction_cli_skips_the_llm_entirely_when_fully_resumed(
 def test_fact_extraction_cli_persists_progress_if_interrupted_mid_document(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """A fact already extracted is durably written even if the process dies before the run finishes."""
+    """A successful batch is durable if the process dies while starting the next batch."""
     chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
     screening_path = tmp_path / "chunk_screening.jsonl"
     facts_path = tmp_path / "legal_facts.jsonl"
-    write_chunks(
-        chunks_path,
-        (
-            _chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."),
-            _chunk("chunk-2", "Trừ 6 điểm giấy phép lái xe."),
-        ),
-    )
+    chunks = tuple(_chunk(f"chunk-{index}", f"Phạt tiền cho hành vi {index}.") for index in range(1, 7))
+    write_chunks(chunks_path, chunks)
     write_chunk_screening(
         screening_path,
         [
-            ChunkScreeningRecord(chunk_id="chunk-1", has_penalty_content=True, reason="Contains penalty content."),
-            ChunkScreeningRecord(chunk_id="chunk-2", has_penalty_content=True, reason="Contains penalty content."),
+            ChunkScreeningRecord(chunk_id=chunk.chunk_id, has_penalty_content=True, reason="Penalty.")
+            for chunk in chunks
         ],
     )
 
-    class _CrashesOnSecondChunkClient:
-        """Succeed on the first target, then simulate the whole process being killed."""
+    class _CrashesOnSecondBatchClient:
+        """Succeed on the first batch, then simulate the whole process being killed."""
 
         def __init__(self, settings: object, synthesis_settings: object) -> None:
             self._calls = 0
 
-        def extract(self, window: object) -> tuple[BamlLegalFact, ...]:
-            """Return one fact on the first call, then raise an uncaught fatal error."""
+        def extract_batch(self, items: list[FactExtractionBatchItem]) -> tuple[FactExtractionBatchResult, ...]:
+            """Return facts for the first batch, then raise an uncaught fatal error."""
             self._calls += 1
             if self._calls > 1:
                 raise SystemExit
-            target_chunk_id = next(iter(window)).chunk_id
-            return (
-                BamlLegalFact(
-                    conduct="Vượt đèn đỏ",
-                    subject="Người điều khiển ô tô",
-                    conditions=[],
-                    monetary_penalty="4.000.000 đồng đến 6.000.000 đồng",
-                    license_points_deducted=None,
-                    additional_penalties=[],
-                    remedial_measures=[],
-                    valid_from=None,
-                    valid_to=None,
-                    provision_path="Điều 6",
-                    evidence=[BamlEvidenceEntry(chunk_id=target_chunk_id, quoted_span="Phạt tiền")],
-                ),
+            return tuple(
+                FactExtractionBatchResult(
+                    target_chunk_id=item.target_chunk_id,
+                    facts=[
+                        BamlLegalFact(
+                            conduct=f"Hành vi {item.target_chunk_id}",
+                            subject="Người điều khiển ô tô",
+                            conditions=[],
+                            monetary_penalty="4.000.000 đồng",
+                            license_points_deducted=None,
+                            additional_penalties=[],
+                            remedial_measures=[],
+                            valid_from=None,
+                            valid_to=None,
+                            provision_path="Điều 6",
+                            evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id, quoted_span="Phạt tiền")],
+                        )
+                    ],
+                )
+                for item in items
             )
 
     _configure_cli(monkeypatch, chunks_path, screening_path, facts_path)
-    monkeypatch.setattr(fact_extraction, "BamlFactExtractionClient", _CrashesOnSecondChunkClient)
+    monkeypatch.setattr(fact_extraction, "BamlFactExtractionClient", _CrashesOnSecondBatchClient)
 
     with pytest.raises(SystemExit):
         fact_extraction_cli.main()
 
     facts = read_legal_facts(facts_path)
-    assert len(facts) == 1
-    assert facts[0].source_chunk_id == "chunk-1"
-    assert read_extraction_progress(tmp_path / "extraction_progress.jsonl") == (
-        ExtractionProgressRecord(chunk_id="chunk-1"),
+    assert len(facts) == 5
+    assert {fact.source_chunk_id for fact in facts} == {f"chunk-{index}" for index in range(1, 6)}
+    assert read_extraction_progress(tmp_path / "extraction_progress.jsonl") == tuple(
+        ExtractionProgressRecord(chunk_id=f"chunk-{index}") for index in range(1, 6)
     )
 
 

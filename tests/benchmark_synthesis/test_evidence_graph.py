@@ -200,6 +200,7 @@ def test_confirm_evidence_relations_drops_unconfirmed_pairs() -> None:
         [("fact-a", "fact-b"), ("fact-a", "fact-c")],
         client,
         max_retries=2,
+        retry_delay_seconds=0,
     )
 
     assert relations == (_relation("fact-a", "fact-b"),)
@@ -221,6 +222,7 @@ def test_confirm_evidence_relations_calls_on_pair_confirmed_after_each_pair() ->
         [("fact-a", "fact-b"), ("fact-a", "fact-c")],
         client,
         max_retries=2,
+        retry_delay_seconds=0,
         on_pair_confirmed=lambda pair, relation: calls.append((pair, relation)),
     )
 
@@ -244,7 +246,13 @@ def test_confirm_evidence_relations_retries_a_failing_pair_then_succeeds() -> No
                 raise TimeoutError(msg)
             return _relation("fact-a", "fact-b")
 
-    relations = confirm_evidence_relations([fact_a, fact_b], [("fact-a", "fact-b")], _FlakyClient(), max_retries=2)
+    relations = confirm_evidence_relations(
+        [fact_a, fact_b],
+        [("fact-a", "fact-b")],
+        _FlakyClient(),
+        max_retries=2,
+        retry_delay_seconds=0,
+    )
 
     assert attempts == 2
     assert relations == (_relation("fact-a", "fact-b"),)
@@ -268,6 +276,7 @@ def test_confirm_evidence_relations_skips_a_pair_that_fails_every_attempt() -> N
             [("fact-a", "fact-b"), ("fact-a", "fact-c")],
             _FailsForOnePairClient(),
             max_retries=2,
+            retry_delay_seconds=0,
             on_pair_confirmed=lambda pair, _relation: persisted.append(pair),
         )
 

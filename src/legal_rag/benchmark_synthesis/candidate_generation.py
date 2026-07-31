@@ -404,6 +404,7 @@ def refine_surface(
     *,
     max_retries: int,
     llm_max_retries: int,
+    llm_retry_delay_seconds: float,
     on_attempt: Callable[[CandidateDraft], None] | None = None,
 ) -> CandidateDraft:
     """Rewrite only the question's surface phrasing until it matches style, bounded by max_retries.
@@ -420,6 +421,7 @@ def refine_surface(
             f"{draft.scenario_id}:surface:{attempts}",
             partial(client.critique_surface, query_vi, draft.query_style, draft.query_length, draft.query_form),
             max_retries=llm_max_retries,
+            retry_delay_seconds=llm_retry_delay_seconds,
         )
         attempts += 1
         if critique.passes:
@@ -443,6 +445,7 @@ def evolve_candidate(
     client: CandidateGenerationClient,
     *,
     llm_max_retries: int,
+    llm_retry_delay_seconds: float,
     on_operation_applied: Callable[[CandidateDraft], None] | None = None,
 ) -> CandidateDraft:
     """Apply a bounded sequence of evidence-preserving evolution operations."""
@@ -461,6 +464,7 @@ def evolve_candidate(
                 _EVOLUTION_OPERATION_BY_ID[operation_id],
             ),
             max_retries=llm_max_retries,
+            retry_delay_seconds=llm_retry_delay_seconds,
         )
         query_vi = result.query_vi
         reference_answer_vi = result.reference_answer_vi

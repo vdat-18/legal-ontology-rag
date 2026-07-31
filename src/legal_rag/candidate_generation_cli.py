@@ -104,6 +104,7 @@ def main() -> None:
         span_match_threshold=synthesis_settings.span_match_threshold,
         max_quality_retries=synthesis_settings.max_quality_retries,
         llm_max_retries=synthesis_settings.llm_max_retries,
+        llm_retry_delay_seconds=synthesis_settings.llm_retry_delay_seconds,
     )
 
     existing_progress = read_candidate_progress(progress_output_path) if progress_output_path.exists() else ()

@@ -160,10 +160,13 @@ def _configure_cli(
     candidates_per_scenario: int,
 ) -> None:
     """Set deterministic CLI arguments, environment, and fake LLM clients."""
+    from legal_rag.benchmark_synthesis import llm_execution
+
     monkeypatch.setenv("LLM_BASE_URL", "http://localhost:20128/v1")
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     monkeypatch.setenv("LLM_MODEL", "provider/test-model")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
+    monkeypatch.setattr(llm_execution.time, "sleep", lambda _seconds: None)
     monkeypatch.setattr(candidate_generation, "BamlCandidateGenerationClient", _FakeGenerationClient)
     monkeypatch.setattr(verification, "BamlVerificationClient", _FakeVerificationClient)
     monkeypatch.setattr(

@@ -125,6 +125,7 @@ def main() -> None:
             remaining_pairs,
             relation_client,
             max_retries=synthesis_settings.llm_max_retries,
+            retry_delay_seconds=synthesis_settings.llm_retry_delay_seconds,
             on_pair_confirmed=_persist_pair,
         )
 

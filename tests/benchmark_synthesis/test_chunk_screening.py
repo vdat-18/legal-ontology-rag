@@ -72,7 +72,7 @@ def test_screen_chunks_returns_one_record_per_chunk_in_order() -> None:
         }
     )
 
-    records = screen_chunks([high, low], client, batch_size=50, max_retries=2)
+    records = screen_chunks([high, low], client, batch_size=50, max_retries=2, retry_delay_seconds=0)
 
     assert [record.chunk_id for record in records] == ["chunk-high", "chunk-low"]
     assert records[0].has_penalty_content is True
@@ -94,7 +94,7 @@ def test_screen_chunks_batches_calls_by_batch_size() -> None:
             calls.append(len(batch))
             return [results_by_chunk_id[item.chunk_id] for item in batch]
 
-    records = screen_chunks(chunks, _CountingClient(), batch_size=2, max_retries=2)
+    records = screen_chunks(chunks, _CountingClient(), batch_size=2, max_retries=2, retry_delay_seconds=0)
 
     assert calls == [2, 2, 1]
     assert [record.chunk_id for record in records] == [chunk.chunk_id for chunk in chunks]
@@ -111,7 +111,7 @@ def test_screen_chunks_supports_configured_batches_of_fifty() -> None:
             calls.append(len(batch))
             return [ChunkScreeningResult(chunk_id=item.chunk_id, has_penalty_content=True, reason="") for item in batch]
 
-    screen_chunks(chunks, _CountingClient(), batch_size=50, max_retries=2)
+    screen_chunks(chunks, _CountingClient(), batch_size=50, max_retries=2, retry_delay_seconds=0)
 
     assert calls == [50, 1]
 
@@ -135,6 +135,7 @@ def test_screen_chunks_calls_on_batch_screened_after_each_batch() -> None:
         _StaticClient(),
         batch_size=2,
         max_retries=2,
+        retry_delay_seconds=0,
         on_batch_screened=lambda records: batches_seen.append([record.chunk_id for record in records]),
     )
 
@@ -155,7 +156,7 @@ def test_screen_chunks_retries_a_failing_batch_then_succeeds() -> None:
                 raise TimeoutError(msg)
             return [ChunkScreeningResult(chunk_id="chunk-1", has_penalty_content=True, reason="Nêu rõ mức phạt.")]
 
-    records = screen_chunks([chunk], _FlakyClient(), batch_size=50, max_retries=2)
+    records = screen_chunks([chunk], _FlakyClient(), batch_size=50, max_retries=2, retry_delay_seconds=0)
 
     assert attempts == 2
     assert len(records) == 1
@@ -179,7 +180,13 @@ def test_screen_chunks_skips_a_batch_that_fails_every_attempt() -> None:
             ]
 
     with pytest.raises(RuntimeError, match="chunk screening left 1 incomplete"):
-        screen_chunks([failing, ok_one, ok_two], _FailsOnlyForOneChunkClient(), batch_size=1, max_retries=2)
+        screen_chunks(
+            [failing, ok_one, ok_two],
+            _FailsOnlyForOneChunkClient(),
+            batch_size=1,
+            max_retries=2,
+            retry_delay_seconds=0,
+        )
 
 
 def test_screen_chunks_respects_max_retries_override() -> None:
@@ -195,7 +202,7 @@ def test_screen_chunks_respects_max_retries_override() -> None:
             raise TimeoutError(msg)
 
     with pytest.raises(RuntimeError, match="chunk screening left 1 incomplete"):
-        screen_chunks([chunk], _AlwaysFailsClient(), batch_size=50, max_retries=0)
+        screen_chunks([chunk], _AlwaysFailsClient(), batch_size=50, max_retries=0, retry_delay_seconds=0)
 
     assert attempts == 1
 

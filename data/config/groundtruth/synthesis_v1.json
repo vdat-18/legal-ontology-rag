@@ -3,6 +3,7 @@
   "embedding_profile": "qwen3_0_6b",
   "llm_execution": {
     "max_retries": 2,
+    "retry_delay_seconds": 120,
     "max_response_bytes": 1048576
   },
   "quality": {
@@ -23,9 +24,10 @@
       "temperature": 0.0
     },
     "fact_extraction": {
-      "max_preceding_chunks": 2,
+      "batch_size": 5,
+      "max_preceding_chunks": 1,
       "max_following_chunks": 1,
-      "max_output_tokens": 4096,
+      "max_output_tokens": 32768,
       "temperature": 0.0
     },
     "evidence_relation": {

@@ -24,7 +24,7 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    """Extract legal facts from chunks not yet processed, writing progress after every target."""
+    """Extract legal facts from chunks not yet processed, writing progress after every batch."""
     from dotenv import find_dotenv, load_dotenv
 
     from legal_rag.benchmark_synthesis.config import SynthesisSettings
@@ -73,11 +73,12 @@ def main() -> None:
         len(remaining_targets),
     )
 
-    def _persist_target(chunk_id: str, target_facts: Sequence[LegalFact]) -> None:
-        """Rewrite the facts file, then record the target as processed so a crash between the two only costs a retry."""
-        facts_by_id.update({fact.fact_id: fact for fact in target_facts})
+    def _persist_batch(batch_results: Sequence[tuple[str, tuple[LegalFact, ...]]]) -> None:
+        """Write batch facts before progress so an interrupted write can only cause a safe replay."""
+        for _, target_facts in batch_results:
+            facts_by_id.update({fact.fact_id: fact for fact in target_facts})
         write_legal_facts(arguments.facts_output_path, tuple(facts_by_id.values()))
-        processed_chunk_ids.add(chunk_id)
+        processed_chunk_ids.update(chunk_id for chunk_id, _ in batch_results)
         write_extraction_progress(
             arguments.progress_output_path,
             tuple(
@@ -86,7 +87,11 @@ def main() -> None:
                 if chunk.chunk_id in processed_chunk_ids
             ),
         )
-        logger.debug("Persisted {} fact(s) for chunk {}", len(target_facts), chunk_id)
+        logger.debug(
+            "Persisted {} fact(s) for {} target chunk(s)",
+            sum(len(target_facts) for _, target_facts in batch_results),
+            len(batch_results),
+        )
 
     if remaining_targets:
         metadata = read_document_metadata(arguments.metadata_path)
@@ -98,8 +103,10 @@ def main() -> None:
             metadata,
             max_preceding_chunks=synthesis_settings.fact_extraction_max_preceding_chunks,
             max_following_chunks=synthesis_settings.fact_extraction_max_following_chunks,
+            batch_size=synthesis_settings.fact_extraction_batch_size,
             max_retries=synthesis_settings.llm_max_retries,
-            on_target_processed=_persist_target,
+            retry_delay_seconds=synthesis_settings.llm_retry_delay_seconds,
+            on_batch_processed=_persist_batch,
         )
 
     facts = tuple(facts_by_id.values())

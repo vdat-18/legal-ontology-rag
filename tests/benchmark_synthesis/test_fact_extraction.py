@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from legal_rag.baml_client.types import ChunkWindowRole
+from legal_rag.baml_client.types import ChunkWindowRole, FactExtractionBatchItem, FactExtractionBatchResult
 from legal_rag.baml_client.types import EvidenceEntry as BamlEvidenceEntry
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.benchmark_synthesis import fact_extraction
@@ -17,9 +17,7 @@ from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataReco
 from legal_rag.benchmark_synthesis.fact_extraction import (
     BamlFactExtractionClient,
     build_extracted_fact,
-    build_provision_index,
     build_reading_window,
-    cited_articles,
     extract_facts_from_document,
 )
 from legal_rag.chunker.models import Chunk
@@ -74,53 +72,21 @@ def _chunk(
     )
 
 
-def test_build_provision_index_only_indexes_chunks_opening_an_article() -> None:
-    """Only chunks whose text starts with an article heading are indexed."""
-    heading = _chunk("c1", "Điều 6. Xử phạt người điều khiển xe ô tô.")
-    continuation = _chunk("c2", "9. Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
-    unrelated = _chunk("c3", "Chương II. Quy định chung.")
-
-    index = build_provision_index([heading, continuation, unrelated])
-
-    assert index.chunk_ids_by_article == {"6": ("c1",)}
-
-
-def test_cited_articles_excludes_own_heading() -> None:
-    """A chunk citing its own article number is not a cross-reference."""
-    chunk = _chunk("c1", "Điều 6. Áp dụng theo Điều 6 và tham chiếu Điều 5.")
-
-    assert cited_articles(chunk) == frozenset({"5"})
-
-
-def test_cited_articles_returns_empty_when_no_citation_present() -> None:
-    """A chunk without any article mention has no cited articles."""
-    chunk = _chunk("c1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
-
-    assert cited_articles(chunk) == frozenset()
-
-
-def test_build_reading_window_includes_target_preceding_following_and_cited_chunks() -> None:
-    """The window combines target, preceding chunks, one following chunk, and citation-resolved chunks by role."""
-    heading = _chunk("art5", "Điều 5. Thẩm quyền xử phạt.")
-    preceding_two = _chunk("prev2", "Phần trước xa hơn.")
-    preceding_one = _chunk("prev1", "Phần ngay trước.", previous_chunk_id="prev2")
-    target = _chunk("target", "Áp dụng theo Điều 5.", previous_chunk_id="prev1", next_chunk_id="next")
+def test_build_reading_window_includes_target_preceding_and_following_chunks() -> None:
+    """The window combines the target with its configured adjacent chunks."""
+    preceding_one = _chunk("prev1", "Phần ngay trước.")
+    target = _chunk("target", "Nội dung mục tiêu.", previous_chunk_id="prev1", next_chunk_id="next")
     following = _chunk("next", "Phần sau.")
-    chunks_by_id = {chunk.chunk_id: chunk for chunk in (heading, preceding_two, preceding_one, target, following)}
-    provision_index = build_provision_index([heading, preceding_two, preceding_one, target, following])
+    chunks_by_id = {chunk.chunk_id: chunk for chunk in (preceding_one, target, following)}
 
-    window = build_reading_window(target, chunks_by_id, provision_index, max_preceding_chunks=2, max_following_chunks=1)
+    window = build_reading_window(target, chunks_by_id, max_preceding_chunks=1, max_following_chunks=1)
 
     roles_by_id = {entry.chunk_id: entry.role for entry in window}
     assert roles_by_id == {
         "target": ChunkWindowRole.Target,
         "prev1": ChunkWindowRole.Adjacent,
-        "prev2": ChunkWindowRole.Adjacent,
         "next": ChunkWindowRole.Adjacent,
-        "art5": ChunkWindowRole.CitedProvision,
     }
-    art5_entry = next(entry for entry in window if entry.chunk_id == "art5")
-    assert art5_entry.provision_path == "Điều 5"
 
 
 def test_build_reading_window_limits_preceding_chunk_depth() -> None:
@@ -130,9 +96,8 @@ def test_build_reading_window_limits_preceding_chunk_depth() -> None:
     near = _chunk("near", "Gần nhất.", previous_chunk_id="middle")
     target = _chunk("target", "Điều 5.", previous_chunk_id="near")
     chunks_by_id = {chunk.chunk_id: chunk for chunk in (far, middle, near, target)}
-    provision_index = build_provision_index([far, middle, near, target])
 
-    window = build_reading_window(target, chunks_by_id, provision_index, max_preceding_chunks=2, max_following_chunks=1)
+    window = build_reading_window(target, chunks_by_id, max_preceding_chunks=2, max_following_chunks=1)
 
     ids = {entry.chunk_id for entry in window}
     assert ids == {"target", "near", "middle"}
@@ -145,26 +110,11 @@ def test_build_reading_window_limits_following_chunk_depth() -> None:
     middle = _chunk("middle", "Giữa.", next_chunk_id="far")
     far = _chunk("far", "Xa nhất.")
     chunks_by_id = {chunk.chunk_id: chunk for chunk in (target, near, middle, far)}
-    provision_index = build_provision_index([target, near, middle, far])
 
-    window = build_reading_window(target, chunks_by_id, provision_index, max_preceding_chunks=2, max_following_chunks=2)
+    window = build_reading_window(target, chunks_by_id, max_preceding_chunks=2, max_following_chunks=2)
 
     ids = {entry.chunk_id for entry in window}
     assert ids == {"target", "near", "middle"}
-
-
-def test_build_reading_window_deduplicates_chunk_appearing_in_multiple_roles() -> None:
-    """A chunk that is both adjacent and cited only appears once, with its first role."""
-    heading = _chunk("prev", "Điều 5. Thẩm quyền xử phạt.")
-    target = _chunk("target", "Áp dụng theo Điều 5.", previous_chunk_id="prev")
-    chunks_by_id = {chunk.chunk_id: chunk for chunk in (heading, target)}
-    provision_index = build_provision_index([heading, target])
-
-    window = build_reading_window(target, chunks_by_id, provision_index, max_preceding_chunks=2, max_following_chunks=1)
-
-    assert len(window) == 2
-    prev_entry = next(entry for entry in window if entry.chunk_id == "prev")
-    assert prev_entry.role == ChunkWindowRole.Adjacent
 
 
 def _baml_fact(**overrides: object) -> BamlLegalFact:
@@ -242,15 +192,22 @@ def test_build_extracted_fact_trusts_llm_evidence_without_validation() -> None:
 
 
 class _FakeExtractionClient:
-    """Return pre-programmed facts keyed by the window's target chunk_id."""
+    """Return pre-programmed facts for every target in a requested batch."""
 
     def __init__(self, facts_by_target: dict[str, tuple[BamlLegalFact, ...]]) -> None:
         self._facts_by_target = facts_by_target
+        self.batch_sizes: list[int] = []
 
-    def extract(self, window: Sequence[object]) -> tuple[BamlLegalFact, ...]:
-        """Return the facts configured for this window's target chunk."""
-        target_chunk_id = next(entry.chunk_id for entry in window if entry.role == ChunkWindowRole.Target)
-        return self._facts_by_target.get(target_chunk_id, ())
+    def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[FactExtractionBatchResult]:
+        """Return one result for each requested target."""
+        self.batch_sizes.append(len(items))
+        return tuple(
+            FactExtractionBatchResult(
+                target_chunk_id=item.target_chunk_id,
+                facts=list(self._facts_by_target.get(item.target_chunk_id, ())),
+            )
+            for item in items
+        )
 
 
 def test_extract_facts_from_document_collects_every_fact_per_target() -> None:
@@ -269,27 +226,49 @@ def test_extract_facts_from_document_collects_every_fact_per_target() -> None:
         _metadata(),
         max_preceding_chunks=2,
         max_following_chunks=1,
+        batch_size=5,
         max_retries=2,
+        retry_delay_seconds=0,
     )
 
     assert len(facts) == 2
     assert {fact.conduct for fact in facts} == {fact_one.conduct, fact_two.conduct}
 
 
-def test_extract_facts_from_document_retries_a_failing_target_then_succeeds() -> None:
-    """A target whose extraction call raises is retried, and a later success still produces its facts."""
+def test_extract_facts_from_document_batches_five_targets_per_request() -> None:
+    """Six targets are sent as one batch of five and one final batch of one."""
+    targets = tuple(_chunk(f"target-{index}", f"Nội dung {index}.") for index in range(6))
+    client = _FakeExtractionClient({})
+
+    extract_facts_from_document(
+        targets,
+        targets,
+        client,
+        _metadata(),
+        max_preceding_chunks=1,
+        max_following_chunks=1,
+        batch_size=5,
+        max_retries=2,
+        retry_delay_seconds=0,
+    )
+
+    assert client.batch_sizes == [5, 1]
+
+
+def test_extract_facts_from_document_retries_a_failing_batch_then_succeeds() -> None:
+    """A batch whose extraction call raises is retried, and a later success produces its facts."""
     target = _chunk("target", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
     fact = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target", quoted_span="phạt tiền")])
     attempts = 0
 
     class _FlakyClient:
-        def extract(self, window: Sequence[object]) -> tuple[BamlLegalFact, ...]:
+        def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[FactExtractionBatchResult]:
             nonlocal attempts
             attempts += 1
             if attempts < 2:
                 msg = "provider timed out"
                 raise TimeoutError(msg)
-            return (fact,)
+            return (FactExtractionBatchResult(target_chunk_id=items[0].target_chunk_id, facts=[fact]),)
 
     facts = extract_facts_from_document(
         [target],
@@ -298,7 +277,9 @@ def test_extract_facts_from_document_retries_a_failing_target_then_succeeds() ->
         _metadata(),
         max_preceding_chunks=2,
         max_following_chunks=1,
+        batch_size=5,
         max_retries=2,
+        retry_delay_seconds=0,
     )
 
     assert attempts == 2
@@ -306,56 +287,94 @@ def test_extract_facts_from_document_retries_a_failing_target_then_succeeds() ->
     assert facts[0].source_chunk_id == "target"
 
 
-def test_extract_facts_from_document_skips_a_target_that_fails_every_attempt() -> None:
-    """A target that keeps raising is skipped, but other targets are still extracted."""
-    failing = _chunk("chunk-fail", "Nội dung gây lỗi mạng.")
+def test_extract_facts_from_document_leaves_failed_batch_incomplete_and_continues() -> None:
+    """An exhausted batch stays incomplete while a later batch is still persisted."""
+    failing = tuple(_chunk(f"chunk-fail-{index}", "Nội dung gây lỗi mạng.") for index in range(5))
     ok = _chunk("chunk-ok", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
     fact = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="chunk-ok", quoted_span="phạt tiền")])
 
-    class _FailsForOneChunkClient:
-        def extract(self, window: Sequence[object]) -> tuple[BamlLegalFact, ...]:
-            target_chunk_id = next(entry.chunk_id for entry in window if entry.role == ChunkWindowRole.Target)
-            if target_chunk_id == "chunk-fail":
+    class _FailsForFirstBatchClient:
+        def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[FactExtractionBatchResult]:
+            if len(items) == 5:
                 msg = "provider timed out"
                 raise TimeoutError(msg)
-            return (fact,)
+            return (FactExtractionBatchResult(target_chunk_id="chunk-ok", facts=[fact]),)
 
-    persisted: list[str] = []
+    persisted: list[tuple[str, ...]] = []
     with pytest.raises(RuntimeError, match="fact extraction left 1 incomplete"):
         extract_facts_from_document(
-            [failing, ok],
-            [failing, ok],
-            _FailsForOneChunkClient(),
+            (*failing, ok),
+            (*failing, ok),
+            _FailsForFirstBatchClient(),
             _metadata(),
             max_preceding_chunks=2,
             max_following_chunks=1,
+            batch_size=5,
             max_retries=2,
-            on_target_processed=lambda chunk_id, _facts: persisted.append(chunk_id),
+            retry_delay_seconds=0,
+            on_batch_processed=lambda results: persisted.append(tuple(chunk_id for chunk_id, _ in results)),
         )
 
-    assert persisted == ["chunk-ok"]
+    assert persisted == [("chunk-ok",)]
 
 
-def test_extract_facts_from_document_calls_on_target_processed_after_each_target() -> None:
-    """on_target_processed receives the chunk_id and that target's own facts, once per target."""
+def test_extract_facts_from_document_orders_batch_results_by_requested_target() -> None:
+    """Out-of-order model results are normalized before persistence."""
     target_one = _chunk("target-1", "Phạt tiền 4.000.000 đồng.")
     target_two = _chunk("target-2", "Trừ 6 điểm giấy phép lái xe.")
     fact_one = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target-1", quoted_span="phạt")])
-    client = _FakeExtractionClient({"target-1": (fact_one,), "target-2": ()})
+
+    class _ReverseClient:
+        def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[FactExtractionBatchResult]:
+            return (
+                FactExtractionBatchResult(target_chunk_id="target-2", facts=[]),
+                FactExtractionBatchResult(target_chunk_id="target-1", facts=[fact_one]),
+            )
+
     calls: list[tuple[str, int]] = []
 
     extract_facts_from_document(
         [target_one, target_two],
         [target_one, target_two],
-        client,
+        _ReverseClient(),
         _metadata(),
         max_preceding_chunks=2,
         max_following_chunks=1,
+        batch_size=5,
         max_retries=2,
-        on_target_processed=lambda chunk_id, facts: calls.append((chunk_id, len(facts))),
+        retry_delay_seconds=0,
+        on_batch_processed=lambda results: calls.extend((chunk_id, len(facts)) for chunk_id, facts in results),
     )
 
     assert calls == [("target-1", 1), ("target-2", 0)]
+
+
+@pytest.mark.parametrize("invalid_results", [(), ("extra",), ("target", "target")])
+def test_extract_facts_from_document_retries_invalid_batch_coverage(invalid_results: tuple[str, ...]) -> None:
+    """Missing, extra, and duplicate target results are rejected inside the retry boundary."""
+    target = _chunk("target", "Phạt tiền 4.000.000 đồng.")
+    attempts = 0
+
+    class _InvalidCoverageClient:
+        def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[FactExtractionBatchResult]:
+            nonlocal attempts
+            attempts += 1
+            return tuple(FactExtractionBatchResult(target_chunk_id=chunk_id, facts=[]) for chunk_id in invalid_results)
+
+    with pytest.raises(RuntimeError, match="fact extraction left 1 incomplete"):
+        extract_facts_from_document(
+            [target],
+            [target],
+            _InvalidCoverageClient(),
+            _metadata(),
+            max_preceding_chunks=1,
+            max_following_chunks=1,
+            batch_size=5,
+            max_retries=1,
+            retry_delay_seconds=0,
+        )
+
+    assert attempts == 2
 
 
 def test_extract_facts_from_document_resolves_context_excluded_from_target_chunks() -> None:
@@ -369,10 +388,10 @@ def test_extract_facts_from_document_resolves_context_excluded_from_target_chunk
     seen_roles: dict[str, ChunkWindowRole] = {}
 
     class _RecordingClient:
-        def extract(self, window: Sequence[object]) -> tuple[BamlLegalFact, ...]:
+        def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[FactExtractionBatchResult]:
             """Record every window entry's role by chunk_id and return no facts."""
-            seen_roles.update({entry.chunk_id: entry.role for entry in window})
-            return ()
+            seen_roles.update({entry.chunk_id: entry.role for entry in items[0].window})
+            return (FactExtractionBatchResult(target_chunk_id=items[0].target_chunk_id, facts=[]),)
 
     extract_facts_from_document(
         [target],
@@ -381,7 +400,9 @@ def test_extract_facts_from_document_resolves_context_excluded_from_target_chunk
         _metadata(),
         max_preceding_chunks=2,
         max_following_chunks=1,
+        batch_size=5,
         max_retries=2,
+        retry_delay_seconds=0,
     )
 
     assert seen_roles == {"target": ChunkWindowRole.Target, "preceding": ChunkWindowRole.Adjacent}
@@ -402,28 +423,27 @@ def _synthesis_settings() -> SynthesisSettings:
     return SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
 
 
-def test_baml_fact_extraction_client_parses_typed_result(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The generated non-stream client returns typed candidate facts."""
+def test_baml_fact_extraction_client_parses_typed_batch_result(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The generated non-stream client returns typed results keyed by target chunk."""
     client = BamlFactExtractionClient(_settings(), _synthesis_settings())
     monkeypatch.setattr(
         fact_extraction,
         "execute_baml_request",
         lambda *args, **kwargs: (
-            '[{"conduct":"Vượt đèn đỏ","subject":"Người điều khiển ô tô","conditions":[],'
+            '[{"target_chunk_id":"c1","facts":[{"conduct":"Vượt đèn đỏ",'
+            '"subject":"Người điều khiển ô tô","conditions":[],'
             '"monetary_penalty":"4.000.000 đồng","license_points_deducted":null,'
             '"additional_penalties":[],"remedial_measures":[],"valid_from":null,"valid_to":null,'
             '"provision_path":"Điều 6",'
-            '"evidence":[{"chunk_id":"c1","quoted_span":"4.000.000 đồng"}]}]'
+            '"evidence":[{"chunk_id":"c1","quoted_span":"4.000.000 đồng"}]}]}]'
         ),
     )
     target = _chunk("c1", "Vượt đèn đỏ phạt 4.000.000 đồng.")
-    provision_index = build_provision_index([target])
-    window = build_reading_window(
-        target, {"c1": target}, provision_index, max_preceding_chunks=2, max_following_chunks=1
-    )
+    window = build_reading_window(target, {"c1": target}, max_preceding_chunks=1, max_following_chunks=1)
 
-    facts = client.extract(window)
+    results = client.extract_batch([FactExtractionBatchItem(target_chunk_id="c1", window=list(window))])
 
-    assert len(facts) == 1
-    assert facts[0].conduct == "Vượt đèn đỏ"
-    assert facts[0].evidence[0].chunk_id == "c1"
+    assert len(results) == 1
+    assert results[0].target_chunk_id == "c1"
+    assert results[0].facts[0].conduct == "Vượt đèn đỏ"
+    assert results[0].facts[0].evidence[0].chunk_id == "c1"

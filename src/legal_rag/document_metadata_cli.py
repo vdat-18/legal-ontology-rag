@@ -47,6 +47,7 @@ def main() -> None:
         opening_chunk_count=synthesis_settings.document_metadata_opening_chunk_count,
         closing_chunk_count=synthesis_settings.document_metadata_closing_chunk_count,
         max_retries=synthesis_settings.llm_max_retries,
+        retry_delay_seconds=synthesis_settings.llm_retry_delay_seconds,
     )
     write_document_metadata(arguments.metadata_output_path, record)
     logger.info(
