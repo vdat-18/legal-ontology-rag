@@ -13,6 +13,7 @@ class LegalFactSummary {
   fact_id string
   conduct string
   subject string
+  conditions string[]
   monetary_penalty string?
   license_points_deducted string?
   additional_penalties string[]
@@ -21,6 +22,12 @@ class LegalFactSummary {
   valid_to string?
   document_number string
   provision_path string
+  evidence RelationEvidence[]
+}
+
+class RelationEvidence {
+  chunk_id string
+  quoted_span string
 }
 
 class ConfirmedRelation {
@@ -31,6 +38,14 @@ class ConfirmedRelation {
   "#)
   relation_type RelationType? @description(#"
     Bắt buộc khi is_related=true, null khi is_related=false.
+  "#)
+  from_fact_id string? @description(#"
+    Bắt buộc khi is_related=true và phải là fact_id của một trong hai fact
+    đầu vào. Đây là đầu nguồn theo hướng ngữ nghĩa của relation.
+  "#)
+  to_fact_id string? @description(#"
+    Bắt buộc khi is_related=true và phải là fact_id còn lại. Đây là đầu đích
+    theo hướng ngữ nghĩa của relation.
   "#)
   bridge string[] @description(#"
     Thực thể hoặc thuộc tính chung khiến hai fact liên quan, ví dụ số điều
@@ -62,6 +77,18 @@ function ConfirmEvidenceRelation(fact_a: LegalFactSummary, fact_b: LegalFactSumm
     - AmendedBy: một fact là quy định cũ, fact kia sửa đổi hoặc thay thế nó
     - ProcedureSequence: hai fact là các bước liên tiếp trong cùng thủ tục
 
+    Hướng relation bắt buộc:
+    - ConductToPenalty: từ fact mô tả hành vi/quy tắc tới fact nêu mức phạt.
+    - ConductToSubject: từ fact mô tả hành vi tới fact làm rõ đối tượng.
+    - ConductToPointsDeduction: từ fact mô tả hành vi hoặc mức phạt tới fact
+      nêu trừ điểm/tước giấy phép.
+    - ConductToRemedialMeasure: từ fact mô tả hành vi hoặc mức phạt tới fact
+      nêu biện pháp khắc phục.
+    - RuleToException: từ quy định chung tới ngoại lệ.
+    - RuleToAuthority: từ quy định về hành vi tới quy định về thẩm quyền.
+    - AmendedBy: từ quy định cũ tới quy định sửa đổi hoặc thay thế nó.
+    - ProcedureSequence: từ bước xảy ra trước tới bước xảy ra sau.
+
     Không kết luận có quan hệ chỉ vì hai fact nghe giống nhau hoặc dùng từ
     ngữ tương tự. Chỉ kết luận có quan hệ khi nội dung của cả hai fact thực
     sự thể hiện quan hệ đó.
@@ -75,6 +102,7 @@ function ConfirmEvidenceRelation(fact_a: LegalFactSummary, fact_b: LegalFactSumm
     subject="Người điều khiển ô tô", license_points_deducted="6 điểm",
     provision_path="Điều 6 khoản 10"
     Kết quả: is_related=true, relation_type=ConductToPointsDeduction,
+    from_fact_id=Fact A.fact_id, to_fact_id=Fact B.fact_id,
     bridge=["Điều 6", "không chấp hành hiệu lệnh của đèn tín hiệu giao
     thông"]. (Cùng một hành vi, một fact nêu phạt tiền, fact kia nêu trừ
     điểm — quan hệ trực tiếp, có căn cứ rõ ràng.)
@@ -83,7 +111,8 @@ function ConfirmEvidenceRelation(fact_a: LegalFactSummary, fact_b: LegalFactSumm
     subject="Người điều khiển ô tô", provision_path="Điều 6 khoản 9 điểm b"
     Fact B: conduct="Chở quá số người quy định", subject="Người điều khiển ô
     tô", provision_path="Điều 6 khoản 5"
-    Kết quả: is_related=false, relation_type=null, bridge=[]. (Hai hành vi
+    Kết quả: is_related=false, relation_type=null, from_fact_id=null,
+    to_fact_id=null, bridge=[]. (Hai hành vi
     khác nhau, chỉ cùng nằm trong Điều 6 và cùng đối tượng ô tô — không có
     quan hệ pháp lý trực tiếp giữa hai hành vi này.)
 

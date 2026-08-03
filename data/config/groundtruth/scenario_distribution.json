@@ -1,7 +1,13 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "query_styles": ["standard", "no_diacritics", "misspelled", "keyword_style"],
   "query_lengths": ["short", "medium", "long"],
   "query_forms": ["specific", "abstract"],
-  "bundle_answerability_values": ["answerable", "partially_answerable"]
+  "bundle_answerability_values": ["answerable", "partially_answerable"],
+  "bundle_kind_weights": {
+    "single_hop": 0.4,
+    "synthesis": 0.2,
+    "multi_hop": 0.2,
+    "temporal": 0.2
+  }
 }

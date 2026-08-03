@@ -14,6 +14,10 @@ describe retry-then-skip behavior.
 - `legal-assemble-groundtruth` validates every selected document and produces
   corpus-level `legal_facts.jsonl` plus `run_manifest.json`. The evidence graph
   consumes this assembled fact file.
+- Fact extraction binds every citation to exact contiguous chunk text before
+  persistence. A model citation joining paragraphs across omitted text is
+  represented as multiple evidence entries; any unbindable citation fails the
+  work unit and remains resumable.
 - Candidate generation receives answerability, bundle kind, bridge, and hops.
   Gate 1 rejects fact/chunk references outside the scenario and requires every
   scenario fact to contribute to a multi-hop candidate.
@@ -38,7 +42,8 @@ describe retry-then-skip behavior.
   credential, and deployment values from the environment.
 - `legal-assemble-groundtruth` always hashes the required synthesis config in
   the run manifest, alongside any taxonomy/persona/distribution configs passed
-  through additional `--config` arguments.
+  through additional `--config` arguments. The manifest identity also hashes
+  the assembled `(fact_id, fact_content_sha256)` ledger.
 - `groundtruth_corpus_v1.json` contains all 35 documents in
   `road_traffic_penalty_scope.json`'s broad `in_scope` list; its corpus snapshot
   freezes that complete selection for reproducible synthesis runs.
@@ -55,6 +60,7 @@ data/processed/groundtruth/
 data/benchmark_synthesis/
 |-- legal_facts.jsonl
 |-- run_manifest.json
+|-- evidence_relation_candidates.json
 |-- evidence_relations.jsonl
 |-- evidence_relation_progress.jsonl
 |-- scenarios.jsonl
@@ -288,13 +294,29 @@ quan tới nhau:
   "from_fact_id": "...",
   "to_fact_id": "...",
   "bridge": ["Điều 6 khoản 9 điểm b", "vượt đèn đỏ"],
-  "confirmed_by_model": "..."
+  "confirmed_by_model": "...",
+  "run_id": "..."
 }
 ```
 
 `bridge` được đưa vào prompt sinh câu hỏi multi-hop làm chủ đề bắc cầu. Không
 có nó, câu multi-hop thường bị rút gọn thành single-hop vì một chunk đã đủ trả
 lời. Với quan hệ temporal, `bridge` chính là điều khoản bị sửa đổi.
+
+LLM phải trả rõ hướng `from_fact_id → to_fact_id` theo ngữ nghĩa của từng loại
+quan hệ. Prompt nhận cả `conditions` và các quoted span nguyên văn, không chỉ
+phần tóm tắt conduct/subject. Mỗi relation và progress record lưu `run_id` được
+băm từ fact content, embedding profile, cấu hình đề cử/xác nhận, endpoint,
+model và prompt version. CLI từ chối resume nếu fingerprint không khớp để
+không trộn kết quả cũ với một lần chạy mới.
+
+Candidate retrieval là bước CPU nặng với embedding model. CLI lưu tập cặp đã
+đề cử vào `evidence_relation_candidates.json` kèm fingerprint riêng của fact
+ledger, embedding profile, retrieval config và candidate-selection version.
+Các lần resume đọc cache này và không encode lại toàn corpus; đổi bất kỳ input
+liên quan nào làm cache bị từ chối thay vì tái sử dụng âm thầm.
+`--prepare-candidates-only` cho phép tạo/kiểm cache rồi dừng trước mọi LLM call,
+để người chạy xem số cặp và dự toán chi phí trước khi xác nhận quan hệ.
 
 Graph tạo ra evidence bundle:
 
@@ -402,10 +424,12 @@ lưu vào candidate để phân tích difficulty theo từng phép.
 
 ### Lấy mẫu đa dạng thay vì cân bằng hậu kiểm
 
-Đặt quota theo cụm fact `số mẫu mỗi cụm = ceil(tổng mẫu / số cụm)`, sau đó
-chọn tham lam theo thứ tự ưu tiên: cặp persona và fact chưa từng xuất hiện,
-rồi `query_style` đang ít, rồi `query_length` đang ít. Cách này đạt độ phủ ngay
-tại lúc sinh, không cần loại bỏ hậu kiểm.
+Phân bổ mẫu theo trọng số `bundle_kind` trong config bằng weighted round-robin,
+nhờ đó single-hop không chiếm hết ngân sách trước khi synthesis, multi-hop và
+temporal được xét. Trong từng loại, bundle được luân phiên; persona ưu tiên cặp
+persona/bundle chưa dùng, còn query style, length, form, type và answerability
+ưu tiên giá trị đang ít xuất hiện. Cách này đạt độ phủ ngay tại lúc sinh, không
+cần loại bỏ hậu kiểm.
 
 Taxonomy, danh sách persona và phân bố scenario phải nằm trong file cấu hình
 có phiên bản, không hardcode trong source code.
@@ -871,6 +895,7 @@ data/benchmark_synthesis/
 ├── document_metadata.jsonl
 ├── extraction_progress.jsonl
 ├── legal_facts.jsonl
+├── evidence_relation_candidates.json
 ├── evidence_relations.jsonl
 ├── evidence_relation_progress.jsonl
 ├── scenarios.jsonl
@@ -1042,11 +1067,13 @@ Module trong `benchmark_synthesis/`:
 - `fact_extraction.py` — dựng cửa sổ đọc gồm `Target`, tối đa 1 chunk
   liền trước qua `previous_chunk_id` và 1 chunk liền sau qua
   `next_chunk_id`, gọi BAML trích fact, rồi gán `fact_id` và
-  `fact_content_sha256` qua `sha256_json`. **Tin tưởng hoàn toàn output LLM**
-  (xem "Nguyên tắc kiến trúc" ở đầu tài liệu): `evidence.chunk_id` và
-  `evidence.quoted_span` được giữ nguyên như LLM trả về, không tra cứu lại
-  chunk gốc để gán thêm `unit_ids`/`source_refs` (đã bỏ hai field này khỏi
-  `EvidenceReference` vì không có nơi nào trong pipeline đọc lại chúng).
+  `fact_content_sha256` qua `sha256_json`. Nội dung pháp lý vẫn lấy từ typed
+  LLM output, nhưng provenance được ràng buộc tất định trước khi ghi:
+  `chunk_id` phải thuộc reading window và mỗi `quoted_span` phải là substring
+  liên tục, nguyên văn. Nếu model ghép các paragraph nhưng bỏ nội dung ở giữa,
+  code tách chúng thành nhiều evidence entry khi mọi paragraph đều xuất hiện
+  đúng thứ tự; trường hợp khác raise để work unit retry. Không gán thêm
+  `unit_ids`/`source_refs` vì hai field này không thuộc `EvidenceReference`.
 - `writer.py` — đọc/ghi JSONL nguyên tử cho `chunk_screening.jsonl` và
   `legal_facts.jsonl`, dùng lại `io_utils.write_jsonl_atomic`.
 
@@ -1120,6 +1147,13 @@ sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.js
   `fact_id`, đúng ngữ nghĩa định danh nội dung. File không phải schema `1.1.0`
   bị từ chối, nên chạy lại lần hai không làm hỏng dữ liệu đã migrate.
 
+- `legal-rebind-fact-evidence` (`fact_evidence_rebinding_cli.py`): migration
+  không gọi LLM cho fact schema hiện hành đã được tạo trước contract exact
+  binding. Nhận một file fact và file chunk cùng văn bản, tách citation ghép
+  paragraph thành các span nguyên văn, giữ nguyên `fact_id` và tính lại
+  `fact_content_sha256`. Citation không thể bind chính xác làm command lỗi
+  thay vì sửa gần đúng.
+
   Vì `document_number` nằm trong bộ trường định danh, migration này **đổi
   `fact_id` của mọi fact**. Nó chỉ an toàn khi chưa có artifact nào tham chiếu
   `fact_id` (`evidence_relations.jsonl`, `scenarios.jsonl`, `single_turn.jsonl`);
@@ -1142,7 +1176,8 @@ Test: `tests/benchmark_synthesis/test_fact_extraction.py`,
 `tests/test_baml_transport.py`, `tests/test_chunk_screening_cli.py`,
 `tests/test_document_metadata_cli.py`, `tests/test_fact_extraction_cli.py`,
 `tests/test_extraction_progress_backfill_cli.py`,
-`tests/test_legal_fact_migration_cli.py`
+`tests/test_legal_fact_migration_cli.py`,
+`tests/test_fact_evidence_rebinding_cli.py`
 (tích hợp CLI đầu-cuối với client LLM giả mỗi bên). Windowing test
 trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
 `execute_baml_request` trong `tests/parser/test_baml_captioning.py`.
@@ -1180,7 +1215,8 @@ trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
   mọi cặp bằng LLM (596 fact ⇒ 177.310 lệnh gọi) cũng không khả thi. Hybrid
   search là công cụ đúng chỗ cho lớp bài toán "đề cử ứng viên trước khi LLM
   phán quyết", không phải ngoại lệ dò từng trường hợp. `confirm_evidence_relations`
-  gọi BAML xác nhận từng cặp và lấy `bridge`; `classify_bundle_kind` áp ràng
+  gọi BAML xác nhận từng cặp, hướng quan hệ và `bridge`; mỗi fact summary gồm
+  cả `conditions` và exact quoted evidence. `classify_bundle_kind` áp ràng
   buộc cấu trúc — `amended_by` luôn là `temporal` bất kể văn bản, còn lại thì
   khác văn bản mới là `multi_hop`, cùng văn bản hạ xuống `synthesis` — biểu
   diễn trực tiếp bằng logic phân loại, không phải bước "hạ cấp" riêng sau khi
@@ -1196,8 +1232,15 @@ trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
   cặp đó bị gọi LLM lại ở mọi lần chạy sau. `find_candidate_fact_pairs` chạy
   lại toàn bộ mỗi lần (tất định, rẻ, không gọi LLM) chỉ để xác định danh sách
   cặp ứng viên; phần tốn kém — xác nhận qua LLM — mới được resume.
-- `scenario_sampling.py` — nạp taxonomy/persona/phân bố từ config, thuật
-  toán tham lam theo quota đã mô tả ở mục 5.
+  Relation và progress cùng mang `run_id`; CLI từ chối output cũ nếu fact,
+  embedding profile, tham số relation, endpoint, model hoặc prompt version đã
+  đổi. Candidate pairs có artifact cache fingerprinted riêng để resume không
+  chạy lại embedding toàn corpus. Candidate, relation và bundle đều dùng thứ
+  tự tie-break ổn định theo ID.
+- `scenario_sampling.py` — nạp taxonomy/persona/phân bố từ config, phân bổ theo
+  trọng số bundle kind rồi cân bằng các trục bề mặt như mô tả ở mục 5. Với
+  bundle nhiều fact, `as_of_date` chỉ được đặt khi nằm trong giao của mọi
+  khoảng hiệu lực; nếu không có ngày chung thì để `null`.
 
 **Hai điểm lệch so với kế hoạch ban đầu, có lý do rõ:**
 
@@ -1247,9 +1290,9 @@ Bundle sampling và scenario sampling là code tất định, chạy lại toàn
 lần trên tập quan hệ hiện có — không cần resume riêng vì không tốn LLM call.
 
 Test: `test_evidence_graph.py` (bao gồm retry/skip/callback theo mẫu
-`test_fact_extraction.py`), `test_scenario_sampling.py` (thuật toán tham
-lam test bằng fixture fact cố định, kiểm quota trần theo `ceil`, kiểm luân
-phiên theo trục ít dùng nhất), `test_evaluation_writer.py` (round-trip
+`test_fact_extraction.py`), `test_scenario_sampling.py` (weighted bundle-kind,
+giao khoảng hiệu lực và luân phiên theo trục ít dùng nhất),
+`test_evaluation_writer.py` (round-trip
 `EvidenceRelationProgressRecord`), `tests/test_evidence_graph_cli.py` (tích
 hợp CLI đầu-cuối: resume bỏ qua cặp đã kiểm, ghi tiến độ khi bị ngắt giữa
 chừng, không gọi lại LLM cho cặp đã xác nhận "không liên quan").

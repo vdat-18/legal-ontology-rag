@@ -87,6 +87,22 @@ def test_find_candidate_fact_pairs_orders_and_deduplicates_symmetric_pairs() -> 
     assert pairs == (("fact-a", "fact-b"),)
 
 
+@pytest.mark.parametrize("facts", [[], [_fact("fact-a")]])
+def test_find_candidate_fact_pairs_returns_empty_for_fewer_than_two_facts(facts: list[LegalFact]) -> None:
+    """Candidate selection handles empty and one-fact corpora without constructing BM25."""
+    assert (
+        find_candidate_fact_pairs(
+            facts,
+            _FakeEncoder({}),
+            max_candidates_per_fact=5,
+            min_similarity=0.5,
+            pool_multiplier=2,
+            rrf_k=60,
+        )
+        == ()
+    )
+
+
 def test_find_candidate_fact_pairs_excludes_pairs_missed_by_both_legs() -> None:
     """A pair that is neither dense-similar nor lexically overlapping never becomes a candidate."""
     fact_a = _fact("fact-a", conduct="Vượt đèn đỏ", subject="Ô tô", provision_path="Điều 6")
@@ -182,6 +198,7 @@ def _relation(
         to_fact_id=to_fact_id,
         bridge=("Điều 6",),
         confirmed_by_model="provider/test-model",
+        run_id="run-1",
     )
 
 
@@ -358,37 +375,44 @@ def test_evidence_relation_client_uses_relation_stage_bounds(monkeypatch: pytest
     )
     monkeypatch.setattr(evidence_graph, "build_client_registry", _capture_registry)
 
-    BamlEvidenceRelationClient(_settings(), settings)
+    BamlEvidenceRelationClient(_settings(), settings, run_id="run-1")
 
     assert configured_tokens == [202]
 
 
 def test_baml_evidence_relation_client_translates_confirmed_relation(monkeypatch: pytest.MonkeyPatch) -> None:
     """A confirmed relation from the generated client becomes a persisted EvidenceRelation."""
-    client = BamlEvidenceRelationClient(_settings(), _synthesis_settings())
+    client = BamlEvidenceRelationClient(_settings(), _synthesis_settings(), run_id="run-1")
     monkeypatch.setattr(
         evidence_graph,
         "execute_baml_request",
-        lambda *args, **kwargs: '{"is_related":true,"relation_type":"AmendedBy","bridge":["Điều 6 khoản 9 điểm b"]}',
+        lambda *args, **kwargs: (
+            '{"is_related":true,"relation_type":"AmendedBy",'
+            '"from_fact_id":"fact-b","to_fact_id":"fact-a",'
+            '"bridge":["Điều 6 khoản 9 điểm b"]}'
+        ),
     )
 
     relation = client.confirm(_fact("fact-a"), _fact("fact-b"))
 
     assert relation is not None
     assert relation.relation_type == "amended_by"
-    assert relation.from_fact_id == "fact-a"
-    assert relation.to_fact_id == "fact-b"
+    assert relation.from_fact_id == "fact-b"
+    assert relation.to_fact_id == "fact-a"
     assert relation.bridge == ("Điều 6 khoản 9 điểm b",)
     assert relation.confirmed_by_model == "provider/test-model"
+    assert relation.run_id == "run-1"
 
 
 def test_baml_evidence_relation_client_returns_none_when_unrelated(monkeypatch: pytest.MonkeyPatch) -> None:
     """An unrelated verdict from the model returns None, not a fabricated relation."""
-    client = BamlEvidenceRelationClient(_settings(), _synthesis_settings())
+    client = BamlEvidenceRelationClient(_settings(), _synthesis_settings(), run_id="run-1")
     monkeypatch.setattr(
         evidence_graph,
         "execute_baml_request",
-        lambda *args, **kwargs: '{"is_related":false,"relation_type":null,"bridge":[]}',
+        lambda *args, **kwargs: (
+            '{"is_related":false,"relation_type":null,"from_fact_id":null,"to_fact_id":null,"bridge":[]}'
+        ),
     )
 
     relation = client.confirm(_fact("fact-a"), _fact("fact-b"))
@@ -396,11 +420,89 @@ def test_baml_evidence_relation_client_returns_none_when_unrelated(monkeypatch: 
     assert relation is None
 
 
+def test_baml_evidence_relation_client_sends_conditions_and_exact_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Relation confirmation sends applicability conditions and exact quoted evidence to BAML."""
+    captured_summaries: list[object] = []
+    request = object()
+
+    def _capture_request(fact_a: object, fact_b: object, **kwargs: object) -> object:
+        captured_summaries.extend((fact_a, fact_b))
+        return request
+
+    fact_a = replace(
+        _fact("fact-a"),
+        conditions=("Khi chuyển hướng tại nơi đường giao nhau",),
+        evidence=(EvidenceReference(chunk_id="chunk-a", quoted_span="Trích nguyên văn fact A"),),
+    )
+    fact_b = replace(
+        _fact("fact-b"),
+        conditions=("Trừ trường hợp xe ưu tiên",),
+        evidence=(EvidenceReference(chunk_id="chunk-b", quoted_span="Trích nguyên văn fact B"),),
+    )
+    monkeypatch.setattr(evidence_graph.b.request, "ConfirmEvidenceRelation", _capture_request)
+    monkeypatch.setattr(
+        evidence_graph,
+        "execute_baml_request",
+        lambda received_request, *args, **kwargs: (
+            '{"is_related":false,"relation_type":null,"from_fact_id":null,"to_fact_id":null,"bridge":[]}'
+            if received_request is request
+            else pytest.fail("BAML request object was not forwarded to the transport")
+        ),
+    )
+
+    relation = BamlEvidenceRelationClient(_settings(), _synthesis_settings(), run_id="run-1").confirm(fact_a, fact_b)
+
+    assert relation is None
+    assert len(captured_summaries) == 2
+    summary_a, summary_b = captured_summaries
+    assert summary_a.conditions == ["Khi chuyển hướng tại nơi đường giao nhau"]
+    assert summary_a.evidence[0].chunk_id == "chunk-a"
+    assert summary_a.evidence[0].quoted_span == "Trích nguyên văn fact A"
+    assert summary_b.conditions == ["Trừ trường hợp xe ưu tiên"]
+    assert summary_b.evidence[0].chunk_id == "chunk-b"
+    assert summary_b.evidence[0].quoted_span == "Trích nguyên văn fact B"
+
+
 def test_build_relation_is_deterministic_for_identical_inputs() -> None:
     """Re-confirming the same pair and type produces the same relation_id."""
-    result = BamlConfirmedRelation(is_related=True, relation_type=BamlRelationType.AmendedBy, bridge=["Điều 6"])
+    fact_a, fact_b = _fact("fact-a"), _fact("fact-b")
+    result = BamlConfirmedRelation(
+        is_related=True,
+        relation_type=BamlRelationType.AmendedBy,
+        from_fact_id="fact-a",
+        to_fact_id="fact-b",
+        bridge=["Điều 6"],
+    )
 
-    first = evidence_graph._build_relation(result, "fact-a", "fact-b", "provider/test-model")
-    second = evidence_graph._build_relation(result, "fact-a", "fact-b", "provider/test-model")
+    first = evidence_graph._build_relation(result, fact_a, fact_b, "provider/test-model", "run-1")
+    second = evidence_graph._build_relation(result, fact_a, fact_b, "provider/test-model", "run-1")
 
+    assert first is not None
+    assert second is not None
     assert first.relation_id == second.relation_id
+
+
+@pytest.mark.parametrize(
+    ("from_fact_id", "to_fact_id"),
+    [("fact-a", "fact-a"), ("fact-a", "fact-c")],
+)
+def test_build_relation_rejects_invalid_direction(from_fact_id: str, to_fact_id: str) -> None:
+    """A confirmed direction must contain each input fact exactly once."""
+    result = BamlConfirmedRelation(
+        is_related=True,
+        relation_type=BamlRelationType.AmendedBy,
+        from_fact_id=from_fact_id,
+        to_fact_id=to_fact_id,
+        bridge=["Điều 6"],
+    )
+
+    with pytest.raises(ValueError, match="direction must contain each input fact_id exactly once"):
+        evidence_graph._build_relation(
+            result,
+            _fact("fact-a"),
+            _fact("fact-b"),
+            "provider/test-model",
+            "run-1",
+        )

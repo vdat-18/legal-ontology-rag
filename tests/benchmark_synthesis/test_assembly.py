@@ -125,7 +125,22 @@ def test_assembly_emits_complete_reproducibility_manifest(tmp_path: Path) -> Non
     assert result.manifest["llm_model"] == "provider/test-model"
     assert result.manifest["prompt_versions"]
     assert result.manifest["config_sha256"]
+    assert result.manifest["fact_ledger_sha256"]
     assert _SYNTHESIS_CONFIG_PATH.as_posix() in result.manifest["config_sha256"]
+
+
+def test_assembly_run_id_changes_with_fact_content(tmp_path: Path) -> None:
+    """A different extracted fact ledger produces a different reproducibility run ID."""
+    first_dir = tmp_path / "first"
+    second_dir = tmp_path / "second"
+    first_dir.mkdir()
+    second_dir.mkdir()
+    changed_fact = replace(_fact(), fact_content_sha256="changed-content", monetary_penalty="changed")
+
+    first = _assemble(first_dir)
+    second = _assemble(second_dir, facts=(changed_fact,))
+
+    assert first.manifest["run_id"] != second.manifest["run_id"]
 
 
 def test_assembly_rejects_incomplete_extraction_progress(tmp_path: Path) -> None:
@@ -155,6 +170,17 @@ def test_assembly_rejects_non_exact_evidence_span(tmp_path: Path) -> None:
     fact = replace(
         _fact(),
         evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span="not present"),),
+    )
+
+    with pytest.raises(GroundTruthValidationError, match="non-exact quoted span"):
+        _assemble(tmp_path, facts=(fact,))
+
+
+def test_assembly_rejects_empty_evidence_span(tmp_path: Path) -> None:
+    """An empty string is not a meaningful exact citation."""
+    fact = replace(
+        _fact(),
+        evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span=""),),
     )
 
     with pytest.raises(GroundTruthValidationError, match="non-exact quoted span"):

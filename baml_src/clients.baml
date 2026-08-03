@@ -6,5 +6,6 @@ client<llm> OpenAICompatibleProvider {
     api_key env.LLM_API_KEY
     model env.LLM_MODEL
     supports_streaming false
+    reasoning_effort "none"
   }
 }

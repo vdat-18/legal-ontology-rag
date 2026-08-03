@@ -26,11 +26,17 @@ from legal_rag.benchmark_synthesis.scenario_sampling import (
 _REPO_CONFIG_DIR = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth"
 
 
-def _fact(fact_id: str, *, valid_from: date | None = None) -> LegalFact:
+def _fact(
+    fact_id: str,
+    *,
+    content_sha256: str | None = None,
+    valid_from: date | None = None,
+    valid_to: date | None = None,
+) -> LegalFact:
     """Build one minimal legal fact for scenario-sampling tests."""
     return LegalFact(
         fact_id=fact_id,
-        fact_content_sha256=f"content-{fact_id}",
+        fact_content_sha256=content_sha256 or f"content-{fact_id}",
         conduct="Vượt đèn đỏ",
         subject="Người điều khiển ô tô",
         conditions=(),
@@ -39,16 +45,22 @@ def _fact(fact_id: str, *, valid_from: date | None = None) -> LegalFact:
         additional_penalties=(),
         remedial_measures=(),
         valid_from=valid_from,
-        valid_to=None,
+        valid_to=valid_to,
         document_number="168/2024/NĐ-CP",
         provision_path="Điều 6",
         evidence=(EvidenceReference(chunk_id=f"chunk-{fact_id}", quoted_span=""),),
     )
 
 
-def _bundle(bundle_id: str, fact_ids: tuple[str, ...], *, kind: str = "single_hop") -> EvidenceBundle:
+def _bundle(
+    bundle_id: str,
+    fact_ids: tuple[str, ...],
+    *,
+    kind: str = "single_hop",
+    bridge: tuple[str, ...] = ("Điều 6",),
+) -> EvidenceBundle:
     """Build one evidence bundle for scenario-sampling tests."""
-    return EvidenceBundle(bundle_id=bundle_id, kind=kind, fact_ids=fact_ids, bridge=("Điều 6",))
+    return EvidenceBundle(bundle_id=bundle_id, kind=kind, fact_ids=fact_ids, bridge=bridge)
 
 
 def _config(
@@ -79,6 +91,12 @@ def _config(
             query_lengths=query_lengths,
             query_forms=query_forms,
             bundle_answerability_values=("answerable", "partially_answerable"),
+            bundle_kind_weights=(
+                ("single_hop", 0.4),
+                ("synthesis", 0.2),
+                ("multi_hop", 0.2),
+                ("temporal", 0.2),
+            ),
         ),
     )
 
@@ -104,6 +122,12 @@ def test_load_scenario_distribution_reads_repo_config() -> None:
 
     assert "no_diacritics" in distribution.query_styles
     assert distribution.bundle_answerability_values == ("answerable", "partially_answerable")
+    assert dict(distribution.bundle_kind_weights) == {
+        "single_hop": 0.4,
+        "synthesis": 0.2,
+        "multi_hop": 0.2,
+        "temporal": 0.2,
+    }
 
 
 def test_load_evolution_config_reads_repo_config() -> None:
@@ -145,6 +169,26 @@ def test_sample_scenarios_stops_at_the_requested_total() -> None:
     assert len(scenarios) == 3
 
 
+def test_sample_scenarios_balances_bundle_kinds_for_small_totals() -> None:
+    """A small sample includes each available bundle kind before repeating one."""
+    facts_by_id = {fact_id: _fact(fact_id) for fact_id in ("a", "b", "c", "d", "e", "f")}
+    bundles = [
+        _bundle("single", ("a",)),
+        _bundle("synthesis", ("b", "c"), kind="synthesis"),
+        _bundle("multi-hop", ("d", "e"), kind="multi_hop"),
+        _bundle("temporal", ("e", "f"), kind="temporal"),
+    ]
+
+    scenarios = sample_scenarios(bundles, facts_by_id, _config(), total_samples=4)
+
+    assert {scenario.bundle_kind for scenario in scenarios} == {
+        "single_hop",
+        "synthesis",
+        "multi_hop",
+        "temporal",
+    }
+
+
 def test_sample_scenarios_sets_reasoning_hops_to_bundle_size() -> None:
     """A two-fact bundle produces scenarios with reasoning_hops=2."""
     facts_by_id = {"a": _fact("a"), "b": _fact("b")}
@@ -165,17 +209,30 @@ def test_sample_scenarios_collects_deduplicated_sorted_gold_chunk_ids() -> None:
     assert scenarios[0].gold_chunk_ids == ("chunk-a", "chunk-b")
 
 
-def test_sample_scenarios_picks_latest_valid_from_as_of_date() -> None:
-    """as_of_date is the latest valid_from among the bundle's facts."""
+def test_sample_scenarios_picks_date_inside_shared_validity_interval() -> None:
+    """as_of_date is the latest valid_from when it falls inside every validity interval."""
     facts_by_id = {
-        "a": _fact("a", valid_from=date(2024, 1, 1)),
-        "b": _fact("b", valid_from=date(2025, 1, 1)),
+        "a": _fact("a", valid_from=date(2024, 1, 1), valid_to=date(2025, 12, 31)),
+        "b": _fact("b", valid_from=date(2025, 1, 1), valid_to=date(2026, 12, 31)),
     }
     bundle = _bundle("bundle-ab", ("a", "b"), kind="synthesis")
 
     scenarios = sample_scenarios([bundle], facts_by_id, _config(), total_samples=1)
 
     assert scenarios[0].as_of_date == date(2025, 1, 1)
+
+
+def test_sample_scenarios_as_of_date_is_none_for_disjoint_validity_intervals() -> None:
+    """as_of_date is None when the facts have no shared validity date."""
+    facts_by_id = {
+        "a": _fact("a", valid_from=date(2024, 1, 1), valid_to=date(2024, 12, 31)),
+        "b": _fact("b", valid_from=date(2025, 1, 1), valid_to=date(2025, 12, 31)),
+    }
+    bundle = _bundle("bundle-ab", ("a", "b"), kind="temporal")
+
+    scenarios = sample_scenarios([bundle], facts_by_id, _config(), total_samples=1)
+
+    assert scenarios[0].as_of_date is None
 
 
 def test_sample_scenarios_as_of_date_is_none_without_any_valid_from() -> None:
@@ -217,6 +274,41 @@ def test_sample_scenarios_scenario_id_is_deterministic() -> None:
     second = sample_scenarios([bundle], facts_by_id, _config(), total_samples=1)
 
     assert first[0].scenario_id == second[0].scenario_id
+
+
+def test_sample_scenarios_is_invariant_to_bundle_input_order() -> None:
+    """Reordering equivalent bundle input does not change sampled scenarios."""
+    facts_by_id = {fact_id: _fact(fact_id) for fact_id in ("a", "b")}
+    bundles = [_bundle("bundle-b", ("b",)), _bundle("bundle-a", ("a",))]
+
+    first = sample_scenarios(bundles, facts_by_id, _config(), total_samples=2)
+    second = sample_scenarios(list(reversed(bundles)), facts_by_id, _config(), total_samples=2)
+
+    assert first == second
+
+
+def test_sample_scenarios_scenario_id_changes_with_bridge() -> None:
+    """Changing relation semantics changes scenario identity even when the bundle ID is unchanged."""
+    facts_by_id = {"a": _fact("a")}
+    first_bundle = _bundle("bundle-a", ("a",), bridge=("same_subject",))
+    second_bundle = _bundle("bundle-a", ("a",), bridge=("supersedes",))
+
+    first = sample_scenarios([first_bundle], facts_by_id, _config(), total_samples=1)
+    second = sample_scenarios([second_bundle], facts_by_id, _config(), total_samples=1)
+
+    assert first[0].scenario_id != second[0].scenario_id
+
+
+def test_sample_scenarios_scenario_id_changes_with_fact_content() -> None:
+    """Changing a fact's content hash invalidates scenario identity."""
+    bundle = _bundle("bundle-a", ("a",))
+    first_facts = {"a": _fact("a", content_sha256="first-content")}
+    second_facts = {"a": _fact("a", content_sha256="second-content")}
+
+    first = sample_scenarios([bundle], first_facts, _config(), total_samples=1)
+    second = sample_scenarios([bundle], second_facts, _config(), total_samples=1)
+
+    assert first[0].scenario_id != second[0].scenario_id
 
 
 def test_scenario_to_dict_serializes_stable_output_schema() -> None:

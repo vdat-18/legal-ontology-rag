@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any, Literal, Protocol
 
 import numpy as np
@@ -11,7 +11,7 @@ from baml_py.logging import set_log_level
 
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import ConfirmedRelation as BamlConfirmedRelation
-from legal_rag.baml_client.types import LegalFactSummary
+from legal_rag.baml_client.types import LegalFactSummary, RelationEvidence
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.llm_execution import (
@@ -22,13 +22,16 @@ from legal_rag.benchmark_synthesis.llm_execution import (
 )
 from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.embedding.encoder import EmbeddingEncoder
+from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
-EVIDENCE_RELATION_SCHEMA_VERSION = "1.0.0"
+EVIDENCE_RELATION_SCHEMA_VERSION = "1.1.0"
 EVIDENCE_BUNDLE_SCHEMA_VERSION = "1.0.0"
-EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.0.0"
-EVIDENCE_RELATION_PROMPT_VERSION = "1.0.0"
+EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.1.0"
+EVIDENCE_RELATION_PROMPT_VERSION = "1.1.0"
+EVIDENCE_CANDIDATE_SELECTION_VERSION = "1.1.0"
+EVIDENCE_CANDIDATE_SET_SCHEMA_VERSION = "1.0.0"
 
 RelationType = Literal[
     "conduct_to_penalty",
@@ -65,6 +68,7 @@ class EvidenceRelation:
     to_fact_id: str
     bridge: tuple[str, ...]
     confirmed_by_model: str
+    run_id: str
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable evidence-relation record."""
@@ -76,6 +80,7 @@ class EvidenceRelation:
             "to_fact_id": self.to_fact_id,
             "bridge": list(self.bridge),
             "confirmed_by_model": self.confirmed_by_model,
+            "run_id": self.run_id,
         }
 
 
@@ -105,6 +110,7 @@ class EvidenceRelationProgressRecord:
 
     fact_id_a: str
     fact_id_b: str
+    run_id: str
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable evidence-relation-progress record."""
@@ -112,6 +118,23 @@ class EvidenceRelationProgressRecord:
             "schema_version": EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION,
             "fact_id_a": self.fact_id_a,
             "fact_id_b": self.fact_id_b,
+            "run_id": self.run_id,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceCandidateSet:
+    """One fingerprinted candidate-pair set reusable across relation-confirmation resumes."""
+
+    run_id: str
+    pairs: tuple[tuple[str, str], ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable evidence-candidate-set record."""
+        return {
+            "schema_version": EVIDENCE_CANDIDATE_SET_SCHEMA_VERSION,
+            "run_id": self.run_id,
+            "pairs": [list(pair) for pair in self.pairs],
         }
 
 
@@ -125,9 +148,50 @@ def _fact_lexical_tokens(fact: LegalFact) -> list[str]:
     return _fact_embedding_text(fact).lower().split()
 
 
-def _top_indices(scored: Sequence[tuple[int, float]], limit: int) -> list[int]:
-    """Return indices ordered by descending score then index, capped at limit."""
-    return [index for index, _ in sorted(scored, key=lambda item: (-item[1], item[0]))[:limit]]
+def _top_indices(scored: Sequence[tuple[int, float]], fact_ids: Sequence[str], limit: int) -> list[int]:
+    """Return indices ordered by descending score then fact ID, capped at limit."""
+    return [index for index, _ in sorted(scored, key=lambda item: (-item[1], fact_ids[item[0]]))[:limit]]
+
+
+def build_evidence_candidate_run_id(
+    facts: Sequence[LegalFact],
+    profile: EmbeddingProfile,
+    synthesis_settings: SynthesisSettings,
+) -> str:
+    """Hash every input that can change candidate-pair selection."""
+    return sha256_json(
+        {
+            "candidate_selection": {
+                "version": EVIDENCE_CANDIDATE_SELECTION_VERSION,
+                "max_candidates_per_fact": synthesis_settings.relation_max_candidates_per_fact,
+                "min_similarity": synthesis_settings.relation_min_similarity,
+                "pool_multiplier": synthesis_settings.relation_pool_multiplier,
+                "rrf_k": synthesis_settings.relation_rrf_k,
+            },
+            "embedding_profile": asdict(profile),
+            "facts": sorted((fact.fact_id, fact.fact_content_sha256) for fact in facts),
+        }
+    )
+
+
+def build_evidence_relation_run_id(
+    facts: Sequence[LegalFact],
+    profile: EmbeddingProfile,
+    synthesis_settings: SynthesisSettings,
+    *,
+    llm_base_url: str,
+    llm_model: str,
+) -> str:
+    """Hash every input that can change relation confirmation or its candidate set."""
+    return sha256_json(
+        {
+            "candidate_run_id": build_evidence_candidate_run_id(facts, profile, synthesis_settings),
+            "llm_base_url": llm_base_url,
+            "llm_model": llm_model,
+            "prompt_version": EVIDENCE_RELATION_PROMPT_VERSION,
+            "relation_generation": asdict(synthesis_settings.evidence_relation),
+        }
+    )
 
 
 def find_candidate_fact_pairs(
@@ -146,12 +210,15 @@ def find_candidate_fact_pairs(
     provision quotes the provision it amends. Each leg filters on its own scale —
     fused RRF scores have no absolute meaning — and RRF merges the survivors.
     """
-    # Imported here, not at module scope: rank_bm25 ships in the evaluation extra, but this
-    # module is reachable from CLIs that do not need it.
+    if len(facts) < 2:
+        return ()
+
+    # Keep the optional implementation detail local so importing the CLI remains lightweight.
     from rank_bm25 import BM25Okapi
 
     vectors = encoder.encode([_fact_embedding_text(fact) for fact in facts])
     corpus = [_fact_lexical_tokens(fact) for fact in facts]
+    fact_ids = [fact.fact_id for fact in facts]
     bm25 = BM25Okapi(corpus)
     pool_size = max_candidates_per_fact * pool_multiplier
 
@@ -164,6 +231,7 @@ def find_candidate_fact_pairs(
                 for other in range(len(facts))
                 if other != index and float(dense_scores[other]) >= min_similarity
             ],
+            fact_ids,
             pool_size,
         )
         lexical_scores = bm25.get_scores(corpus[index])
@@ -173,6 +241,7 @@ def find_candidate_fact_pairs(
                 for other in range(len(facts))
                 if other != index and float(lexical_scores[other]) > 0.0
             ],
+            fact_ids,
             pool_size,
         )
 
@@ -181,7 +250,7 @@ def find_candidate_fact_pairs(
             for rank, other_index in enumerate(ranking, start=1):
                 fused[other_index] = fused.get(other_index, 0.0) + 1.0 / (rrf_k + rank)
 
-        best = sorted(fused, key=lambda other_index: (-fused[other_index], other_index))
+        best = sorted(fused, key=lambda other_index: (-fused[other_index], fact_ids[other_index]))
         for other_index in best[:max_candidates_per_fact]:
             pairs.add(tuple(sorted((fact.fact_id, facts[other_index].fact_id))))
     return tuple(sorted(pairs))
@@ -197,7 +266,7 @@ class EvidenceRelationClient(Protocol):
 class BamlEvidenceRelationClient:
     """Typed BAML client backed by a runtime OpenAI-compatible provider."""
 
-    def __init__(self, settings: Settings, synthesis_settings: SynthesisSettings) -> None:
+    def __init__(self, settings: Settings, synthesis_settings: SynthesisSettings, *, run_id: str) -> None:
         """Create a runtime BAML client from typed, secret-safe configuration."""
         set_log_level("OFF")
         self._registry = build_client_registry(
@@ -211,6 +280,7 @@ class BamlEvidenceRelationClient:
         self._timeout_seconds = settings.llm_timeout_seconds
         self._max_response_bytes = synthesis_settings.max_response_bytes
         self._model = settings.llm_model
+        self._run_id = run_id
 
     def confirm(self, fact_a: LegalFact, fact_b: LegalFact) -> EvidenceRelation | None:
         """Run one bounded BAML call and translate its typed result."""
@@ -219,7 +289,7 @@ class BamlEvidenceRelationClient:
         )
         raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
         result = b.parse.ConfirmEvidenceRelation(raw_output, baml_options={"client_registry": self._registry})
-        return _build_relation(result, fact_a.fact_id, fact_b.fact_id, self._model)
+        return _build_relation(result, fact_a, fact_b, self._model, self._run_id)
 
 
 def _summarize(fact: LegalFact) -> LegalFactSummary:
@@ -228,6 +298,7 @@ def _summarize(fact: LegalFact) -> LegalFactSummary:
         fact_id=fact.fact_id,
         conduct=fact.conduct,
         subject=fact.subject,
+        conditions=list(fact.conditions),
         monetary_penalty=fact.monetary_penalty,
         license_points_deducted=fact.license_points_deducted,
         additional_penalties=list(fact.additional_penalties),
@@ -236,27 +307,55 @@ def _summarize(fact: LegalFact) -> LegalFactSummary:
         valid_to=fact.valid_to.isoformat() if fact.valid_to else None,
         document_number=fact.document_number,
         provision_path=fact.provision_path,
+        evidence=[
+            RelationEvidence(chunk_id=evidence.chunk_id, quoted_span=evidence.quoted_span) for evidence in fact.evidence
+        ],
     )
 
 
 def _build_relation(
     result: BamlConfirmedRelation,
-    from_fact_id: str,
-    to_fact_id: str,
+    fact_a: LegalFact,
+    fact_b: LegalFact,
     model: str,
+    run_id: str,
 ) -> EvidenceRelation | None:
     """Translate one BAML confirmation result into a persisted relation, or None."""
-    if not result.is_related or result.relation_type is None:
+    if not result.is_related:
+        if result.relation_type is not None or result.from_fact_id is not None or result.to_fact_id is not None:
+            msg = "An unrelated evidence pair must not declare a relation type or direction"
+            raise ValueError(msg)
+        if result.bridge:
+            msg = "An unrelated evidence pair must not declare a bridge"
+            raise ValueError(msg)
         return None
+    if result.relation_type is None or result.from_fact_id is None or result.to_fact_id is None:
+        msg = "A related evidence pair must declare its relation type and direction"
+        raise ValueError(msg)
+    fact_ids = {fact_a.fact_id, fact_b.fact_id}
+    oriented_ids = {result.from_fact_id, result.to_fact_id}
+    if len(oriented_ids) != 2 or oriented_ids != fact_ids:
+        msg = "Evidence relation direction must contain each input fact_id exactly once"
+        raise ValueError(msg)
+    if not result.bridge:
+        msg = "A related evidence pair must declare at least one bridge"
+        raise ValueError(msg)
     relation_type = _RELATION_TYPE_BY_BAML_ENUM[result.relation_type.value]
-    identity = {"from_fact_id": from_fact_id, "to_fact_id": to_fact_id, "relation_type": relation_type}
+    identity = {
+        "from_fact_id": result.from_fact_id,
+        "to_fact_id": result.to_fact_id,
+        "relation_type": relation_type,
+        "bridge": list(result.bridge),
+        "run_id": run_id,
+    }
     return EvidenceRelation(
         relation_id=sha256_json(identity),
         relation_type=relation_type,
-        from_fact_id=from_fact_id,
-        to_fact_id=to_fact_id,
+        from_fact_id=result.from_fact_id,
+        to_fact_id=result.to_fact_id,
         bridge=tuple(result.bridge),
         confirmed_by_model=model,
+        run_id=run_id,
     )
 
 
@@ -312,6 +411,17 @@ def classify_bundle_kind(relation: EvidenceRelation, facts_by_id: Mapping[str, L
     return "multi_hop" if from_document != to_document else "synthesis"
 
 
+def evidence_relation_sort_key(relation: EvidenceRelation) -> tuple[object, ...]:
+    """Return a semantic ordering key independent of run-specific relation identity."""
+    return (
+        tuple(sorted((relation.from_fact_id, relation.to_fact_id))),
+        relation.relation_type,
+        relation.from_fact_id,
+        relation.to_fact_id,
+        relation.bridge,
+    )
+
+
 def sample_bundles(
     facts: Sequence[LegalFact],
     relations: Sequence[EvidenceRelation],
@@ -332,15 +442,23 @@ def sample_bundles(
             fact_ids=(fact.fact_id,),
             bridge=(),
         )
-        for fact in facts
+        for fact in sorted(facts, key=lambda item: item.fact_id)
     )
 
     selected: list[EvidenceBundle] = list(single_hop_bundles)
-    for relation in relations:
+    for relation in sorted(relations, key=evidence_relation_sort_key):
         fact_ids = tuple(sorted((relation.from_fact_id, relation.to_fact_id)))
+        kind = classify_bundle_kind(relation, facts_by_id)
         candidate = EvidenceBundle(
-            bundle_id=sha256_json({"fact_ids": list(fact_ids)}),
-            kind=classify_bundle_kind(relation, facts_by_id),
+            bundle_id=sha256_json(
+                {
+                    "bridge": list(relation.bridge),
+                    "fact_ids": list(fact_ids),
+                    "kind": kind,
+                    "relation_type": relation.relation_type,
+                }
+            ),
+            kind=kind,
             fact_ids=fact_ids,
             bridge=relation.bridge,
         )

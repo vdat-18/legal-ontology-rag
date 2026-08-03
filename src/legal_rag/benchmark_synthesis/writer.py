@@ -26,8 +26,10 @@ from legal_rag.benchmark_synthesis.document_metadata import (
     DocumentMetadataRecord,
 )
 from legal_rag.benchmark_synthesis.evidence_graph import (
+    EVIDENCE_CANDIDATE_SET_SCHEMA_VERSION,
     EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION,
     EVIDENCE_RELATION_SCHEMA_VERSION,
+    EvidenceCandidateSet,
     EvidenceRelation,
     EvidenceRelationProgressRecord,
 )
@@ -38,7 +40,7 @@ from legal_rag.benchmark_synthesis.fact_extraction import (
 from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import SCENARIO_SCHEMA_VERSION, Scenario
 from legal_rag.benchmark_synthesis.verification import VerificationResult
-from legal_rag.io_utils import write_jsonl_atomic
+from legal_rag.io_utils import write_json_atomic, write_jsonl_atomic
 
 
 def write_chunk_screening(output_path: Path, records: Sequence[ChunkScreeningRecord]) -> None:
@@ -146,6 +148,24 @@ def write_evidence_relations(output_path: Path, relations: Sequence[EvidenceRela
     write_jsonl_atomic(output_path, (relation.to_dict() for relation in relations))
 
 
+def write_evidence_candidate_set(output_path: Path, candidate_set: EvidenceCandidateSet) -> None:
+    """Atomically replace one evidence-candidate-set JSON output."""
+    write_json_atomic(output_path, candidate_set.to_dict())
+
+
+def read_evidence_candidate_set(input_path: Path) -> EvidenceCandidateSet:
+    """Read one fingerprinted evidence-candidate-set JSON output."""
+    payload = json.loads(input_path.read_text(encoding="utf-8"))
+    if payload["schema_version"] != EVIDENCE_CANDIDATE_SET_SCHEMA_VERSION:
+        msg = f"Unsupported evidence-candidate-set schema: {payload['schema_version']}"
+        raise ValueError(msg)
+    pairs = tuple(tuple(pair) for pair in payload["pairs"])
+    if pairs != tuple(sorted(set(pairs))) or any(len(pair) != 2 or pair[0] >= pair[1] for pair in pairs):
+        msg = "Evidence candidate pairs must be unique, sorted fact-id pairs"
+        raise ValueError(msg)
+    return EvidenceCandidateSet(run_id=payload["run_id"], pairs=pairs)
+
+
 def read_evidence_relations(input_path: Path) -> tuple[EvidenceRelation, ...]:
     """Read an evidence-relations JSONL file back into typed records."""
     relations: list[EvidenceRelation] = []
@@ -163,6 +183,7 @@ def read_evidence_relations(input_path: Path) -> tuple[EvidenceRelation, ...]:
                     to_fact_id=payload["to_fact_id"],
                     bridge=tuple(payload["bridge"]),
                     confirmed_by_model=payload["confirmed_by_model"],
+                    run_id=payload["run_id"],
                 )
             )
     return tuple(relations)
@@ -183,7 +204,11 @@ def read_evidence_relation_progress(input_path: Path) -> tuple[EvidenceRelationP
                 msg = f"Unsupported evidence-relation-progress schema: {payload['schema_version']}"
                 raise ValueError(msg)
             records.append(
-                EvidenceRelationProgressRecord(fact_id_a=payload["fact_id_a"], fact_id_b=payload["fact_id_b"])
+                EvidenceRelationProgressRecord(
+                    fact_id_a=payload["fact_id_a"],
+                    fact_id_b=payload["fact_id_b"],
+                    run_id=payload["run_id"],
+                )
             )
     return tuple(records)
 

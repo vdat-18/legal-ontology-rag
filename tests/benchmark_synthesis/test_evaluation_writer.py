@@ -15,7 +15,11 @@ from legal_rag.benchmark_synthesis.candidate_generation import (
 from legal_rag.benchmark_synthesis.candidate_record import CandidateRecord
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
-from legal_rag.benchmark_synthesis.evidence_graph import EvidenceRelation, EvidenceRelationProgressRecord
+from legal_rag.benchmark_synthesis.evidence_graph import (
+    EvidenceCandidateSet,
+    EvidenceRelation,
+    EvidenceRelationProgressRecord,
+)
 from legal_rag.benchmark_synthesis.fact_extraction import ExtractionProgressRecord
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
@@ -24,6 +28,7 @@ from legal_rag.benchmark_synthesis.writer import (
     read_candidates,
     read_chunk_screening,
     read_document_metadata,
+    read_evidence_candidate_set,
     read_evidence_relation_progress,
     read_evidence_relations,
     read_extraction_progress,
@@ -32,6 +37,7 @@ from legal_rag.benchmark_synthesis.writer import (
     write_candidates,
     write_chunk_screening,
     write_document_metadata,
+    write_evidence_candidate_set,
     write_evidence_relation_progress,
     write_evidence_relations,
     write_extraction_progress,
@@ -117,6 +123,7 @@ def test_evidence_relations_round_trip_through_jsonl(tmp_path: Path) -> None:
         to_fact_id="fact-2",
         bridge=("Điều 6 khoản 9 điểm b",),
         confirmed_by_model="provider/test-model",
+        run_id="run-1",
     )
 
     write_evidence_relations(output_path, [relation])
@@ -125,12 +132,25 @@ def test_evidence_relations_round_trip_through_jsonl(tmp_path: Path) -> None:
     assert relations == (relation,)
 
 
+def test_evidence_candidate_set_round_trips_through_json(tmp_path: Path) -> None:
+    """A fingerprinted candidate set reads back with deterministic pair ordering."""
+    output_path = tmp_path / "evidence_relation_candidates.json"
+    candidate_set = EvidenceCandidateSet(
+        run_id="candidate-run-1",
+        pairs=(("fact-1", "fact-2"), ("fact-1", "fact-3")),
+    )
+
+    write_evidence_candidate_set(output_path, candidate_set)
+
+    assert read_evidence_candidate_set(output_path) == candidate_set
+
+
 def test_evidence_relation_progress_round_trips_through_jsonl(tmp_path: Path) -> None:
     """A written evidence-relation-progress record reads back with identical field values."""
     output_path = tmp_path / "evidence_relation_progress.jsonl"
     records = (
-        EvidenceRelationProgressRecord(fact_id_a="fact-1", fact_id_b="fact-2"),
-        EvidenceRelationProgressRecord(fact_id_a="fact-1", fact_id_b="fact-3"),
+        EvidenceRelationProgressRecord(fact_id_a="fact-1", fact_id_b="fact-2", run_id="run-1"),
+        EvidenceRelationProgressRecord(fact_id_a="fact-1", fact_id_b="fact-3", run_id="run-1"),
     )
 
     write_evidence_relation_progress(output_path, records)

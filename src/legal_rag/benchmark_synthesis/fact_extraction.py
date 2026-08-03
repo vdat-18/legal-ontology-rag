@@ -22,6 +22,7 @@ from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
+from legal_rag.benchmark_synthesis.evidence_binding import bind_evidence_references
 from legal_rag.benchmark_synthesis.llm_execution import (
     IncompleteLlmTasksError,
     LlmTaskExhaustedError,
@@ -33,7 +34,7 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
 EXTRACTION_PROGRESS_SCHEMA_VERSION = "1.0.0"
-FACT_EXTRACTION_PROMPT_VERSION = "1.2.0"
+FACT_EXTRACTION_PROMPT_VERSION = "1.3.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,8 +131,17 @@ class BamlFactExtractionClient:
         return b.parse.ExtractLegalFactBatch(raw_output, baml_options={"client_registry": self._registry})
 
 
-def build_extracted_fact(raw: BamlLegalFact, source_chunk_id: str, metadata: DocumentMetadataRecord) -> LegalFact:
-    """Assign identity to one LLM-produced fact, stamping document metadata the window cannot carry."""
+def build_extracted_fact(
+    raw: BamlLegalFact,
+    source_chunk_id: str,
+    metadata: DocumentMetadataRecord,
+    chunk_text_by_id: Mapping[str, str],
+) -> LegalFact:
+    """Bind evidence and assign identity to one LLM-produced fact."""
+    evidence = bind_evidence_references(
+        tuple(EvidenceReference(chunk_id=entry.chunk_id, quoted_span=entry.quoted_span) for entry in raw.evidence),
+        chunk_text_by_id,
+    )
     return build_legal_fact(
         conduct=raw.conduct,
         subject=raw.subject,
@@ -144,9 +154,7 @@ def build_extracted_fact(raw: BamlLegalFact, source_chunk_id: str, metadata: Doc
         valid_to=date.fromisoformat(raw.valid_to) if raw.valid_to else metadata.valid_to,
         document_number=metadata.document_number,
         provision_path=raw.provision_path,
-        evidence=tuple(
-            EvidenceReference(chunk_id=entry.chunk_id, quoted_span=entry.quoted_span) for entry in raw.evidence
-        ),
+        evidence=evidence,
         source_chunk_id=source_chunk_id,
     )
 
@@ -164,11 +172,14 @@ def _extract_batch_facts(
         msg = "Fact extraction response must contain exactly one result for every requested target"
         raise ValueError(msg)
     results_by_target = {result.target_chunk_id: result for result in results}
+    chunk_text_by_target = {
+        item.target_chunk_id: {entry.chunk_id: entry.text for entry in item.window} for item in items
+    }
     return tuple(
         (
             target_chunk_id,
             tuple(
-                build_extracted_fact(raw_fact, target_chunk_id, metadata)
+                build_extracted_fact(raw_fact, target_chunk_id, metadata, chunk_text_by_target[target_chunk_id])
                 for raw_fact in results_by_target[target_chunk_id].facts
             ),
         )

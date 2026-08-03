@@ -61,6 +61,9 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
       Không dùng kiến thức pháp luật sẵn có của bạn để bổ sung hoặc suy diễn.
     - Mỗi evidence.quoted_span phải là một đoạn trích nguyên văn, chính xác
       từng ký tự, từ đúng chunk có evidence.chunk_id tương ứng.
+    - Mỗi quoted_span phải là một đoạn liên tục trong source text. Nếu fact
+      cần hai đoạn cách nhau bởi nội dung khác, tạo hai evidence entry; không
+      được ghép hai đoạn rồi bỏ phần nằm giữa.
     - Nếu một fact cần thông tin từ nhiều chunk trong window, liệt kê đủ các
       evidence từ tất cả chunk đó.
     - Nếu window không chứa đủ căn cứ để tạo một fact hoàn chỉnh nào, trả về

@@ -20,6 +20,7 @@ from legal_rag.benchmark_synthesis.fact_extraction import (
     build_reading_window,
     extract_facts_from_document,
 )
+from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
@@ -136,9 +137,19 @@ def _baml_fact(**overrides: object) -> BamlLegalFact:
     return BamlLegalFact(**defaults)
 
 
-def test_build_extracted_fact_keeps_llm_cited_evidence_as_is() -> None:
-    """chunk_id and quoted_span in evidence come straight from the LLM, untouched."""
-    fact = build_extracted_fact(_baml_fact(), "chunk-1", _metadata())
+def _build_extracted(raw: BamlLegalFact | None = None, **metadata_overrides: object) -> LegalFact:
+    """Build one fact against source text containing the default exact quote."""
+    return build_extracted_fact(
+        raw or _baml_fact(),
+        "chunk-1",
+        _metadata(**metadata_overrides),
+        {"chunk-1": "Mức phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."},
+    )
+
+
+def test_build_extracted_fact_keeps_exact_llm_cited_evidence() -> None:
+    """An already exact cited span remains unchanged."""
+    fact = _build_extracted()
 
     assert fact.evidence[0].chunk_id == "chunk-1"
     assert fact.evidence[0].quoted_span == "phạt tiền từ 4.000.000 đồng"
@@ -147,14 +158,14 @@ def test_build_extracted_fact_keeps_llm_cited_evidence_as_is() -> None:
 
 def test_build_extracted_fact_stamps_document_number_from_metadata() -> None:
     """document_number comes from the resolved document metadata, never from the reading window."""
-    fact = build_extracted_fact(_baml_fact(), "chunk-1", _metadata(document_number="336/2025/NĐ-CP"))
+    fact = _build_extracted(document_number="336/2025/NĐ-CP")
 
     assert fact.document_number == "336/2025/NĐ-CP"
 
 
 def test_build_extracted_fact_falls_back_to_document_effective_dates() -> None:
     """A fact whose window states no effective date inherits the document's."""
-    fact = build_extracted_fact(_baml_fact(), "chunk-1", _metadata(valid_to=date(2027, 12, 31)))
+    fact = _build_extracted(valid_to=date(2027, 12, 31))
 
     assert fact.valid_from == date(2025, 1, 1)
     assert fact.valid_to == date(2027, 12, 31)
@@ -162,15 +173,15 @@ def test_build_extracted_fact_falls_back_to_document_effective_dates() -> None:
 
 def test_build_extracted_fact_prefers_provision_effective_date_over_document_date() -> None:
     """A provision stating its own effective date keeps it instead of the document-wide one."""
-    fact = build_extracted_fact(_baml_fact(valid_from="2026-01-01"), "chunk-1", _metadata())
+    fact = _build_extracted(_baml_fact(valid_from="2026-01-01"))
 
     assert fact.valid_from == date(2026, 1, 1)
 
 
 def test_build_extracted_fact_identity_is_stable_for_identical_identity_fields() -> None:
     """Two facts sharing conduct, subject, document_number, and provision_path share a fact_id."""
-    first = build_extracted_fact(_baml_fact(), "chunk-1", _metadata())
-    second = build_extracted_fact(_baml_fact(monetary_penalty="5.000.000 đồng"), "chunk-1", _metadata())
+    first = _build_extracted()
+    second = _build_extracted(_baml_fact(monetary_penalty="5.000.000 đồng"))
 
     assert first.fact_id == second.fact_id
     assert first.fact_content_sha256 != second.fact_content_sha256
@@ -178,17 +189,41 @@ def test_build_extracted_fact_identity_is_stable_for_identical_identity_fields()
 
 def test_build_extracted_fact_identity_separates_documents_sharing_a_provision_path() -> None:
     """The same provision path in two documents yields two identities, not one merged fact."""
-    first = build_extracted_fact(_baml_fact(), "chunk-1", _metadata())
-    second = build_extracted_fact(_baml_fact(), "chunk-1", _metadata(document_number="336/2025/NĐ-CP"))
+    first = _build_extracted()
+    second = _build_extracted(document_number="336/2025/NĐ-CP")
 
     assert first.fact_id != second.fact_id
 
 
-def test_build_extracted_fact_trusts_llm_evidence_without_validation() -> None:
-    """No defensive check runs; an empty evidence list simply produces empty evidence."""
-    fact = build_extracted_fact(_baml_fact(evidence=[]), "chunk-1", _metadata())
+def test_build_extracted_fact_splits_non_contiguous_paragraph_quotes() -> None:
+    """Exact paragraphs separated by omitted source text become separate evidence references."""
+    raw = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="chunk-1", quoted_span="Quy định chung.\n\nĐiểm b áp dụng.")])
 
-    assert fact.evidence == ()
+    fact = build_extracted_fact(
+        raw,
+        "chunk-1",
+        _metadata(),
+        {"chunk-1": "Quy định chung.\n\nĐiểm a áp dụng.\n\nĐiểm b áp dụng."},
+    )
+
+    assert tuple(reference.quoted_span for reference in fact.evidence) == ("Quy định chung.", "Điểm b áp dụng.")
+
+
+def test_build_extracted_fact_rejects_non_exact_evidence() -> None:
+    """A quote that cannot be bound exactly raises inside the retry boundary."""
+    with pytest.raises(ValueError, match="not exact source text"):
+        build_extracted_fact(
+            _baml_fact(),
+            "chunk-1",
+            _metadata(),
+            {"chunk-1": "Nội dung hoàn toàn khác."},
+        )
+
+
+def test_build_extracted_fact_rejects_empty_evidence() -> None:
+    """A model result without evidence cannot become a persisted fact."""
+    with pytest.raises(ValueError, match="at least one evidence span"):
+        build_extracted_fact(_baml_fact(evidence=[]), "chunk-1", _metadata(), {"chunk-1": "Nội dung."})
 
 
 class _FakeExtractionClient:
@@ -213,9 +248,9 @@ class _FakeExtractionClient:
 def test_extract_facts_from_document_collects_every_fact_per_target() -> None:
     """Every fact the client returns for a target chunk is collected."""
     target = _chunk("target", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
-    fact_one = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target", quoted_span="phạt tiền")])
+    fact_one = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target", quoted_span="Phạt tiền")])
     fact_two = _baml_fact(
-        conduct="Hành vi khác", evidence=[BamlEvidenceEntry(chunk_id="target", quoted_span="phạt tiền")]
+        conduct="Hành vi khác", evidence=[BamlEvidenceEntry(chunk_id="target", quoted_span="Phạt tiền")]
     )
     client = _FakeExtractionClient({"target": (fact_one, fact_two)})
 
@@ -258,7 +293,7 @@ def test_extract_facts_from_document_batches_five_targets_per_request() -> None:
 def test_extract_facts_from_document_retries_a_failing_batch_then_succeeds() -> None:
     """A batch whose extraction call raises is retried, and a later success produces its facts."""
     target = _chunk("target", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
-    fact = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target", quoted_span="phạt tiền")])
+    fact = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target", quoted_span="Phạt tiền")])
     attempts = 0
 
     class _FlakyClient:
@@ -291,7 +326,7 @@ def test_extract_facts_from_document_leaves_failed_batch_incomplete_and_continue
     """An exhausted batch stays incomplete while a later batch is still persisted."""
     failing = tuple(_chunk(f"chunk-fail-{index}", "Nội dung gây lỗi mạng.") for index in range(5))
     ok = _chunk("chunk-ok", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
-    fact = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="chunk-ok", quoted_span="phạt tiền")])
+    fact = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="chunk-ok", quoted_span="Phạt tiền")])
 
     class _FailsForFirstBatchClient:
         def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[FactExtractionBatchResult]:
@@ -322,7 +357,7 @@ def test_extract_facts_from_document_orders_batch_results_by_requested_target() 
     """Out-of-order model results are normalized before persistence."""
     target_one = _chunk("target-1", "Phạt tiền 4.000.000 đồng.")
     target_two = _chunk("target-2", "Trừ 6 điểm giấy phép lái xe.")
-    fact_one = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target-1", quoted_span="phạt")])
+    fact_one = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target-1", quoted_span="Phạt")])
 
     class _ReverseClient:
         def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[FactExtractionBatchResult]:

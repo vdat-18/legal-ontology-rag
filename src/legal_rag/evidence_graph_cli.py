@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from loguru import logger
+
+if TYPE_CHECKING:
+    from legal_rag.benchmark_synthesis.evidence_graph import EvidenceRelation, EvidenceRelationProgressRecord
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -19,6 +24,16 @@ def _parser() -> argparse.ArgumentParser:
         "relations_progress_output_path", type=Path, help="Destination evidence-relation-progress JSONL path"
     )
     parser.add_argument("scenarios_output_path", type=Path, help="Destination scenarios JSONL path")
+    parser.add_argument(
+        "--candidate-pairs-cache",
+        type=Path,
+        help="Fingerprint-validated candidate-pair JSON cache; defaults beside the relations output",
+    )
+    parser.add_argument(
+        "--prepare-candidates-only",
+        action="store_true",
+        help="Build or validate the candidate-pair cache, then exit before any relation LLM calls",
+    )
     parser.add_argument("--query-taxonomy", type=Path, required=True, help="Query-taxonomy config JSON path")
     parser.add_argument("--personas", type=Path, required=True, help="Persona config JSON path")
     parser.add_argument(
@@ -29,6 +44,43 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _validate_resume_state(
+    existing_relations: Sequence[EvidenceRelation],
+    existing_progress: Sequence[EvidenceRelationProgressRecord],
+    candidate_pairs: Sequence[tuple[str, str]],
+    relation_run_id: str,
+) -> tuple[dict[str, EvidenceRelation], set[tuple[str, str]]]:
+    """Validate persisted relation state and return mutable resume indexes."""
+    if any(relation.run_id != relation_run_id for relation in existing_relations):
+        msg = "Existing evidence relations belong to a different synthesis run"
+        raise ValueError(msg)
+    relations_by_id = {relation.relation_id: relation for relation in existing_relations}
+    if len(relations_by_id) != len(existing_relations):
+        msg = "Existing evidence relations contain duplicate relation IDs"
+        raise ValueError(msg)
+    if any(record.run_id != relation_run_id for record in existing_progress):
+        msg = "Existing evidence-relation progress belongs to a different synthesis run"
+        raise ValueError(msg)
+    checked_pairs = {(record.fact_id_a, record.fact_id_b) for record in existing_progress}
+    if len(checked_pairs) != len(existing_progress):
+        msg = "Evidence-relation progress contains duplicate candidate pairs"
+        raise ValueError(msg)
+    candidate_pair_set = set(candidate_pairs)
+    if not checked_pairs <= candidate_pair_set:
+        msg = "Evidence-relation progress contains pairs outside the current candidate set"
+        raise ValueError(msg)
+    existing_relation_pairs = {
+        tuple(sorted((relation.from_fact_id, relation.to_fact_id))) for relation in existing_relations
+    }
+    if len(existing_relation_pairs) != len(existing_relations):
+        msg = "Existing evidence relations contain multiple results for one candidate pair"
+        raise ValueError(msg)
+    if not existing_relation_pairs <= candidate_pair_set:
+        msg = "Evidence relations contain pairs outside the current candidate set"
+        raise ValueError(msg)
+    return relations_by_id, checked_pairs
+
+
 def main() -> None:
     """Confirm evidence relations not yet checked among facts, then sample scenarios from the result."""
     from dotenv import find_dotenv, load_dotenv
@@ -36,9 +88,12 @@ def main() -> None:
     from legal_rag.benchmark_synthesis.config import SynthesisSettings
     from legal_rag.benchmark_synthesis.evidence_graph import (
         BamlEvidenceRelationClient,
-        EvidenceRelation,
+        EvidenceCandidateSet,
         EvidenceRelationProgressRecord,
+        build_evidence_candidate_run_id,
+        build_evidence_relation_run_id,
         confirm_evidence_relations,
+        evidence_relation_sort_key,
         find_candidate_fact_pairs,
         sample_bundles,
     )
@@ -50,9 +105,11 @@ def main() -> None:
         sample_scenarios,
     )
     from legal_rag.benchmark_synthesis.writer import (
+        read_evidence_candidate_set,
         read_evidence_relation_progress,
         read_evidence_relations,
         read_legal_facts,
+        write_evidence_candidate_set,
         write_evidence_relation_progress,
         write_evidence_relations,
         write_scenarios,
@@ -72,26 +129,62 @@ def main() -> None:
     logger.info("Loaded {} facts from {}", len(facts), arguments.facts_path)
 
     profile = load_configured_embedding_profile(synthesis_settings.embedding_profile)
-    encoder = EmbeddingEncoder.from_profile(profile)
-    candidate_pairs = find_candidate_fact_pairs(
+    candidate_run_id = build_evidence_candidate_run_id(facts, profile, synthesis_settings)
+    relation_run_id = build_evidence_relation_run_id(
         facts,
-        encoder,
-        max_candidates_per_fact=synthesis_settings.relation_max_candidates_per_fact,
-        min_similarity=synthesis_settings.relation_min_similarity,
-        pool_multiplier=synthesis_settings.relation_pool_multiplier,
-        rrf_k=synthesis_settings.relation_rrf_k,
+        profile,
+        synthesis_settings,
+        llm_base_url=settings.llm_base_url,
+        llm_model=settings.llm_model,
     )
+    candidate_cache_path = arguments.candidate_pairs_cache or arguments.relations_output_path.with_name(
+        "evidence_relation_candidates.json"
+    )
+    if candidate_cache_path.exists():
+        candidate_set = read_evidence_candidate_set(candidate_cache_path)
+        if candidate_set.run_id != candidate_run_id:
+            msg = "Existing evidence candidates belong to a different candidate-selection run"
+            raise ValueError(msg)
+        candidate_pairs = candidate_set.pairs
+        logger.info("Loaded {} cached candidate pairs from {}", len(candidate_pairs), candidate_cache_path)
+    else:
+        logger.info(
+            "Candidate cache missing; encoding {} facts with profile {} before relation confirmation",
+            len(facts),
+            profile.profile_id,
+        )
+        encoder = EmbeddingEncoder.from_profile(profile)
+        candidate_pairs = find_candidate_fact_pairs(
+            facts,
+            encoder,
+            max_candidates_per_fact=synthesis_settings.relation_max_candidates_per_fact,
+            min_similarity=synthesis_settings.relation_min_similarity,
+            pool_multiplier=synthesis_settings.relation_pool_multiplier,
+            rrf_k=synthesis_settings.relation_rrf_k,
+        )
+        write_evidence_candidate_set(
+            candidate_cache_path,
+            EvidenceCandidateSet(run_id=candidate_run_id, pairs=candidate_pairs),
+        )
+        logger.info("Selected {} candidate pairs, wrote {}", len(candidate_pairs), candidate_cache_path)
+    if arguments.prepare_candidates_only:
+        logger.info("Candidate preparation complete: {} pairs; no relation LLM calls were made", len(candidate_pairs))
+        return
 
     existing_relations = (
         read_evidence_relations(arguments.relations_output_path) if arguments.relations_output_path.exists() else ()
     )
-    relations_by_id = {relation.relation_id: relation for relation in existing_relations}
     existing_progress = (
         read_evidence_relation_progress(arguments.relations_progress_output_path)
         if arguments.relations_progress_output_path.exists()
         else ()
     )
-    checked_pairs = {(record.fact_id_a, record.fact_id_b) for record in existing_progress}
+    relations_by_id, checked_pairs = _validate_resume_state(
+        existing_relations,
+        existing_progress,
+        candidate_pairs,
+        relation_run_id,
+    )
     remaining_pairs = tuple(pair for pair in candidate_pairs if pair not in checked_pairs)
     logger.info(
         "Loaded {} candidate pairs; {} already checked, {} remaining",
@@ -102,14 +195,24 @@ def main() -> None:
 
     def _persist_pair(pair: tuple[str, str], relation: EvidenceRelation | None) -> None:
         """Rewrite the relations file, then record the pair as checked, so a crash between the two only costs a retry."""
+        stale_relation_ids = [
+            relation_id
+            for relation_id, existing in relations_by_id.items()
+            if tuple(sorted((existing.from_fact_id, existing.to_fact_id))) == pair
+        ]
+        for relation_id in stale_relation_ids:
+            del relations_by_id[relation_id]
         if relation is not None:
             relations_by_id[relation.relation_id] = relation
-        write_evidence_relations(arguments.relations_output_path, tuple(relations_by_id.values()))
+        write_evidence_relations(
+            arguments.relations_output_path,
+            tuple(sorted(relations_by_id.values(), key=evidence_relation_sort_key)),
+        )
         checked_pairs.add(pair)
         write_evidence_relation_progress(
             arguments.relations_progress_output_path,
             tuple(
-                EvidenceRelationProgressRecord(fact_id_a=fact_id_a, fact_id_b=fact_id_b)
+                EvidenceRelationProgressRecord(fact_id_a=fact_id_a, fact_id_b=fact_id_b, run_id=relation_run_id)
                 for fact_id_a, fact_id_b in candidate_pairs
                 if (fact_id_a, fact_id_b) in checked_pairs
             ),
@@ -119,7 +222,7 @@ def main() -> None:
         )
 
     if remaining_pairs:
-        relation_client = BamlEvidenceRelationClient(settings, synthesis_settings)
+        relation_client = BamlEvidenceRelationClient(settings, synthesis_settings, run_id=relation_run_id)
         confirm_evidence_relations(
             facts,
             remaining_pairs,
@@ -128,9 +231,20 @@ def main() -> None:
             retry_delay_seconds=synthesis_settings.llm_retry_delay_seconds,
             on_pair_confirmed=_persist_pair,
         )
-
-    relations = tuple(relations_by_id.values())
-    write_evidence_relations(arguments.relations_output_path, relations)
+    else:
+        write_evidence_relations(
+            arguments.relations_output_path,
+            tuple(sorted(relations_by_id.values(), key=evidence_relation_sort_key)),
+        )
+        write_evidence_relation_progress(
+            arguments.relations_progress_output_path,
+            tuple(
+                EvidenceRelationProgressRecord(fact_id_a=fact_id_a, fact_id_b=fact_id_b, run_id=relation_run_id)
+                for fact_id_a, fact_id_b in candidate_pairs
+                if (fact_id_a, fact_id_b) in checked_pairs
+            ),
+        )
+    relations = tuple(sorted(relations_by_id.values(), key=evidence_relation_sort_key))
     checked_candidate_count = len(checked_pairs & set(candidate_pairs))
     logger.info(
         "Confirmed {} of {} candidate pairs ({} still unchecked), wrote relations to {}",

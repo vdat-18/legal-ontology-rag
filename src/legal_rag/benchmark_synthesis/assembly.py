@@ -87,6 +87,9 @@ def assemble_groundtruth_corpus(
         "config_sha256": config_hashes,
         "corpus_snapshot_id": snapshot["snapshot_id"],
         "documents": document_ids,
+        "fact_ledger_sha256": sha256_json(
+            sorted((fact.fact_id, fact.fact_content_sha256) for fact in facts_by_id.values())
+        ),
         "llm_model": llm_model,
         "prompt_versions": prompt_versions,
     }
@@ -163,7 +166,7 @@ def _validate_fact(document_id: str, fact: LegalFact, document_number: str, chun
         if chunk is None:
             msg = f"Fact {fact.fact_id} references missing chunk_id {evidence.chunk_id}"
             raise GroundTruthValidationError(msg)
-        if evidence.quoted_span not in chunk.text:
+        if not evidence.quoted_span or evidence.quoted_span not in chunk.text:
             msg = f"Fact {fact.fact_id} has a non-exact quoted span in chunk {evidence.chunk_id}"
             raise GroundTruthValidationError(msg)
 
