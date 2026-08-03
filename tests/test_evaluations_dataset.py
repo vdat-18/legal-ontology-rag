@@ -47,27 +47,6 @@ def test_from_mapping_reads_alternate_field_names_and_object_contexts() -> None:
     assert sample.reference_contexts == ("gold 1",)
 
 
-def test_to_ragas_record_omits_absent_gold_fields() -> None:
-    """A record without a reference exposes only the fields Ragas can use."""
-    record = EvalSample(user_input="q", response="a", retrieved_contexts=("ctx",)).to_ragas_record()
-
-    assert record == {"user_input": "q", "response": "a", "retrieved_contexts": ["ctx"]}
-
-
-def test_to_ragas_record_includes_reference_when_present() -> None:
-    """Gold answer and gold contexts are included when the sample carries them."""
-    record = EvalSample(
-        user_input="q",
-        response="a",
-        retrieved_contexts=("ctx",),
-        reference="gold",
-        reference_contexts=("gold ctx",),
-    ).to_ragas_record()
-
-    assert record["reference"] == "gold"
-    assert record["reference_contexts"] == ["gold ctx"]
-
-
 def test_from_mapping_raises_when_the_question_field_is_missing() -> None:
     """A row with no recognizable question field fails loudly."""
     with pytest.raises(ValueError, match="question"):

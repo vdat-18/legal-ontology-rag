@@ -1,38 +1,33 @@
-"""Tests for the QUEST rubric definitions used by the LLM-judge metrics."""
+"""Tests for the QUEST metric registry used to label the judge output."""
 
 from __future__ import annotations
 
 from evaluations.quest.rubric import (
-    QUEST_RUBRICS,
-    TEMPORAL_CORRECTNESS_DEFINITION,
+    QUEST_DESCRIPTIONS,
+    QUEST_DIMENSIONS,
     TEMPORAL_CORRECTNESS_NAME,
 )
 
-_EXPECTED_DIMENSIONS = frozenset(
-    {
-        "quality_of_information",
-        "understanding_and_reasoning",
-        "expression_style",
-        "safety_and_harm",
-        "trust_and_confidence",
-    }
+_EXPECTED_DIMENSIONS = (
+    "quality_of_information",
+    "understanding_and_reasoning",
+    "expression_style",
+    "safety_and_harm",
+    "trust_and_confidence",
 )
-_EXPECTED_SCORE_KEYS = frozenset(f"score{level}_description" for level in range(1, 6))
 
 
-def test_quest_covers_the_five_principles() -> None:
-    """The rubric encodes exactly the five QUEST evaluation principles."""
-    assert set(QUEST_RUBRICS) == _EXPECTED_DIMENSIONS
+def test_quest_registers_the_five_principles_in_order() -> None:
+    """The registry lists exactly the five QUEST evaluation principles."""
+    assert QUEST_DIMENSIONS == _EXPECTED_DIMENSIONS
 
 
-def test_each_dimension_defines_a_full_one_to_five_scale() -> None:
-    """Every principle carries a non-empty description for each score from 1 to 5."""
-    for rubric in QUEST_RUBRICS.values():
-        assert set(rubric) == _EXPECTED_SCORE_KEYS
-        assert all(description.strip() for description in rubric.values())
+def test_every_dimension_has_a_one_line_description() -> None:
+    """Each principle carries a non-empty human-readable description for reports."""
+    assert set(QUEST_DESCRIPTIONS) == set(_EXPECTED_DIMENSIONS)
+    assert all(description.strip() for description in QUEST_DESCRIPTIONS.values())
 
 
-def test_temporal_correctness_aspect_is_defined() -> None:
-    """The temporal-correctness aspect has a stable name and a non-empty definition."""
+def test_temporal_correctness_name_is_stable() -> None:
+    """The temporal-correctness metric keeps a stable name."""
     assert TEMPORAL_CORRECTNESS_NAME == "temporal_correctness"
-    assert TEMPORAL_CORRECTNESS_DEFINITION.strip()

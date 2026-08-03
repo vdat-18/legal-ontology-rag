@@ -1,10 +1,10 @@
-"""Command-line entry point for the Ragas + QUEST evaluation harness."""
+"""Command-line entry point for the BAML + QUEST evaluation harness."""
 
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -12,11 +12,22 @@ from loguru import logger
 
 from evaluations.core.dataset import load_samples
 
+_DEFAULT_CONCURRENCY = 8
+
+
+def _positive_int(raw: str) -> int:
+    """Parse *raw* as an integer of at least 1, for the concurrency option."""
+    value = int(raw)
+    if value < 1:
+        msg = f"expected a positive integer, got {value}"
+        raise argparse.ArgumentTypeError(msg)
+    return value
+
 
 def _parser() -> argparse.ArgumentParser:
     """Build the evaluation command-line interface."""
     parser = argparse.ArgumentParser(
-        description="Evaluate Legal RAG predictions with Ragas metrics and the QUEST rubric."
+        description="Evaluate Legal RAG predictions with a BAML LLM judge (QUEST rubric + grounding metrics)."
     )
     parser.add_argument(
         "predictions",
@@ -25,22 +36,20 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--output", type=Path, default=None, help="Optional JSON path for the evaluation report.")
     parser.add_argument(
-        "--embedding-profile",
-        type=str,
-        default=None,
-        help="Embedding profile id for the judge embeddings (defaults to EMBEDDING_PROFILE).",
+        "--concurrency",
+        type=_positive_int,
+        default=_DEFAULT_CONCURRENCY,
+        help="Maximum number of concurrent judge calls (positive integer).",
     )
     return parser
 
 
 def main() -> None:
-    """Load predictions, run the metric suite, and write the aggregate report."""
+    """Load predictions, judge them concurrently through BAML, and write the aggregate report."""
     from dotenv import find_dotenv, load_dotenv
 
-    from evaluations.ragas.evaluator import build_evaluator
-    from evaluations.ragas.metrics import build_metrics
-    from evaluations.ragas.runner import run_evaluation
-    from legal_rag.embedding.profiles import load_configured_embedding_profile
+    from evaluations.baml.judge import BamlJudgeClient
+    from evaluations.baml.runner import evaluate_samples
     from legal_rag.settings import Settings
 
     arguments = _parser().parse_args()
@@ -53,16 +62,10 @@ def main() -> None:
         msg = f"No evaluation samples in {arguments.predictions}"
         raise SystemExit(msg)
 
-    settings = Settings.from_environment()
-    profile_id = arguments.embedding_profile or os.environ["EMBEDDING_PROFILE"]
-    embedding_model = load_configured_embedding_profile(profile_id).model_id
-    evaluator = build_evaluator(settings, embedding_model)
+    judge = BamlJudgeClient(Settings.from_environment())
+    report = asyncio.run(evaluate_samples(samples, judge, concurrency=arguments.concurrency))
 
-    with_reference = all(sample.reference for sample in samples)
-    metrics = build_metrics(evaluator.llm, with_reference=with_reference)
-    report = run_evaluation(samples, metrics, evaluator_llm=evaluator.llm, evaluator_embeddings=evaluator.embeddings)
-
-    logger.info("Evaluated {} sample(s); reference-based metrics {}", len(samples), "on" if with_reference else "off")
+    logger.info("Evaluated {} sample(s) with concurrency {}", len(samples), arguments.concurrency)
     payload = json.dumps(report.to_dict(), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     if arguments.output:
         arguments.output.parent.mkdir(parents=True, exist_ok=True)

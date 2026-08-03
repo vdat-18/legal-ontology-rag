@@ -37,19 +37,6 @@ class EvalSample:
             reference_contexts=_context_texts(row, _REFERENCE_CONTEXT_KEYS),
         )
 
-    def to_ragas_record(self) -> dict[str, Any]:
-        """Render the sample as a Ragas single-turn record, omitting absent gold fields."""
-        record: dict[str, Any] = {
-            "user_input": self.user_input,
-            "response": self.response,
-            "retrieved_contexts": list(self.retrieved_contexts),
-        }
-        if self.reference is not None:
-            record["reference"] = self.reference
-        if self.reference_contexts:
-            record["reference_contexts"] = list(self.reference_contexts)
-        return record
-
 
 def load_samples(path: Path) -> list[EvalSample]:
     """Load evaluation samples from a JSONL predictions file."""
