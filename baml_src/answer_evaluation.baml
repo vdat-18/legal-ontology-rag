@@ -1,4 +1,13 @@
+class LegalAnswerToEvaluate {
+  sample_id string
+  question string
+  answer string
+  contexts string[]
+  reference string?
+}
+
 class LegalAnswerEvaluation {
+  sample_id string @description(#"Phải trùng với một sample_id trong danh sách đầu vào."#)
   quality_of_information int @description(#"
     Điểm 1-5 về chất lượng thông tin (chính xác, liên quan, đầy đủ, đúng bản
     hiện hành). 1 = sai hoặc lạc đề; 3 = đúng nhưng thiếu; 5 = chính xác, đầy
@@ -37,39 +46,32 @@ class LegalAnswerEvaluation {
   "#)
 }
 
-function EvaluateLegalAnswer(
-  question: string,
-  answer: string,
-  contexts: string[],
-  reference: string?
-) -> LegalAnswerEvaluation {
+function EvaluateAnswers(items: LegalAnswerToEvaluate[]) -> LegalAnswerEvaluation[] {
   client OpenAICompatibleProvider
   prompt #"
     {{ _.role("user") }}
 
-    Bạn là giám khảo pháp lý, đánh giá một câu trả lời của hệ thống hỏi-đáp
-    luật giao thông đường bộ Việt Nam. Chấm từng tiêu chí một cách độc lập và
-    khách quan, chỉ dựa trên câu hỏi, câu trả lời, ngữ cảnh được truy hồi và
-    đáp án chuẩn (nếu có). Các tiêu chí thang 1-5: 1 là kém nhất, 5 là tốt
-    nhất. temporal_correctness là true hoặc false. Nếu không có đáp án chuẩn,
-    đặt factual_correctness = null.
+    Bạn là giám khảo pháp lý, đánh giá câu trả lời của hệ thống hỏi-đáp luật
+    giao thông đường bộ Việt Nam. Với MỖI mục trong danh sách dưới đây, chấm
+    từng tiêu chí một cách độc lập và khách quan, chỉ dựa trên câu hỏi, câu
+    trả lời, ngữ cảnh được truy hồi và đáp án chuẩn (nếu có). Đánh giá từng
+    mục độc lập, không để mục này ảnh hưởng tới mục khác. Các tiêu chí thang
+    1-5: 1 là kém nhất, 5 là tốt nhất. temporal_correctness là true hoặc
+    false. Nếu một mục không có đáp án chuẩn, đặt factual_correctness = null.
+    Trả về đúng một kết quả cho mỗi mục, giữ nguyên sample_id để đối chiếu.
 
-    Câu hỏi:
-    {{ question }}
-
-    Câu trả lời cần đánh giá:
-    {{ answer }}
-
-    Ngữ cảnh được truy hồi:
-    {% for context in contexts %}
+    {% for item in items %}
     ---
-    {{ context }}
+    sample_id: {{ item.sample_id }}
+    Câu hỏi: {{ item.question }}
+    Câu trả lời: {{ item.answer }}
+    Ngữ cảnh được truy hồi:
+    {% for context in item.contexts %}
+    - {{ context }}
     {% endfor %}
-
-    {% if reference %}
-    Đáp án chuẩn:
-    {{ reference }}
-    {% endif %}
+    {% if item.reference %}Đáp án chuẩn: {{ item.reference }}{% endif %}
+    ---
+    {% endfor %}
 
     {{ ctx.output_format }}
   "#

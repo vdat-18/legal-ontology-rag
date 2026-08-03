@@ -1,4 +1,4 @@
-"""Score every sample through the judge concurrently, with bounded parallelism."""
+"""Judge samples in batches, running the batches concurrently with bounded parallelism."""
 
 from __future__ import annotations
 
@@ -17,18 +17,22 @@ async def evaluate_samples(
     samples: Sequence[EvalSample],
     judge: JudgeClient,
     *,
+    batch_size: int,
     concurrency: int,
 ) -> EvaluationReport:
-    """Judge all *samples* with at most *concurrency* calls in flight, then aggregate the scores.
+    """Score all *samples* in batches of *batch_size*, at most *concurrency* batches at once.
 
-    Each sample is one batched judge call (all metrics at once); a semaphore bounds how many run
-    at the same time so the shared LLM provider is not overwhelmed.
+    Each batch is one judge call (many samples scored together); a semaphore bounds how many batch
+    calls run at the same time so the shared LLM provider is not overwhelmed. Results keep the
+    input order of the samples.
     """
+    batches = [samples[start : start + batch_size] for start in range(0, len(samples), batch_size)]
     semaphore = asyncio.Semaphore(concurrency)
 
-    async def _score(sample: EvalSample) -> dict[str, float | None]:
+    async def _score_batch(batch: Sequence[EvalSample]) -> list[dict[str, float | None]]:
         async with semaphore:
-            return await judge.score(sample)
+            return await judge.score_batch(batch)
 
-    per_sample = await asyncio.gather(*(_score(sample) for sample in samples))
+    batch_scores = await asyncio.gather(*(_score_batch(batch) for batch in batches))
+    per_sample = [scores for batch in batch_scores for scores in batch]
     return EvaluationReport.from_per_sample(per_sample)

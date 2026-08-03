@@ -18,8 +18,8 @@ evaluations/
   core/    dataset.py        # EvalSample + flexible JSONL loader
            report.py         # aggregate + per-sample report
   quest/   rubric.py         # QUEST metric registry (criteria live in the BAML prompt)
-  baml/    judge.py          # BamlJudgeClient: one typed call scores all metrics for a sample
-           runner.py         # judge every sample concurrently, bounded by a semaphore
+  baml/    judge.py          # BamlJudgeClient: one call scores a whole batch of samples
+           runner.py         # split into batches, judge the batches concurrently
 ```
 
 `core/`, `quest/`, and `baml/runner.py` are dependency-light and unit-tested; `baml/judge.py`
@@ -27,10 +27,13 @@ imports the generated BAML client only when actually run.
 
 ## How it runs (fast)
 
-- **Batched per sample:** one `EvaluateLegalAnswer` BAML call returns *all* metrics for a sample as
-  a typed object, so a sample costs one LLM call instead of one per metric.
-- **Concurrent:** samples are judged in parallel through `BamlCaller.execute_async`, bounded by
-  `--concurrency` so the shared provider is not overwhelmed.
+- **Batched (`--batch-size`):** one `EvaluateAnswers` BAML call scores a whole batch of samples,
+  each result carrying *all* metrics — so N samples cost `ceil(N / batch_size)` LLM calls instead
+  of N (or N × metrics). Results are correlated back by `sample_id` and kept in input order.
+- **Concurrent (`--concurrency`):** batches are judged in parallel through
+  `BamlCaller.execute_async`, bounded by a semaphore so the shared provider is not overwhelmed.
+
+Larger `--batch-size` means fewer calls but more output tokens per call; keep it modest.
 
 ## Metrics (one typed BAML judgment per sample)
 
@@ -64,7 +67,7 @@ ground-truth questions. Fields are read flexibly:
 ```bash
 # BAML client must be generated once (project setup): baml generate
 python -m evaluations data/evaluation/predictions.jsonl \
-  --output data/evaluation/quest_metrics.json --concurrency 8
+  --output data/evaluation/quest_metrics.json --batch-size 5 --concurrency 8
 ```
 
 The judge reuses `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`.

@@ -12,6 +12,7 @@ from loguru import logger
 
 from evaluations.core.dataset import load_samples
 
+_DEFAULT_BATCH_SIZE = 5
 _DEFAULT_CONCURRENCY = 8
 
 
@@ -36,10 +37,16 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--output", type=Path, default=None, help="Optional JSON path for the evaluation report.")
     parser.add_argument(
+        "--batch-size",
+        type=_positive_int,
+        default=_DEFAULT_BATCH_SIZE,
+        help="Number of samples judged per LLM call (positive integer).",
+    )
+    parser.add_argument(
         "--concurrency",
         type=_positive_int,
         default=_DEFAULT_CONCURRENCY,
-        help="Maximum number of concurrent judge calls (positive integer).",
+        help="Maximum number of concurrent batch calls (positive integer).",
     )
     return parser
 
@@ -63,9 +70,16 @@ def main() -> None:
         raise SystemExit(msg)
 
     judge = BamlJudgeClient(Settings.from_environment())
-    report = asyncio.run(evaluate_samples(samples, judge, concurrency=arguments.concurrency))
+    report = asyncio.run(
+        evaluate_samples(samples, judge, batch_size=arguments.batch_size, concurrency=arguments.concurrency)
+    )
 
-    logger.info("Evaluated {} sample(s) with concurrency {}", len(samples), arguments.concurrency)
+    logger.info(
+        "Evaluated {} sample(s), batch_size={}, concurrency={}",
+        len(samples),
+        arguments.batch_size,
+        arguments.concurrency,
+    )
     payload = json.dumps(report.to_dict(), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     if arguments.output:
         arguments.output.parent.mkdir(parents=True, exist_ok=True)
