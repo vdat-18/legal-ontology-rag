@@ -86,6 +86,7 @@ def main() -> None:
     from dotenv import find_dotenv, load_dotenv
 
     from legal_rag.benchmark_synthesis.config import SynthesisSettings
+    from legal_rag.benchmark_synthesis.embedding import SynthesisEmbeddingEncoder
     from legal_rag.benchmark_synthesis.evidence_graph import (
         BamlEvidenceRelationClient,
         EvidenceCandidateSet,
@@ -114,26 +115,34 @@ def main() -> None:
         write_evidence_relations,
         write_scenarios,
     )
-    from legal_rag.embedding.encoder import EmbeddingEncoder
     from legal_rag.embedding.profiles import load_configured_embedding_profile
-    from legal_rag.settings import Settings
+    from legal_rag.settings import Settings, SynthesisEmbeddingSettings
 
     arguments = _parser().parse_args()
     dotenv_path = find_dotenv(usecwd=True)
     if dotenv_path:
         load_dotenv(dotenv_path)
     settings = Settings.from_environment()
+    embedding_settings = SynthesisEmbeddingSettings.from_environment()
     synthesis_settings = SynthesisSettings.from_path(arguments.synthesis_config)
 
     facts = read_legal_facts(arguments.facts_path)
     logger.info("Loaded {} facts from {}", len(facts), arguments.facts_path)
 
     profile = load_configured_embedding_profile(synthesis_settings.embedding_profile)
-    candidate_run_id = build_evidence_candidate_run_id(facts, profile, synthesis_settings)
+    candidate_run_id = build_evidence_candidate_run_id(
+        facts,
+        profile,
+        synthesis_settings,
+        embedding_base_url=embedding_settings.base_url,
+        embedding_model=embedding_settings.model,
+    )
     relation_run_id = build_evidence_relation_run_id(
         facts,
         profile,
         synthesis_settings,
+        embedding_base_url=embedding_settings.base_url,
+        embedding_model=embedding_settings.model,
         llm_base_url=settings.llm_base_url,
         llm_model=settings.llm_model,
     )
@@ -153,7 +162,12 @@ def main() -> None:
             len(facts),
             profile.profile_id,
         )
-        encoder = EmbeddingEncoder.from_profile(profile)
+        encoder = SynthesisEmbeddingEncoder(
+            embedding_settings,
+            profile,
+            batch_size=synthesis_settings.embedding_batch_size,
+            max_response_bytes=synthesis_settings.embedding_max_response_bytes,
+        )
         candidate_pairs = find_candidate_fact_pairs(
             facts,
             encoder,

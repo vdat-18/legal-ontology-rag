@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from legal_rag.settings import Settings
+import pytest
+
+from legal_rag.settings import Settings, SynthesisEmbeddingSettings
 
 
 def test_shared_settings_load_from_openai_compatible_environment() -> None:
@@ -20,3 +22,31 @@ def test_shared_settings_load_from_openai_compatible_environment() -> None:
     assert settings.llm_api_key == "test-key"
     assert settings.llm_model == "provider/test-model"
     assert settings.llm_timeout_seconds == 30
+
+
+def test_synthesis_embedding_settings_are_isolated_from_shared_llm_environment() -> None:
+    """Synthesis embeddings use dedicated provider variables without changing shared LLM settings."""
+    settings = SynthesisEmbeddingSettings.from_environment(
+        {
+            "SYNTHESIS_EMBEDDING_BASE_URL": "https://embedding.test/v1/",
+            "SYNTHESIS_EMBEDDING_API_KEY": "embedding-key",
+            "SYNTHESIS_EMBEDDING_MODEL": "provider/bge-m3",
+            "SYNTHESIS_EMBEDDING_TIMEOUT_SECONDS": "120",
+        }
+    )
+
+    assert settings.base_url == "https://embedding.test/v1"
+    assert settings.api_key == "embedding-key"
+    assert settings.model == "provider/bge-m3"
+    assert settings.timeout_seconds == 120
+
+
+def test_synthesis_embedding_settings_reject_non_http_provider_urls() -> None:
+    """Embedding requests cannot be redirected to local files or custom URL schemes."""
+    with pytest.raises(ValueError, match="must use HTTP or HTTPS"):
+        SynthesisEmbeddingSettings(
+            base_url="file:///tmp/embeddings",
+            api_key="embedding-key",
+            model="provider/bge-m3",
+            timeout_seconds=120,
+        )

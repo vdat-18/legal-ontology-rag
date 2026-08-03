@@ -38,8 +38,9 @@ describe retry-then-skip behavior.
   `extraction_progress.jsonl`; exhausted batches remain resumable.
 - Every LLM-backed synthesis CLI requires `--synthesis-config`; synthesis
   tunables are not read from `.env`. Existing environment settings for other
-  subsystems remain unchanged; synthesis only reads provider connection,
-  credential, and deployment values from the environment.
+  subsystems remain unchanged. Synthesis LLM calls keep using the shared
+  `LLM_*` variables; evidence-candidate embedding alone uses the isolated
+  `SYNTHESIS_EMBEDDING_*` provider variables.
 - `legal-assemble-groundtruth` always hashes the required synthesis config in
   the run manifest, alongside any taxonomy/persona/distribution configs passed
   through additional `--config` arguments. The manifest identity also hashes
@@ -310,11 +311,18 @@ băm từ fact content, embedding profile, cấu hình đề cử/xác nhận, e
 model và prompt version. CLI từ chối resume nếu fingerprint không khớp để
 không trộn kết quả cũ với một lần chạy mới.
 
-Candidate retrieval là bước CPU nặng với embedding model. CLI lưu tập cặp đã
-đề cử vào `evidence_relation_candidates.json` kèm fingerprint riêng của fact
-ledger, embedding profile, retrieval config và candidate-selection version.
-Các lần resume đọc cache này và không encode lại toàn corpus; đổi bất kỳ input
-liên quan nào làm cache bị từ chối thay vì tái sử dụng âm thầm.
+Candidate retrieval dùng dense embedding OpenAI-compatible theo batch và
+BM25 tiếng Việt. Dense leg mặc định gọi `deepinfra/BAAI/bge-m3` qua endpoint
+riêng trong `SYNTHESIS_EMBEDDING_*`. Lexical leg chuẩn hóa Unicode NFC, giữ
+token âm tiết có dấu, thêm từ ghép do Underthesea phân đoạn và bigram từ ghép;
+không bỏ stopword pháp lý như `không`, `chưa`, `trừ`. Hai ranking được hợp nhất
+bằng RRF trước khi gửi cặp ứng viên cho LLM xác nhận.
+
+CLI lưu tập cặp đã đề cử vào `evidence_relation_candidates.json` kèm
+fingerprint riêng của fact ledger, embedding endpoint/model/profile, batch
+size, retrieval config, phiên bản tokenizer và candidate-selection version.
+Các lần resume đọc cache này và không embed hoặc tokenize lại toàn corpus; đổi
+bất kỳ input liên quan nào làm cache bị từ chối thay vì tái sử dụng âm thầm.
 `--prepare-candidates-only` cho phép tạo/kiểm cache rồi dừng trước mọi LLM call,
 để người chạy xem số cặp và dự toán chi phí trước khi xác nhận quan hệ.
 
@@ -1187,9 +1195,11 @@ trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
 - `evidence_graph.py` — `find_candidate_fact_pairs` tìm cặp fact ứng viên trong
   toàn bộ fact đã trích xuất (không giới hạn cùng văn bản, vì multi-hop cần
   đúng cặp khác văn bản) bằng **hybrid retrieval + RRF**: một nhánh dense
-  (`EmbeddingEncoder`, ngưỡng `min_similarity`) và một nhánh lexical (BM25,
-  ngưỡng "có ít nhất một token chung"), hợp nhất bằng reciprocal rank fusion
-  rồi lấy top-k. Lý do cần nhánh lexical: một điều khoản sửa đổi **chép lại
+  (`SynthesisEmbeddingEncoder` gọi BGE-M3 remote theo batch, ngưỡng
+  `min_similarity`) và một nhánh lexical (BM25 trên token âm tiết + từ ghép
+  Underthesea + bigram, ngưỡng "có ít nhất một token chung"), hợp nhất bằng
+  reciprocal rank fusion rồi lấy top-k. Lý do cần nhánh lexical: một điều
+  khoản sửa đổi **chép lại
   gần nguyên văn** điều khoản gốc — `336/2025` và `168/2024` trùng nhau 47
   `provision_path` — nên quan hệ `amended_by` biểu hiện thành trùng lặp từ
   vựng, thứ mà dense embedding làm nhòe thành "đều nói về phạt giao thông".
@@ -1229,9 +1239,8 @@ trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
   phải `evidence_relations.jsonl` — cùng lý do đã sửa ở `legal-extract-facts`:
   một cặp bị xác nhận "không liên quan" là kết quả hợp lệ nhưng không sinh ra
   `EvidenceRelation` nào, nên suy "cặp nào đã kiểm" từ file quan hệ sẽ khiến
-  cặp đó bị gọi LLM lại ở mọi lần chạy sau. `find_candidate_fact_pairs` chạy
-  lại toàn bộ mỗi lần (tất định, rẻ, không gọi LLM) chỉ để xác định danh sách
-  cặp ứng viên; phần tốn kém — xác nhận qua LLM — mới được resume.
+  cặp đó bị gọi LLM lại ở mọi lần chạy sau. Candidate pairs được lưu trong
+  cache fingerprinted; resume hợp lệ không gọi lại embedding hoặc tokenizer.
   Relation và progress cùng mang `run_id`; CLI từ chối output cũ nếu fact,
   embedding profile, tham số relation, endpoint, model hoặc prompt version đã
   đổi. Candidate pairs có artifact cache fingerprinted riêng để resume không
@@ -1502,9 +1511,9 @@ cần khai báo dependency trực tiếp ở thời điểm đó.
   `legal-migrate-legal-facts`. ✅ **Đã áp dụng**, không nằm trong kế hoạch gốc.
 - `find_candidate_fact_pairs` đổi từ dense-only sang hybrid (dense + BM25) hợp
   nhất bằng RRF, để bắt được quan hệ `amended_by` biểu hiện qua trùng lặp
-  nguyên văn giữa văn bản sửa đổi và văn bản gốc. `pyproject.toml`: thêm
-  `rank-bm25` vào extra `evaluation` (import lazy trong hàm, vì
-  `evidence_graph.py` nằm trên đường import của các CLI không cần extra này).
+  nguyên văn giữa văn bản sửa đổi và văn bản gốc. Dense embedding sau đó được
+  chuyển sang BGE-M3 qua provider riêng; BM25 dùng tokenizer hybrid tiếng Việt
+  được khóa bằng `underthesea`, import lazy khi thực sự phải tạo candidate cache.
   ✅ **Đã áp dụng**, không nằm trong kế hoạch gốc.
 - Tách khoá resume của `legal-extract-facts` khỏi `source_chunk_id` của fact
   sang artifact riêng `extraction_progress.jsonl`, vì một Target trả về danh

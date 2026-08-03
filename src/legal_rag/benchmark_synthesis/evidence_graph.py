@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from typing import Any, Literal, Protocol
+from unicodedata import normalize
 
 import numpy as np
 from baml_py.logging import set_log_level
@@ -21,7 +22,6 @@ from legal_rag.benchmark_synthesis.llm_execution import (
     execute_llm_task,
 )
 from legal_rag.benchmark_synthesis.models import LegalFact
-from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
@@ -30,8 +30,9 @@ EVIDENCE_RELATION_SCHEMA_VERSION = "1.1.0"
 EVIDENCE_BUNDLE_SCHEMA_VERSION = "1.0.0"
 EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.1.0"
 EVIDENCE_RELATION_PROMPT_VERSION = "1.1.0"
-EVIDENCE_CANDIDATE_SELECTION_VERSION = "1.1.0"
+EVIDENCE_CANDIDATE_SELECTION_VERSION = "2.0.0"
 EVIDENCE_CANDIDATE_SET_SCHEMA_VERSION = "1.0.0"
+VIETNAMESE_LEXICAL_TOKENIZER_VERSION = "underthesea_hybrid_v1"
 
 RelationType = Literal[
     "conduct_to_penalty",
@@ -143,9 +144,44 @@ def _fact_embedding_text(fact: LegalFact) -> str:
     return f"{fact.conduct}. {fact.subject}. {fact.provision_path}."
 
 
+def _lexical_units(text: str) -> list[str]:
+    """Split normalized text on Unicode punctuation and separators while preserving letters and digits."""
+    return "".join(character if character.isalnum() else " " for character in text).split()
+
+
+def _vietnamese_legal_tokens(text: str) -> list[str]:
+    """Return namespaced syllables, segmented words, and word bigrams for Vietnamese legal BM25."""
+    from underthesea import word_tokenize
+
+    normalized_text = normalize("NFC", text).casefold()
+    syllable_tokens = [f"s:{unit}" for unit in _lexical_units(normalized_text)]
+
+    word_tokens: list[str] = []
+    bigram_tokens: list[str] = []
+    previous_word: str | None = None
+    for segmented_token in word_tokenize(normalized_text):
+        units = _lexical_units(segmented_token)
+        if not units:
+            previous_word = None
+            continue
+        word = "_".join(units)
+        word_tokens.append(f"w:{word}")
+        if previous_word is not None:
+            bigram_tokens.append(f"b:{previous_word}|{word}")
+        previous_word = word
+    return [*syllable_tokens, *word_tokens, *bigram_tokens]
+
+
 def _fact_lexical_tokens(fact: LegalFact) -> list[str]:
-    """Return lowercased whitespace tokens of a fact's canonical text, for lexical retrieval."""
-    return _fact_embedding_text(fact).lower().split()
+    """Return hybrid Vietnamese BM25 tokens without crossing fact-field boundaries."""
+    return _vietnamese_legal_tokens(_fact_embedding_text(fact))
+
+
+class _FactEncoder(Protocol):
+    """Embedding behavior required by evidence candidate retrieval."""
+
+    def encode(self, texts: Sequence[str]) -> np.ndarray:
+        """Return one normalized vector per input text."""
 
 
 def _top_indices(scored: Sequence[tuple[int, float]], fact_ids: Sequence[str], limit: int) -> list[int]:
@@ -157,6 +193,9 @@ def build_evidence_candidate_run_id(
     facts: Sequence[LegalFact],
     profile: EmbeddingProfile,
     synthesis_settings: SynthesisSettings,
+    *,
+    embedding_base_url: str,
+    embedding_model: str,
 ) -> str:
     """Hash every input that can change candidate-pair selection."""
     return sha256_json(
@@ -167,8 +206,14 @@ def build_evidence_candidate_run_id(
                 "min_similarity": synthesis_settings.relation_min_similarity,
                 "pool_multiplier": synthesis_settings.relation_pool_multiplier,
                 "rrf_k": synthesis_settings.relation_rrf_k,
+                "lexical_tokenizer": VIETNAMESE_LEXICAL_TOKENIZER_VERSION,
             },
-            "embedding_profile": asdict(profile),
+            "embedding": {
+                "base_url": embedding_base_url,
+                "model": embedding_model,
+                "batch_size": synthesis_settings.embedding_batch_size,
+                "profile": asdict(profile),
+            },
             "facts": sorted((fact.fact_id, fact.fact_content_sha256) for fact in facts),
         }
     )
@@ -179,13 +224,21 @@ def build_evidence_relation_run_id(
     profile: EmbeddingProfile,
     synthesis_settings: SynthesisSettings,
     *,
+    embedding_base_url: str,
+    embedding_model: str,
     llm_base_url: str,
     llm_model: str,
 ) -> str:
     """Hash every input that can change relation confirmation or its candidate set."""
     return sha256_json(
         {
-            "candidate_run_id": build_evidence_candidate_run_id(facts, profile, synthesis_settings),
+            "candidate_run_id": build_evidence_candidate_run_id(
+                facts,
+                profile,
+                synthesis_settings,
+                embedding_base_url=embedding_base_url,
+                embedding_model=embedding_model,
+            ),
             "llm_base_url": llm_base_url,
             "llm_model": llm_model,
             "prompt_version": EVIDENCE_RELATION_PROMPT_VERSION,
@@ -196,7 +249,7 @@ def build_evidence_relation_run_id(
 
 def find_candidate_fact_pairs(
     facts: Sequence[LegalFact],
-    encoder: EmbeddingEncoder,
+    encoder: _FactEncoder,
     *,
     max_candidates_per_fact: int,
     min_similarity: float,

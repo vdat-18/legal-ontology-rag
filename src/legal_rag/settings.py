@@ -7,6 +7,7 @@ import os
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from math import isfinite
+from urllib.parse import urlsplit
 
 _MAX_LLM_TEMPERATURE = 2.0
 
@@ -41,6 +42,39 @@ class Settings:
             llm_api_key=values["LLM_API_KEY"].strip(),
             llm_model=values["LLM_MODEL"].strip(),
             llm_timeout_seconds=float(values["LLM_TIMEOUT_SECONDS"]),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class SynthesisEmbeddingSettings:
+    """OpenAI-compatible embedding settings used only by benchmark synthesis."""
+
+    base_url: str
+    api_key: str = field(repr=False)
+    model: str
+    timeout_seconds: float
+
+    def __post_init__(self) -> None:
+        """Reject unusable or non-HTTP synthesis embedding provider settings."""
+        if urlsplit(self.base_url).scheme not in {"http", "https"}:
+            msg = "Synthesis embedding base_url must use HTTP or HTTPS"
+            raise ValueError(msg)
+        if not self.api_key or not self.model:
+            msg = "Synthesis embedding api_key and model must not be empty"
+            raise ValueError(msg)
+        if not isfinite(self.timeout_seconds) or self.timeout_seconds <= 0:
+            msg = f"Synthesis embedding timeout_seconds must be positive, got {self.timeout_seconds}"
+            raise ValueError(msg)
+
+    @classmethod
+    def from_environment(cls, environment: Mapping[str, str] | None = None) -> SynthesisEmbeddingSettings:
+        """Load synthesis-only embedding settings from process environment variables."""
+        values = os.environ if environment is None else environment
+        return cls(
+            base_url=values["SYNTHESIS_EMBEDDING_BASE_URL"].strip().rstrip("/"),
+            api_key=values["SYNTHESIS_EMBEDDING_API_KEY"].strip(),
+            model=values["SYNTHESIS_EMBEDDING_MODEL"].strip(),
+            timeout_seconds=float(values["SYNTHESIS_EMBEDDING_TIMEOUT_SECONDS"]),
         )
 
 
@@ -293,6 +327,8 @@ class GraphitiSettings:
             **overrides,
             embedding_profile=values["EMBEDDING_PROFILE"].strip(),
         )
+
+
 # Imports already present at the top of settings.py: os, Mapping, dataclass, field, isfinite, Callable
 
 

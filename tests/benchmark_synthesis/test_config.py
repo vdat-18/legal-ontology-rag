@@ -17,7 +17,9 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     """The checked-in config owns batch, retry, quality, and per-operation LLM bounds."""
     settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
 
-    assert settings.embedding_profile == "qwen3_0_6b"
+    assert settings.embedding_profile == "bge_m3"
+    assert settings.embedding_batch_size == 64
+    assert settings.embedding_max_response_bytes == 16_777_216
     assert settings.llm_max_retries == 2
     assert settings.llm_retry_delay_seconds == 120
     assert settings.chunk_screening_batch_size == 50

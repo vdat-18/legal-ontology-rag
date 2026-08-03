@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
+from unicodedata import normalize
 
 import numpy as np
 import pytest
@@ -21,6 +22,7 @@ from legal_rag.benchmark_synthesis.evidence_graph import (
     sample_bundles,
 )
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
+from legal_rag.embedding.profiles import load_configured_embedding_profile
 from legal_rag.settings import Settings
 
 _SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
@@ -62,6 +64,73 @@ class _FakeEncoder:
     def encode(self, texts: list[str]) -> np.ndarray:
         """Return the vector configured for each input text."""
         return np.array([self._vectors_by_text[text] for text in texts])
+
+
+def test_vietnamese_legal_tokens_preserve_syllables_and_add_segmented_terms() -> None:
+    """BM25 keeps exact accented syllables while adding Vietnamese legal words and phrase bigrams."""
+    tokens = evidence_graph._vietnamese_legal_tokens("Không chấp hành quyết định xử phạt")
+
+    assert "s:không" in tokens
+    assert "s:chấp" in tokens
+    assert "w:chấp_hành" in tokens
+    assert "w:quyết_định" in tokens
+    assert "w:xử_phạt" in tokens
+    assert "b:chấp_hành|quyết_định" in tokens
+    assert "s:khong" not in tokens
+
+
+def test_vietnamese_legal_tokens_normalize_unicode_and_stop_bigrams_at_punctuation() -> None:
+    """Equivalent Unicode forms match, and phrase features never cross sentence punctuation."""
+    decomposed = normalize("NFD", "Không chấp hành. Ô tô")
+    tokens = evidence_graph._vietnamese_legal_tokens(decomposed)
+
+    assert "s:không" in tokens
+    assert "w:chấp_hành" in tokens
+    assert "w:ô_tô" in tokens
+    assert "b:chấp_hành|ô_tô" not in tokens
+
+
+def test_fact_lexical_tokens_do_not_create_bigrams_across_fact_fields() -> None:
+    """Conduct, subject, and provision terms remain separate BM25 phrase contexts."""
+    fact = _fact("fact-a", conduct="Xử phạt", subject="Ô tô", provision_path="Điều 6")
+
+    tokens = evidence_graph._fact_lexical_tokens(fact)
+
+    assert "b:xử_phạt|ô_tô" not in tokens
+    assert "b:ô_tô|điều" not in tokens
+
+
+def test_candidate_fingerprint_changes_with_embedding_provider_or_tokenizer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Candidate caches become stale when either dense or lexical retrieval identity changes."""
+    facts = [_fact("fact-a"), _fact("fact-b")]
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+    profile = load_configured_embedding_profile(settings.embedding_profile)
+    original = evidence_graph.build_evidence_candidate_run_id(
+        facts,
+        profile,
+        settings,
+        embedding_base_url="https://embedding.test/v1",
+        embedding_model="provider/bge-m3",
+    )
+    changed_model = evidence_graph.build_evidence_candidate_run_id(
+        facts,
+        profile,
+        settings,
+        embedding_base_url="https://embedding.test/v1",
+        embedding_model="provider/other-model",
+    )
+    monkeypatch.setattr(evidence_graph, "VIETNAMESE_LEXICAL_TOKENIZER_VERSION", "underthesea_hybrid_v2")
+    changed_tokenizer = evidence_graph.build_evidence_candidate_run_id(
+        facts,
+        profile,
+        settings,
+        embedding_base_url="https://embedding.test/v1",
+        embedding_model="provider/bge-m3",
+    )
+
+    assert len({original, changed_model, changed_tokenizer}) == 3
 
 
 def test_find_candidate_fact_pairs_orders_and_deduplicates_symmetric_pairs() -> None:

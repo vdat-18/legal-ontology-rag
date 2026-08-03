@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from legal_rag import evidence_graph_cli
+from legal_rag.benchmark_synthesis import embedding as synthesis_embedding
 from legal_rag.benchmark_synthesis import evidence_graph
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.evidence_graph import EvidenceRelationProgressRecord
@@ -65,10 +66,13 @@ class _AlwaysRelatedClient:
         )
 
 
-class _FakeEncoderBackend:
-    """Return one fixed unit vector per input text."""
+class _FakeSynthesisEmbeddingEncoder:
+    """Return one fixed unit vector per input text without provider access."""
 
-    def encode(self, sentences: list[str], *, convert_to_numpy: bool, normalize_embeddings: bool) -> np.ndarray:
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        """Accept production constructor arguments without using them."""
+
+    def encode(self, sentences: list[str]) -> np.ndarray:
         """Return a fixed unit vector for every input sentence."""
         return np.array([[1.0, 0.0] for _ in sentences])
 
@@ -89,13 +93,13 @@ def _configure_cli(
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     monkeypatch.setenv("LLM_MODEL", "provider/test-model")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
+    monkeypatch.setenv("SYNTHESIS_EMBEDDING_BASE_URL", "https://embedding.test/v1")
+    monkeypatch.setenv("SYNTHESIS_EMBEDDING_API_KEY", "embedding-key")
+    monkeypatch.setenv("SYNTHESIS_EMBEDDING_MODEL", "provider/bge-m3")
+    monkeypatch.setenv("SYNTHESIS_EMBEDDING_TIMEOUT_SECONDS", "120")
     monkeypatch.setattr(llm_execution.time, "sleep", lambda _seconds: None)
     monkeypatch.setattr(evidence_graph, "BamlEvidenceRelationClient", _AlwaysRelatedClient)
-    from legal_rag.embedding.encoder import EmbeddingEncoder
-
-    monkeypatch.setattr(
-        EmbeddingEncoder, "from_profile", lambda profile: EmbeddingEncoder(profile, _FakeEncoderBackend())
-    )
+    monkeypatch.setattr(synthesis_embedding, "SynthesisEmbeddingEncoder", _FakeSynthesisEmbeddingEncoder)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -128,6 +132,8 @@ def _relation_run_id(facts: list[LegalFact]) -> str:
         facts,
         profile,
         synthesis_settings,
+        embedding_base_url="https://embedding.test/v1",
+        embedding_model="provider/bge-m3",
         llm_base_url="http://localhost:20128/v1",
         llm_model="provider/test-model",
     )
@@ -290,12 +296,10 @@ def test_evidence_graph_cli_does_not_recheck_a_pair_confirmed_unrelated(
         raise AssertionError(msg)
 
     monkeypatch.setattr(evidence_graph, "BamlEvidenceRelationClient", _fail)
-    from legal_rag.embedding.encoder import EmbeddingEncoder
-
     monkeypatch.setattr(
-        EmbeddingEncoder,
-        "from_profile",
-        lambda _profile: pytest.fail("Cached candidate pairs must bypass embedding inference"),
+        synthesis_embedding,
+        "SynthesisEmbeddingEncoder",
+        lambda *args, **kwargs: pytest.fail("Cached candidate pairs must bypass embedding inference"),
     )
 
     evidence_graph_cli.main()

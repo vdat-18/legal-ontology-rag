@@ -8,7 +8,7 @@ from math import isfinite
 from pathlib import Path
 from typing import Any
 
-SYNTHESIS_CONFIG_SCHEMA_VERSION = "1.0.0"
+SYNTHESIS_CONFIG_SCHEMA_VERSION = "1.1.0"
 _MAX_LLM_TEMPERATURE = 2.0
 
 
@@ -34,6 +34,8 @@ class SynthesisSettings:
     """All reproducibility-sensitive settings for ground-truth synthesis."""
 
     embedding_profile: str
+    embedding_batch_size: int
+    embedding_max_response_bytes: int
     llm_max_retries: int
     llm_retry_delay_seconds: float
     max_response_bytes: int
@@ -74,6 +76,8 @@ class SynthesisSettings:
                 raise ValueError(msg)
         positive_limits = {
             "max_response_bytes": self.max_response_bytes,
+            "embedding_batch_size": self.embedding_batch_size,
+            "embedding_max_response_bytes": self.embedding_max_response_bytes,
             "chunk_screening_batch_size": self.chunk_screening_batch_size,
             "document_metadata_opening_chunk_count": self.document_metadata_opening_chunk_count,
             "document_metadata_closing_chunk_count": self.document_metadata_closing_chunk_count,
@@ -108,6 +112,7 @@ class SynthesisSettings:
             msg = f"Unsupported synthesis config schema: {config['schema_version']}"
             raise ValueError(msg)
         execution = config["llm_execution"]
+        embedding = config["embedding"]
         quality = config["quality"]
         stages = config["stages"]
         screening = stages["chunk_screening"]
@@ -116,6 +121,8 @@ class SynthesisSettings:
         relation = stages["evidence_relation"]
         return cls(
             embedding_profile=config["embedding_profile"],
+            embedding_batch_size=embedding["batch_size"],
+            embedding_max_response_bytes=embedding["max_response_bytes"],
             llm_max_retries=execution["max_retries"],
             llm_retry_delay_seconds=execution["retry_delay_seconds"],
             max_response_bytes=execution["max_response_bytes"],
