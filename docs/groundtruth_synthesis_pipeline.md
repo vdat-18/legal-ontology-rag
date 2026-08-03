@@ -40,7 +40,9 @@ describe retry-then-skip behavior.
   tunables are not read from `.env`. Existing environment settings for other
   subsystems remain unchanged. Synthesis LLM calls keep using the shared
   `LLM_*` variables; evidence-candidate embedding alone uses the isolated
-  `SYNTHESIS_EMBEDDING_*` provider variables.
+  `SYNTHESIS_EMBEDDING_*` provider variables. Candidate lexical retrieval uses
+  VnCoreNLP 1.2 from `SYNTHESIS_VNCORENLP_DIR`; Java defaults to `java` on
+  `PATH` and can be overridden by `SYNTHESIS_VNCORENLP_JAVA_PATH`.
 - `legal-assemble-groundtruth` always hashes the required synthesis config in
   the run manifest, alongside any taxonomy/persona/distribution configs passed
   through additional `--config` arguments. The manifest identity also hashes
@@ -311,12 +313,71 @@ băm từ fact content, embedding profile, cấu hình đề cử/xác nhận, e
 model và prompt version. CLI từ chối resume nếu fingerprint không khớp để
 không trộn kết quả cũ với một lần chạy mới.
 
-Candidate retrieval dùng dense embedding OpenAI-compatible theo batch và
-BM25 tiếng Việt. Dense leg mặc định gọi `deepinfra/BAAI/bge-m3` qua endpoint
-riêng trong `SYNTHESIS_EMBEDDING_*`. Lexical leg chuẩn hóa Unicode NFC, giữ
-token âm tiết có dấu, thêm từ ghép do Underthesea phân đoạn và bigram từ ghép;
-không bỏ stopword pháp lý như `không`, `chưa`, `trừ`. Hai ranking được hợp nhất
-bằng RRF trước khi gửi cặp ứng viên cho LLM xác nhận.
+Candidate retrieval dùng dense embedding OpenAI-compatible theo batch và bốn
+BM25 index tiếng Việt độc lập. Dense leg mặc định gọi
+`deepinfra/BAAI/bge-m3` qua endpoint riêng trong `SYNTHESIS_EMBEDDING_*`, với
+representation gồm toàn bộ conduct, subject, conditions, consequences,
+document number và provision path. Bốn lexical leg lần lượt index `core`
+(conduct + subject), `conditions`, `consequences` (mức phạt, trừ điểm, hình
+phạt bổ sung, biện pháp khắc phục) và `authority` (văn bản + đường dẫn điều
+khoản). Tách field ngăn subject hoặc boilerplate điều khoản lấn át tín hiệu
+ngoại lệ, chế tài và thẩm quyền.
+
+Mỗi lexical leg chuẩn hóa Unicode NFC, giữ token âm tiết có dấu, thêm từ ghép
+do VnCoreNLP 1.2 phân đoạn và bigram từ ghép; không bỏ stopword pháp lý như
+`không`, `chưa`, `trừ`. Authority leg còn thêm token cấu trúc ổn định cho số
+hiệu văn bản, điều, khoản, điểm và citation đầy đủ. Dense cùng bốn lexical
+ranking được hợp nhất bằng weighted RRF; trọng số, BM25L `k1`/`b`/`delta`,
+pool size và top-k đều nằm trong synthesis config versioned. Không bật
+accent-folding hoặc character n-gram mặc định: fact ledger đã chuẩn hóa tiếng
+Việt, còn hai nhánh này chủ yếu tăng match trên token phổ biến, số candidate
+và chi phí xác nhận LLM mà không thêm tín hiệu pháp lý rõ ràng.
+
+VnCoreNLP chạy toàn bộ fact text trong một JVM batch, không khởi động Java cho
+từng fact. Runtime cần Java 8+ và ba artifact từ release VnCoreNLP `v1.2`:
+`VnCoreNLP-1.2.jar`, `models/wordsegmenter/vi-vocab` và
+`models/wordsegmenter/wordsegmenter.rdr`. Do giới hạn path resolution của JAR
+1.2 trên Windows, `SYNTHESIS_VNCORENLP_DIR` phải là đường dẫn không có khoảng
+trắng; ví dụ `C:\Users\Public\legal-rag\vncorenlp-1.2`.
+
+Thiết lập runtime trên Windows PowerShell:
+
+```powershell
+winget install --id EclipseAdoptium.Temurin.21.JRE --exact
+
+$vnCoreDir = "C:\Users\Public\legal-rag\vncorenlp-1.2"
+$assets = @(
+    @{
+        RelativePath = "VnCoreNLP-1.2.jar"
+        Url = "https://raw.githubusercontent.com/vncorenlp/VnCoreNLP/v1.2/VnCoreNLP-1.2.jar"
+        Sha256 = "9e2811cdbc2ddfc71d04be5dc36e185c88dcd1ad4d5d69e4ff2e1369dccf7793"
+    }
+    @{
+        RelativePath = "models/wordsegmenter/vi-vocab"
+        Url = "https://raw.githubusercontent.com/vncorenlp/VnCoreNLP/v1.2/models/wordsegmenter/vi-vocab"
+        Sha256 = "0a47c5b55bbce163029d37730a67b9479740388695c29c106c112b815613eaa5"
+    }
+    @{
+        RelativePath = "models/wordsegmenter/wordsegmenter.rdr"
+        Url = "https://raw.githubusercontent.com/vncorenlp/VnCoreNLP/v1.2/models/wordsegmenter/wordsegmenter.rdr"
+        Sha256 = "9e62f96bd93e37a24f364238e8d8ae986fa5dad6dbc9f4eae622ab3651b7fa06"
+    }
+)
+
+foreach ($asset in $assets) {
+    $target = Join-Path $vnCoreDir $asset.RelativePath
+    New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
+    Invoke-WebRequest -UseBasicParsing -Uri $asset.Url -OutFile $target
+    $actual = (Get-FileHash -Algorithm SHA256 $target).Hash.ToLowerInvariant()
+    if ($actual -ne $asset.Sha256) {
+        throw "VnCoreNLP checksum mismatch: $($asset.RelativePath)"
+    }
+}
+```
+
+Sau đó đặt `SYNTHESIS_VNCORENLP_DIR` trong `.env`. Chỉ cần đặt
+`SYNTHESIS_VNCORENLP_JAVA_PATH` khi `java -version` chưa chạy được trong terminal
+mới.
 
 CLI lưu tập cặp đã đề cử vào `evidence_relation_candidates.json` kèm
 fingerprint riêng của fact ledger, embedding endpoint/model/profile, batch
@@ -1194,11 +1255,13 @@ trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
 
 - `evidence_graph.py` — `find_candidate_fact_pairs` tìm cặp fact ứng viên trong
   toàn bộ fact đã trích xuất (không giới hạn cùng văn bản, vì multi-hop cần
-  đúng cặp khác văn bản) bằng **hybrid retrieval + RRF**: một nhánh dense
-  (`SynthesisEmbeddingEncoder` gọi BGE-M3 remote theo batch, ngưỡng
-  `min_similarity`) và một nhánh lexical (BM25 trên token âm tiết + từ ghép
-  Underthesea + bigram, ngưỡng "có ít nhất một token chung"), hợp nhất bằng
-  reciprocal rank fusion rồi lấy top-k. Lý do cần nhánh lexical: một điều
+  đúng cặp khác văn bản) bằng **hybrid retrieval + weighted RRF**: một nhánh
+  dense trên representation đầy đủ của fact (`SynthesisEmbeddingEncoder` gọi
+  BGE-M3 remote theo batch, ngưỡng `min_similarity`) và bốn nhánh BM25 riêng
+  cho core, conditions, consequences và authority. Lexical token gồm âm tiết
+  có dấu, từ ghép VnCoreNLP 1.2, bigram và token citation cấu trúc ở authority;
+  mỗi nhánh chỉ đưa score dương vào pool trước khi weighted reciprocal rank
+  fusion lấy top-k. Lý do cần nhánh lexical: một điều
   khoản sửa đổi **chép lại
   gần nguyên văn** điều khoản gốc — `336/2025` và `168/2024` trùng nhau 47
   `provision_path` — nên quan hệ `amended_by` biểu hiện thành trùng lặp từ
@@ -1513,7 +1576,7 @@ cần khai báo dependency trực tiếp ở thời điểm đó.
   nhất bằng RRF, để bắt được quan hệ `amended_by` biểu hiện qua trùng lặp
   nguyên văn giữa văn bản sửa đổi và văn bản gốc. Dense embedding sau đó được
   chuyển sang BGE-M3 qua provider riêng; BM25 dùng tokenizer hybrid tiếng Việt
-  được khóa bằng `underthesea`, import lazy khi thực sự phải tạo candidate cache.
+  được khóa bằng VnCoreNLP 1.2 và chạy theo batch khi thực sự phải tạo candidate cache.
   ✅ **Đã áp dụng**, không nằm trong kế hoạch gốc.
 - Tách khoá resume của `legal-extract-facts` khỏi `source_chunk_id` của fact
   sang artifact riêng `extraction_progress.jsonl`, vì một Target trả về danh

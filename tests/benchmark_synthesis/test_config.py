@@ -20,6 +20,8 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.embedding_profile == "bge_m3"
     assert settings.embedding_batch_size == 64
     assert settings.embedding_max_response_bytes == 16_777_216
+    assert settings.vncorenlp_max_heap_megabytes == 512
+    assert settings.vncorenlp_timeout_seconds == 120
     assert settings.llm_max_retries == 2
     assert settings.llm_retry_delay_seconds == 120
     assert settings.chunk_screening_batch_size == 50
@@ -30,10 +32,15 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.fact_extraction_max_preceding_chunks == 1
     assert settings.fact_extraction_max_following_chunks == 1
     assert settings.fact_extraction.max_output_tokens == 32_768
-    assert settings.relation_max_candidates_per_fact == 5
-    assert settings.relation_min_similarity == 0.5
-    assert settings.relation_pool_multiplier == 2
-    assert settings.relation_rrf_k == 60
+    assert settings.evidence_retrieval.max_candidates_per_fact == 5
+    assert settings.evidence_retrieval.min_similarity == 0.5
+    assert settings.evidence_retrieval.pool_multiplier == 3
+    assert settings.evidence_retrieval.rrf_k == 60
+    assert settings.evidence_retrieval.bm25_k1 == 1.2
+    assert settings.evidence_retrieval.bm25_b == 0.4
+    assert settings.evidence_retrieval.bm25_delta == 0.5
+    assert settings.evidence_retrieval.dense_weight == 1.0
+    assert settings.evidence_retrieval.lexical_authority_weight == 1.1
     assert settings.evidence_relation.max_output_tokens == 4096
     assert settings.candidate_critique.max_output_tokens == 2048
     assert settings.candidate_evolution.max_output_tokens == 2048

@@ -7,6 +7,7 @@ import os
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from math import isfinite
+from pathlib import Path
 from urllib.parse import urlsplit
 
 _MAX_LLM_TEMPERATURE = 2.0
@@ -75,6 +76,29 @@ class SynthesisEmbeddingSettings:
             api_key=values["SYNTHESIS_EMBEDDING_API_KEY"].strip(),
             model=values["SYNTHESIS_EMBEDDING_MODEL"].strip(),
             timeout_seconds=float(values["SYNTHESIS_EMBEDDING_TIMEOUT_SECONDS"]),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class SynthesisVnCoreNlpSettings:
+    """Local VnCoreNLP runtime paths used only by benchmark synthesis."""
+
+    model_dir: Path
+    java_path: str = "java"
+
+    def __post_init__(self) -> None:
+        """Reject empty executable configuration before starting VnCoreNLP."""
+        if not self.java_path:
+            msg = "Synthesis VnCoreNLP java_path must not be empty"
+            raise ValueError(msg)
+
+    @classmethod
+    def from_environment(cls, environment: Mapping[str, str] | None = None) -> SynthesisVnCoreNlpSettings:
+        """Load synthesis-only VnCoreNLP paths from environment variables."""
+        values = os.environ if environment is None else environment
+        return cls(
+            model_dir=Path(values["SYNTHESIS_VNCORENLP_DIR"]).expanduser(),
+            java_path=values.get("SYNTHESIS_VNCORENLP_JAVA_PATH", "java").strip(),
         )
 
 

@@ -9,11 +9,11 @@
     "data/config/groundtruth/personas.json": "df8586e7cbcb729d8096189fc9b6af92ae95bb2280244083dcd14479b8de863b",
     "data/config/groundtruth/query_taxonomy.json": "20eb6eecadb18f45dab66320954ac9438d68869426651e0fcc0e10f42be008f2",
     "data/config/groundtruth/scenario_distribution.json": "80e1348f8f16416906107e2636b90bc3e3c4c6f4326c0a1f52b2739d03af8102",
-    "data/config/groundtruth/synthesis_v1.json": "151f86361edf42077ad69d7d203033a4be4df711641ebf59aa647b3261185198",
+    "data/config/groundtruth/synthesis_v1.json": "f9d2db70dde905121136393bedd627d37784e109deb2aae61bcbf64cc95b77bb",
     "data/config/groundtruth_corpus_v1.json": "7225bf3082ca7557434cc43c0d228334d2d25e64fdb6037560b85bd54c8ff805"
   },
   "corpus_snapshot_id": "5169067cfabb36785877bbd21970fcc50c4f1ba30f6dec9ca2b1987cab228337",
-  "created_at": "2026-08-03T12:33:27.330418+00:00",
+  "created_at": "2026-08-03T15:31:19.610977+00:00",
   "document_summaries": [
     {
       "accepted_chunk_count": 0,
@@ -274,6 +274,6 @@
     "evidence_relation": "1.1.0",
     "fact_extraction": "1.3.0"
   },
-  "run_id": "a2ea8457f5bfde849924b179e8fa27425951c842520e67f52d7705cc8e302ce1",
+  "run_id": "c3a4fb4270d4a3ef3f80cd2aa7f69206d62e2a9396baab83c31592895a32e0ea",
   "schema_version": "1.0.0"
 }

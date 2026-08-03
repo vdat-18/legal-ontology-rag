@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
 from unicodedata import normalize
@@ -12,7 +13,7 @@ import pytest
 from legal_rag.baml_client.types import ConfirmedRelation as BamlConfirmedRelation
 from legal_rag.baml_client.types import RelationType as BamlRelationType
 from legal_rag.benchmark_synthesis import evidence_graph
-from legal_rag.benchmark_synthesis.config import LlmStageSettings, SynthesisSettings
+from legal_rag.benchmark_synthesis.config import EvidenceRetrievalSettings, LlmStageSettings, SynthesisSettings
 from legal_rag.benchmark_synthesis.evidence_graph import (
     BamlEvidenceRelationClient,
     EvidenceRelation,
@@ -35,6 +36,7 @@ def _fact(
     conduct: str = "Vượt đèn đỏ",
     subject: str = "Người điều khiển ô tô",
     provision_path: str = "Điều 6",
+    conditions: tuple[str, ...] = (),
 ) -> LegalFact:
     """Build one minimal legal fact for evidence-graph tests."""
     return LegalFact(
@@ -42,7 +44,7 @@ def _fact(
         fact_content_sha256=f"content-{fact_id}",
         conduct=conduct,
         subject=subject,
-        conditions=(),
+        conditions=conditions,
         monetary_penalty="4.000.000 đồng",
         license_points_deducted=None,
         additional_penalties=(),
@@ -53,6 +55,12 @@ def _fact(
         provision_path=provision_path,
         evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span=""),),
     )
+
+
+def _retrieval_settings(**changes: float | int) -> EvidenceRetrievalSettings:
+    """Return checked-in evidence retrieval settings with explicit test overrides."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH).evidence_retrieval
+    return replace(settings, **changes)
 
 
 class _FakeEncoder:
@@ -66,9 +74,20 @@ class _FakeEncoder:
         return np.array([self._vectors_by_text[text] for text in texts])
 
 
+class _FakeWordSegmenter:
+    """Return deterministic lexical units without starting VnCoreNLP."""
+
+    def segment(self, texts: Sequence[str]) -> tuple[tuple[str, ...], ...]:
+        """Split each test text into plain alphanumeric units."""
+        return tuple(tuple(evidence_graph._lexical_units(text)) for text in texts)
+
+
 def test_vietnamese_legal_tokens_preserve_syllables_and_add_segmented_terms() -> None:
     """BM25 keeps exact accented syllables while adding Vietnamese legal words and phrase bigrams."""
-    tokens = evidence_graph._vietnamese_legal_tokens("Không chấp hành quyết định xử phạt")
+    tokens = evidence_graph._vietnamese_legal_tokens(
+        "Không chấp hành quyết định xử phạt",
+        ("Không", "chấp_hành", "quyết_định", "xử_phạt"),
+    )
 
     assert "s:không" in tokens
     assert "s:chấp" in tokens
@@ -82,7 +101,10 @@ def test_vietnamese_legal_tokens_preserve_syllables_and_add_segmented_terms() ->
 def test_vietnamese_legal_tokens_normalize_unicode_and_stop_bigrams_at_punctuation() -> None:
     """Equivalent Unicode forms match, and phrase features never cross sentence punctuation."""
     decomposed = normalize("NFD", "Không chấp hành. Ô tô")
-    tokens = evidence_graph._vietnamese_legal_tokens(decomposed)
+    tokens = evidence_graph._vietnamese_legal_tokens(
+        decomposed,
+        ("Không", "chấp_hành", ".", "Ô_tô"),
+    )
 
     assert "s:không" in tokens
     assert "w:chấp_hành" in tokens
@@ -90,14 +112,37 @@ def test_vietnamese_legal_tokens_normalize_unicode_and_stop_bigrams_at_punctuati
     assert "b:chấp_hành|ô_tô" not in tokens
 
 
-def test_fact_lexical_tokens_do_not_create_bigrams_across_fact_fields() -> None:
-    """Conduct, subject, and provision terms remain separate BM25 phrase contexts."""
+def test_fact_lexical_corpora_keep_fact_fields_isolated() -> None:
+    """Conduct, subject, and authority terms are scored by separate BM25 indexes."""
     fact = _fact("fact-a", conduct="Xử phạt", subject="Ô tô", provision_path="Điều 6")
 
-    tokens = evidence_graph._fact_lexical_tokens(fact)
+    corpora = evidence_graph._lexical_corpora(
+        [fact],
+        [evidence_graph._fact_retrieval_texts(fact)],
+        _FakeWordSegmenter(),
+    )
 
-    assert "b:xử_phạt|ô_tô" not in tokens
-    assert "b:ô_tô|điều" not in tokens
+    assert "s:xử" in corpora["core"][0]
+    assert "s:điều" not in corpora["core"][0]
+    assert "s:điều" in corpora["authority"][0]
+    assert "s:xử" not in corpora["authority"][0]
+
+
+def test_authority_tokens_canonicalize_document_and_citation_structure() -> None:
+    """Equivalent legal authority fields expose exact and order-independent structural tokens."""
+    fact = _fact(
+        "fact-a",
+        document_number="168/2024/NĐ-CP",
+        provision_path="điểm c khoản 2 Điều 30",
+    )
+
+    tokens = evidence_graph._authority_atomic_tokens(fact)
+
+    assert "a:document:168_2024_nđ_cp" in tokens
+    assert "a:article:30" in tokens
+    assert "a:clause:2" in tokens
+    assert "a:point:c" in tokens
+    assert "a:citation:article_30|clause_2|point_c" in tokens
 
 
 def test_candidate_fingerprint_changes_with_embedding_provider_or_tokenizer(
@@ -121,7 +166,7 @@ def test_candidate_fingerprint_changes_with_embedding_provider_or_tokenizer(
         embedding_base_url="https://embedding.test/v1",
         embedding_model="provider/other-model",
     )
-    monkeypatch.setattr(evidence_graph, "VIETNAMESE_LEXICAL_TOKENIZER_VERSION", "underthesea_hybrid_v2")
+    monkeypatch.setattr(evidence_graph, "VIETNAMESE_LEXICAL_TOKENIZER_VERSION", "vncorenlp_hybrid_v3")
     changed_tokenizer = evidence_graph.build_evidence_candidate_run_id(
         facts,
         profile,
@@ -147,10 +192,8 @@ def test_find_candidate_fact_pairs_orders_and_deduplicates_symmetric_pairs() -> 
     pairs = find_candidate_fact_pairs(
         [fact_a, fact_b],
         encoder,
-        max_candidates_per_fact=5,
-        min_similarity=0.5,
-        pool_multiplier=2,
-        rrf_k=60,
+        _FakeWordSegmenter(),
+        _retrieval_settings(),
     )
 
     assert pairs == (("fact-a", "fact-b"),)
@@ -163,10 +206,8 @@ def test_find_candidate_fact_pairs_returns_empty_for_fewer_than_two_facts(facts:
         find_candidate_fact_pairs(
             facts,
             _FakeEncoder({}),
-            max_candidates_per_fact=5,
-            min_similarity=0.5,
-            pool_multiplier=2,
-            rrf_k=60,
+            _FakeWordSegmenter(),
+            _retrieval_settings(),
         )
         == ()
     )
@@ -186,10 +227,12 @@ def test_find_candidate_fact_pairs_excludes_pairs_missed_by_both_legs() -> None:
     pairs = find_candidate_fact_pairs(
         [fact_a, fact_b],
         encoder,
-        max_candidates_per_fact=5,
-        min_similarity=0.5,
-        pool_multiplier=2,
-        rrf_k=60,
+        _FakeWordSegmenter(),
+        _retrieval_settings(
+            lexical_conditions_weight=0.0,
+            lexical_consequences_weight=0.0,
+            lexical_authority_weight=0.0,
+        ),
     )
 
     assert pairs == ()
@@ -197,8 +240,17 @@ def test_find_candidate_fact_pairs_excludes_pairs_missed_by_both_legs() -> None:
 
 def test_find_candidate_fact_pairs_recovers_a_lexical_match_the_dense_leg_rejects() -> None:
     """Near-verbatim restatement is proposed even when the dense leg scores it below min_similarity."""
-    original = _fact("fact-original", conduct="Không chấp hành hiệu lệnh của đèn tín hiệu giao thông")
-    amending = _fact("fact-amending", conduct="Không chấp hành hiệu lệnh của đèn tín hiệu giao thông")
+    original = _fact(
+        "fact-original",
+        conduct="Không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
+        provision_path="Điều 6",
+    )
+    amending = _fact(
+        "fact-amending",
+        document_number="336/2025/NĐ-CP",
+        conduct="Không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
+        provision_path="Điều 4",
+    )
     encoder = _FakeEncoder(
         {
             evidence_graph._fact_embedding_text(original): np.array([1.0, 0.0]),
@@ -209,13 +261,107 @@ def test_find_candidate_fact_pairs_recovers_a_lexical_match_the_dense_leg_reject
     pairs = find_candidate_fact_pairs(
         [original, amending],
         encoder,
-        max_candidates_per_fact=5,
-        min_similarity=0.9,
-        pool_multiplier=2,
-        rrf_k=60,
+        _FakeWordSegmenter(),
+        _retrieval_settings(
+            dense_weight=0.0,
+            lexical_conditions_weight=0.0,
+            lexical_consequences_weight=0.0,
+            lexical_authority_weight=0.0,
+        ),
     )
 
     assert pairs == (("fact-amending", "fact-original"),)
+
+
+def test_find_candidate_fact_pairs_recovers_shared_conditions_from_the_condition_leg() -> None:
+    """Exception conditions can propose a pair even when core and dense retrieval reject it."""
+    condition = ("Trong trường hợp phương tiện đang thực hiện nhiệm vụ khẩn cấp",)
+    fact_a = _fact(
+        "fact-a",
+        conduct="Không chấp hành biển báo",
+        subject="Người đi bộ",
+        provision_path="Điều 1",
+        conditions=condition,
+    )
+    fact_b = _fact(
+        "fact-b",
+        conduct="Đi vào đường cấm",
+        subject="Người điều khiển xe chuyên dùng",
+        provision_path="Điều 99",
+        conditions=condition,
+    )
+    facts = [
+        fact_a,
+        fact_b,
+        _fact("noise-1", conduct="Dừng xe sai vị trí", conditions=("Khi trời mưa lớn",)),
+        _fact("noise-2", conduct="Chở quá số người", conditions=("Trên tuyến đường nội bộ",)),
+        _fact("noise-3", conduct="Không có gương", conditions=("Trong khu vực bến cảng",)),
+    ]
+    encoder = _FakeEncoder(
+        {
+            evidence_graph._fact_embedding_text(fact): vector
+            for fact, vector in zip(facts, np.eye(len(facts)), strict=True)
+        }
+    )
+
+    pairs = find_candidate_fact_pairs(
+        facts,
+        encoder,
+        _FakeWordSegmenter(),
+        _retrieval_settings(
+            dense_weight=0.0,
+            lexical_core_weight=0.0,
+            lexical_conditions_weight=1.0,
+            lexical_consequences_weight=0.0,
+            lexical_authority_weight=0.0,
+        ),
+    )
+
+    assert ("fact-a", "fact-b") in pairs
+
+
+def test_find_candidate_fact_pairs_recovers_shared_consequences_from_the_consequence_leg() -> None:
+    """Shared penalties can propose a pair independently of conduct and authority wording."""
+    fact_a = _fact(
+        "fact-a",
+        conduct="Không chấp hành biển báo",
+        subject="Người đi bộ",
+        provision_path="Điều 1",
+    )
+    fact_b = _fact(
+        "fact-b",
+        conduct="Đi vào đường cấm",
+        subject="Người điều khiển xe chuyên dùng",
+        provision_path="Điều 99",
+    )
+    facts = [
+        fact_a,
+        fact_b,
+        replace(_fact("noise-1", conduct="Dừng xe sai vị trí"), monetary_penalty="200.000 đồng"),
+        replace(_fact("noise-2", conduct="Chở quá số người"), monetary_penalty="600.000 đồng"),
+        replace(_fact("noise-3", conduct="Không có gương"), monetary_penalty="1.500.000 đồng"),
+    ]
+    encoder = _FakeEncoder(
+        {
+            evidence_graph._fact_embedding_text(fact): vector
+            for fact, vector in zip(facts, np.eye(len(facts)), strict=True)
+        }
+    )
+
+    pairs = find_candidate_fact_pairs(
+        facts,
+        encoder,
+        _FakeWordSegmenter(),
+        _retrieval_settings(
+            dense_weight=0.0,
+            lexical_core_weight=0.0,
+            lexical_conditions_weight=0.0,
+            lexical_consequences_weight=1.0,
+            lexical_authority_weight=0.0,
+        ),
+    )
+
+    assert ("fact-a", "fact-b") in pairs
 
 
 def test_find_candidate_fact_pairs_respects_max_candidates_per_fact() -> None:
@@ -233,10 +379,15 @@ def test_find_candidate_fact_pairs_respects_max_candidates_per_fact() -> None:
     pairs = find_candidate_fact_pairs(
         [anchor, close, farther],
         encoder,
-        max_candidates_per_fact=1,
-        min_similarity=0.0,
-        pool_multiplier=2,
-        rrf_k=60,
+        _FakeWordSegmenter(),
+        _retrieval_settings(
+            max_candidates_per_fact=1,
+            min_similarity=0.0,
+            lexical_core_weight=0.0,
+            lexical_conditions_weight=0.0,
+            lexical_consequences_weight=0.0,
+            lexical_authority_weight=0.0,
+        ),
     )
 
     assert ("anchor", "close") in pairs

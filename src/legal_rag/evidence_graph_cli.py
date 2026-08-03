@@ -157,6 +157,9 @@ def main() -> None:
         candidate_pairs = candidate_set.pairs
         logger.info("Loaded {} cached candidate pairs from {}", len(candidate_pairs), candidate_cache_path)
     else:
+        from legal_rag.benchmark_synthesis.vietnamese_lexical import VnCoreNlpWordSegmenter
+        from legal_rag.settings import SynthesisVnCoreNlpSettings
+
         logger.info(
             "Candidate cache missing; encoding {} facts with profile {} before relation confirmation",
             len(facts),
@@ -168,13 +171,18 @@ def main() -> None:
             batch_size=synthesis_settings.embedding_batch_size,
             max_response_bytes=synthesis_settings.embedding_max_response_bytes,
         )
+        vncorenlp_settings = SynthesisVnCoreNlpSettings.from_environment()
+        word_segmenter = VnCoreNlpWordSegmenter(
+            java_path=vncorenlp_settings.java_path,
+            model_dir=vncorenlp_settings.model_dir,
+            max_heap_megabytes=synthesis_settings.vncorenlp_max_heap_megabytes,
+            timeout_seconds=synthesis_settings.vncorenlp_timeout_seconds,
+        )
         candidate_pairs = find_candidate_fact_pairs(
             facts,
             encoder,
-            max_candidates_per_fact=synthesis_settings.relation_max_candidates_per_fact,
-            min_similarity=synthesis_settings.relation_min_similarity,
-            pool_multiplier=synthesis_settings.relation_pool_multiplier,
-            rrf_k=synthesis_settings.relation_rrf_k,
+            word_segmenter,
+            synthesis_settings.evidence_retrieval,
         )
         write_evidence_candidate_set(
             candidate_cache_path,

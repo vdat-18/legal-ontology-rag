@@ -10,7 +10,7 @@ import pytest
 
 from legal_rag import evidence_graph_cli
 from legal_rag.benchmark_synthesis import embedding as synthesis_embedding
-from legal_rag.benchmark_synthesis import evidence_graph
+from legal_rag.benchmark_synthesis import evidence_graph, vietnamese_lexical
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.evidence_graph import EvidenceRelationProgressRecord
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
@@ -77,6 +77,17 @@ class _FakeSynthesisEmbeddingEncoder:
         return np.array([[1.0, 0.0] for _ in sentences])
 
 
+class _FakeVnCoreNlpWordSegmenter:
+    """Return deterministic tokens without Java or model assets."""
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        """Accept production constructor arguments without using them."""
+
+    def segment(self, texts: list[str]) -> tuple[tuple[str, ...], ...]:
+        """Split every text into alphanumeric lexical units."""
+        return tuple(tuple(evidence_graph._lexical_units(text)) for text in texts)
+
+
 def _configure_cli(
     monkeypatch: pytest.MonkeyPatch,
     facts_path: Path,
@@ -97,9 +108,11 @@ def _configure_cli(
     monkeypatch.setenv("SYNTHESIS_EMBEDDING_API_KEY", "embedding-key")
     monkeypatch.setenv("SYNTHESIS_EMBEDDING_MODEL", "provider/bge-m3")
     monkeypatch.setenv("SYNTHESIS_EMBEDDING_TIMEOUT_SECONDS", "120")
+    monkeypatch.setenv("SYNTHESIS_VNCORENLP_DIR", "C:/vncorenlp-1.2")
     monkeypatch.setattr(llm_execution.time, "sleep", lambda _seconds: None)
     monkeypatch.setattr(evidence_graph, "BamlEvidenceRelationClient", _AlwaysRelatedClient)
     monkeypatch.setattr(synthesis_embedding, "SynthesisEmbeddingEncoder", _FakeSynthesisEmbeddingEncoder)
+    monkeypatch.setattr(vietnamese_lexical, "VnCoreNlpWordSegmenter", _FakeVnCoreNlpWordSegmenter)
     monkeypatch.setattr(
         sys,
         "argv",

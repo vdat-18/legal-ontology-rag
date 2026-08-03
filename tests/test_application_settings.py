@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
-from legal_rag.settings import Settings, SynthesisEmbeddingSettings
+from legal_rag.settings import Settings, SynthesisEmbeddingSettings, SynthesisVnCoreNlpSettings
 
 
 def test_shared_settings_load_from_openai_compatible_environment() -> None:
@@ -50,3 +52,16 @@ def test_synthesis_embedding_settings_reject_non_http_provider_urls() -> None:
             model="provider/bge-m3",
             timeout_seconds=120,
         )
+
+
+def test_synthesis_vncorenlp_settings_load_local_runtime_paths() -> None:
+    """Synthesis word segmentation uses an explicit model directory and optional Java executable."""
+    settings = SynthesisVnCoreNlpSettings.from_environment(
+        {
+            "SYNTHESIS_VNCORENLP_DIR": "C:/vncorenlp-1.2",
+            "SYNTHESIS_VNCORENLP_JAVA_PATH": "C:/java/bin/java.exe",
+        }
+    )
+
+    assert settings.model_dir == Path("C:/vncorenlp-1.2")
+    assert settings.java_path == "C:/java/bin/java.exe"
