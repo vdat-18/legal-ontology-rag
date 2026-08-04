@@ -5,14 +5,12 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-from legal_rag.benchmark_synthesis.binding_gate import BindingCheckResult, BindingViolation
 from legal_rag.benchmark_synthesis.candidate_generation import (
     CandidateDraft,
     ClaimEvidence,
     FactAnswerFields,
     RequiredClaim,
 )
-from legal_rag.benchmark_synthesis.candidate_record import CandidateRecord
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
 from legal_rag.benchmark_synthesis.evidence_graph import (
@@ -23,7 +21,6 @@ from legal_rag.benchmark_synthesis.evidence_graph import (
 from legal_rag.benchmark_synthesis.fact_extraction import ExtractionProgressRecord
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
-from legal_rag.benchmark_synthesis.verification import VerificationResult
 from legal_rag.benchmark_synthesis.writer import (
     read_candidates,
     read_chunk_screening,
@@ -246,59 +243,12 @@ def _candidate_draft() -> CandidateDraft:
     )
 
 
-def test_candidates_round_trip_with_full_verification(tmp_path: Path) -> None:
-    """A candidate that passed both gates reads back identically, including verification."""
+def test_candidates_round_trip_through_jsonl(tmp_path: Path) -> None:
+    """A written candidate draft reads back with identical field values, with no gating attached."""
     output_path = tmp_path / "single_turn.jsonl"
-    record = CandidateRecord(
-        draft=_candidate_draft(),
-        binding=BindingCheckResult(passed=True, grounding_score=1.0, violations=()),
-        verification=VerificationResult(
-            passed=True,
-            is_standalone=True,
-            is_specific=True,
-            is_question_grounded=True,
-            is_answer_grounded=True,
-            is_domain_relevant=True,
-            is_temporal_correct=True,
-            necessary_reasoning_hops=1,
-            observed_query_type="penalty_for_conduct",
-            observed_answerability="answerable",
-            reasoning="Đầy đủ căn cứ.",
-            verifier_model="provider/verifier-model",
-        ),
-    )
+    draft = _candidate_draft()
 
-    write_candidates(output_path, [record])
-    records = read_candidates(output_path)
+    write_candidates(output_path, [draft])
+    drafts = read_candidates(output_path)
 
-    assert records == (record,)
-    assert records[0].review_status == "automatically_verified"
-
-    payload = record.to_dict()
-    assert payload["requested_query_type"] == "penalty_for_conduct"
-    assert payload["requested_answerability"] == "answerable"
-    assert payload["requested_reasoning_hops"] == 1
-    assert payload["query_type"] == record.verification.observed_query_type
-    assert payload["answerability"] == record.verification.observed_answerability
-    assert payload["reasoning_hops"] == record.verification.necessary_reasoning_hops
-
-
-def test_candidates_round_trip_rejected_by_binding_gate_has_no_verification(tmp_path: Path) -> None:
-    """A candidate rejected at gate 1 never reaches verification; None survives the round trip."""
-    output_path = tmp_path / "single_turn.jsonl"
-    record = CandidateRecord(
-        draft=_candidate_draft(),
-        binding=BindingCheckResult(
-            passed=False,
-            grounding_score=0.4,
-            violations=(BindingViolation(claim="Mức phạt tiền áp dụng", reason="span below threshold"),),
-        ),
-        verification=None,
-    )
-
-    write_candidates(output_path, [record])
-    records = read_candidates(output_path)
-
-    assert records == (record,)
-    assert records[0].verification is None
-    assert records[0].review_status == "rejected_by_binding_gate"
+    assert drafts == (draft,)

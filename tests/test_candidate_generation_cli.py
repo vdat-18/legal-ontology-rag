@@ -8,13 +8,11 @@ from pathlib import Path
 import pytest
 
 from legal_rag import candidate_generation_cli
-from legal_rag.baml_client.types import Answerability, EvolutionOperation
 from legal_rag.baml_client.types import ClaimReference as BamlClaimReference
+from legal_rag.baml_client.types import EvolutionOperation
 from legal_rag.baml_client.types import EvolvedCandidate as BamlEvolvedCandidate
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
-from legal_rag.baml_client.types import SurfaceCritique as BamlSurfaceCritique
-from legal_rag.baml_client.types import VerificationResult as BamlVerificationResult
-from legal_rag.benchmark_synthesis import candidate_generation, verification
+from legal_rag.benchmark_synthesis import candidate_generation
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.benchmark_synthesis.writer import (
@@ -23,8 +21,6 @@ from legal_rag.benchmark_synthesis.writer import (
     write_legal_facts,
     write_scenarios,
 )
-from legal_rag.chunker.models import Chunk
-from legal_rag.chunker.writer import write_chunks
 
 _REPO_CONFIG_DIR = Path(__file__).resolve().parent.parent / "data" / "config" / "groundtruth"
 _PENALTY_SPAN = "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."
@@ -47,35 +43,6 @@ def _fact() -> LegalFact:
         document_number="168/2024/NĐ-CP",
         provision_path="Điều 6",
         evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span=_PENALTY_SPAN),),
-    )
-
-
-def _chunk() -> Chunk:
-    """Build one final chunk backing the fact's evidence."""
-    return Chunk(
-        chunk_id="chunk-1",
-        content_sha256="content-hash",
-        chunker_config_sha256="config-hash",
-        scope_id="scope-id",
-        chunk_index=0,
-        kind="paragraph_group",
-        source_name="168_2024_ND-CP.docx",
-        source_sha256="source-hash",
-        record_scope="root",
-        parent_attachment_id=None,
-        attachment_member_path=None,
-        attachment_member_sha256=None,
-        unit_ids=("unit-0",),
-        source_refs=("word/document.xml#/body/0",),
-        sequence_start=0,
-        sequence_end=0,
-        text=_PENALTY_SPAN,
-        context_text="",
-        embedding_text=_PENALTY_SPAN,
-        text_token_count=5,
-        embedding_token_count=5,
-        previous_chunk_id=None,
-        next_chunk_id=None,
     )
 
 
@@ -114,12 +81,13 @@ class _FakeGenerationClient:
             ],
         )
 
-    def critique_surface(self, *args: object, **kwargs: object) -> BamlSurfaceCritique:
-        """Always accept the surface phrasing immediately."""
-        return BamlSurfaceCritique(passes=True, feedback="", rewritten_query_vi=args[0])
-
     def evolve(
-        self, query_vi: str, reference_answer_vi: str, reasoning_vi: str, operation: EvolutionOperation
+        self,
+        query_vi: str,
+        reference_answer_vi: str,
+        reasoning_vi: str,
+        operation: EvolutionOperation,
+        query_length: str,
     ) -> BamlEvolvedCandidate:
         """Return the query and answer unchanged, tagged by operation."""
         return BamlEvolvedCandidate(
@@ -127,34 +95,10 @@ class _FakeGenerationClient:
         )
 
 
-class _FakeVerificationClient:
-    """Return a fixed passing verification result, ignoring call arguments."""
-
-    def __init__(self, settings: object, synthesis_settings: object) -> None:
-        return None
-
-    def verify(self, *args: object, **kwargs: object) -> BamlVerificationResult:
-        """Return a verification result where every dimension passes."""
-        return BamlVerificationResult(
-            is_standalone=True,
-            is_specific=True,
-            is_question_grounded=True,
-            is_answer_grounded=True,
-            is_domain_relevant=True,
-            is_temporal_correct=True,
-            uses_required_bridge=True,
-            necessary_reasoning_hops=1,
-            observed_query_type="penalty_for_conduct",
-            observed_answerability=Answerability.Answerable,
-            reasoning="Đầy đủ căn cứ.",
-        )
-
-
 def _configure_cli(
     monkeypatch: pytest.MonkeyPatch,
     facts_path: Path,
     scenarios_path: Path,
-    chunks_dir: Path,
     candidates_output_path: Path,
     *,
     candidates_per_scenario: int,
@@ -168,7 +112,6 @@ def _configure_cli(
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
     monkeypatch.setattr(llm_execution.time, "sleep", lambda _seconds: None)
     monkeypatch.setattr(candidate_generation, "BamlCandidateGenerationClient", _FakeGenerationClient)
-    monkeypatch.setattr(verification, "BamlVerificationClient", _FakeVerificationClient)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -176,7 +119,6 @@ def _configure_cli(
             "legal-generate-candidates",
             str(facts_path),
             str(scenarios_path),
-            str(chunks_dir),
             str(candidates_output_path),
             "--query-taxonomy",
             str(_REPO_CONFIG_DIR / "query_taxonomy.json"),
@@ -192,29 +134,24 @@ def _configure_cli(
     )
 
 
-def test_candidate_generation_cli_produces_automatically_verified_candidate(
+def test_candidate_generation_cli_produces_candidate_from_scenario(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """A well-grounded generated candidate passes both gates end to end."""
+    """A generated candidate is written through end to end with no gating checks."""
     facts_path = tmp_path / "legal_facts.jsonl"
     scenarios_path = tmp_path / "scenarios.jsonl"
-    chunks_dir = tmp_path / "chunks"
-    chunks_dir.mkdir()
     candidates_path = tmp_path / "single_turn.jsonl"
 
     write_legal_facts(facts_path, [_fact()])
     write_scenarios(scenarios_path, [_scenario()])
-    write_chunks(chunks_dir / "168_2024_ND-CP.chunks.jsonl", [_chunk()])
-    _configure_cli(monkeypatch, facts_path, scenarios_path, chunks_dir, candidates_path, candidates_per_scenario=1)
+    _configure_cli(monkeypatch, facts_path, scenarios_path, candidates_path, candidates_per_scenario=1)
 
     candidate_generation_cli.main()
 
-    records = read_candidates(candidates_path)
-    assert len(records) == 1
-    assert records[0].binding.passed is True
-    assert records[0].review_status == "automatically_verified"
-    assert records[0].verification is not None
-    assert records[0].verification.observed_answerability == "answerable"
+    drafts = read_candidates(candidates_path)
+    assert len(drafts) == 1
+    assert drafts[0].answerability == "answerable"
+    assert drafts[0].query_vi == "oto vuot den do bi phat bao nhieu"
 
 
 def test_candidate_generation_cli_generates_multiple_attempts_per_scenario(
@@ -223,45 +160,44 @@ def test_candidate_generation_cli_generates_multiple_attempts_per_scenario(
     """candidates_per_scenario controls how many draws are made per scenario."""
     facts_path = tmp_path / "legal_facts.jsonl"
     scenarios_path = tmp_path / "scenarios.jsonl"
-    chunks_dir = tmp_path / "chunks"
-    chunks_dir.mkdir()
     candidates_path = tmp_path / "single_turn.jsonl"
 
     write_legal_facts(facts_path, [_fact()])
     write_scenarios(scenarios_path, [_scenario()])
-    write_chunks(chunks_dir / "168_2024_ND-CP.chunks.jsonl", [_chunk()])
-    _configure_cli(monkeypatch, facts_path, scenarios_path, chunks_dir, candidates_path, candidates_per_scenario=3)
+    _configure_cli(monkeypatch, facts_path, scenarios_path, candidates_path, candidates_per_scenario=3)
 
     candidate_generation_cli.main()
 
-    records = read_candidates(candidates_path)
-    assert len(records) == 3
+    drafts = read_candidates(candidates_path)
+    assert len(drafts) == 3
 
 
 def test_candidate_generation_cli_resumes_after_failed_evolution_without_repeating_prior_llm_stages(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Generation and critique checkpoints survive an exhausted evolution task."""
+    """The generation checkpoint survives an exhausted evolution task."""
     facts_path = tmp_path / "legal_facts.jsonl"
     scenarios_path = tmp_path / "scenarios.jsonl"
-    chunks_dir = tmp_path / "chunks"
-    chunks_dir.mkdir()
     candidates_path = tmp_path / "single_turn.jsonl"
     progress_path = tmp_path / "single_turn.progress.jsonl"
     write_legal_facts(facts_path, [_fact()])
     write_scenarios(scenarios_path, [_scenario()])
-    write_chunks(chunks_dir / "168_2024_ND-CP.chunks.jsonl", [_chunk()])
 
     class _EvolutionFailsClient(_FakeGenerationClient):
-        """Complete generation and critique, then exhaust evolution retries."""
+        """Complete generation, then exhaust evolution retries."""
 
         def evolve(
-            self, query_vi: str, reference_answer_vi: str, reasoning_vi: str, operation: EvolutionOperation
+            self,
+            query_vi: str,
+            reference_answer_vi: str,
+            reasoning_vi: str,
+            operation: EvolutionOperation,
+            query_length: str,
         ) -> BamlEvolvedCandidate:
             msg = "evolution unavailable"
             raise TimeoutError(msg)
 
-    _configure_cli(monkeypatch, facts_path, scenarios_path, chunks_dir, candidates_path, candidates_per_scenario=1)
+    _configure_cli(monkeypatch, facts_path, scenarios_path, candidates_path, candidates_per_scenario=1)
     monkeypatch.setattr(candidate_generation, "BamlCandidateGenerationClient", _EvolutionFailsClient)
 
     with pytest.raises(RuntimeError, match="candidate generation left 1 incomplete"):
@@ -270,7 +206,6 @@ def test_candidate_generation_cli_resumes_after_failed_evolution_without_repeati
     progress = read_candidate_progress(progress_path)
     assert len(progress) == 1
     assert progress[0].completed is False
-    assert progress[0].draft.surface_refined is True
     assert progress[0].draft.evolutions == ()
 
     evolve_calls: list[EvolutionOperation] = []
@@ -282,12 +217,13 @@ def test_candidate_generation_cli_resumes_after_failed_evolution_without_repeati
             msg = "generation must be resumed from checkpoint"
             raise AssertionError(msg)
 
-        def critique_surface(self, *args: object, **kwargs: object) -> BamlSurfaceCritique:
-            msg = "critique must be resumed from checkpoint"
-            raise AssertionError(msg)
-
         def evolve(
-            self, query_vi: str, reference_answer_vi: str, reasoning_vi: str, operation: EvolutionOperation
+            self,
+            query_vi: str,
+            reference_answer_vi: str,
+            reasoning_vi: str,
+            operation: EvolutionOperation,
+            query_length: str,
         ) -> BamlEvolvedCandidate:
             evolve_calls.append(operation)
             return BamlEvolvedCandidate(
@@ -299,6 +235,6 @@ def test_candidate_generation_cli_resumes_after_failed_evolution_without_repeati
     monkeypatch.setattr(candidate_generation, "BamlCandidateGenerationClient", _ResumeAtEvolutionClient)
     candidate_generation_cli.main()
 
-    assert evolve_calls == [EvolutionOperation.Concretizing, EvolutionOperation.Reasoning]
+    assert evolve_calls == [EvolutionOperation.Concretizing]
     assert read_candidate_progress(progress_path)[0].completed is True
     assert len(read_candidates(candidates_path)) == 1

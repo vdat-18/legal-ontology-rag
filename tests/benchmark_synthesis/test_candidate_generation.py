@@ -1,8 +1,7 @@
-"""Tests for single-turn candidate generation, surface refinement, and evolution."""
+"""Tests for single-turn candidate generation and evolution."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
 
@@ -12,14 +11,12 @@ from legal_rag.baml_client.types import ClaimReference as BamlClaimReference
 from legal_rag.baml_client.types import EvolutionOperation, FactContext
 from legal_rag.baml_client.types import EvolvedCandidate as BamlEvolvedCandidate
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
-from legal_rag.baml_client.types import SurfaceCritique as BamlSurfaceCritique
 from legal_rag.benchmark_synthesis import candidate_generation
 from legal_rag.benchmark_synthesis.candidate_generation import (
     BamlCandidateGenerationClient,
     build_fact_context,
     evolve_candidate,
     generate_candidate,
-    refine_surface,
 )
 from legal_rag.benchmark_synthesis.config import LlmStageSettings, SynthesisSettings
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
@@ -87,10 +84,6 @@ class _FakeGenerationClient:
     def generate(self, *args: object, **kwargs: object) -> BamlGeneratedCandidate:
         """Return the configured generated candidate."""
         return self._generated
-
-    def critique_surface(self, *args: object, **kwargs: object) -> BamlSurfaceCritique:
-        """Unused in generation-only tests."""
-        raise NotImplementedError
 
     def evolve(self, *args: object, **kwargs: object) -> BamlEvolvedCandidate:
         """Unused in generation-only tests."""
@@ -191,30 +184,8 @@ def test_generate_candidate_sample_id_is_deterministic() -> None:
     assert first.sample_id == second.sample_id
 
 
-class _FakeSurfaceClient:
-    """Return pre-programmed critiques in sequence."""
-
-    def __init__(self, critiques: Sequence[BamlSurfaceCritique]) -> None:
-        self._critiques = list(critiques)
-        self.calls = 0
-
-    def generate(self, *args: object, **kwargs: object) -> BamlGeneratedCandidate:
-        """Unused in surface-refinement tests."""
-        raise NotImplementedError
-
-    def critique_surface(self, *args: object, **kwargs: object) -> BamlSurfaceCritique:
-        """Return the next configured critique."""
-        critique = self._critiques[self.calls]
-        self.calls += 1
-        return critique
-
-    def evolve(self, *args: object, **kwargs: object) -> BamlEvolvedCandidate:
-        """Unused in surface-refinement tests."""
-        raise NotImplementedError
-
-
-def _draft_for_refinement() -> candidate_generation.CandidateDraft:
-    """Build one candidate draft for surface-refinement and evolution tests."""
+def _draft_for_evolution() -> candidate_generation.CandidateDraft:
+    """Build one candidate draft for evolution tests."""
     fact = _fact()
     generated = BamlGeneratedCandidate(
         query_vi="oto vuot den do bi phat bao nhieu",
@@ -230,46 +201,6 @@ def _draft_for_refinement() -> candidate_generation.CandidateDraft:
     )
 
 
-def test_refine_surface_stops_once_critique_passes() -> None:
-    """The loop stops as soon as passes=True, without exhausting max_retries."""
-    draft = _draft_for_refinement()
-    client = _FakeSurfaceClient(
-        [
-            BamlSurfaceCritique(passes=False, feedback="quá dài", rewritten_query_vi="oto vuot den do"),
-            BamlSurfaceCritique(passes=True, feedback="", rewritten_query_vi="oto vuot den do"),
-        ]
-    )
-
-    refined = refine_surface(draft, client, max_retries=5, llm_max_retries=0, llm_retry_delay_seconds=0)
-
-    assert client.calls == 2
-    assert refined.query_vi == "oto vuot den do"
-    assert refined.sample_id != draft.sample_id
-
-
-def test_refine_surface_respects_max_retries_cap() -> None:
-    """The loop never calls the client more than max_retries times."""
-    draft = _draft_for_refinement()
-    always_fails = [BamlSurfaceCritique(passes=False, feedback="x", rewritten_query_vi=f"v{i}") for i in range(10)]
-    client = _FakeSurfaceClient(always_fails)
-
-    refine_surface(draft, client, max_retries=3, llm_max_retries=0, llm_retry_delay_seconds=0)
-
-    assert client.calls == 3
-
-
-def test_refine_surface_never_changes_claims_or_answer_fields() -> None:
-    """Only query_vi changes; claims, evidence, and answer_fields stay frozen."""
-    draft = _draft_for_refinement()
-    client = _FakeSurfaceClient([BamlSurfaceCritique(passes=False, feedback="x", rewritten_query_vi="new query")])
-
-    refined = refine_surface(draft, client, max_retries=1, llm_max_retries=0, llm_retry_delay_seconds=0)
-
-    assert refined.required_claims == draft.required_claims
-    assert refined.answer_fields == draft.answer_fields
-    assert refined.reference_answer_vi == draft.reference_answer_vi
-
-
 class _FakeEvolutionClient:
     """Return a pre-programmed evolved query/answer for every operation."""
 
@@ -280,12 +211,13 @@ class _FakeEvolutionClient:
         """Unused in evolution tests."""
         raise NotImplementedError
 
-    def critique_surface(self, *args: object, **kwargs: object) -> BamlSurfaceCritique:
-        """Unused in evolution tests."""
-        raise NotImplementedError
-
     def evolve(
-        self, query_vi: str, reference_answer_vi: str, reasoning_vi: str, operation: EvolutionOperation
+        self,
+        query_vi: str,
+        reference_answer_vi: str,
+        reasoning_vi: str,
+        operation: EvolutionOperation,
+        query_length: str,
     ) -> BamlEvolvedCandidate:
         """Return the configured evolved candidate for this operation."""
         return self._evolved_by_operation[operation]
@@ -293,7 +225,7 @@ class _FakeEvolutionClient:
 
 def test_evolve_candidate_applies_operations_in_sequence_and_records_them() -> None:
     """Each configured operation is applied once, in order, and recorded in evolutions."""
-    draft = _draft_for_refinement()
+    draft = _draft_for_evolution()
     client = _FakeEvolutionClient(
         {
             EvolutionOperation.Concretizing: BamlEvolvedCandidate(
@@ -318,7 +250,7 @@ def test_evolve_candidate_applies_operations_in_sequence_and_records_them() -> N
 
 def test_evolve_candidate_never_changes_claims_or_answer_fields() -> None:
     """Evolution only touches query_vi and reference_answer_vi, never evidence."""
-    draft = _draft_for_refinement()
+    draft = _draft_for_evolution()
     client = _FakeEvolutionClient(
         {
             EvolutionOperation.Hypothetical: BamlEvolvedCandidate(
@@ -348,7 +280,7 @@ def _synthesis_settings() -> SynthesisSettings:
     return SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
 
 
-def test_candidate_client_uses_separate_generation_critique_and_evolution_bounds(
+def test_candidate_client_uses_separate_generation_and_evolution_bounds(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Each candidate LLM operation uses its own versioned stage configuration."""
@@ -361,14 +293,13 @@ def test_candidate_client_uses_separate_generation_critique_and_evolution_bounds
     settings = replace(
         _synthesis_settings(),
         candidate_generation=LlmStageSettings(101, 0.0),
-        candidate_critique=LlmStageSettings(102, 0.0),
         candidate_evolution=LlmStageSettings(103, 0.0),
     )
     monkeypatch.setattr(candidate_generation, "build_client_registry", _capture_registry)
 
     BamlCandidateGenerationClient(_settings(), settings)
 
-    assert configured_tokens == [101, 102, 103]
+    assert configured_tokens == [101, 103]
 
 
 def test_baml_candidate_generation_client_parses_typed_result(monkeypatch: pytest.MonkeyPatch) -> None:

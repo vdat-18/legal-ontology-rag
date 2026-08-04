@@ -106,6 +106,7 @@ class SynthesisSettings:
     fact_extraction_max_following_chunks: int
     evidence_relation_batch_size: int
     evidence_relation_max_concurrency: int
+    candidate_generation_max_concurrency: int
     evidence_retrieval: EvidenceRetrievalSettings
     chunk_screening: LlmStageSettings
     document_metadata: LlmStageSettings
@@ -142,6 +143,7 @@ class SynthesisSettings:
             "fact_extraction_batch_size": self.fact_extraction_batch_size,
             "evidence_relation_batch_size": self.evidence_relation_batch_size,
             "evidence_relation_max_concurrency": self.evidence_relation_max_concurrency,
+            "candidate_generation_max_concurrency": self.candidate_generation_max_concurrency,
         }
         for name, value in positive_limits.items():
             if value < 1:
@@ -195,6 +197,7 @@ class SynthesisSettings:
             fact_extraction_max_following_chunks=extraction["max_following_chunks"],
             evidence_relation_batch_size=relation["batch_size"],
             evidence_relation_max_concurrency=relation["max_concurrency"],
+            candidate_generation_max_concurrency=stages["candidate_generation"]["max_concurrency"],
             evidence_retrieval=_evidence_retrieval_settings(retrieval),
             chunk_screening=_stage_settings(screening),
             document_metadata=_stage_settings(metadata),

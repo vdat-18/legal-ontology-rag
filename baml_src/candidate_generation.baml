@@ -61,9 +61,54 @@ function GenerateSingleTurnCandidate(
     - Số fact bắt buộc phải dùng: {{ reasoning_hops }}
     {% if bridge %}- Cầu nối bắt buộc giữa các fact: {{ bridge }}{% endif %}
     - Phong cách: {{ query_form }}
-    - Cách gõ: {{ query_style }}
-    - Độ dài: {{ query_length }}
+    - Độ dài: {{ query_length }}{% if query_length == "short" %} (khoảng 5-10 từ){% elif query_length == "medium" %} (khoảng 10-20 từ){% elif query_length == "long" %} (trên 20 từ, có thể kèm chi tiết tình huống cụ thể){% endif %}
     {% if as_of_date %}- Thời điểm áp dụng: {{ as_of_date }}{% endif %}
+
+    query_vi phải đọc đúng như một người Việt Nam bình thường — không phải
+    luật sư, không phải cán bộ soạn văn bản — thực sự gõ câu hỏi này trên
+    điện thoại khi cần hỏi gấp ngoài đường. Tuyệt đối không dùng văn phong
+    hành chính, không viết như đơn từ hay báo cáo pháp lý. Trừ khi
+    {{ persona_description }} là luật sư hoặc cán bộ xử phạt, KHÔNG trích số
+    điều/khoản/điểm cụ thể trong query_vi — người bình thường không biết và
+    không gõ số hiệu điều luật khi hỏi, chỉ luật sư/cán bộ mới quen cách
+    trích dẫn này.
+
+    reference_answer_vi và reasoning_vi thì luôn viết tiếng Việt chuẩn mực,
+    đầy đủ dấu, rõ ràng, dễ hiểu, đúng văn phong tư vấn pháp lý thật — mọi
+    quy tắc "cách gõ" dưới đây CHỈ áp dụng cho query_vi, không áp dụng cho
+    phần đáp án hay lập luận. Tuyệt đối không dùng từ tiếng Anh "fact" hay
+    bất kỳ thuật ngữ nội bộ nào, và không viết kiểu "theo dữ liệu/thông tin
+    được cung cấp" — viết thẳng vào nội dung quy định như một câu trả lời
+    pháp lý thật, không nhắc đến việc đang được cấp dữ liệu.
+
+    Cách gõ bắt buộc cho query_vi — "{{ query_style }}" (các câu ví dụ dưới
+    đây chỉ để minh hoạ văn phong/cách gõ, KHÔNG copy nội dung — nội dung câu
+    hỏi phải dựa đúng vào fact pháp lý được cung cấp ở phần dưới):
+    {% if query_style == "standard" %}
+    Gõ đúng chính tả, đầy đủ dấu, câu hoàn chỉnh, giống văn viết bình thường
+    khi soạn tin nhắn cẩn thận, có dấu chấm hỏi ở cuối.
+    Ví dụ minh hoạ: "Xe ô tô vượt đèn đỏ thì bị phạt bao nhiêu tiền?"
+    {% elif query_style == "no_diacritics" %}
+    Gõ HOÀN TOÀN không dấu — kiểu gõ vội trên điện thoại chưa bật bàn phím
+    tiếng Việt có dấu. Bỏ hết dấu thanh và dấu phụ, giữ chữ cái Latin gần
+    nhất (ư→u, ơ→o, ă→a, đ→d, ê→e, ô→o). Không thêm lỗi chính tả nào khác
+    ngoài việc bỏ dấu — từ ngữ vẫn đúng, chỉ là không dấu.
+    Ví dụ minh hoạ: "xe oto vuot den do thi bi phat bao nhieu tien"
+    {% elif query_style == "misspelled" %}
+    Vẫn giữ dấu tiếng Việt nhưng gõ sai/tắt tự nhiên như gõ vội bằng điện
+    thoại: dùng viết tắt kiểu chat phổ biến (ko/k = không, đc/dc = được,
+    vs = với, ntn = như thế nào, j = gì, b = bạn, mng = mọi người,
+    v = vậy), gõ nhịu các âm dễ lẫn (ch/tr, d/gi/r, s/x), thiếu dấu câu,
+    thiếu hoặc lặp một vài chữ. KHÔNG bỏ hết dấu như no_diacritics — dấu
+    tiếng Việt vẫn còn, chỉ sai/tắt rải rác một cách tự nhiên.
+    Ví dụ minh hoạ: "oto vượt đèn đỏ thì phạt mấy tiền v ạ, có bị trừ điểm k"
+    {% elif query_style == "keyword_style" %}
+    Gõ kiểu tìm trên Google — chỉ liệt kê từ khóa cốt lõi, KHÔNG viết thành
+    câu hoàn chỉnh, không chủ ngữ/vị ngữ đầy đủ, không dấu chấm hỏi.
+    Ví dụ minh hoạ: "oto vuot den do muc phat bao nhieu"
+    {% else %}
+    Gõ đúng theo mô tả phong cách: {{ query_style }}.
+    {% endif %}
 
     Nguyên tắc bắt buộc:
     - Không tự tìm hoặc thay đổi evidence. Chỉ dùng đúng nội dung các fact
@@ -74,8 +119,11 @@ function GenerateSingleTurnCandidate(
       các fact dưới đây.
     - Nếu reasoning_hops lớn hơn 1, câu hỏi và đáp án phải thực sự cần đủ số
       fact đã cung cấp; required_claims phải bao phủ mọi fact.
-    - Với partially_answerable, chỉ trả lời phần evidence hỗ trợ và nêu rõ phần
-      còn thiếu. Không biến nó thành câu answerable hoàn toàn.
+    - Với partially_answerable, chỉ trả lời phần có căn cứ, rồi nêu rõ CẦN
+      HỎI THÊM THÔNG TIN GÌ từ người hỏi để trả lời phần còn lại — không nói
+      "dữ liệu/thông tin được cung cấp không đủ", chỉ nói tự nhiên như đang
+      thiếu dữ kiện thật từ tình huống. Không biến nó thành câu answerable
+      hoàn toàn.
     - Nếu có bridge, câu hỏi và lập luận phải sử dụng đúng cầu nối đó.
 
     Fact pháp lý:
@@ -145,7 +193,8 @@ function EvolveCandidate(
   query_vi: string,
   reference_answer_vi: string,
   reasoning_vi: string,
-  operation: EvolutionOperation
+  operation: EvolutionOperation,
+  query_length: string
 ) -> EvolvedCandidate {
   client OpenAICompatibleProvider
   prompt #"
@@ -168,6 +217,22 @@ function EvolveCandidate(
 
     Lập luận gốc:
     {{ reasoning_vi }}
+
+    Giữ nguyên chính xác cách gõ/văn phong của câu hỏi gốc ở trên — có dấu
+    hay không dấu, viết tắt kiểu chat hay đầy đủ, viết thành câu hay chỉ liệt
+    kê từ khóa. Chỉ thêm/đổi nội dung tình huống theo đúng phép biến đổi ở
+    trên; không "sửa lại" câu hỏi về chính tả hay văn phong chuẩn mực.
+
+    Độ dài query_vi sau biến đổi vẫn phải giữ đúng mức "{{ query_length }}"
+    {% if query_length == "short" %}(khoảng 5-10 từ){% elif query_length == "medium" %}(khoảng 10-20 từ){% elif query_length == "long" %}(trên 20 từ){% endif %}
+    như câu gốc — KHÔNG được viết thành cả đoạn văn dài. Concretizing chỉ
+    thêm ĐÚNG MỘT chi tiết cụ thể (ví dụ một con số, một mốc thời gian, một
+    loại phương tiện), không kể lể thêm nhiều tình tiết cùng lúc.
+
+    reference_answer_vi và reasoning_vi thì luôn viết tiếng Việt chuẩn mực,
+    đầy đủ dấu, rõ ràng, đúng văn phong tư vấn pháp lý thật. Tuyệt đối không
+    dùng từ tiếng Anh "fact" hay thuật ngữ nội bộ, không viết kiểu "theo dữ
+    liệu/thông tin được cung cấp".
 
     Trả về cả lập luận đã cập nhật để luôn nhất quán với câu hỏi và đáp án sau
     biến đổi.

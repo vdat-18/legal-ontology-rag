@@ -135,7 +135,7 @@ def test_load_evolution_config_reads_repo_config() -> None:
     config = load_evolution_config(_REPO_CONFIG_DIR / "evolution.json")
 
     assert "concretizing" in config.operation_ids
-    assert config.max_rounds == 2
+    assert config.max_rounds == 1
 
 
 def test_load_query_type_descriptions_reads_repo_config() -> None:

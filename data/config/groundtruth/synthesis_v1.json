@@ -63,6 +63,7 @@
       "temperature": 0.0
     },
     "candidate_generation": {
+      "max_concurrency": 10,
       "max_output_tokens": 2048,
       "temperature": 0.0
     },

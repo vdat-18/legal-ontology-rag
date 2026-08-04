@@ -6,8 +6,8 @@ This section is authoritative where older implementation notes below still
 describe retry-then-skip behavior.
 
 - Every LLM work unit has bounded retry and a stable resume key: metadata,
-  screening batch, extraction batch, relation pair, generation attempt,
-  critique attempt, evolution operation, and verification attempt.
+  screening batch, extraction batch, relation pair, generation attempt, and
+  evolution operation.
 - Successful units are written atomically after completion. An exhausted unit
   is never marked complete; the CLI exits non-zero after preserving prior
   successful checkpoints.
@@ -18,13 +18,15 @@ describe retry-then-skip behavior.
   persistence. A model citation joining paragraphs across omitted text is
   represented as multiple evidence entries; any unbindable citation fails the
   work unit and remains resumable.
-- Candidate generation receives answerability, bundle kind, bridge, and hops.
-  Gate 1 rejects fact/chunk references outside the scenario and requires every
-  scenario fact to contribute to a multi-hop candidate.
-- Verifier-observed query type, answerability, and necessary hops are the final
-  labels. Requested labels remain in separate `requested_*` fields for audit.
-- Candidate identity is recomputed after refinement and every evolution from
-  the final query, answer, reasoning, and claims.
+- Candidate generation receives answerability, bundle kind, bridge, and hops,
+  and trusts the generator's output directly. Gate 1 (deterministic binding
+  check) and gate 2 (independent LLM verification) were both removed by
+  deliberate decision (see "Nguyên tắc kiến trúc" below) — no candidate is
+  rejected, relabeled, or checked after generation. Declared `query_type`,
+  `answerability`, and `reasoning_hops` are the final labels as generated;
+  there is no `requested_*`/observed split.
+- Candidate identity is recomputed after every evolution from the final query,
+  answer, reasoning, and claims.
 - The MVP taxonomy contains penalty-fact capabilities only. Authority,
   procedure, and exception queries wait for dedicated fact schemas.
 - `data/config/groundtruth/synthesis_v1.json` is the single source of truth
@@ -79,42 +81,46 @@ Pipeline này sinh dữ liệu ground truth để đánh giá hệ thống RAG t
 hỏi single-turn và hội thoại multi-turn, đồng thời đánh giá riêng retrieval,
 generation và toàn bộ luồng RAG.
 
-Dữ liệu do LLM sinh chỉ là candidate. Chỉ những mẫu đã vượt qua kiểm tra tự
-động mới được đưa vào ground truth.
+Dữ liệu do LLM sinh ra được dùng thẳng làm candidate — không còn cổng kiểm
+tra tự động nào ở tầng candidate (xem "Nguyên tắc kiến trúc" ngay dưới đây).
 
-## Nguyên tắc kiến trúc: tin tưởng LLM có kiểm tra tất định
+## Nguyên tắc kiến trúc: tin tưởng hoàn toàn LLM
 
-**Đã đổi so với thiết kế ban đầu:** bản đầu tài liệu này đặt điểm phê duyệt
-con người tại từng fact pháp lý qua một fact ledger (`extracted →
-span_verified → needs_expert_review → approved | rejected`, cộng `stale`).
-Quyết định hiện tại: tin tưởng hoàn toàn output của LLM ở tầng trích xuất
-fact — bỏ hẳn fact ledger và bước chuyên gia duyệt tay. Không còn khái niệm
-fact `approved`/`stale`; mọi fact trong `legal_facts.jsonl` được Phase 2/3
-dùng thẳng, không lọc theo trạng thái nào.
+**Đã đổi so với thiết kế ban đầu, hai lần.**
 
-Hai cổng chất lượng còn lại vẫn tất định, không cần người, áp dụng ở tầng
-candidate (không phải tầng fact):
+Lần 1 — tầng fact: bản đầu tài liệu này đặt điểm phê duyệt con người tại
+từng fact pháp lý qua một fact ledger (`extracted → span_verified →
+needs_expert_review → approved | rejected`, cộng `stale`). Quyết định: tin
+tưởng hoàn toàn output của LLM ở tầng trích xuất fact — bỏ hẳn fact ledger và
+bước chuyên gia duyệt tay. Không còn khái niệm fact `approved`/`stale`; mọi
+fact trong `legal_facts.jsonl` được Phase 2/3 dùng thẳng, không lọc theo
+trạng thái nào.
+
+Lần 2 — tầng candidate: bản đầu tài liệu này còn đặt hai cổng chất lượng tất
+định ở tầng candidate:
 
 ```text
 Cổng 1  Ràng buộc căn cứ tất định   không dùng LLM, không dùng người
 Cổng 2  Kiểm chứng LLM độc lập      dùng LLM khác generator
 ```
 
-Một candidate chỉ hợp lệ khi mọi căn cứ của nó nằm trong evidence set thật của
-một fact đã trích xuất.
+**Cả hai cổng này đã bị bỏ** (mục 7 và 10 dưới đây giữ lại mô tả gốc, đánh
+dấu đã bỏ, để tham khảo lịch sử thiết kế). Quyết định hiện tại mở rộng
+nguyên tắc tin tưởng LLM sang toàn bộ tầng candidate: không còn bước nào
+kiểm tra, loại bỏ, hay gán nhãn lại candidate sau khi sinh — mọi candidate
+sinh ra được ghi thẳng vào output, kể cả khi trích dẫn sai hoặc câu hỏi
+không đúng phong cách yêu cầu.
 
 ```text
 .chunks.jsonl
     -> Legal facts (typed output, kèm quoted span)
     -> Evidence graph trên mọi fact đã trích xuất
     -> Scenario sampling (persona x style x length)
-    -> Single-turn candidates
-    -> Ràng buộc căn cứ tất định                    [cổng 1]
-    -> Kiểm chứng LLM độc lập                       [cổng 2]
-    -> Multi-turn: simulator hướng mục tiêu + người cho lượt khó
-    -> Hard negatives + difficulty (cần retriever)
-    -> Review theo rủi ro trên mẫu
-    -> Versioned ground_truth.jsonl
+    -> Single-turn candidates                     (không còn cổng kiểm tra nào sau bước này)
+    -> Multi-turn: simulator hướng mục tiêu + người cho lượt khó   [chưa triển khai]
+    -> Hard negatives + difficulty (cần retriever)                 [bị chặn, chưa có retriever]
+    -> Review theo rủi ro trên mẫu                                 [chưa triển khai]
+    -> Versioned ground_truth.jsonl                                [chưa ghép]
     -> Đánh giá retrieval / generator / end-to-end
 ```
 
@@ -541,48 +547,42 @@ Nguyên tắc:
 - Prompt nhận thêm bản tóm tắt văn bản nguồn để định hướng ngữ cảnh, nhưng bản
   tóm tắt **không phải** evidence và không được trích dẫn.
 - Sinh candidate bằng nhiều model thuộc các họ khác nhau để giảm bias riêng của
-  một model, không chỉ đa dạng hóa phía verifier.
+  một model.
 - `answer_fields` — mức phạt tiền, số điểm trừ, hình phạt bổ sung, biện pháp
   khắc phục — được pipeline **chép cơ học từ fact đã duyệt**, không để LLM
   sinh lại. Đây là phần đáp án so khớp tất định được khi đánh giá.
 - Candidate kèm `reasoning_vi`: chuỗi lập luận nối evidence tới đáp án. Trường
   này tăng tốc review và cho phép đánh giá tính minh bạch của mẫu.
 
-Chi phí sinh rẻ hơn chi phí kiểm chứng nhiều lần, nên sinh dư rồi lọc mạnh tốt
-hơn sinh ít bằng pipeline nhiều bước.
+`--candidates-per-scenario` kiểm soát số lần sinh cho mỗi scenario. Vì không
+còn cổng nào lọc bớt (xem "Nguyên tắc kiến trúc" ở đầu tài liệu), con số này
+quyết định trực tiếp số candidate cuối cùng — không phải "sinh dư rồi lọc"
+như thiết kế ban đầu, mà đơn giản là số biến thể câu hỏi muốn có cho mỗi
+scenario.
 
-### Vòng tinh chỉnh bề mặt có giới hạn
+### Vòng tinh chỉnh bề mặt — đã bỏ
 
-Trước khi vào cổng 1, một critic chấm câu hỏi kèm feedback; nếu dưới ngưỡng,
-**chỉ bề mặt câu hỏi** được viết lại theo feedback, tối đa
-`max_quality_retries` lần. Claims, evidence và `answer_fields` bị đóng băng
-trong suốt vòng này.
+Bản đầu mục này có một bước critic chấm phong cách câu hỏi (cách gõ, độ dài,
+dạng cụ thể/trừu tượng) rồi viết lại tối đa `max_quality_retries` lần trước
+khi qua cổng 1. **Đã bỏ cùng lúc với hai cổng chất lượng.** Phong cách câu
+hỏi giờ được kiểm soát trực tiếp trong prompt sinh (few-shot ví dụ cụ thể
+theo từng `query_style`, mốc số từ theo `query_length`) và nhắc lại trong
+prompt evolve (giữ nguyên cách gõ gốc + ràng buộc lại độ dài), không qua
+vòng critique riêng nào.
 
-Vòng tinh chỉnh thuộc công đoạn sinh và mọi lần viết lại đều được ghi log,
-nên không mâu thuẫn với nguyên tắc kiểm chứng không tự sửa: cổng 1 và cổng 2
-vẫn chỉ loại, không sửa.
+## 7. Ràng buộc căn cứ tất định — đã bỏ (cổng 1)
 
-## 7. Ràng buộc căn cứ tất định
+Bản đầu mục này mô tả một cổng tất định (không dùng LLM, không dùng người):
+với mỗi phần tử `evidence` của mỗi claim, đối chiếu `chunk_id` có nằm trong
+evidence set thật của fact không, và `quoted_span` có khớp `text` của chunk
+theo Levenshtein partial ratio ngưỡng tối thiểu `0.85` không — loại cơ học
+candidate nào sai.
 
-Cổng 1. Chạy trước mọi kiểm chứng bằng LLM, không tốn LLM call.
-
-Với mỗi phần tử `evidence` của mỗi claim:
-
-1. `chunk_id` phải nằm trong evidence set của fact `fact_id`.
-2. `quoted_span` phải khớp `text` của chunk theo Levenshtein partial ratio với
-   ngưỡng tối thiểu `0.85`.
-
-Candidate bị loại cơ học nếu bất kỳ điều kiện nào sai. Điểm grounding của
-candidate là trung bình partial ratio trên toàn bộ span, lưu vào
-`verification_results` để phân tích.
-
-Đây là kiểm tra **từ vựng** về tính xác thực của trích dẫn, không phải phán
-đoán ngữ nghĩa. Câu hỏi "căn cứ này có đủ để kết luận không" vẫn thuộc về LLM
-verifier ở mục 10. Ranh giới này phải giữ đúng: không mở rộng cổng 1 thành
-rule engine cho các quyết định ngữ nghĩa.
-
-Cổng này bắt đúng dạng lỗi mà LLM verifier yếu nhất là bịa căn cứ, với chi phí
-gần bằng không. Ngưỡng `0.85` nằm trong cấu hình có phiên bản.
+**Đã bỏ theo quyết định "tin tưởng hoàn toàn LLM"** (xem "Nguyên tắc kiến
+trúc" ở đầu tài liệu). Không còn bước nào đối chiếu trích dẫn của candidate
+với evidence set thật của fact; nếu LLM bịa `chunk_id` hoặc trích sai
+`quoted_span`, dữ liệu đó vẫn được ghi thẳng vào ground truth. `grounding_score`
+không còn được tính, vì đây chính là cổng duy nhất tính điểm đó.
 
 ## 8. Sinh multi-turn candidates
 
@@ -593,7 +593,8 @@ toàn tự động thất bại ở đúng những chỗ cần nhất: câu unan
 chất lượng thấp, và độ đa dạng evidence trong hội thoại synthetic thấp hơn
 nhiều lần so với hội thoại người viết. Vì vậy phân tầng:
 
-- Lượt `answerable` và `partially_answerable`: sinh tự động, qua cổng 1 và 2.
+- Lượt `answerable` và `partially_answerable`: sinh tự động, không qua cổng
+  kiểm tra nào (cả hai cổng đã bỏ, xem mục 7 và 10).
 - Lượt `underspecified` và `unanswerable`: người viết hoặc người sửa, không
   chấp nhận sinh tự động thuần túy.
 
@@ -609,8 +610,8 @@ Chúng sinh ra từ vòng lặp mô phỏng hai vai:
    dồn mọi dữ kiện vào lượt đầu, giống người dùng thật.
 3. **Oracle đóng vai trợ lý.** Oracle chỉ được cấp gold evidence của
    scenario, và **không phải** hệ RAG đang được đánh giá — nếu dùng chính hệ
-   RAG, lỗi của nó sẽ thấm vào ground truth. Lượt trả lời của oracle qua cổng
-   1 như mọi candidate khác.
+   RAG, lỗi của nó sẽ thấm vào ground truth. Lượt trả lời của oracle được
+   dùng thẳng như mọi candidate khác (không qua cổng nào).
 4. **Goal state cập nhật sau mỗi lượt**: claim nào đã bộc lộ, dữ kiện nào
    người dùng đã cung cấp. Bản cập nhật này chính là `state_delta` của turn.
 5. **Dừng** khi goal hoàn thành hoặc chạm `max_turns`. Hội thoại lưu
@@ -689,43 +690,22 @@ Loại trước bằng cơ chế tất định các chunk đã thuộc evidence 
 nào xuất hiện trong scenario, để verifier không phải xử lý các trường hợp hiển
 nhiên.
 
-## 10. Kiểm chứng LLM độc lập
+## 10. Kiểm chứng LLM độc lập — đã bỏ (cổng 2)
 
-Cổng 2. Dùng model hoặc prompt khác với generator để giảm self-confirmation
-bias. Chỉ chạy trên candidate đã qua cổng 1.
+Bản đầu mục này mô tả một cổng dùng model/prompt khác generator, kiểm 5
+chiều (stand alone, question specificity, question/answer grounding, domain
+và temporal), cộng cơ chế **hop necessity**: nếu bỏ một fact mà đáp án vẫn đủ
+căn cứ thì verifier gán lại `reasoning_hops` theo mức thật — cơ chế bắt
+shortcut cho câu hỏi multi-hop sinh tự động. Mục này cũng mô tả việc gán
+nhãn lại `query_type`/`answerability` theo quan sát của verifier, tách khỏi
+nhãn đặt hàng ban đầu qua các trường `requested_*`.
 
-Năm chiều kiểm chứng:
-
-1. **Stand alone** — câu hỏi có tự đứng vững không, hoặc với multi-turn thì
-   `standalone_query` có giữ nguyên ý nghĩa của lượt không.
-2. **Question specificity** — câu hỏi có đủ cụ thể để có một đáp án xác định,
-   hay quá chung chung.
-3. **Question grounding** — evidence có đủ để trả lời câu hỏi không.
-4. **Answer grounding** — mọi claim trong đáp án có được evidence hỗ trợ không,
-   và đáp án có bỏ sót chế tài bắt buộc nào không.
-5. **Domain và temporal** — câu hỏi có thuộc phạm vi xử phạt giao thông đường
-   bộ không, `as_of_date` có nằm trong khoảng hiệu lực của mọi fact liên quan
-   không, và có nhầm hành vi, đối tượng hoặc phương tiện không.
-6. **Hop necessity** — với bundle nhiều fact: nếu bỏ một fact mà đáp án vẫn
-   đủ căn cứ thì mẫu không thật sự cần số hop đã khai. Verifier gán lại
-   `reasoning_hops` theo mức thật. Đây là cơ chế bắt shortcut — lỗi phổ biến
-   nhất của câu hỏi multi-hop sinh tự động.
-
-Với multi-turn kiểm thêm: một lượt có sử dụng thông tin từ lượt tương lai
-không. Với hard negatives kiểm thêm: negative có thực sự không đủ căn cứ không.
-
-### Gán nhãn lại sau khi sinh
-
-Nhãn `query_type` và `answerability` đặt trong scenario là nhãn **đặt hàng**,
-không phải nhãn thật. Thực nghiệm trên các pipeline tương tự cho thấy nhãn
-quan sát được lệch đáng kể so với nhãn yêu cầu.
-
-Verifier phải gán nhãn lại một cách độc lập. Ground truth lưu nhãn quan sát
-được. Chênh lệch giữa nhãn đặt hàng và nhãn quan sát được ghi vào coverage
-report để hiệu chỉnh phân bố ở lần sinh sau.
-
-Candidate không đạt bị loại hoặc chuyển sang trạng thái cần review. Pipeline
-không tự động sửa và che giấu lỗi.
+**Đã bỏ theo quyết định "tin tưởng hoàn toàn LLM"** (xem "Nguyên tắc kiến
+trúc" ở đầu tài liệu). Không còn verifier độc lập nào kiểm tra candidate sau
+khi sinh — `query_type`, `answerability`, `reasoning_hops` trong output đúng
+y giá trị scenario đã yêu cầu, không có nhãn "quan sát được" tách riêng,
+và không có cơ chế nào bắt shortcut cho multi-hop "ảo" (candidate khai nhiều
+hop nhưng thực chất không cần đủ số fact đã khai).
 
 ## 11. Đo leakage và difficulty
 
@@ -797,27 +777,32 @@ vứt đi.
 Một fact sinh ra nhiều câu hỏi tương tự thường là fact quan trọng hơn. Xóa các
 bản trùng mà không ghi lại số lượng là làm mất chính thông tin đó.
 
-## 13. Review theo rủi ro
+## 13. Review theo rủi ro — chưa triển khai
 
-Cổng 3 đã tiêu thụ phần lớn ngân sách chuyên môn tại mục 3. Ở tầng candidate,
-mục tiêu không phải duyệt hết mà là **đo được tỷ lệ lỗi**.
+Chưa có code cho bước này. Ở tầng candidate, mục tiêu không phải duyệt hết
+mà là **đo được tỷ lệ lỗi**.
 
-Luồng trạng thái của candidate:
+Bản đầu mục này định nghĩa luồng trạng thái dựa trên hai cổng đã bỏ (mục 7,
+10):
 
 ```text
 generated
-    -> binding_verified        (qua cổng 1)
-    -> automatically_verified  (qua cổng 2)
+    -> binding_verified        (qua cổng 1, đã bỏ)
+    -> automatically_verified  (qua cổng 2, đã bỏ)
     -> sampled_for_review | accepted
     -> approved | rejected
 ```
 
-Bắt buộc đưa vào review:
+Vì cổng 1 và cổng 2 đã bỏ, hai trạng thái `binding_verified` và
+`automatically_verified` không còn ý nghĩa — mọi candidate hiện chỉ có đúng
+một trạng thái sinh xong (`completed` trong `CandidateProgressRecord`), rồi
+mới đến review nếu có. Tiêu chí bắt buộc-đưa-vào-review dưới đây vẫn còn giá
+trị tham khảo cho khi triển khai, **trừ tiêu chí grounding** (không còn
+`grounding_score` nào được tính, vì gate 1 vốn là nơi tính điểm đó):
 
 - Candidate phái sinh từ fact vừa đổi `fact_content_sha256`
 - Toàn bộ lượt `underspecified` và `unanswerable`
 - Toàn bộ candidate multi-hop và temporal
-- Candidate có điểm grounding sát ngưỡng `0.85`
 
 Phần còn lại lấy mẫu ngẫu nhiên với cỡ mẫu đủ để ước lượng tỷ lệ lỗi. Tỷ lệ
 lỗi ước lượng được công bố cùng mỗi bản phát hành ground truth.
@@ -872,27 +857,26 @@ query_form
 persona
 query_style
 query_length
-answerability            (bốn giá trị)
-answerability_observed
+answerability            (bốn giá trị, dùng thẳng như scenario đã yêu cầu — không có nhãn quan sát tách riêng)
 as_of_date
 reasoning_hops
 difficulty
 salience_weight
-grounding_score
 source_fact_ids
 source_fact_content_sha256
 corpus_snapshot_id
 generator_model
 generator_prompt_version
-verifier_model
-verification_results
-review_status
 goal_completion          (mức hội thoại, từ simulator)
 stop_reason              (mức hội thoại, từ simulator)
 ```
 
 `source_fact_content_sha256` cho phép phát hiện candidate `stale` khi fact
 nguồn thay đổi, mà không phải sinh lại toàn bộ dataset.
+
+`answerability_observed`, `grounding_score`, `verifier_model`,
+`verification_results`, `review_status` đã bỏ khỏi schema — không còn gate
+hay verifier nào sinh ra các trường này (xem mục 7, 10).
 
 ## 16. Đánh giá RAG
 
@@ -970,6 +954,7 @@ data/benchmark_synthesis/
 ├── scenarios.jsonl
 ├── candidates/
 │   ├── single_turn.jsonl
+│   ├── single_turn.progress.jsonl
 │   └── multi_turn.jsonl
 ├── reviews/
 │   └── reviewed_candidates.jsonl
@@ -979,8 +964,7 @@ data/benchmark_synthesis/
 │   └── hidden_test.jsonl
 └── reports/
     ├── generation_report.json
-    ├── coverage_report.json
-    └── binding_report.json
+    └── coverage_report.json
 ```
 
 ## Tài liệu tham khảo phương pháp
@@ -1030,8 +1014,9 @@ Các mục 1 tới 8 không cần retriever và nên hoàn thành trước.
    ✅ **Đã xong**, phạm vi MVP: bundle đúng 2 fact trên mỗi quan hệ đã xác
    nhận, chưa nối chuỗi thành bundle 3+ fact.
 8. Implement single-turn generation kèm vòng tinh chỉnh bề mặt, cổng 1, cổng
-   2 và gán nhãn lại. ✅ **Đã xong.** Generator và verifier còn dùng chung một
-   model (khác prompt); multi-model để giảm bias sâu hơn còn để lại sau.
+   2 và gán nhãn lại. ✅ **Đã xong, sau đó đã bỏ.** Toàn bộ vòng tinh chỉnh
+   bề mặt, cổng 1 và cổng 2 bị bỏ theo quyết định "tin tưởng hoàn toàn LLM"
+   (mục 6/7/10) — chỉ còn generation + evolution.
 9. Chạy pilot, đo tỷ lệ lỗi trên mẫu review, ổn định schema candidate.
 10. Implement retriever. Đây là điều kiện chặn cho hai mục kế tiếp.
 11. Implement hard-negative mining, difficulty scoring và leakage analysis.
@@ -1045,6 +1030,15 @@ Không bắt đầu sinh dữ liệu hàng loạt trước khi schema fact và t
 metadata đã ổn định.
 
 ## Kế hoạch triển khai kỹ thuật
+
+> **Lưu ý đọc phần dưới:** đây là nhật ký triển khai theo thời điểm, giữ
+> nguyên để tham khảo lịch sử thiết kế. **Phase 3** (cổng 1, cổng 2, vòng
+> tinh chỉnh bề mặt/`CritiqueSurface`, `binding_gate.py`, `verification.py`,
+> `review_status`) đã được triển khai đúng như mô tả dưới đây, **rồi sau đó
+> bị bỏ hoàn toàn** theo quyết định ở "Nguyên tắc kiến trúc" đầu tài liệu và
+> mục 6/7/10. Coi mọi mô tả module/BAML/test của Phase 3 dưới đây là lịch sử,
+> không phải trạng thái code hiện tại — trạng thái hiện tại nằm trong
+> `candidate_pipeline.py` (`generate_candidates`, chạy concurrent, không gate).
 
 Bản dịch 13 bước ở trên sang module, file BAML, config và test cụ thể, theo
 quy ước đã có của repo (`chunker/`, `parser/`, `embedding/`). Tuân thủ
@@ -1092,7 +1086,7 @@ Phase 8 (dedup theo cụm). Thêm `src/legal_rag/embedding/encoder.py`: bọc
 embedding dùng sinh ground truth khớp với không gian embedding RAG thật sự
 dùng. Hàm trả về vector đã chuẩn hóa L2, so khớp bằng tích vô hướng.
 
-**Dependency mới: `rapidfuzz`.** Cổng 1 cần Levenshtein partial ratio để
+**Dependency `rapidfuzz` — đã gỡ lại.** Thêm ở Phase 0 vì Cổng 1 cần Levenshtein partial ratio để
 kiểm `quoted_span` khớp với text chunk. `difflib` trong thư viện chuẩn không
 có phép so khớp "chuỗi con tốt nhất" đúng ngữ nghĩa partial ratio; tự viết lại
 phép này là nguồn lỗi tinh vi. `rapidfuzz` nhỏ, thuần Python/C, không kéo
@@ -1101,6 +1095,9 @@ AGENTS.md. Đặt trong extra `evaluation`, không phải dependency chính: to�
 pipeline synthesis vốn đã được tách khỏi core (parser/chunker) qua extra này,
 nên `rapidfuzz` đi cùng chỗ với `sentence-transformers` thay vì
 buộc mọi người dùng `legal-parse`/`legal-chunk` phải cài thêm nó.
+
+Khi Cổng 1 bị bỏ (mục 7), `rapidfuzz` không còn nơi nào dùng — đã gỡ khỏi
+`pyproject.toml` và `uv.lock`.
 
 **Atomic JSONL writer dùng chung.** `parser/writer.py` và `chunker/writer.py`
 hiện có cùng một khối logic ghi tệp tạm rồi `replace()` nguyên tử, lặp lại y
@@ -1373,7 +1370,7 @@ giao khoảng hiệu lực và luân phiên theo trục ít dùng nhất),
 hợp CLI đầu-cuối: resume bỏ qua cặp đã kiểm, ghi tiến độ khi bị ngắt giữa
 chừng, không gọi lại LLM cho cặp đã xác nhận "không liên quan").
 
-### Phase 3 — Sinh single-turn và hai cổng kiểm chứng (mục 8) ✅ Đã triển khai
+### Phase 3 — Sinh single-turn và hai cổng kiểm chứng (mục 8) ✅ Đã triển khai, sau đó ❌ đã bỏ hai cổng + vòng tinh chỉnh
 
 - `candidate_generation.py` — `generate_candidate` gọi BAML sinh candidate từ
   một `Scenario` (Phase 2) + evidence đã chốt; mỗi claim chỉ tham chiếu

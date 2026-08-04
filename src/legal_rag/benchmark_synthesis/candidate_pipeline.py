@@ -3,22 +3,23 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 
-from legal_rag.benchmark_synthesis.binding_gate import check_binding
 from legal_rag.benchmark_synthesis.candidate_generation import (
     CandidateDraft,
     CandidateGenerationClient,
     evolve_candidate,
     generate_candidate,
-    refine_surface,
 )
 from legal_rag.benchmark_synthesis.candidate_record import CandidateProgressRecord
-from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
+from legal_rag.benchmark_synthesis.llm_execution import (
+    LlmTaskExhaustedError,
+    LlmTaskFailure,
+    execute_llm_task,
+)
 from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
-from legal_rag.benchmark_synthesis.verification import VerificationClient, verify_candidate
-from legal_rag.chunker.models import Chunk
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,17 +27,11 @@ class CandidatePipelineContext:
     """Dependencies and configured limits shared by candidate work items."""
 
     facts_by_id: Mapping[str, LegalFact]
-    chunks_by_id: Mapping[str, Chunk]
     persona_descriptions: Mapping[str, str]
     query_type_descriptions: Mapping[str, str]
-    query_type_catalog: Sequence[str]
     evolution_operations: Sequence[str]
     generation_client: CandidateGenerationClient
-    verification_client: VerificationClient
     generator_model: str
-    verifier_model: str
-    span_match_threshold: float
-    max_quality_retries: int
     llm_max_retries: int
     llm_retry_delay_seconds: float
 
@@ -67,103 +62,56 @@ def process_candidate_task(
         progress = CandidateProgressRecord(task_id, scenario.scenario_id, attempt_index, "generated", draft)
         checkpoint(progress)
 
-    if not progress.draft.surface_refined:
-        progress = _refine_with_checkpoints(progress, scenario, context, checkpoint)
-
     if len(progress.draft.evolutions) < len(context.evolution_operations):
         progress = _evolve_with_checkpoints(progress, scenario, context, checkpoint)
 
-    if progress.binding is None:
-        binding = check_binding(
-            progress.draft,
-            context.facts_by_id,
-            context.chunks_by_id,
-            span_match_threshold=context.span_match_threshold,
-        )
-        progress = CandidateProgressRecord(
-            task_id,
-            scenario.scenario_id,
-            attempt_index,
-            "binding_checked",
-            progress.draft,
-            binding,
-        )
-        checkpoint(progress)
-
-    if not progress.binding.passed:
-        completed = CandidateProgressRecord(
-            task_id,
-            scenario.scenario_id,
-            attempt_index,
-            "completed",
-            progress.draft,
-            progress.binding,
-        )
-        checkpoint(completed)
-        return completed
-
-    verification = progress.verification or execute_llm_task(
-        f"{task_id}:verification",
-        lambda: verify_candidate(
-            progress.draft,
-            context.facts_by_id,
-            context.query_type_catalog,
-            context.verification_client,
-            verifier_model=context.verifier_model,
-        ),
-        max_retries=context.llm_max_retries,
-        retry_delay_seconds=context.llm_retry_delay_seconds,
-    )
-    completed = CandidateProgressRecord(
-        task_id,
-        scenario.scenario_id,
-        attempt_index,
-        "completed",
-        progress.draft,
-        progress.binding,
-        verification,
-    )
+    completed = CandidateProgressRecord(task_id, scenario.scenario_id, attempt_index, "completed", progress.draft)
     checkpoint(completed)
     return completed
 
 
-def _refine_with_checkpoints(
-    progress: CandidateProgressRecord,
-    scenario: Scenario,
+def generate_candidates(
+    scenarios: Sequence[Scenario],
+    candidates_per_scenario: int,
+    progress_by_task_id: Mapping[str, CandidateProgressRecord],
     context: CandidatePipelineContext,
     checkpoint: Callable[[CandidateProgressRecord], None],
-) -> CandidateProgressRecord:
-    """Refine surface text while persisting every successful critic call."""
-    current = progress
+    *,
+    max_concurrency: int,
+) -> tuple[LlmTaskFailure, ...]:
+    """Generate every not-yet-completed scenario attempt in bounded concurrent workers.
 
-    def _checkpoint_draft(draft: CandidateDraft) -> None:
-        nonlocal current
-        current = CandidateProgressRecord(
-            progress.task_id,
-            scenario.scenario_id,
-            progress.attempt_index,
-            "surface",
-            draft,
-        )
-        checkpoint(current)
+    process_candidate_task persists after each of its own internal stages, so checkpoint
+    runs from worker threads rather than only after a task finishes; the caller must make
+    checkpoint safe for concurrent invocation (e.g. with a lock).
+    """
+    pending: list[tuple[Scenario, int]] = []
+    for scenario in scenarios:
+        for attempt_index in range(candidates_per_scenario):
+            record = progress_by_task_id.get(f"{scenario.scenario_id}:{attempt_index}")
+            if record is None or not record.completed:
+                pending.append((scenario, attempt_index))
 
-    draft = refine_surface(
-        current.draft,
-        context.generation_client,
-        max_retries=context.max_quality_retries,
-        llm_max_retries=context.llm_max_retries,
-        llm_retry_delay_seconds=context.llm_retry_delay_seconds,
-        on_attempt=_checkpoint_draft,
-    )
-    current = CandidateProgressRecord(
-        progress.task_id,
-        scenario.scenario_id,
-        progress.attempt_index,
-        "surface_refined",
-        draft,
-    )
-    checkpoint(current)
-    return current
+    failures: list[LlmTaskFailure] = []
+    with ThreadPoolExecutor(max_workers=max_concurrency) as executor:
+        futures = {
+            executor.submit(
+                process_candidate_task,
+                scenario,
+                attempt_index,
+                progress_by_task_id.get(f"{scenario.scenario_id}:{attempt_index}"),
+                context,
+                checkpoint,
+            ): f"{scenario.scenario_id}:{attempt_index}"
+            for scenario, attempt_index in pending
+        }
+        for future in as_completed(futures):
+            task_id = futures[future]
+            try:
+                future.result()
+            except LlmTaskExhaustedError as error:
+                failures.append(LlmTaskFailure(task_key=task_id, error=str(error)))
+    return tuple(failures)
 
 
 def _evolve_with_checkpoints(

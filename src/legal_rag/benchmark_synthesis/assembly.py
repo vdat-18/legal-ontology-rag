@@ -16,7 +16,6 @@ from legal_rag.benchmark_synthesis.document_metadata import DOCUMENT_METADATA_PR
 from legal_rag.benchmark_synthesis.evidence_graph import EVIDENCE_RELATION_PROMPT_VERSION
 from legal_rag.benchmark_synthesis.fact_extraction import FACT_EXTRACTION_PROMPT_VERSION
 from legal_rag.benchmark_synthesis.models import LegalFact
-from legal_rag.benchmark_synthesis.verification import CANDIDATE_VERIFICATION_PROMPT_VERSION
 from legal_rag.benchmark_synthesis.writer import (
     read_chunk_screening,
     read_document_metadata,
@@ -72,7 +71,6 @@ def assemble_groundtruth_corpus(
 
     prompt_versions = {
         "candidate_generation": CANDIDATE_GENERATION_PROMPT_VERSION,
-        "candidate_verification": CANDIDATE_VERIFICATION_PROMPT_VERSION,
         "chunk_screening": CHUNK_SCREENING_PROMPT_VERSION,
         "document_metadata": DOCUMENT_METADATA_PROMPT_VERSION,
         "evidence_relation": EVIDENCE_RELATION_PROMPT_VERSION,

@@ -30,11 +30,12 @@ def _replace_with_retry(source: Path, destination: Path) -> None:
     for delay in (*_REPLACE_RETRY_DELAYS_SECONDS, None):
         try:
             source.replace(destination)
-            return
         except PermissionError:
             if delay is None:
                 raise
             time.sleep(delay)
+        else:
+            return
 
 
 def write_jsonl_atomic(output_path: Path, records: Iterable[Mapping[str, object]]) -> None:

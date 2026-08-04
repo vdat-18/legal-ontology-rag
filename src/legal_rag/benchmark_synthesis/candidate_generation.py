@@ -14,7 +14,6 @@ from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import EvolutionOperation, FactContext
 from legal_rag.baml_client.types import EvolvedCandidate as BamlEvolvedCandidate
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
-from legal_rag.baml_client.types import SurfaceCritique as BamlSurfaceCritique
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
@@ -87,7 +86,7 @@ class FactAnswerFields:
 
 @dataclass(frozen=True, slots=True)
 class CandidateDraft:
-    """One single-turn candidate before gate 1 and gate 2, still carrying declared labels."""
+    """One single-turn candidate generated and evolved, trusting LLM output as-is."""
 
     sample_id: str
     scenario_id: str
@@ -111,8 +110,6 @@ class CandidateDraft:
     generator_model: str
     bundle_kind: str = "single_hop"
     bridge: tuple[str, ...] = ()
-    surface_attempts: int = 0
-    surface_refined: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable candidate-draft record."""
@@ -141,8 +138,6 @@ class CandidateDraft:
             "source_fact_ids": list(self.source_fact_ids),
             "source_fact_content_sha256": list(self.source_fact_content_sha256),
             "generator_model": self.generator_model,
-            "surface_attempts": self.surface_attempts,
-            "surface_refined": self.surface_refined,
         }
 
 
@@ -198,21 +193,13 @@ class CandidateGenerationClient(Protocol):
     ) -> BamlGeneratedCandidate:
         """Return one typed generated candidate."""
 
-    def critique_surface(
-        self,
-        query_vi: str,
-        query_style: str,
-        query_length: str,
-        query_form: str,
-    ) -> BamlSurfaceCritique:
-        """Return one typed surface critique, with a rewrite when it fails."""
-
     def evolve(
         self,
         query_vi: str,
         reference_answer_vi: str,
         reasoning_vi: str,
         operation: EvolutionOperation,
+        query_length: str,
     ) -> BamlEvolvedCandidate:
         """Return one typed evolved query and answer."""
 
@@ -229,14 +216,6 @@ class BamlCandidateGenerationClient:
             model=settings.llm_model,
             max_output_tokens=synthesis_settings.candidate_generation.max_output_tokens,
             temperature=synthesis_settings.candidate_generation.temperature,
-            timeout_seconds=settings.llm_timeout_seconds,
-        )
-        self._critique_registry = build_client_registry(
-            base_url=settings.llm_base_url,
-            api_key=settings.llm_api_key,
-            model=settings.llm_model,
-            max_output_tokens=synthesis_settings.candidate_critique.max_output_tokens,
-            temperature=synthesis_settings.candidate_critique.temperature,
             timeout_seconds=settings.llm_timeout_seconds,
         )
         self._evolution_registry = build_client_registry(
@@ -284,30 +263,13 @@ class BamlCandidateGenerationClient:
             raw_output, baml_options={"client_registry": self._generation_registry}
         )
 
-    def critique_surface(
-        self,
-        query_vi: str,
-        query_style: str,
-        query_length: str,
-        query_form: str,
-    ) -> BamlSurfaceCritique:
-        """Run one bounded BAML call and return its generated typed result."""
-        request = b.request.CritiqueSurface(
-            query_vi,
-            query_style,
-            query_length,
-            query_form,
-            baml_options={"client_registry": self._critique_registry},
-        )
-        raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        return b.parse.CritiqueSurface(raw_output, baml_options={"client_registry": self._critique_registry})
-
     def evolve(
         self,
         query_vi: str,
         reference_answer_vi: str,
         reasoning_vi: str,
         operation: EvolutionOperation,
+        query_length: str,
     ) -> BamlEvolvedCandidate:
         """Run one bounded BAML call and return its generated typed result."""
         request = b.request.EvolveCandidate(
@@ -315,6 +277,7 @@ class BamlCandidateGenerationClient:
             reference_answer_vi,
             reasoning_vi,
             operation,
+            query_length,
             baml_options={"client_registry": self._evolution_registry},
         )
         raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
@@ -398,47 +361,6 @@ def generate_candidate(
     )
 
 
-def refine_surface(
-    draft: CandidateDraft,
-    client: CandidateGenerationClient,
-    *,
-    max_retries: int,
-    llm_max_retries: int,
-    llm_retry_delay_seconds: float,
-    on_attempt: Callable[[CandidateDraft], None] | None = None,
-) -> CandidateDraft:
-    """Rewrite only the question's surface phrasing until it matches style, bounded by max_retries.
-
-    Claims, evidence, and answer_fields are frozen for the whole loop; only
-    query_vi can change.
-    """
-    if draft.surface_refined:
-        return draft
-    query_vi = draft.query_vi
-    attempts = draft.surface_attempts
-    for _attempt in range(attempts, max_retries):
-        critique = execute_llm_task(
-            f"{draft.scenario_id}:surface:{attempts}",
-            partial(client.critique_surface, query_vi, draft.query_style, draft.query_length, draft.query_form),
-            max_retries=llm_max_retries,
-            retry_delay_seconds=llm_retry_delay_seconds,
-        )
-        attempts += 1
-        if critique.passes:
-            refined = _with_identity(replace(draft, query_vi=query_vi, surface_attempts=attempts, surface_refined=True))
-            if on_attempt is not None:
-                on_attempt(refined)
-            return refined
-        query_vi = critique.rewritten_query_vi
-        draft = _with_identity(replace(draft, query_vi=query_vi, surface_attempts=attempts))
-        if on_attempt is not None:
-            on_attempt(draft)
-    refined = _with_identity(replace(draft, query_vi=query_vi, surface_attempts=attempts, surface_refined=True))
-    if on_attempt is not None:
-        on_attempt(refined)
-    return refined
-
-
 def evolve_candidate(
     draft: CandidateDraft,
     operations: Sequence[str],
@@ -462,6 +384,7 @@ def evolve_candidate(
                 reference_answer_vi,
                 reasoning_vi,
                 _EVOLUTION_OPERATION_BY_ID[operation_id],
+                draft.query_length,
             ),
             max_retries=llm_max_retries,
             retry_delay_seconds=llm_retry_delay_seconds,

@@ -7,7 +7,6 @@ from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
 
-from legal_rag.benchmark_synthesis.binding_gate import BindingCheckResult, BindingViolation
 from legal_rag.benchmark_synthesis.candidate_generation import (
     CANDIDATE_SCHEMA_VERSION,
     CandidateDraft,
@@ -18,7 +17,6 @@ from legal_rag.benchmark_synthesis.candidate_generation import (
 from legal_rag.benchmark_synthesis.candidate_record import (
     CANDIDATE_PROGRESS_SCHEMA_VERSION,
     CandidateProgressRecord,
-    CandidateRecord,
 )
 from legal_rag.benchmark_synthesis.chunk_screening import CHUNK_SCREENING_SCHEMA_VERSION, ChunkScreeningRecord
 from legal_rag.benchmark_synthesis.document_metadata import (
@@ -39,7 +37,6 @@ from legal_rag.benchmark_synthesis.fact_extraction import (
 )
 from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import SCENARIO_SCHEMA_VERSION, Scenario
-from legal_rag.benchmark_synthesis.verification import VerificationResult
 from legal_rag.io_utils import write_json_atomic, write_jsonl_atomic
 
 
@@ -247,9 +244,9 @@ def read_scenarios(input_path: Path) -> tuple[Scenario, ...]:
     return tuple(scenarios)
 
 
-def write_candidates(output_path: Path, records: Sequence[CandidateRecord]) -> None:
-    """Atomically replace one UTF-8 JSONL output with candidate records."""
-    write_jsonl_atomic(output_path, (record.to_dict() for record in records))
+def write_candidates(output_path: Path, drafts: Sequence[CandidateDraft]) -> None:
+    """Atomically replace one UTF-8 JSONL output with candidate drafts."""
+    write_jsonl_atomic(output_path, (draft.to_dict() for draft in drafts))
 
 
 def write_candidate_progress(output_path: Path, records: Sequence[CandidateProgressRecord]) -> None:
@@ -273,40 +270,22 @@ def read_candidate_progress(input_path: Path) -> tuple[CandidateProgressRecord, 
                     attempt_index=payload["attempt_index"],
                     stage=payload["stage"],
                     draft=_parse_candidate_draft(payload["draft"]),
-                    binding=(
-                        _parse_binding_check_result(payload["binding"]) if payload["binding"] is not None else None
-                    ),
-                    verification=(
-                        _parse_verification_result(payload["verification"])
-                        if payload["verification"] is not None
-                        else None
-                    ),
                 )
             )
     return tuple(records)
 
 
-def read_candidates(input_path: Path) -> tuple[CandidateRecord, ...]:
+def read_candidates(input_path: Path) -> tuple[CandidateDraft, ...]:
     """Read a candidates JSONL file back into typed records."""
-    records: list[CandidateRecord] = []
+    drafts: list[CandidateDraft] = []
     with input_path.open(encoding="utf-8") as source_file:
         for line in source_file:
             payload = json.loads(line)
             if payload["schema_version"] != CANDIDATE_SCHEMA_VERSION:
                 msg = f"Unsupported candidate schema: {payload['schema_version']}"
                 raise ValueError(msg)
-            records.append(
-                CandidateRecord(
-                    draft=_parse_candidate_draft(payload),
-                    binding=_parse_binding_check_result(payload["binding_check"]),
-                    verification=(
-                        _parse_verification_result(payload["verification"])
-                        if payload["verification"] is not None
-                        else None
-                    ),
-                )
-            )
-    return tuple(records)
+            drafts.append(_parse_candidate_draft(payload))
+    return tuple(drafts)
 
 
 def _parse_candidate_draft(payload: dict[str, object]) -> CandidateDraft:
@@ -343,50 +322,17 @@ def _parse_candidate_draft(payload: dict[str, object]) -> CandidateDraft:
         ),
         evolutions=tuple(payload["evolutions"]),
         gold_chunk_ids=tuple(payload["gold_chunk_ids"]),
-        query_type=payload.get("requested_query_type", payload["query_type"]),
+        query_type=payload["query_type"],
         query_form=payload["query_form"],
         persona=payload["persona"],
         query_style=payload["query_style"],
         query_length=payload["query_length"],
-        answerability=payload.get("requested_answerability", payload["answerability"]),
-        reasoning_hops=payload.get("requested_reasoning_hops", payload["reasoning_hops"]),
+        answerability=payload["answerability"],
+        reasoning_hops=payload["reasoning_hops"],
         as_of_date=_parse_date(payload["as_of_date"]),
         source_fact_ids=tuple(payload["source_fact_ids"]),
         source_fact_content_sha256=tuple(payload["source_fact_content_sha256"]),
         generator_model=payload["generator_model"],
-        surface_attempts=payload["surface_attempts"],
-        surface_refined=payload["surface_refined"],
-    )
-
-
-def _parse_binding_check_result(payload: dict[str, object]) -> BindingCheckResult:
-    """Parse the gate-1 outcome portion of one candidate JSONL record."""
-    return BindingCheckResult(
-        passed=payload["passed"],
-        grounding_score=payload["grounding_score"],
-        violations=tuple(
-            BindingViolation(claim=violation["claim"], reason=violation["reason"])
-            for violation in payload["violations"]
-        ),
-    )
-
-
-def _parse_verification_result(payload: dict[str, object]) -> VerificationResult:
-    """Parse the gate-2 outcome portion of one candidate JSONL record."""
-    return VerificationResult(
-        passed=payload["passed"],
-        is_standalone=payload["is_standalone"],
-        is_specific=payload["is_specific"],
-        is_question_grounded=payload["is_question_grounded"],
-        is_answer_grounded=payload["is_answer_grounded"],
-        is_domain_relevant=payload["is_domain_relevant"],
-        is_temporal_correct=payload["is_temporal_correct"],
-        uses_required_bridge=payload["uses_required_bridge"],
-        necessary_reasoning_hops=payload["necessary_reasoning_hops"],
-        observed_query_type=payload["observed_query_type"],
-        observed_answerability=payload["observed_answerability"],
-        reasoning=payload["reasoning"],
-        verifier_model=payload["verifier_model"],
     )
 
 
