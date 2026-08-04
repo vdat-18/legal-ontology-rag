@@ -400,9 +400,9 @@ class _FakeRelationClient:
     def __init__(self, relations_by_pair: dict[tuple[str, str], EvidenceRelation | None]) -> None:
         self._relations_by_pair = relations_by_pair
 
-    def confirm(self, fact_a: LegalFact, fact_b: LegalFact) -> EvidenceRelation | None:
-        """Return the relation configured for this fact pair."""
-        return self._relations_by_pair[tuple(sorted((fact_a.fact_id, fact_b.fact_id)))]
+    def confirm_batch(self, pairs: Sequence[tuple[LegalFact, LegalFact]]) -> list[EvidenceRelation | None]:
+        """Return the relation configured for each fact pair, in order."""
+        return [self._relations_by_pair[tuple(sorted((fact_a.fact_id, fact_b.fact_id)))] for fact_a, fact_b in pairs]
 
 
 def _relation(
@@ -432,15 +432,18 @@ def test_confirm_evidence_relations_drops_unconfirmed_pairs() -> None:
         }
     )
 
-    relations = confirm_evidence_relations(
+    relations, failures = confirm_evidence_relations(
         [fact_a, fact_b, fact_c],
         [("fact-a", "fact-b"), ("fact-a", "fact-c")],
         client,
+        batch_size=2,
+        max_concurrency=1,
         max_retries=2,
         retry_delay_seconds=0,
     )
 
     assert relations == (_relation("fact-a", "fact-b"),)
+    assert failures == ()
 
 
 def test_confirm_evidence_relations_calls_on_pair_confirmed_after_each_pair() -> None:
@@ -458,6 +461,8 @@ def test_confirm_evidence_relations_calls_on_pair_confirmed_after_each_pair() ->
         [fact_a, fact_b, fact_c],
         [("fact-a", "fact-b"), ("fact-a", "fact-c")],
         client,
+        batch_size=1,
+        max_concurrency=1,
         max_retries=2,
         retry_delay_seconds=0,
         on_pair_confirmed=lambda pair, relation: calls.append((pair, relation)),
@@ -475,48 +480,55 @@ def test_confirm_evidence_relations_retries_a_failing_pair_then_succeeds() -> No
     attempts = 0
 
     class _FlakyClient:
-        def confirm(self, fact_x: LegalFact, fact_y: LegalFact) -> EvidenceRelation | None:
+        def confirm_batch(self, pairs: Sequence[tuple[LegalFact, LegalFact]]) -> list[EvidenceRelation | None]:
             nonlocal attempts
             attempts += 1
             if attempts < 2:
                 msg = "provider timed out"
                 raise TimeoutError(msg)
-            return _relation("fact-a", "fact-b")
+            return [_relation("fact-a", "fact-b")]
 
-    relations = confirm_evidence_relations(
+    relations, failures = confirm_evidence_relations(
         [fact_a, fact_b],
         [("fact-a", "fact-b")],
         _FlakyClient(),
+        batch_size=1,
+        max_concurrency=1,
         max_retries=2,
         retry_delay_seconds=0,
     )
 
     assert attempts == 2
     assert relations == (_relation("fact-a", "fact-b"),)
+    assert failures == ()
 
 
-def test_confirm_evidence_relations_skips_a_pair_that_fails_every_attempt() -> None:
-    """A pair that keeps raising is skipped, but other pairs are still confirmed."""
+def test_confirm_evidence_relations_reports_a_pair_that_fails_every_attempt_as_a_failure() -> None:
+    """A pair that keeps raising is reported as a failure, but other pairs are still confirmed and persisted."""
     fact_a, fact_b, fact_c = _fact("fact-a"), _fact("fact-b"), _fact("fact-c")
 
     class _FailsForOnePairClient:
-        def confirm(self, fact_x: LegalFact, fact_y: LegalFact) -> EvidenceRelation | None:
+        def confirm_batch(self, pairs: Sequence[tuple[LegalFact, LegalFact]]) -> list[EvidenceRelation | None]:
+            fact_x, fact_y = pairs[0]
             if {fact_x.fact_id, fact_y.fact_id} == {"fact-a", "fact-b"}:
                 msg = "provider timed out"
                 raise TimeoutError(msg)
-            return _relation(fact_x.fact_id, fact_y.fact_id)
+            return [_relation(fact_x.fact_id, fact_y.fact_id)]
 
     persisted: list[tuple[str, str]] = []
-    with pytest.raises(RuntimeError, match="evidence relation confirmation left 1 incomplete"):
-        confirm_evidence_relations(
-            [fact_a, fact_b, fact_c],
-            [("fact-a", "fact-b"), ("fact-a", "fact-c")],
-            _FailsForOnePairClient(),
-            max_retries=2,
-            retry_delay_seconds=0,
-            on_pair_confirmed=lambda pair, _relation: persisted.append(pair),
-        )
+    relations, failures = confirm_evidence_relations(
+        [fact_a, fact_b, fact_c],
+        [("fact-a", "fact-b"), ("fact-a", "fact-c")],
+        _FailsForOnePairClient(),
+        batch_size=1,
+        max_concurrency=1,
+        max_retries=2,
+        retry_delay_seconds=0,
+        on_pair_confirmed=lambda pair, _relation: persisted.append(pair),
+    )
 
+    assert len(failures) == 1
+    assert relations == (_relation("fact-a", "fact-c"),)
     assert persisted == [("fact-a", "fact-c")]
 
 
@@ -607,14 +619,16 @@ def test_baml_evidence_relation_client_translates_confirmed_relation(monkeypatch
         evidence_graph,
         "execute_baml_request",
         lambda *args, **kwargs: (
-            '{"is_related":true,"relation_type":"AmendedBy",'
+            '[{"pair_id":"fact-a::fact-b","relation":{"is_related":true,"relation_type":"AmendedBy",'
             '"from_fact_id":"fact-b","to_fact_id":"fact-a",'
-            '"bridge":["Điều 6 khoản 9 điểm b"]}'
+            '"bridge":["Điều 6 khoản 9 điểm b"]}}]'
         ),
     )
 
-    relation = client.confirm(_fact("fact-a"), _fact("fact-b"))
+    relations = client.confirm_batch([(_fact("fact-a"), _fact("fact-b"))])
 
+    assert len(relations) == 1
+    relation = relations[0]
     assert relation is not None
     assert relation.relation_type == "amended_by"
     assert relation.from_fact_id == "fact-b"
@@ -631,24 +645,25 @@ def test_baml_evidence_relation_client_returns_none_when_unrelated(monkeypatch: 
         evidence_graph,
         "execute_baml_request",
         lambda *args, **kwargs: (
-            '{"is_related":false,"relation_type":null,"from_fact_id":null,"to_fact_id":null,"bridge":[]}'
+            '[{"pair_id":"fact-a::fact-b","relation":'
+            '{"is_related":false,"relation_type":null,"from_fact_id":null,"to_fact_id":null,"bridge":[]}}]'
         ),
     )
 
-    relation = client.confirm(_fact("fact-a"), _fact("fact-b"))
+    relations = client.confirm_batch([(_fact("fact-a"), _fact("fact-b"))])
 
-    assert relation is None
+    assert relations == [None]
 
 
 def test_baml_evidence_relation_client_sends_conditions_and_exact_evidence(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Relation confirmation sends applicability conditions and exact quoted evidence to BAML."""
-    captured_summaries: list[object] = []
+    captured_items: list[object] = []
     request = object()
 
-    def _capture_request(fact_a: object, fact_b: object, **kwargs: object) -> object:
-        captured_summaries.extend((fact_a, fact_b))
+    def _capture_request(items: object, **kwargs: object) -> object:
+        captured_items.extend(items)
         return request
 
     fact_a = replace(
@@ -661,28 +676,31 @@ def test_baml_evidence_relation_client_sends_conditions_and_exact_evidence(
         conditions=("Trừ trường hợp xe ưu tiên",),
         evidence=(EvidenceReference(chunk_id="chunk-b", quoted_span="Trích nguyên văn fact B"),),
     )
-    monkeypatch.setattr(evidence_graph.b.request, "ConfirmEvidenceRelation", _capture_request)
+    monkeypatch.setattr(evidence_graph.b.request, "ConfirmEvidenceRelationBatch", _capture_request)
     monkeypatch.setattr(
         evidence_graph,
         "execute_baml_request",
         lambda received_request, *args, **kwargs: (
-            '{"is_related":false,"relation_type":null,"from_fact_id":null,"to_fact_id":null,"bridge":[]}'
+            '[{"pair_id":"fact-a::fact-b","relation":'
+            '{"is_related":false,"relation_type":null,"from_fact_id":null,"to_fact_id":null,"bridge":[]}}]'
             if received_request is request
             else pytest.fail("BAML request object was not forwarded to the transport")
         ),
     )
 
-    relation = BamlEvidenceRelationClient(_settings(), _synthesis_settings(), run_id="run-1").confirm(fact_a, fact_b)
+    relations = BamlEvidenceRelationClient(_settings(), _synthesis_settings(), run_id="run-1").confirm_batch(
+        [(fact_a, fact_b)]
+    )
 
-    assert relation is None
-    assert len(captured_summaries) == 2
-    summary_a, summary_b = captured_summaries
-    assert summary_a.conditions == ["Khi chuyển hướng tại nơi đường giao nhau"]
-    assert summary_a.evidence[0].chunk_id == "chunk-a"
-    assert summary_a.evidence[0].quoted_span == "Trích nguyên văn fact A"
-    assert summary_b.conditions == ["Trừ trường hợp xe ưu tiên"]
-    assert summary_b.evidence[0].chunk_id == "chunk-b"
-    assert summary_b.evidence[0].quoted_span == "Trích nguyên văn fact B"
+    assert relations == [None]
+    assert len(captured_items) == 1
+    item = captured_items[0]
+    assert item.fact_a.conditions == ["Khi chuyển hướng tại nơi đường giao nhau"]
+    assert item.fact_a.evidence[0].chunk_id == "chunk-a"
+    assert item.fact_a.evidence[0].quoted_span == "Trích nguyên văn fact A"
+    assert item.fact_b.conditions == ["Trừ trường hợp xe ưu tiên"]
+    assert item.fact_b.evidence[0].chunk_id == "chunk-b"
+    assert item.fact_b.evidence[0].quoted_span == "Trích nguyên văn fact B"
 
 
 def test_build_relation_is_deterministic_for_identical_inputs() -> None:

@@ -53,7 +53,18 @@ class ConfirmedRelation {
   "#)
 }
 
-function ConfirmEvidenceRelation(fact_a: LegalFactSummary, fact_b: LegalFactSummary) -> ConfirmedRelation {
+class EvidenceRelationBatchItem {
+  pair_id string
+  fact_a LegalFactSummary
+  fact_b LegalFactSummary
+}
+
+class EvidenceRelationBatchResult {
+  pair_id string @description(#"Phải trùng với một pair_id trong danh sách đầu vào."#)
+  relation ConfirmedRelation
+}
+
+function ConfirmEvidenceRelationBatch(items: EvidenceRelationBatchItem[]) -> EvidenceRelationBatchResult[] {
   client OpenAICompatibleProvider
   prompt #"
     {{ _.role("user") }}
@@ -61,9 +72,10 @@ function ConfirmEvidenceRelation(fact_a: LegalFactSummary, fact_b: LegalFactSumm
     Bạn là chuyên gia phân tích quan hệ giữa các quy định xử phạt vi phạm
     giao thông đường bộ tại Việt Nam.
 
-    Xét hai fact pháp lý dưới đây, mỗi fact đã được trích xuất và duyệt độc
-    lập. Xác định chúng có quan hệ pháp lý hoặc nghiệp vụ trực tiếp không, và
-    nếu có thì thuộc loại nào:
+    Dưới đây là danh sách các cặp fact pháp lý, mỗi fact đã được trích xuất
+    và duyệt độc lập. Xử lý từng cặp độc lập, không dùng ngữ cảnh của cặp này
+    để suy diễn cho cặp khác. Với mỗi cặp, xác định chúng có quan hệ pháp lý
+    hoặc nghiệp vụ trực tiếp không, và nếu có thì thuộc loại nào:
 
     - ConductToPenalty: cùng hành vi, một fact nêu mức phạt tiền
     - ConductToSubject: cùng hành vi, khác đối tượng hoặc loại phương tiện
@@ -93,36 +105,44 @@ function ConfirmEvidenceRelation(fact_a: LegalFactSummary, fact_b: LegalFactSumm
     ngữ tương tự. Chỉ kết luận có quan hệ khi nội dung của cả hai fact thực
     sự thể hiện quan hệ đó.
 
+    Trả về đúng một kết quả cho mỗi pair_id, giữ nguyên pair_id.
+
     Ví dụ:
 
+    pair_id=example-1
     Fact A: conduct="Không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
     subject="Người điều khiển ô tô", monetary_penalty="4.000.000 đồng đến
     6.000.000 đồng", provision_path="Điều 6 khoản 9 điểm b"
     Fact B: conduct="Không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
     subject="Người điều khiển ô tô", license_points_deducted="6 điểm",
     provision_path="Điều 6 khoản 10"
-    Kết quả: is_related=true, relation_type=ConductToPointsDeduction,
-    from_fact_id=Fact A.fact_id, to_fact_id=Fact B.fact_id,
-    bridge=["Điều 6", "không chấp hành hiệu lệnh của đèn tín hiệu giao
-    thông"]. (Cùng một hành vi, một fact nêu phạt tiền, fact kia nêu trừ
-    điểm — quan hệ trực tiếp, có căn cứ rõ ràng.)
+    Kết quả: pair_id=example-1, is_related=true,
+    relation_type=ConductToPointsDeduction, from_fact_id=Fact A.fact_id,
+    to_fact_id=Fact B.fact_id, bridge=["Điều 6", "không chấp hành hiệu lệnh
+    của đèn tín hiệu giao thông"]. (Cùng một hành vi, một fact nêu phạt
+    tiền, fact kia nêu trừ điểm — quan hệ trực tiếp, có căn cứ rõ ràng.)
 
+    pair_id=example-2
     Fact A: conduct="Không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
     subject="Người điều khiển ô tô", provision_path="Điều 6 khoản 9 điểm b"
     Fact B: conduct="Chở quá số người quy định", subject="Người điều khiển ô
     tô", provision_path="Điều 6 khoản 5"
-    Kết quả: is_related=false, relation_type=null, from_fact_id=null,
-    to_fact_id=null, bridge=[]. (Hai hành vi
-    khác nhau, chỉ cùng nằm trong Điều 6 và cùng đối tượng ô tô — không có
-    quan hệ pháp lý trực tiếp giữa hai hành vi này.)
+    Kết quả: pair_id=example-2, is_related=false, relation_type=null,
+    from_fact_id=null, to_fact_id=null, bridge=[]. (Hai hành vi khác nhau,
+    chỉ cùng nằm trong Điều 6 và cùng đối tượng ô tô — không có quan hệ
+    pháp lý trực tiếp giữa hai hành vi này.)
 
-    Bây giờ xét hai fact sau:
+    Bây giờ xét các cặp fact sau:
 
+    {% for item in items %}
+    === pair_id={{ item.pair_id }} ===
     Fact A:
-    {{ fact_a }}
+    {{ item.fact_a }}
 
     Fact B:
-    {{ fact_b }}
+    {{ item.fact_b }}
+    === end pair_id={{ item.pair_id }} ===
+    {% endfor %}
 
     {{ ctx.output_format }}
   "#

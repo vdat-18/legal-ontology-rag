@@ -32,6 +32,8 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.fact_extraction_max_preceding_chunks == 1
     assert settings.fact_extraction_max_following_chunks == 1
     assert settings.fact_extraction.max_output_tokens == 32_768
+    assert settings.evidence_relation_batch_size == 5
+    assert settings.evidence_relation_max_concurrency == 4
     assert settings.evidence_retrieval.max_candidates_per_fact == 5
     assert settings.evidence_retrieval.min_similarity == 0.5
     assert settings.evidence_retrieval.pool_multiplier == 3
@@ -70,3 +72,11 @@ def test_synthesis_settings_reject_non_positive_fact_extraction_batch_size() -> 
 
     with pytest.raises(ValueError, match="fact_extraction_batch_size must be positive"):
         replace(settings, fact_extraction_batch_size=0)
+
+
+def test_synthesis_settings_reject_non_positive_evidence_relation_max_concurrency() -> None:
+    """Evidence relation confirmation cannot start with a non-positive worker pool size."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+
+    with pytest.raises(ValueError, match="evidence_relation_max_concurrency must be positive"):
+        replace(settings, evidence_relation_max_concurrency=0)

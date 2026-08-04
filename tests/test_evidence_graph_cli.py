@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
@@ -53,17 +55,20 @@ class _AlwaysRelatedClient:
     def __init__(self, settings: object, synthesis_settings: object, *, run_id: str) -> None:
         self._run_id = run_id
 
-    def confirm(self, fact_a: LegalFact, fact_b: LegalFact) -> evidence_graph.EvidenceRelation:
-        """Return one confirmed relation for any pair."""
-        return evidence_graph.EvidenceRelation(
-            relation_id=f"relation-{fact_a.fact_id}-{fact_b.fact_id}",
-            relation_type="conduct_to_penalty",
-            from_fact_id=fact_a.fact_id,
-            to_fact_id=fact_b.fact_id,
-            bridge=("Điều 6",),
-            confirmed_by_model="provider/test-model",
-            run_id=self._run_id,
-        )
+    def confirm_batch(self, pairs: Sequence[tuple[LegalFact, LegalFact]]) -> list[evidence_graph.EvidenceRelation]:
+        """Return one confirmed relation for every pair in the batch."""
+        return [
+            evidence_graph.EvidenceRelation(
+                relation_id=f"relation-{fact_a.fact_id}-{fact_b.fact_id}",
+                relation_type="conduct_to_penalty",
+                from_fact_id=fact_a.fact_id,
+                to_fact_id=fact_b.fact_id,
+                bridge=("Điều 6",),
+                confirmed_by_model="provider/test-model",
+                run_id=self._run_id,
+            )
+            for fact_a, fact_b in pairs
+        ]
 
 
 class _FakeSynthesisEmbeddingEncoder:
@@ -137,6 +142,16 @@ def _configure_cli(
     return relations_progress_path
 
 
+def _force_sequential_relation_confirmation(tmp_path: Path) -> None:
+    """Point --synthesis-config at a copy with batch_size=1 and max_concurrency=1 for deterministic call order."""
+    config = json.loads((_REPO_CONFIG_DIR / "synthesis_v1.json").read_text(encoding="utf-8"))
+    config["stages"]["evidence_relation"]["batch_size"] = 1
+    config["stages"]["evidence_relation"]["max_concurrency"] = 1
+    sequential_config_path = tmp_path / "synthesis_v1.sequential.json"
+    sequential_config_path.write_text(json.dumps(config), encoding="utf-8")
+    sys.argv[sys.argv.index("--synthesis-config") + 1] = str(sequential_config_path)
+
+
 def _relation_run_id(facts: list[LegalFact]) -> str:
     """Return the production fingerprint for the deterministic CLI test configuration."""
     synthesis_settings = SynthesisSettings.from_path(_REPO_CONFIG_DIR / "synthesis_v1.json")
@@ -175,6 +190,86 @@ def test_evidence_graph_cli_confirms_relations_and_samples_scenarios(
     assert all(scenario.fact_ids for scenario in scenarios)
 
 
+def test_evidence_graph_cli_raises_when_a_pair_fails_every_attempt_by_default(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Without --allow-incomplete-relations, a permanently failing pair stops the run before scenario sampling."""
+    facts_path = tmp_path / "legal_facts.jsonl"
+    relations_path = tmp_path / "evidence_relations.jsonl"
+    scenarios_path = tmp_path / "scenarios.jsonl"
+    fact_a = _fact("fact-a", "Vượt đèn đỏ")
+    fact_b = _fact("fact-b", "Không chấp hành hiệu lệnh đèn tín hiệu")
+    write_legal_facts(facts_path, [fact_a, fact_b])
+    _configure_cli(monkeypatch, facts_path, relations_path, scenarios_path, total_samples=1)
+    _force_sequential_relation_confirmation(tmp_path)
+
+    class _AlwaysFailsClient:
+        """Fail every candidate pair, unconditionally, on every attempt."""
+
+        def __init__(self, settings: object, synthesis_settings: object, *, run_id: str) -> None:
+            pass
+
+        def confirm_batch(self, pairs: Sequence[tuple[LegalFact, LegalFact]]) -> list[evidence_graph.EvidenceRelation]:
+            """Always raise a retryable transport error."""
+            msg = "provider timed out"
+            raise TimeoutError(msg)
+
+    monkeypatch.setattr(evidence_graph, "BamlEvidenceRelationClient", _AlwaysFailsClient)
+
+    with pytest.raises(RuntimeError, match="evidence relation confirmation left 1 incomplete"):
+        evidence_graph_cli.main()
+
+    assert not scenarios_path.exists()
+
+
+def test_evidence_graph_cli_allow_incomplete_relations_samples_from_confirmed_pairs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """--allow-incomplete-relations samples scenarios from whatever pairs were confirmed, despite one failure."""
+    facts_path = tmp_path / "legal_facts.jsonl"
+    relations_path = tmp_path / "evidence_relations.jsonl"
+    scenarios_path = tmp_path / "scenarios.jsonl"
+    fact_a = _fact("fact-a", "Vượt đèn đỏ")
+    fact_b = _fact("fact-b", "Không chấp hành hiệu lệnh đèn tín hiệu")
+    fact_c = _fact("fact-c", "Không đội mũ bảo hiểm")
+    write_legal_facts(facts_path, [fact_a, fact_b, fact_c])
+    _configure_cli(monkeypatch, facts_path, relations_path, scenarios_path, total_samples=2)
+    _force_sequential_relation_confirmation(tmp_path)
+    sys.argv.append("--allow-incomplete-relations")
+
+    class _FailsForOnePairClient:
+        """Fail one specific candidate pair on every attempt; confirm every other pair."""
+
+        def __init__(self, settings: object, synthesis_settings: object, *, run_id: str) -> None:
+            self._run_id = run_id
+
+        def confirm_batch(self, pairs: Sequence[tuple[LegalFact, LegalFact]]) -> list[evidence_graph.EvidenceRelation]:
+            """Raise for the fact-a/fact-b pair, otherwise confirm the pair as related."""
+            fact_x, fact_y = pairs[0]
+            if {fact_x.fact_id, fact_y.fact_id} == {"fact-a", "fact-b"}:
+                msg = "provider timed out"
+                raise TimeoutError(msg)
+            return [
+                evidence_graph.EvidenceRelation(
+                    relation_id=f"relation-{fact_x.fact_id}-{fact_y.fact_id}",
+                    relation_type="conduct_to_penalty",
+                    from_fact_id=fact_x.fact_id,
+                    to_fact_id=fact_y.fact_id,
+                    bridge=("Điều 6",),
+                    confirmed_by_model="provider/test-model",
+                    run_id=self._run_id,
+                )
+            ]
+
+    monkeypatch.setattr(evidence_graph, "BamlEvidenceRelationClient", _FailsForOnePairClient)
+
+    evidence_graph_cli.main()
+
+    assert len(read_evidence_relations(relations_path)) == 2
+    assert scenarios_path.exists()
+    assert len(read_scenarios(scenarios_path)) > 0
+
+
 def test_evidence_graph_cli_does_not_recheck_a_pair_already_processed(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -205,18 +300,23 @@ def test_evidence_graph_cli_does_not_recheck_a_pair_already_processed(
         def __init__(self, settings: object, synthesis_settings: object, *, run_id: str) -> None:
             self._run_id = run_id
 
-        def confirm(self, fact_x: LegalFact, fact_y: LegalFact) -> evidence_graph.EvidenceRelation:
-            """Record the pair and return one confirmed relation for it."""
-            checked_pairs.append(tuple(sorted((fact_x.fact_id, fact_y.fact_id))))
-            return evidence_graph.EvidenceRelation(
-                relation_id=f"relation-{fact_x.fact_id}-{fact_y.fact_id}",
-                relation_type="conduct_to_penalty",
-                from_fact_id=fact_x.fact_id,
-                to_fact_id=fact_y.fact_id,
-                bridge=("Điều 6",),
-                confirmed_by_model="provider/test-model",
-                run_id=self._run_id,
-            )
+        def confirm_batch(self, pairs: Sequence[tuple[LegalFact, LegalFact]]) -> list[evidence_graph.EvidenceRelation]:
+            """Record each pair and return one confirmed relation for it."""
+            relations = []
+            for fact_x, fact_y in pairs:
+                checked_pairs.append(tuple(sorted((fact_x.fact_id, fact_y.fact_id))))
+                relations.append(
+                    evidence_graph.EvidenceRelation(
+                        relation_id=f"relation-{fact_x.fact_id}-{fact_y.fact_id}",
+                        relation_type="conduct_to_penalty",
+                        from_fact_id=fact_x.fact_id,
+                        to_fact_id=fact_y.fact_id,
+                        bridge=("Điều 6",),
+                        confirmed_by_model="provider/test-model",
+                        run_id=self._run_id,
+                    )
+                )
+            return relations
 
     monkeypatch.setattr(evidence_graph, "BamlEvidenceRelationClient", _RecordingClient)
 
@@ -238,6 +338,7 @@ def test_evidence_graph_cli_persists_progress_if_interrupted_mid_run(
     fact_c = _fact("fact-c", "Không đội mũ bảo hiểm")
     write_legal_facts(facts_path, [fact_a, fact_b, fact_c])
     progress_path = _configure_cli(monkeypatch, facts_path, relations_path, scenarios_path, total_samples=2)
+    _force_sequential_relation_confirmation(tmp_path)
 
     class _CrashesOnSecondPairClient:
         """Succeed on the first candidate pair, then simulate the whole process being killed."""
@@ -246,20 +347,23 @@ def test_evidence_graph_cli_persists_progress_if_interrupted_mid_run(
             self._calls = 0
             self._run_id = run_id
 
-        def confirm(self, fact_x: LegalFact, fact_y: LegalFact) -> evidence_graph.EvidenceRelation:
+        def confirm_batch(self, pairs: Sequence[tuple[LegalFact, LegalFact]]) -> list[evidence_graph.EvidenceRelation]:
             """Return one confirmed relation on the first call, then raise an uncaught fatal error."""
             self._calls += 1
             if self._calls > 1:
                 raise SystemExit
-            return evidence_graph.EvidenceRelation(
-                relation_id=f"relation-{fact_x.fact_id}-{fact_y.fact_id}",
-                relation_type="conduct_to_penalty",
-                from_fact_id=fact_x.fact_id,
-                to_fact_id=fact_y.fact_id,
-                bridge=("Điều 6",),
-                confirmed_by_model="provider/test-model",
-                run_id=self._run_id,
-            )
+            fact_x, fact_y = pairs[0]
+            return [
+                evidence_graph.EvidenceRelation(
+                    relation_id=f"relation-{fact_x.fact_id}-{fact_y.fact_id}",
+                    relation_type="conduct_to_penalty",
+                    from_fact_id=fact_x.fact_id,
+                    to_fact_id=fact_y.fact_id,
+                    bridge=("Điều 6",),
+                    confirmed_by_model="provider/test-model",
+                    run_id=self._run_id,
+                )
+            ]
 
     monkeypatch.setattr(evidence_graph, "BamlEvidenceRelationClient", _CrashesOnSecondPairClient)
 
@@ -288,8 +392,9 @@ def test_evidence_graph_cli_does_not_recheck_a_pair_confirmed_unrelated(
         def __init__(self, settings: object, synthesis_settings: object, *, run_id: str) -> None:
             self._run_id = run_id
 
-        def confirm(self, fact_x: LegalFact, fact_y: LegalFact) -> None:
+        def confirm_batch(self, pairs: Sequence[tuple[LegalFact, LegalFact]]) -> list[None]:
             """Return None for every pair."""
+            return [None for _ in pairs]
 
     monkeypatch.setattr(evidence_graph, "BamlEvidenceRelationClient", _UnrelatedClient)
 
@@ -367,8 +472,9 @@ def test_evidence_graph_cli_replaces_relation_written_before_progress(
         def __init__(self, settings: object, synthesis_settings: object, *, run_id: str) -> None:
             return None
 
-        def confirm(self, fact_a: LegalFact, fact_b: LegalFact) -> None:
+        def confirm_batch(self, pairs: Sequence[tuple[LegalFact, LegalFact]]) -> list[None]:
             """Confirm that the pair is no longer considered related."""
+            return [None for _ in pairs]
 
     monkeypatch.setattr(evidence_graph, "BamlEvidenceRelationClient", _NowUnrelatedClient)
 

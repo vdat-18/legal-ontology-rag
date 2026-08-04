@@ -11,6 +11,7 @@ from loguru import logger
 
 if TYPE_CHECKING:
     from legal_rag.benchmark_synthesis.evidence_graph import EvidenceRelation, EvidenceRelationProgressRecord
+    from legal_rag.benchmark_synthesis.llm_execution import LlmTaskFailure
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -33,6 +34,11 @@ def _parser() -> argparse.ArgumentParser:
         "--prepare-candidates-only",
         action="store_true",
         help="Build or validate the candidate-pair cache, then exit before any relation LLM calls",
+    )
+    parser.add_argument(
+        "--allow-incomplete-relations",
+        action="store_true",
+        help="Sample scenarios from confirmed relations even if some candidate pairs failed after retries",
     )
     parser.add_argument("--query-taxonomy", type=Path, required=True, help="Query-taxonomy config JSON path")
     parser.add_argument("--personas", type=Path, required=True, help="Persona config JSON path")
@@ -81,6 +87,18 @@ def _validate_resume_state(
     return relations_by_id, checked_pairs
 
 
+def _log_relation_confirmation_failures(failures: Sequence[LlmTaskFailure]) -> bool:
+    """Log any batches that failed after retries and report whether the stage was incomplete."""
+    if not failures:
+        return False
+    logger.warning(
+        "Evidence relation confirmation left {} batch(es) incomplete: {}",
+        len(failures),
+        ", ".join(failure.task_key for failure in failures),
+    )
+    return True
+
+
 def main() -> None:
     """Confirm evidence relations not yet checked among facts, then sample scenarios from the result."""
     from dotenv import find_dotenv, load_dotenv
@@ -98,6 +116,7 @@ def main() -> None:
         find_candidate_fact_pairs,
         sample_bundles,
     )
+    from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError
     from legal_rag.benchmark_synthesis.scenario_sampling import (
         ScenarioSamplingConfig,
         load_personas,
@@ -245,14 +264,19 @@ def main() -> None:
 
     if remaining_pairs:
         relation_client = BamlEvidenceRelationClient(settings, synthesis_settings, run_id=relation_run_id)
-        confirm_evidence_relations(
+        _, failures = confirm_evidence_relations(
             facts,
             remaining_pairs,
             relation_client,
+            batch_size=synthesis_settings.evidence_relation_batch_size,
+            max_concurrency=synthesis_settings.evidence_relation_max_concurrency,
             max_retries=synthesis_settings.llm_max_retries,
             retry_delay_seconds=synthesis_settings.llm_retry_delay_seconds,
             on_pair_confirmed=_persist_pair,
         )
+        if _log_relation_confirmation_failures(failures) and not arguments.allow_incomplete_relations:
+            incomplete_error = IncompleteLlmTasksError.for_stage("evidence relation confirmation", failures)
+            raise incomplete_error
     else:
         write_evidence_relations(
             arguments.relations_output_path,

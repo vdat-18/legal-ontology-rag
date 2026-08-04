@@ -1316,7 +1316,8 @@ trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
 
 **Hai điểm lệch so với kế hoạch ban đầu, có lý do rõ:**
 
-- `ConfirmEvidenceRelation(fact_a, fact_b) -> ConfirmedRelation` **không**
+- `ConfirmEvidenceRelationBatch(items) -> EvidenceRelationBatchResult[]` (mỗi
+  item là một cặp `fact_a, fact_b`) **không**
   nhận `candidate_relation_type` như phác thảo gốc. Không có tín hiệu tất
   định nào để đoán trước loại quan hệ trước khi LLM đọc nội dung — nếu đoán
   bằng heuristic thì vi phạm chính câu "Không xác định quan hệ chỉ bằng độ
@@ -1336,8 +1337,11 @@ trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
   không sinh tự động từ evidence thật).
 
 BAML: `evidence_relations.baml` — enum `RelationType` (8 giá trị khớp danh
-sách quan hệ ở mục 4), class `LegalFactSummary`, `ConfirmedRelation`, function
-`ConfirmEvidenceRelation`. Giá trị `RelationType` phía BAML dùng PascalCase
+sách quan hệ ở mục 4), class `LegalFactSummary`, `ConfirmedRelation`,
+`EvidenceRelationBatchItem`, `EvidenceRelationBatchResult`, function
+`ConfirmEvidenceRelationBatch` (xác nhận nhiều cặp fact trong một lời gọi LLM,
+số cặp mỗi lô do `evidence_relation.batch_size` trong synthesis config quyết
+định). Giá trị `RelationType` phía BAML dùng PascalCase
 theo đúng quy ước `ChunkWindowRole`; phía Python dùng `Literal` snake_case
 khớp ví dụ JSON ở mục 4 (`"amended_by"`), dịch qua bảng ánh xạ tường minh
 trong `evidence_graph.py` — không suy luận chuỗi.

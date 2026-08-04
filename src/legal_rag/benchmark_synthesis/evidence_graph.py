@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Callable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
+from functools import partial
 from typing import Any, Literal, Protocol
 from unicodedata import normalize
 
@@ -12,11 +15,10 @@ from baml_py.logging import set_log_level
 
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import ConfirmedRelation as BamlConfirmedRelation
-from legal_rag.baml_client.types import LegalFactSummary, RelationEvidence
+from legal_rag.baml_client.types import EvidenceRelationBatchItem, LegalFactSummary, RelationEvidence
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.benchmark_synthesis.config import EvidenceRetrievalSettings, SynthesisSettings
 from legal_rag.benchmark_synthesis.llm_execution import (
-    IncompleteLlmTasksError,
     LlmTaskExhaustedError,
     LlmTaskFailure,
     execute_llm_task,
@@ -33,7 +35,7 @@ from legal_rag.settings import Settings
 EVIDENCE_RELATION_SCHEMA_VERSION = "1.1.0"
 EVIDENCE_BUNDLE_SCHEMA_VERSION = "1.0.0"
 EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.1.0"
-EVIDENCE_RELATION_PROMPT_VERSION = "1.1.0"
+EVIDENCE_RELATION_PROMPT_VERSION = "1.2.0"
 EVIDENCE_CANDIDATE_SELECTION_VERSION = "3.0.0"
 EVIDENCE_CANDIDATE_SET_SCHEMA_VERSION = "1.0.0"
 FACT_RETRIEVAL_TEXT_VERSION = "2.0.0"
@@ -338,6 +340,7 @@ def build_evidence_relation_run_id(
             "llm_model": llm_model,
             "prompt_version": EVIDENCE_RELATION_PROMPT_VERSION,
             "relation_generation": asdict(synthesis_settings.evidence_relation),
+            "batch_size": synthesis_settings.evidence_relation_batch_size,
         }
     )
 
@@ -431,8 +434,8 @@ def find_candidate_fact_pairs(
 class EvidenceRelationClient(Protocol):
     """Boundary implemented by an evidence-relation-confirmation language-model client."""
 
-    def confirm(self, fact_a: LegalFact, fact_b: LegalFact) -> EvidenceRelation | None:
-        """Return a confirmed relation, or None when the facts are not directly related."""
+    def confirm_batch(self, pairs: Sequence[tuple[LegalFact, LegalFact]]) -> Sequence[EvidenceRelation | None]:
+        """Return one confirmed relation or None per pair, in the same order as the input pairs."""
 
 
 class BamlEvidenceRelationClient:
@@ -454,14 +457,29 @@ class BamlEvidenceRelationClient:
         self._model = settings.llm_model
         self._run_id = run_id
 
-    def confirm(self, fact_a: LegalFact, fact_b: LegalFact) -> EvidenceRelation | None:
-        """Run one bounded BAML call and translate its typed result."""
-        request = b.request.ConfirmEvidenceRelation(
-            _summarize(fact_a), _summarize(fact_b), baml_options={"client_registry": self._registry}
-        )
+    def confirm_batch(self, pairs: Sequence[tuple[LegalFact, LegalFact]]) -> Sequence[EvidenceRelation | None]:
+        """Run one bounded BAML call over a batch of fact pairs and translate its typed results, in order."""
+        items = [
+            EvidenceRelationBatchItem(
+                pair_id=f"{fact_a.fact_id}::{fact_b.fact_id}",
+                fact_a=_summarize(fact_a),
+                fact_b=_summarize(fact_b),
+            )
+            for fact_a, fact_b in pairs
+        ]
+        request = b.request.ConfirmEvidenceRelationBatch(items, baml_options={"client_registry": self._registry})
         raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        result = b.parse.ConfirmEvidenceRelation(raw_output, baml_options={"client_registry": self._registry})
-        return _build_relation(result, fact_a, fact_b, self._model, self._run_id)
+        results = b.parse.ConfirmEvidenceRelationBatch(raw_output, baml_options={"client_registry": self._registry})
+        requested_ids = [item.pair_id for item in items]
+        result_ids = [result.pair_id for result in results]
+        if len(result_ids) != len(set(result_ids)) or set(result_ids) != set(requested_ids):
+            msg = "Evidence relation batch response must contain exactly one result for every requested pair"
+            raise ValueError(msg)
+        results_by_pair_id = {result.pair_id: result for result in results}
+        return [
+            _build_relation(results_by_pair_id[item.pair_id].relation, fact_a, fact_b, self._model, self._run_id)
+            for item, (fact_a, fact_b) in zip(items, pairs, strict=True)
+        ]
 
 
 def _summarize(fact: LegalFact) -> LegalFactSummary:
@@ -531,41 +549,71 @@ def _build_relation(
     )
 
 
+def _batch_task_key(pairs: Sequence[tuple[str, str]]) -> str:
+    """Build a deterministic retry key from the ordered fact-id pairs in one batch."""
+    pair_ids = "\0".join(f"{fact_id_a}:{fact_id_b}" for fact_id_a, fact_id_b in pairs)
+    return f"relation-batch:{hashlib.sha256(pair_ids.encode('utf-8')).hexdigest()}"
+
+
+def _confirm_batch(
+    client: EvidenceRelationClient,
+    facts_by_id: Mapping[str, LegalFact],
+    pairs: Sequence[tuple[str, str]],
+) -> tuple[tuple[tuple[str, str], EvidenceRelation | None], ...]:
+    """Confirm one batch and pair each result back to its candidate pair, in order."""
+    relations = client.confirm_batch(
+        [(facts_by_id[fact_id_a], facts_by_id[fact_id_b]) for fact_id_a, fact_id_b in pairs]
+    )
+    if len(relations) != len(pairs):
+        msg = f"Evidence relation batch response must contain exactly one result per pair, got {len(relations)} for {len(pairs)}"
+        raise ValueError(msg)
+    return tuple(zip(pairs, relations, strict=True))
+
+
 def confirm_evidence_relations(
     facts: Sequence[LegalFact],
     candidate_pairs: Sequence[tuple[str, str]],
     client: EvidenceRelationClient,
     *,
+    batch_size: int,
+    max_concurrency: int,
     max_retries: int,
     retry_delay_seconds: float,
     on_pair_confirmed: Callable[[tuple[str, str], EvidenceRelation | None], None] | None = None,
-) -> tuple[EvidenceRelation, ...]:
-    """Confirm every candidate pair, retrying a failed call before skipping it; call on_pair_confirmed after each pair."""
+) -> tuple[tuple[EvidenceRelation, ...], tuple[LlmTaskFailure, ...]]:
+    """Confirm every candidate pair in bounded, concurrent batches; call on_pair_confirmed after each pair.
+
+    Batches are submitted to a bounded worker pool but their results are only ever read back and persisted
+    on this thread, one completed batch at a time, so on_pair_confirmed never runs concurrently with itself.
+    """
     facts_by_id = {fact.fact_id: fact for fact in facts}
+    batches = [candidate_pairs[start : start + batch_size] for start in range(0, len(candidate_pairs), batch_size)]
     relations: list[EvidenceRelation] = []
     failures: list[LlmTaskFailure] = []
-    for fact_id_a, fact_id_b in candidate_pairs:
-        task_key = f"{fact_id_a}:{fact_id_b}"
-        try:
-            relation = execute_llm_task(
-                task_key,
-                lambda fact_id_a=fact_id_a, fact_id_b=fact_id_b: client.confirm(
-                    facts_by_id[fact_id_a], facts_by_id[fact_id_b]
-                ),
+    with ThreadPoolExecutor(max_workers=max_concurrency) as executor:
+        futures = {
+            executor.submit(
+                execute_llm_task,
+                _batch_task_key(batch),
+                partial(_confirm_batch, client, facts_by_id, batch),
                 max_retries=max_retries,
                 retry_delay_seconds=retry_delay_seconds,
-            )
-        except LlmTaskExhaustedError as error:
-            failures.append(LlmTaskFailure(task_key=task_key, error=str(error)))
-        else:
-            if relation is not None:
-                relations.append(relation)
-            if on_pair_confirmed is not None:
-                on_pair_confirmed((fact_id_a, fact_id_b), relation)
-    if failures:
-        incomplete_error = IncompleteLlmTasksError.for_stage("evidence relation confirmation", failures)
-        raise incomplete_error
-    return tuple(relations)
+            ): batch
+            for batch in batches
+        }
+        for future in as_completed(futures):
+            batch = futures[future]
+            try:
+                batch_results = future.result()
+            except LlmTaskExhaustedError as error:
+                failures.append(LlmTaskFailure(task_key=_batch_task_key(batch), error=str(error)))
+                continue
+            for pair, relation in batch_results:
+                if relation is not None:
+                    relations.append(relation)
+                if on_pair_confirmed is not None:
+                    on_pair_confirmed(pair, relation)
+    return tuple(relations), tuple(failures)
 
 
 def classify_bundle_kind(relation: EvidenceRelation, facts_by_id: Mapping[str, LegalFact]) -> BundleKind:

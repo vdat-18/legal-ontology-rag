@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.3.0",
+  "schema_version": "1.4.0",
   "embedding_profile": "bge_m3",
   "embedding": {
     "batch_size": 64,
@@ -39,6 +39,8 @@
       "temperature": 0.0
     },
     "evidence_relation": {
+      "batch_size": 5,
+      "max_concurrency": 4,
       "retrieval": {
         "max_candidates_per_fact": 5,
         "min_similarity": 0.5,
