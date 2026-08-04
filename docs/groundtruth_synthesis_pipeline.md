@@ -27,6 +27,15 @@ describe retry-then-skip behavior.
   there is no `requested_*`/observed split.
 - Candidate identity is recomputed after every evolution from the final query,
   answer, reasoning, and claims.
+- Candidate review is outside this pipeline. Generated candidates proceed
+  directly to downstream synthesis stages; any external-agent review does not
+  block or change pipeline state.
+- `legal-export-groundtruth` maps completed single-turn candidates to the
+  `question`/`expected_answer`/`expected_chunk_ids` schema consumed by
+  `legal-evaluate`, while retaining synthesis metadata for later analysis.
+- The current deliverable stops at single-turn RAG evaluation. Multi-turn,
+  hard negatives, difficulty/leakage scoring, deduplication, and dataset splits
+  are outside the current scope.
 - The MVP taxonomy contains penalty-fact capabilities only. Authority,
   procedure, and exception queries wait for dedicated fact schemas.
 - `data/config/groundtruth/synthesis_v1.json` is the single source of truth
@@ -69,6 +78,7 @@ data/benchmark_synthesis/
 |-- evidence_relations.jsonl
 |-- evidence_relation_progress.jsonl
 |-- scenarios.jsonl
+|-- ground_truth.jsonl
 `-- candidates/
     |-- single_turn.jsonl
     `-- single_turn.progress.jsonl
@@ -76,10 +86,9 @@ data/benchmark_synthesis/
 
 ## Mục tiêu và phạm vi
 
-Pipeline này sinh dữ liệu ground truth để đánh giá hệ thống RAG trong phạm vi
-**xử phạt vi phạm giao thông đường bộ tại Việt Nam**. Benchmark hỗ trợ cả câu
-hỏi single-turn và hội thoại multi-turn, đồng thời đánh giá riêng retrieval,
-generation và toàn bộ luồng RAG.
+Pipeline này sinh dữ liệu ground truth single-turn để đánh giá hệ thống RAG
+trong phạm vi **xử phạt vi phạm giao thông đường bộ tại Việt Nam**, gồm
+retrieval, generation và toàn bộ luồng RAG.
 
 Dữ liệu do LLM sinh ra được dùng thẳng làm candidate — không còn cổng kiểm
 tra tự động nào ở tầng candidate (xem "Nguyên tắc kiến trúc" ngay dưới đây).
@@ -117,10 +126,7 @@ không đúng phong cách yêu cầu.
     -> Evidence graph trên mọi fact đã trích xuất
     -> Scenario sampling (persona x style x length)
     -> Single-turn candidates                     (không còn cổng kiểm tra nào sau bước này)
-    -> Multi-turn: simulator hướng mục tiêu + người cho lượt khó   [chưa triển khai]
-    -> Hard negatives + difficulty (cần retriever)                 [bị chặn, chưa có retriever]
-    -> Review theo rủi ro trên mẫu                                 [chưa triển khai]
-    -> Versioned ground_truth.jsonl                                [chưa ghép]
+    -> Evaluation ground_truth.jsonl
     -> Đánh giá retrieval / generator / end-to-end
 ```
 
@@ -205,8 +211,8 @@ Screening mặc định cho phép tối đa 16.384 output token. Transport dùng
 ghi log `input_tokens`, `output_tokens` và `total_tokens` của từng LLM response
 nếu OpenAI-compatible provider trả trường `usage`.
 
-Cổng rẻ này đứng trước để bảo vệ hai công đoạn đắt phía sau: LLM call trích
-xuất và thời gian chuyên gia duyệt fact. Câu hỏi nhị phân này thay cho cách
+Cổng rẻ này đứng trước để giảm số LLM call trích xuất fact đắt tiền phía sau.
+Câu hỏi nhị phân này thay cho cách
 chấm điểm liên tục rồi so ngưỡng: LLM đáng tin hơn nhiều với quyết định
 nhị phân rõ ràng so với việc tự hiệu chỉnh điểm số liên tục 0.0-1.0 (dễ bị
 dồn cụm, khiến một ngưỡng cố định gần như vô nghĩa trong thực tế). Danh sách
@@ -477,8 +483,7 @@ chuẩn mực, khác hẳn cách người dùng thật gõ câu hỏi.
 - `query_form`: `specific` neo vào hành vi và mức phạt cụ thể; `abstract` hỏi
   nguyên tắc hoặc khái niệm. Trục này độc lập với số hop.
 
-Ba trục trên chỉ đổi bề mặt câu hỏi, không đổi evidence, nên không làm tăng
-chi phí review.
+Ba trục trên chỉ đổi bề mặt câu hỏi, không đổi evidence.
 
 ### Evolution có kiểm soát
 
@@ -549,10 +554,10 @@ Nguyên tắc:
 - Sinh candidate bằng nhiều model thuộc các họ khác nhau để giảm bias riêng của
   một model.
 - `answer_fields` — mức phạt tiền, số điểm trừ, hình phạt bổ sung, biện pháp
-  khắc phục — được pipeline **chép cơ học từ fact đã duyệt**, không để LLM
+  khắc phục — được pipeline **chép cơ học từ fact đã trích xuất**, không để LLM
   sinh lại. Đây là phần đáp án so khớp tất định được khi đánh giá.
 - Candidate kèm `reasoning_vi`: chuỗi lập luận nối evidence tới đáp án. Trường
-  này tăng tốc review và cho phép đánh giá tính minh bạch của mẫu.
+  này cho phép đánh giá tính minh bạch của mẫu.
 
 `--candidates-per-scenario` kiểm soát số lần sinh cho mỗi scenario. Vì không
 còn cổng nào lọc bớt (xem "Nguyên tắc kiến trúc" ở đầu tài liệu), con số này
@@ -584,9 +589,9 @@ với evidence set thật của fact; nếu LLM bịa `chunk_id` hoặc trích s
 `quoted_span`, dữ liệu đó vẫn được ghi thẳng vào ground truth. `grounding_score`
 không còn được tính, vì đây chính là cổng duy nhất tính điểm đó.
 
-## 8. Sinh multi-turn candidates
+## 8. Sinh multi-turn candidates — ngoài phạm vi hiện tại
 
-Multi-turn phát triển từ các fact đã duyệt, không sinh hội thoại tự do từ đầu.
+Multi-turn phát triển từ các fact đã trích xuất, không sinh hội thoại tự do từ đầu.
 
 Bằng chứng từ các benchmark multi-turn đã công bố cho thấy hội thoại sinh hoàn
 toàn tự động thất bại ở đúng những chỗ cần nhất: câu unanswerable sinh tự động
@@ -665,7 +670,7 @@ con số tự đặt:
 - Không quá 2 lượt `unanswerable` trong cùng một hội thoại
 - Trung bình ít nhất 1 co-reference mỗi hội thoại
 
-## 9. Khai thác hard negatives
+## 9. Khai thác hard negatives — ngoài phạm vi hiện tại
 
 Công đoạn này **cần một retriever đang hoạt động**. Hiện tại repository chưa có
 module retrieval, nên mục này bị chặn cho tới khi retriever tồn tại. Không
@@ -707,7 +712,7 @@ y giá trị scenario đã yêu cầu, không có nhãn "quan sát được" tá
 và không có cơ chế nào bắt shortcut cho multi-hop "ảo" (candidate khai nhiều
 hop nhưng thực chất không cần đủ số fact đã khai).
 
-## 11. Đo leakage và difficulty
+## 11. Đo leakage và difficulty — ngoài phạm vi hiện tại
 
 Mỗi candidate chạy trong bốn chế độ. Ba chế độ đầu không cần retriever.
 
@@ -742,7 +747,7 @@ Chạy retriever hiện tại và lưu:
 Không loại một candidate chỉ vì baseline không retrieve được; đó có thể là một
 test case khó và có giá trị chẩn đoán.
 
-## 12. Kiểm soát độ phủ trên bảng fact
+## 12. Kiểm soát độ phủ trên bảng fact — ngoài phạm vi hiện tại
 
 Độ phủ đo trên **bảng fact**, không đo trên tập câu hỏi. Chỉ có cách này mới
 trả lời được câu hỏi quan trọng nhất là còn fact nào chưa được kiểm tra.
@@ -777,45 +782,15 @@ vứt đi.
 Một fact sinh ra nhiều câu hỏi tương tự thường là fact quan trọng hơn. Xóa các
 bản trùng mà không ghi lại số lượng là làm mất chính thông tin đó.
 
-## 13. Review theo rủi ro — chưa triển khai
+## 13. Review candidate — ngoài phạm vi pipeline
 
-Chưa có code cho bước này. Ở tầng candidate, mục tiêu không phải duyệt hết
-mà là **đo được tỷ lệ lỗi**.
+Pipeline không triển khai module, CLI, trạng thái hay output dành cho review.
+Candidate hoàn tất ở trạng thái `completed` trong `CandidateProgressRecord`
+và được chuyển thẳng sang các bước downstream. Nếu dùng agent bên ngoài để
+review, kết quả đó là artifact độc lập, không chặn pipeline và không thay đổi
+candidate đã sinh.
 
-Bản đầu mục này định nghĩa luồng trạng thái dựa trên hai cổng đã bỏ (mục 7,
-10):
-
-```text
-generated
-    -> binding_verified        (qua cổng 1, đã bỏ)
-    -> automatically_verified  (qua cổng 2, đã bỏ)
-    -> sampled_for_review | accepted
-    -> approved | rejected
-```
-
-Vì cổng 1 và cổng 2 đã bỏ, hai trạng thái `binding_verified` và
-`automatically_verified` không còn ý nghĩa — mọi candidate hiện chỉ có đúng
-một trạng thái sinh xong (`completed` trong `CandidateProgressRecord`), rồi
-mới đến review nếu có. Tiêu chí bắt buộc-đưa-vào-review dưới đây vẫn còn giá
-trị tham khảo cho khi triển khai, **trừ tiêu chí grounding** (không còn
-`grounding_score` nào được tính, vì gate 1 vốn là nơi tính điểm đó):
-
-- Candidate phái sinh từ fact vừa đổi `fact_content_sha256`
-- Toàn bộ lượt `underspecified` và `unanswerable`
-- Toàn bộ candidate multi-hop và temporal
-
-Phần còn lại lấy mẫu ngẫu nhiên với cỡ mẫu đủ để ước lượng tỷ lệ lỗi. Tỷ lệ
-lỗi ước lượng được công bố cùng mỗi bản phát hành ground truth.
-
-Người duyệt ở tầng này không kiểm lại nội dung pháp lý của fact, vì việc đó đã
-xong ở mục 3. Họ chỉ xác nhận:
-
-- Tình huống hợp lý và không mơ hồ
-- Đáp án không bỏ sót chế tài mà fact đã nêu
-- Hard negatives không phải căn cứ thay thế
-- Hội thoại multi-turn không tự mâu thuẫn
-
-## 14. Chia dataset
+## 14. Chia dataset — ngoài phạm vi hiện tại
 
 ```text
 ground_truth_dev.jsonl
@@ -838,45 +813,33 @@ liệu, không phải một bước lọc riêng có thể quên.
 
 ```text
 schema_version
-sample_id
-conversation_id
-turn_id
-interaction_type
+question_id              (= candidate sample_id)
+question                 (= candidate query_vi)
+expected_answer          (= candidate reference_answer_vi)
+expected_chunk_ids       (= candidate gold_chunk_ids)
 scenario_id
-query_vi
-standalone_query
-reference_answer_vi
+interaction_type         (= single_turn)
+bundle_kind
+bridge
 required_claims          (claim, fact_id, evidence[chunk_id, quoted_span])
 answer_fields            (chép cơ học từ fact, so khớp tất định)
 reasoning_vi
-evolutions               (chuỗi phép evolution đã áp dụng)
-gold_evidence
-hard_negative_chunk_ids
+evolutions
 query_type
 query_form
 persona
 query_style
 query_length
-answerability            (bốn giá trị, dùng thẳng như scenario đã yêu cầu — không có nhãn quan sát tách riêng)
+answerability
 as_of_date
 reasoning_hops
-difficulty
-salience_weight
 source_fact_ids
 source_fact_content_sha256
-corpus_snapshot_id
 generator_model
-generator_prompt_version
-goal_completion          (mức hội thoại, từ simulator)
-stop_reason              (mức hội thoại, từ simulator)
 ```
 
-`source_fact_content_sha256` cho phép phát hiện candidate `stale` khi fact
-nguồn thay đổi, mà không phải sinh lại toàn bộ dataset.
-
-`answerability_observed`, `grounding_score`, `verifier_model`,
-`verification_results`, `review_status` đã bỏ khỏi schema — không còn gate
-hay verifier nào sinh ra các trường này (xem mục 7, 10).
+`question`, `expected_answer`, và `expected_chunk_ids` là ba trường evaluation
+CLI đọc trực tiếp. Các trường còn lại giữ provenance và nhãn synthesis.
 
 ## 16. Đánh giá RAG
 
@@ -954,17 +917,8 @@ data/benchmark_synthesis/
 ├── scenarios.jsonl
 ├── candidates/
 │   ├── single_turn.jsonl
-│   ├── single_turn.progress.jsonl
-│   └── multi_turn.jsonl
-├── reviews/
-│   └── reviewed_candidates.jsonl
-├── ground_truth/
-│   ├── dev.jsonl
-│   ├── test.jsonl
-│   └── hidden_test.jsonl
-└── reports/
-    ├── generation_report.json
-    └── coverage_report.json
+│   └── single_turn.progress.jsonl
+└── ground_truth.jsonl
 ```
 
 ## Tài liệu tham khảo phương pháp
@@ -1017,14 +971,13 @@ Các mục 1 tới 8 không cần retriever và nên hoàn thành trước.
    2 và gán nhãn lại. ✅ **Đã xong, sau đó đã bỏ.** Toàn bộ vòng tinh chỉnh
    bề mặt, cổng 1 và cổng 2 bị bỏ theo quyết định "tin tưởng hoàn toàn LLM"
    (mục 6/7/10) — chỉ còn generation + evolution.
-9. Chạy pilot, đo tỷ lệ lỗi trên mẫu review, ổn định schema candidate.
-10. Implement retriever. Đây là điều kiện chặn cho hai mục kế tiếp.
-11. Implement hard-negative mining, difficulty scoring và leakage analysis.
-12. Implement multi-turn bằng user simulator hướng mục tiêu với oracle bám
-    gold evidence; người viết hoặc sửa các lượt `underspecified` và
-    `unanswerable`.
-13. Xuất các split theo `fact_id` và implement đánh giá retrieval,
-    oracle-generator, oracle trộn nhiễu và end-to-end.
+9. Chạy pilot single-turn và ổn định schema candidate. ✅ **Đã xong.** Review
+   bằng agent bên ngoài không thuộc pipeline và không chặn bước tiếp theo.
+10. Export candidate sang schema evaluation bằng `legal-export-groundtruth`.
+    ✅ **Đã xong.** Đây là điểm kết thúc của deliverable hiện tại.
+
+Retriever-specific hard negatives, difficulty/leakage, multi-turn và dataset
+splits đã được loại khỏi phạm vi hiện tại.
 
 Không bắt đầu sinh dữ liệu hàng loạt trước khi schema fact và temporal
 metadata đã ổn định.
@@ -1061,7 +1014,7 @@ còn tồn tại; nội dung này được viết lại ở Phase 0.
 
 **Đổi lại sau đó:** tên `evaluation/` gây hiểu lầm — nó đọc như "đo lường chất
 lượng hệ RAG", trong khi toàn bộ module ở đây chỉ *sinh* dữ liệu ground truth
-(fact → duyệt → evidence graph → scenario → candidate), không đo gì cả. Việc
+(fact → evidence graph → scenario → candidate), không đo gì cả. Việc
 đo lường thật (Recall@k, Faithfulness, Answer correctness...),
 mục 16) là một mối quan tâm khác, chưa có code, sẽ cần vị trí riêng của nó khi
 tới Phase 8. Do đó `src/legal_rag/evaluation/` và `data/evaluation/` được đổi
@@ -1443,20 +1396,25 @@ nhiều span). `test_candidate_generation.py`,
 `test_verification.py` (gồm parametrize trên cả 6 chiều Cổng 2) theo mẫu mock
 BAML đã có. `tests/test_candidate_generation_cli.py` tích hợp CLI đầu-cuối.
 
-### Phase 4 — Pilot và ổn định schema (mục 9)
+### Phase 4 — Pilot và ổn định schema (mục 9) ✅ Đã hoàn tất
 
-Không có code mới. Chạy Phase 1-3 trên riêng 168/2024/NĐ-CP, đo tỷ lệ loại ở
-từng cổng, đưa một mẫu cho chuyên gia xem theo mục 13 (review theo rủi ro),
-sau đó mới khóa schema `LegalFact`/`GroundTruthCandidate` trước khi mở rộng
-ra toàn corpus.
+Không có code review trong phase này. Pipeline đã chạy pilot single-turn và
+khóa schema candidate hiện tại. Review bằng agent bên ngoài là hoạt động độc
+lập, không phải điều kiện để chuyển sang Phase 5.
 
-### Phase 5 — Retriever (mục 10)
+### Phase 5 — Export evaluation ground truth ✅ Đã triển khai
 
-Ngoài phạm vi kế hoạch này. `src/legal_rag/retrieval/` đã bị xóa khỏi repo và
-cần được dựng lại như một nhánh công việc riêng — Phase 6 không thể bắt đầu
-tới khi phase này xong.
+- `groundtruth_export.py` — ánh xạ candidate sang schema evaluation nhưng giữ
+  lại metadata synthesis.
+- `groundtruth_export_cli.py` — đọc `candidates/single_turn.jsonl` và ghi
+  nguyên tử `ground_truth.jsonl` qua lệnh `legal-export-groundtruth`.
 
-### Phase 6 — Hard negatives và difficulty (mục 11, chặn bởi Phase 5)
+### Các phase mở rộng đã loại khỏi phạm vi hiện tại
+
+Các thiết kế dưới đây chỉ còn là ghi chú lịch sử, không thuộc deliverable
+hiện tại.
+
+#### Hard negatives và difficulty
 
 - `hard_negatives.py` — chạy retriever, loại trước các chunk đã thuộc
   evidence set của bất kỳ fact nào bằng tập hợp, gọi BAML xác nhận negative
@@ -1464,7 +1422,7 @@ tới khi phase này xong.
 - `leakage.py` — chạy candidate qua ba chế độ closed-book / oracle /
   oracle-trộn-nhiễu, ghi leakage score và difficulty vào candidate.
 
-### Phase 7 — Multi-turn simulator (mục 12)
+#### Multi-turn simulator
 
 - `multiturn_simulator.py` — vòng lặp hai vai: goal state dựng từ
   `required_claims` của scenario, simulator tiết lộ dần, oracle chỉ đọc gold
@@ -1478,12 +1436,11 @@ history) -> OracleTurn`.
 Các lượt `underspecified`/`unanswerable` không sinh bằng simulator — quy
 trình thủ công nằm ngoài phạm vi code, không cần module.
 
-### Phase 8 — Split, coverage và đánh giá (mục 13)
+#### Split, coverage và đánh giá mở rộng
 
 - `dedup.py` — cụm embedding cosine `dedup_cosine_threshold`, gán
   `salience_weight`.
 - `coverage.py` — báo cáo tỷ lệ fact có candidate, danh sách fact chưa phủ.
-- `review_sampling.py` — chọn mẫu bắt buộc + mẫu ngẫu nhiên theo mục 13.
 - `splitting.py` — chia `dev`/`test`/`hidden_test` theo thành phần liên thông
   của evidence graph chứa `fact_id`, không theo từng candidate.
 
@@ -1521,10 +1478,10 @@ cần khai báo dependency trực tiếp ở thời điểm đó.
 - `data/evaluation/evaluation-data.md`: viết lại theo pipeline mới hoặc xóa.
   ✅ **Đã áp dụng** ở Phase 0.
 - `src/legal_rag/evaluation/` và `data/evaluation/` đổi tên thành
-  `src/legal_rag/benchmark_synthesis/` và `data/benchmark_synthesis/`
-  (`evaluation-data.md` → `benchmark-synthesis-data.md`), `evaluation_cli.py`
-  đổi tên thành `fact_extraction_cli.py`, để tên khớp mục đích thật (sinh
-  benchmark) thay vì đọc như đo lường RAG. ✅ **Đã áp dụng.**
+  `src/legal_rag/benchmark_synthesis/` và `data/benchmark_synthesis/`, còn
+  data guide trung gian đã được xóa. `evaluation_cli.py` đổi tên thành
+  `fact_extraction_cli.py`, để tên khớp mục đích thật (sinh benchmark) thay vì
+  đọc như đo lường RAG. ✅ **Đã áp dụng.**
 - `baml_transport.py`: tách khỏi `parser/image_captioner.py` khi cần dùng lại
   cho `chunk_screening.py`/`fact_extraction.py`. ✅ **Đã áp dụng** ở Phase 1,
   không nằm trong kế hoạch gốc.
