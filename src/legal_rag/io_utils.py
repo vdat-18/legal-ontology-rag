@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+import time
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import TextIO
@@ -13,6 +14,27 @@ _JSONL_LINE_SEPARATOR_ESCAPES = {
     0x2028: "\\u2028",
     0x2029: "\\u2029",
 }
+
+_REPLACE_RETRY_DELAYS_SECONDS = (0.1, 0.2, 0.4, 0.8, 1.6)
+
+
+def _replace_with_retry(source: Path, destination: Path) -> None:
+    """Replace destination with source, retrying past transient Windows file locks.
+
+    On Windows, antivirus/indexer/editor processes can briefly hold an open handle on the
+    destination file, making os.replace raise PermissionError (WinError 5) even though nothing
+    is actually wrong with the write. This is especially likely for outputs rewritten in a tight
+    loop, such as per-pair checkpoint files. Retrying with a short backoff clears almost all of
+    these without masking a genuine permissions problem, since we still raise after exhausting it.
+    """
+    for delay in (*_REPLACE_RETRY_DELAYS_SECONDS, None):
+        try:
+            source.replace(destination)
+            return
+        except PermissionError:
+            if delay is None:
+                raise
+            time.sleep(delay)
 
 
 def write_jsonl_atomic(output_path: Path, records: Iterable[Mapping[str, object]]) -> None:
@@ -30,7 +52,7 @@ def write_jsonl_atomic(output_path: Path, records: Iterable[Mapping[str, object]
             temporary_path = Path(temporary_file.name)
             for record in records:
                 _write_jsonl_record(temporary_file, record)
-        temporary_path.replace(output_path)
+        _replace_with_retry(temporary_path, output_path)
         temporary_path = None
     finally:
         if temporary_path is not None:
@@ -52,7 +74,7 @@ def write_json_atomic(output_path: Path, record: Mapping[str, object]) -> None:
             temporary_path = Path(temporary_file.name)
             json.dump(record, temporary_file, ensure_ascii=False, indent=2, sort_keys=True)
             temporary_file.write("\n")
-        temporary_path.replace(output_path)
+        _replace_with_retry(temporary_path, output_path)
         temporary_path = None
     finally:
         if temporary_path is not None:

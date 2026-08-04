@@ -39,8 +39,8 @@
       "temperature": 0.0
     },
     "evidence_relation": {
-      "batch_size": 5,
-      "max_concurrency": 4,
+      "batch_size": 10,
+      "max_concurrency": 10,
       "retrieval": {
         "max_candidates_per_fact": 5,
         "min_similarity": 0.5,
