@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -149,7 +150,23 @@ def _to_response(result: GraphitiRAGResult) -> QueryResponse:
     )
 
 
-DEFAULT_CORS_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
+DEFAULT_CORS_ORIGINS = (
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+)
+
+
+def _configured_cors_origins() -> tuple[str, ...]:
+    """Read the browser origins allowed to call this API from the environment.
+
+    The frontend dev server moves to the next free port when its default is taken, so the
+    default covers both of the usual ones; anything else (a LAN address, a deployed origin)
+    is set through ``GRAPHITI_API_CORS_ORIGINS`` as a comma-separated list.
+    """
+    configured = os.environ.get("GRAPHITI_API_CORS_ORIGINS", "")
+    return tuple(origin.strip() for origin in configured.split(",") if origin.strip()) or DEFAULT_CORS_ORIGINS
 
 
 def create_app(
@@ -157,7 +174,7 @@ def create_app(
     pipeline_factory: PipelineFactory | None = None,
     group_id: str = "traffic_penalty_groundtruth_v1",
     corpus_config_path: Path | None = None,
-    cors_origins: Sequence[str] = DEFAULT_CORS_ORIGINS,
+    cors_origins: Sequence[str] | None = None,
 ) -> FastAPI:
     """Create the FastAPI application serving the Graphiti knowledge-graph pipeline.
 
@@ -167,8 +184,9 @@ def create_app(
         corpus_config_path: Corpus config used to flag citations outside the indexed documents.
         cors_origins: Browser origins allowed to call this API. The chat frontend runs on its own
             dev server, so it is a cross-origin caller and is blocked without an explicit allow
-            list; the default covers that dev server only, never a wildcard.
+            list. Defaults to the frontend dev-server origins, never a wildcard.
     """
+    allowed_origins = tuple(cors_origins) if cors_origins is not None else _configured_cors_origins()
     provider = PipelineProvider(
         pipeline_factory=pipeline_factory, group_id=group_id, corpus_config_path=corpus_config_path
     )
@@ -188,7 +206,7 @@ def create_app(
     )
     fastapi_app.add_middleware(
         CORSMiddleware,
-        allow_origins=list(cors_origins),
+        allow_origins=list(allowed_origins),
         allow_methods=["GET", "POST"],
         allow_headers=["Content-Type"],
     )

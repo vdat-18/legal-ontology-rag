@@ -221,7 +221,10 @@ class NaiveRagSettings:
     milvus_nprobe: int = 16
     milvus_insert_batch_size: int = 200
     milvus_flush_after_insert: bool = True
-    answer_max_output_tokens: int = 4096
+    # DeepSeek spends output tokens on reasoning before the answer, and one context is sent per
+    # supporting chunk, so a grounded answer over ten multi-source facts runs close to 3k tokens.
+    # Too small a budget truncates the response into an empty string that cannot be parsed.
+    answer_max_output_tokens: int = 8192
     answer_temperature: float = 0.3
     max_response_bytes: int = 1_048_576
 
@@ -301,7 +304,10 @@ class GraphitiSettings:
     search_num_results: int = 30
     max_context_facts: int = 10
     effective_date_window_token_budget: int = 40_000
-    answer_max_output_tokens: int = 4096
+    # DeepSeek spends output tokens on reasoning before the answer, and one context is sent per
+    # supporting chunk, so a grounded answer over ten multi-source facts runs close to 3k tokens.
+    # Too small a budget truncates the response into an empty string that cannot be parsed.
+    answer_max_output_tokens: int = 8192
     answer_temperature: float = 0.3
     query_rewrite_max_output_tokens: int = 2048
     effective_date_max_output_tokens: int = 2048
