@@ -70,14 +70,22 @@ export default function Home() {
         </div>
       )}
 
-      <div className="transcript">
+      <div className="transcript" aria-live="polite" aria-busy={pending}>
         {turns.map((turn, index) => (
           <div key={index} className="turn">
             <div className="bubble question">{turn.question}</div>
 
-            {turn.error && <div className="bubble error">Lỗi: {turn.error}</div>}
+            {turn.error && (
+              <div className="bubble error" role="alert">
+                Lỗi: {turn.error}
+              </div>
+            )}
 
-            {!turn.response && !turn.error && <div className="bubble thinking">Đang tra cứu đồ thị…</div>}
+            {!turn.response && !turn.error && (
+              <div className="bubble thinking" role="status">
+                Đang tra cứu đồ thị…
+              </div>
+            )}
 
             {turn.response && (
               <div className="bubble answer">
@@ -100,6 +108,7 @@ export default function Home() {
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder="Nhập câu hỏi về luật giao thông…"
+          aria-label="Câu hỏi về luật giao thông"
           disabled={pending}
           autoFocus
         />

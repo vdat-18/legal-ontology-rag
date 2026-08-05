@@ -21,3 +21,18 @@ npm run dev                          # http://localhost:3000
 
 The API allows the `localhost:3000` origin by default; serving the UI from another origin needs
 that origin passed to `create_app(cors_origins=...)`.
+
+## Design review
+
+The UI has not been reviewed with Vercel's `web-design-guidelines` / `react-best-practices`
+skills, which need Node.js to install:
+
+```bash
+npx skills add vercel-labs/agent-skills -a claude-code --skill web-design-guidelines
+npx skills add vercel-labs/agent-skills -a claude-code --skill react-best-practices
+```
+
+Applied by hand in the meantime: accessible name on the composer input, `aria-live` on the
+transcript so answers are announced, `role="status"`/`role="alert"` on pending and error states,
+`aria-expanded` on the reasoning toggle, a visible `:focus-visible` ring, and a
+`prefers-reduced-motion` guard.
