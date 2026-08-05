@@ -13,35 +13,17 @@ import type { QueryResponse } from "./types";
  */
 export function Reasoning({ response }: { response: QueryResponse }) {
   const [open, setOpen] = useState(false);
-  const rewritten = response.rewritten_query !== response.query;
 
   return (
     <div className="reasoning">
       <button className="reasoning-toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
         {open ? "▾" : "▸"} Suy luận · {response.sources.length} fact
-        {rewritten ? " · câu hỏi đã được viết lại" : ""}
       </button>
 
       {open && (
         <div className="reasoning-body">
           <section>
-            <h4>1. Truy vấn dùng để tìm trong đồ thị</h4>
-            {rewritten ? (
-              <>
-                <p className="muted">Câu hỏi gốc: {response.query}</p>
-                <p className="rewritten">→ {response.rewritten_query}</p>
-                <p className="muted small">
-                  Đồ thị lưu thuật ngữ pháp lý chính thức, nên câu hỏi thông tục được viết lại
-                  trước khi tìm kiếm.
-                </p>
-              </>
-            ) : (
-              <p className="muted">Dùng nguyên văn câu hỏi.</p>
-            )}
-          </section>
-
-          <section>
-            <h4>2. Facts truy xuất từ đồ thị ({response.sources.length})</h4>
+            <h4>Facts truy xuất từ đồ thị ({response.sources.length})</h4>
             {response.sources.length === 0 ? (
               <p className="muted">Không tìm thấy fact nào — câu trả lời không có căn cứ.</p>
             ) : (
