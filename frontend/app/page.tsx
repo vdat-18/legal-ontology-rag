@@ -4,8 +4,6 @@ import { useState } from "react";
 import { Reasoning } from "./Reasoning";
 import type { QueryResponse, Turn } from "./types";
 
-const API_URL = process.env.NEXT_PUBLIC_GRAPHITI_API_URL ?? "http://127.0.0.1:8100";
-
 const EXAMPLES = [
   "Vượt đèn đỏ phạt bao nhiêu tiền?",
   "Nồng độ cồn vượt mức bị xử phạt thế nào?",
@@ -13,7 +11,8 @@ const EXAMPLES = [
 ];
 
 async function askGraph(question: string): Promise<QueryResponse> {
-  const response = await fetch(`${API_URL}/graphiti/query`, {
+  // Same-origin proxy route, so one tunnel exposes the whole app and CORS never applies.
+  const response = await fetch("/api/query", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query: question }),

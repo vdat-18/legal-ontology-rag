@@ -25,6 +25,8 @@ function GenerateAnswer(
     Cách trả lời:
     - Viết tự nhiên như đang nói với người hỏi. Nêu ngay con số họ cần biết ở
       câu đầu tiên, không mở bài dài dòng.
+    - Trả lời TỐI ĐA khoảng 150 từ. Chỉ nêu các mức phạt liên quan trực tiếp
+      đến câu hỏi, không liệt kê mọi quy định tìm được.
     - Khi mức phạt khác nhau theo loại phương tiện hoặc đối tượng, tách thành
       từng ý rõ ràng cho từng nhóm (ô tô, xe máy, xe đạp, người đi bộ...).
     - Nêu đủ hình phạt bổ sung nếu có (trừ điểm giấy phép lái xe, tước bằng...).

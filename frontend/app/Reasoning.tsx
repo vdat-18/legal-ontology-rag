@@ -6,10 +6,8 @@ import type { QueryResponse } from "./types";
 /**
  * Show how an answer was reached, from the pipeline's own trace.
  *
- * These are the real retrieval steps, not a narrated chain of thought: the question the graph
- * was actually searched with, the facts that came back, and the chunk each fact was extracted
- * from. That makes an answer checkable — a wrong answer is usually a wrong rewrite or a fact
- * retrieved from the wrong document, and both are visible here.
+ * These are the real facts retrieved from the graph, not a narrated chain of thought, so an
+ * answer can be checked against what actually grounded it rather than taken on trust.
  */
 export function Reasoning({ response }: { response: QueryResponse }) {
   const [open, setOpen] = useState(false);
@@ -31,14 +29,6 @@ export function Reasoning({ response }: { response: QueryResponse }) {
                 {response.sources.map((fact, index) => (
                   <li key={index}>
                     <p>{fact.fact}</p>
-                    <ul className="sources">
-                      {fact.sources.map((source) => (
-                        <li key={source.chunk_id}>
-                          <span className="doc">{source.source_name}</span>
-                          <code>{source.chunk_id.slice(0, 12)}…</code>
-                        </li>
-                      ))}
-                    </ul>
                   </li>
                 ))}
               </ol>

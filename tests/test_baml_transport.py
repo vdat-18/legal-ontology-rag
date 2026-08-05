@@ -148,7 +148,8 @@ def test_execute_baml_request_raises_on_oversized_response(monkeypatch: pytest.M
         (b"not-json", json.JSONDecodeError),
         (b"[]", AttributeError),
         (b"{}", KeyError),
-        (b'{"choices":"invalid"}', TypeError),
+        # a string in place of the choices list is indexed then probed for finish_reason
+        (b'{"choices":"invalid"}', AttributeError),
     ],
 )
 def test_openai_response_exposes_native_schema_errors(
@@ -299,3 +300,23 @@ def test_no_extra_request_body_leaves_the_request_untouched() -> None:
         http.client.HTTPConnection = original  # type: ignore[misc]
 
     assert "thinking" not in sent
+
+
+def test_truncated_completion_reports_the_token_limit_not_a_coercion_error() -> None:
+    """A response cut off at the limit must say so; it otherwise parses as an empty value."""
+    response = json.dumps(
+        {
+            "choices": [{"finish_reason": "length", "message": {"content": '{"answer_vi": "mot phan'}}],
+            "usage": {"completion_tokens": 8192},
+        }
+    ).encode()
+
+    with pytest.raises(baml_transport.BamlTruncatedResponseError, match="8192 output tokens"):
+        baml_transport._openai_response_content(response)
+
+
+def test_a_completed_response_is_returned_unchanged() -> None:
+    """Only a length-truncated response is rejected, not every finish_reason."""
+    response = json.dumps({"choices": [{"finish_reason": "stop", "message": {"content": "ok"}}]}).encode()
+
+    assert baml_transport._openai_response_content(response) == "ok"

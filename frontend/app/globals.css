@@ -87,13 +87,6 @@ h4 { margin: 0 0 .4rem; font-size: .85rem; text-transform: uppercase; letter-spa
 .reasoning-body p { margin: .2rem 0; }
 
 .facts { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: .7rem; }
-.sources { list-style: none; margin: .3rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: .4rem; }
-.sources li {
-  display: flex; gap: .4rem; align-items: center;
-  background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: .15rem .5rem; font-size: .78rem;
-}
-.doc { color: var(--muted); }
-code { font-family: ui-monospace, monospace; font-size: .75rem; color: var(--muted); }
 
 .composer {
   position: fixed; bottom: 0; left: 0; right: 0;

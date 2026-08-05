@@ -27,6 +27,19 @@ class BamlTransportError(ValueError):
         return cls(f"BAML provider response exceeded {max_response_bytes} bytes")
 
 
+class BamlTruncatedResponseError(BamlTransportError):
+    """Raised when the provider stopped at the token limit, leaving unparseable output."""
+
+    @classmethod
+    def hit_token_limit(cls, output_tokens: int | None) -> BamlTruncatedResponseError:
+        """Build an error naming the limit that cut the response off."""
+        used = f" after {output_tokens} output tokens" if output_tokens else ""
+        return cls(
+            f"BAML provider stopped at its token limit{used}, so the response is incomplete. "
+            "Raise the call's max output tokens or ask the prompt for a shorter answer."
+        )
+
+
 class BamlRateLimitError(BamlTransportError):
     """Raised when the provider rejects a request due to quota limits."""
 
@@ -183,7 +196,12 @@ def _openai_response_content(response_bytes: bytes) -> str:
             raise BamlRateLimitError.provider_rate_limited(json.dumps(provider_error, ensure_ascii=False))
         raise BamlTransportError(json.dumps(provider_error, ensure_ascii=False))
     _log_token_usage(response)
-    return response["choices"][0]["message"]["content"]
+    choice = response["choices"][0]
+    # A truncated completion parses as an empty value further down the stack, which reads as a
+    # coercion bug rather than the budget problem it is.
+    if choice.get("finish_reason") == "length":
+        raise BamlTruncatedResponseError.hit_token_limit((response.get("usage") or {}).get("completion_tokens"))
+    return choice["message"]["content"]
 
 
 def _log_token_usage(response: dict[str, Any]) -> None:
