@@ -245,3 +245,31 @@ def test_no_history_store_still_answers() -> None:
 
     assert response.status_code == 200
     assert pipeline.histories == [[]]
+
+
+def test_history_endpoint_returns_the_session_transcript() -> None:
+    """A reloaded page restores what was said from the server, not from the browser."""
+    pipeline = _FakePipeline()
+    history = _FakeHistory()
+    app = server.create_app(pipeline_factory=lambda: pipeline, group_id="g1", history=history)
+
+    with TestClient(app) as client:
+        client.post("/graphiti/query", json={"query": "ô tô vượt đèn đỏ", "session_id": "s1"})
+        response = client.get("/graphiti/history/s1")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "session_id": "s1",
+        "turns": [{"question": "ô tô vượt đèn đỏ", "answer": "Phạt tiền từ 18 đến 20 triệu đồng."}],
+    }
+
+
+def test_history_endpoint_is_empty_for_an_unknown_session() -> None:
+    """A first visit restores an empty chat rather than failing."""
+    app = server.create_app(pipeline_factory=_FakePipeline, group_id="g1", history=_FakeHistory())
+
+    with TestClient(app) as client:
+        response = client.get("/graphiti/history/never-seen")
+
+    assert response.status_code == 200
+    assert response.json()["turns"] == []

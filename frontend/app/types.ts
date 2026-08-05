@@ -21,9 +21,22 @@ export interface QueryResponse {
   unindexed_citations: string[];
 }
 
-/** One turn in the transcript. A pending turn has no answer yet. */
+/**
+ * One turn in the transcript.
+ *
+ * A pending turn has neither `response` nor `restoredAnswer`. A turn restored after a reload
+ * carries `restoredAnswer` instead of a full `response`, because the server keeps what was said
+ * but not the facts each answer was grounded in — so its reasoning trace cannot be shown again.
+ */
 export interface Turn {
   question: string;
   response?: QueryResponse;
+  restoredAnswer?: string;
   error?: string;
+}
+
+/** One stored exchange returned when a session's transcript is restored. */
+export interface HistoryTurn {
+  question: string;
+  answer: string;
 }

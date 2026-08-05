@@ -58,6 +58,20 @@ class QueryResponse(BaseModel):
     unindexed_citations: list[str]
 
 
+class HistoryTurnResponse(BaseModel):
+    """One completed exchange in a session's transcript."""
+
+    question: str
+    answer: str
+
+
+class HistoryResponse(BaseModel):
+    """A session's stored transcript, oldest turn first."""
+
+    session_id: str
+    turns: list[HistoryTurnResponse]
+
+
 class HealthResponse(BaseModel):
     """API health and sanitized runtime configuration."""
 
@@ -242,6 +256,20 @@ def create_app(
         if history is not None and session_id:
             await run_in_threadpool(history.append, session_id, payload.query, result.answer)
         return _to_response(result)
+
+    @fastapi_app.get("/graphiti/history/{session_id}", response_model=HistoryResponse)
+    async def read_history(session_id: str) -> HistoryResponse:
+        """Return a session's transcript so a reloaded page can restore what was said.
+
+        The transcript is server state rather than something the browser keeps, so reopening the
+        page restores the same conversation the model is still reasoning against; a copy held only
+        in the tab would drift out of step with the context used to resolve follow-up questions.
+        """
+        turns = await run_in_threadpool(history.load, session_id) if history is not None else []
+        return HistoryResponse(
+            session_id=session_id,
+            turns=[HistoryTurnResponse(question=turn.question, answer=turn.answer) for turn in turns],
+        )
 
     return fastapi_app
 

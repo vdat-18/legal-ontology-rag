@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Reasoning } from "./Reasoning";
-import type { QueryResponse, Turn } from "./types";
+import type { HistoryTurn, QueryResponse, Turn } from "./types";
 
 const EXAMPLES = [
   "Vượt đèn đỏ phạt bao nhiêu tiền?",
@@ -24,17 +24,42 @@ async function askGraph(question: string, sessionId: string): Promise<QueryRespo
   return response.json();
 }
 
+const SESSION_KEY = "graphiti-chat-session";
+
+/** Reuse this browser's session id across reloads, minting one on first visit. */
+function loadSessionId(): string {
+  const stored = window.localStorage.getItem(SESSION_KEY);
+  if (stored) return stored;
+  const created = crypto.randomUUID();
+  window.localStorage.setItem(SESSION_KEY, created);
+  return created;
+}
+
 export default function Home() {
-  // One id per browser tab: the server keys conversation context on it, so a follow-up like
-  // "còn xe máy thì sao?" is resolved against this tab's earlier turns and no one else's.
-  const [sessionId] = useState(() => crypto.randomUUID());
+  // Kept in localStorage so a reload rejoins the same conversation: the server keys context on
+  // this id, and a fresh id would silently start a new one while the old transcript lingered.
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
 
+  useEffect(() => {
+    // localStorage and crypto are browser-only, so the id is resolved after mount rather than
+    // during render, which would break the server-rendered pass.
+    const id = loadSessionId();
+    setSessionId(id);
+
+    fetch(`/api/history/${id}`)
+      .then((response) => (response.ok ? response.json() : { turns: [] }))
+      .then((data: { turns?: HistoryTurn[] }) => {
+        setTurns((data.turns ?? []).map((turn) => ({ question: turn.question, restoredAnswer: turn.answer })));
+      })
+      .catch(() => setTurns([]));
+  }, []);
+
   async function submit(question: string) {
     const trimmed = question.trim();
-    if (!trimmed || pending) return;
+    if (!trimmed || pending || !sessionId) return;
 
     setDraft("");
     setPending(true);
@@ -83,7 +108,7 @@ export default function Home() {
               </div>
             )}
 
-            {!turn.response && !turn.error && (
+            {!turn.response && !turn.restoredAnswer && !turn.error && (
               <div className="bubble thinking" role="status">
                 <span>Đang suy nghĩ</span>
                 <span className="dots" aria-hidden="true">
@@ -98,6 +123,12 @@ export default function Home() {
               <div className="bubble answer">
                 <p>{turn.response.answer}</p>
                 <Reasoning response={turn.response} />
+              </div>
+            )}
+
+            {turn.restoredAnswer && (
+              <div className="bubble answer">
+                <p>{turn.restoredAnswer}</p>
               </div>
             )}
           </div>
@@ -116,10 +147,10 @@ export default function Home() {
           onChange={(event) => setDraft(event.target.value)}
           placeholder="Nhập câu hỏi về luật giao thông…"
           aria-label="Câu hỏi về luật giao thông"
-          disabled={pending}
+          disabled={pending || !sessionId}
           autoFocus
         />
-        <button type="submit" disabled={pending || !draft.trim()}>
+        <button type="submit" disabled={pending || !draft.trim() || !sessionId}>
           {pending ? "…" : "Gửi"}
         </button>
       </form>
