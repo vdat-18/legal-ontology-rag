@@ -10,13 +10,15 @@ from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from legal_rag.graphiti_rag.history import ConversationHistory, RedisConversationHistory
 from legal_rag.graphiti_rag.indexer import load_corpus_metadata
 from legal_rag.graphiti_rag.pipeline import GraphitiRAGPipeline, GraphitiRAGResult
-from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
+from legal_rag.settings import GraphitiSettings, Neo4jSettings, RedisSettings, Settings
 
 
 class QueryRequest(BaseModel):
@@ -24,6 +26,7 @@ class QueryRequest(BaseModel):
 
     query: str = Field(..., min_length=1)
     max_facts: int | None = Field(None, ge=1, le=100)
+    session_id: str | None = Field(None, min_length=1, max_length=200)
 
 
 class FactSourceResponse(BaseModel):
@@ -175,6 +178,7 @@ def create_app(
     group_id: str = "traffic_penalty_groundtruth_v1",
     corpus_config_path: Path | None = None,
     cors_origins: Sequence[str] | None = None,
+    history: ConversationHistory | None = None,
 ) -> FastAPI:
     """Create the FastAPI application serving the Graphiti knowledge-graph pipeline.
 
@@ -185,6 +189,8 @@ def create_app(
         cors_origins: Browser origins allowed to call this API. The chat frontend runs on its own
             dev server, so it is a cross-origin caller and is blocked without an explicit allow
             list. Defaults to the frontend dev-server origins, never a wildcard.
+        history: Store of earlier turns per session. Without one the API answers each question on
+            its own, so a follow-up that leans on the previous turn cannot be resolved.
     """
     allowed_origins = tuple(cors_origins) if cors_origins is not None else _configured_cors_origins()
     provider = PipelineProvider(
@@ -230,7 +236,11 @@ def create_app(
     async def query_graph(payload: QueryRequest, request: Request) -> QueryResponse:
         """Rewrite the question, search the knowledge graph, and answer from the retrieved facts."""
         pipeline = _get_provider(request.app).get_pipeline()
-        result = await pipeline.run(payload.query, max_facts=payload.max_facts)
+        session_id = payload.session_id
+        turns = await run_in_threadpool(history.load, session_id) if history is not None and session_id else []
+        result = await pipeline.run(payload.query, max_facts=payload.max_facts, history=turns)
+        if history is not None and session_id:
+            await run_in_threadpool(history.append, session_id, payload.query, result.answer)
         return _to_response(result)
 
     return fastapi_app
@@ -241,7 +251,14 @@ def _get_provider(app_instance: FastAPI) -> PipelineProvider:
     return app_instance.state.pipeline_provider
 
 
-app = create_app()
+def _configured_history() -> ConversationHistory | None:
+    """Build the conversation store when Redis is configured, otherwise answer statelessly."""
+    if "REDIS_URL" not in os.environ:
+        return None
+    return RedisConversationHistory(RedisSettings.from_environment())
+
+
+app = create_app(history=_configured_history())
 
 
 def main() -> None:

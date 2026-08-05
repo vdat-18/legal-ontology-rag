@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import pytest
 from fastapi.testclient import TestClient
 
+from legal_rag.baml_client.types import ConversationTurn
 from legal_rag.graphiti_rag.api import server
 from legal_rag.graphiti_rag.pipeline import GraphitiRAGResult
 from legal_rag.graphiti_rag.retriever import FactSource, RetrievedFact
@@ -26,11 +29,18 @@ class _FakePipeline:
 
     def __init__(self) -> None:
         self.calls: list[tuple[str, int | None]] = []
+        self.histories: list[list[ConversationTurn]] = []
         self.closed = False
 
-    async def run(self, query: str, max_facts: int | None = None) -> GraphitiRAGResult:
-        """Record the call and return one fixed grounded answer."""
+    async def run(
+        self,
+        query: str,
+        max_facts: int | None = None,
+        history: Sequence[ConversationTurn] = (),
+    ) -> GraphitiRAGResult:
+        """Record the call and the context it was given, returning one fixed grounded answer."""
         self.calls.append((query, max_facts))
+        self.histories.append(list(history))
         return GraphitiRAGResult(
             query=query,
             rewritten_query="không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
@@ -168,3 +178,70 @@ def test_does_not_allow_an_unknown_origin() -> None:
         response = client.post("/graphiti/query", json={"query": "q"}, headers={"Origin": "http://evil.test"})
 
     assert "access-control-allow-origin" not in response.headers
+
+
+class _FakeHistory:
+    """In-memory stand-in for the Redis-backed conversation store."""
+
+    def __init__(self) -> None:
+        self.turns: dict[str, list[ConversationTurn]] = {}
+
+    def load(self, session_id: str) -> list[ConversationTurn]:
+        """Return the recorded turns for a session."""
+        return list(self.turns.get(session_id, []))
+
+    def append(self, session_id: str, question: str, answer: str) -> None:
+        """Record one completed turn."""
+        self.turns.setdefault(session_id, []).append(ConversationTurn(question=question, answer=answer))
+
+
+def test_earlier_turns_are_passed_to_the_pipeline_for_a_session() -> None:
+    """A follow-up must reach the pipeline with its context, or it cannot be resolved."""
+    pipeline = _FakePipeline()
+    history = _FakeHistory()
+    app = server.create_app(pipeline_factory=lambda: pipeline, group_id="g1", history=history)
+
+    with TestClient(app) as client:
+        client.post("/graphiti/query", json={"query": "ô tô vượt đèn đỏ phạt bao nhiêu", "session_id": "s1"})
+        client.post("/graphiti/query", json={"query": "còn xe máy thì sao", "session_id": "s1"})
+
+    assert pipeline.histories[0] == []
+    assert [turn.question for turn in pipeline.histories[1]] == ["ô tô vượt đèn đỏ phạt bao nhiêu"]
+
+
+def test_sessions_do_not_leak_into_one_another() -> None:
+    """One visitor's conversation must never appear in another's context."""
+    pipeline = _FakePipeline()
+    history = _FakeHistory()
+    app = server.create_app(pipeline_factory=lambda: pipeline, group_id="g1", history=history)
+
+    with TestClient(app) as client:
+        client.post("/graphiti/query", json={"query": "câu hỏi của phiên A", "session_id": "a"})
+        client.post("/graphiti/query", json={"query": "câu hỏi của phiên B", "session_id": "b"})
+
+    assert pipeline.histories[1] == []
+
+
+def test_a_request_without_a_session_is_answered_statelessly() -> None:
+    """Omitting session_id must not record anything or borrow another session's context."""
+    pipeline = _FakePipeline()
+    history = _FakeHistory()
+    app = server.create_app(pipeline_factory=lambda: pipeline, group_id="g1", history=history)
+
+    with TestClient(app) as client:
+        client.post("/graphiti/query", json={"query": "câu hỏi lẻ"})
+
+    assert pipeline.histories == [[]]
+    assert history.turns == {}
+
+
+def test_no_history_store_still_answers() -> None:
+    """The API stays usable when no conversation store is configured."""
+    pipeline = _FakePipeline()
+    app = server.create_app(pipeline_factory=lambda: pipeline, group_id="g1")
+
+    with TestClient(app) as client:
+        response = client.post("/graphiti/query", json={"query": "q", "session_id": "s1"})
+
+    assert response.status_code == 200
+    assert pipeline.histories == [[]]

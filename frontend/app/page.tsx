@@ -10,12 +10,12 @@ const EXAMPLES = [
   "Xóa dấu vết hiện trường tai nạn ô tô bị phạt bao nhiêu?",
 ];
 
-async function askGraph(question: string): Promise<QueryResponse> {
+async function askGraph(question: string, sessionId: string): Promise<QueryResponse> {
   // Same-origin proxy route, so one tunnel exposes the whole app and CORS never applies.
   const response = await fetch("/api/query", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query: question }),
+    body: JSON.stringify({ query: question, session_id: sessionId }),
   });
   if (!response.ok) {
     // Surface the server's own message; a bare status hides whether the graph or the LLM failed.
@@ -25,6 +25,9 @@ async function askGraph(question: string): Promise<QueryResponse> {
 }
 
 export default function Home() {
+  // One id per browser tab: the server keys conversation context on it, so a follow-up like
+  // "còn xe máy thì sao?" is resolved against this tab's earlier turns and no one else's.
+  const [sessionId] = useState(() => crypto.randomUUID());
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
@@ -39,7 +42,7 @@ export default function Home() {
     setTurns((current) => [...current, { question: trimmed }]);
 
     try {
-      const response = await askGraph(trimmed);
+      const response = await askGraph(trimmed, sessionId);
       setTurns((current) => current.map((turn, i) => (i === index ? { ...turn, response } : turn)));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

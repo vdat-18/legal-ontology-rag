@@ -30,10 +30,12 @@ class _FakeRewriteClient:
 
     def __init__(self) -> None:
         self.calls: list[str] = []
+        self.histories: list[list[object]] = []
 
-    async def rewrite(self, query: str) -> str:
-        """Return a deterministic rewritten query."""
+    async def rewrite(self, query: str, history: Sequence[object] = ()) -> str:
+        """Return a deterministic rewritten query, recording the history it was given."""
         self.calls.append(query)
+        self.histories.append(list(history))
         return "formal legal query"
 
 

@@ -9,9 +9,11 @@ Rewriting the query into formal terminology before searching closes most of this
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Protocol
 
 from legal_rag.baml_client.sync_client import b
+from legal_rag.baml_client.types import ConversationTurn as BamlConversationTurn
 from legal_rag.baml_transport import BamlCaller
 from legal_rag.settings import GraphitiSettings, Settings
 
@@ -19,8 +21,8 @@ from legal_rag.settings import GraphitiSettings, Settings
 class QueryRewriteClient(Protocol):
     """Boundary implemented by a query-rewriting language-model client."""
 
-    async def rewrite(self, query: str) -> str:
-        """Return *query* rewritten into formal legal terminology."""
+    async def rewrite(self, query: str, history: Sequence[BamlConversationTurn] = ()) -> str:
+        """Return *query* as a standalone question in formal legal terminology."""
 
 
 class BamlQueryRewriteClient:
@@ -35,8 +37,13 @@ class BamlQueryRewriteClient:
             max_response_bytes=graphiti_settings.max_response_bytes,
         )
 
-    async def rewrite(self, query: str) -> str:
-        """Run one bounded BAML call and return the query rewritten into formal legal terms."""
-        request = b.request.RewriteQueryToLegalTerms(query, baml_options=self._caller.options)
+    async def rewrite(self, query: str, history: Sequence[BamlConversationTurn] = ()) -> str:
+        """Resolve the question against earlier turns and put it in formal legal terms.
+
+        Both jobs run in one call: a follow-up like "còn xe máy thì sao?" is meaningless to the
+        graph until the earlier subject is restored, and restoring it separately would cost a
+        second round trip on every turn.
+        """
+        request = b.request.RewriteQueryToLegalTerms(query, list(history), baml_options=self._caller.options)
         raw_output = await self._caller.execute_async(request)
         return b.parse.RewriteQueryToLegalTerms(raw_output, baml_options=self._caller.options).query_vi

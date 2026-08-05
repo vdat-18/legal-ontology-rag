@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from loguru import logger
 
+from legal_rag.baml_client.types import ConversationTurn
 from legal_rag.embedding.profiles import load_configured_embedding_profile
 from legal_rag.graphiti_rag.client import build_graphiti
 from legal_rag.graphiti_rag.generator import generate_answer
@@ -64,13 +66,20 @@ class GraphitiRAGPipeline:
         self._citation_client = BamlDocumentCitationClient(settings, graphiti_settings)
         logger.info("GraphitiRAGPipeline initialized for group '{}'", group_id)
 
-    async def run(self, query: str, max_facts: int | None = None) -> GraphitiRAGResult:
+    async def run(
+        self,
+        query: str,
+        max_facts: int | None = None,
+        history: Sequence[ConversationTurn] = (),
+    ) -> GraphitiRAGResult:
         """Execute the full pipeline for a single query.
 
         Args:
             query: Natural-language question, in whatever phrasing the user typed it.
             max_facts: Override the default maximum number of selected context facts. Must be
                 positive when given.
+            history: Earlier turns of this conversation, oldest first. A follow-up question is
+                resolved against them before the graph is searched.
 
         Returns:
             Result containing the answer, the facts it was grounded in, and any citations to
@@ -83,7 +92,7 @@ class GraphitiRAGPipeline:
             msg = f"max_facts must be positive, got {max_facts}"
             raise ValueError(msg)
 
-        rewritten_query = await self._query_rewrite_client.rewrite(query)
+        rewritten_query = await self._query_rewrite_client.rewrite(query, history)
         if rewritten_query != query:
             logger.debug("Query rewrite completed")
 
