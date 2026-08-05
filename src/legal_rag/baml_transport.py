@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import http.client
 import json
+from collections.abc import Mapping
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
@@ -82,6 +83,7 @@ class BamlCaller:
         temperature: float,
         timeout_seconds: float,
         max_response_bytes: int,
+        extra_request_body: Mapping[str, Any] | None = None,
     ) -> None:
         """Pin one runtime provider and the per-call execution bounds."""
         set_log_level("OFF")
@@ -97,6 +99,7 @@ class BamlCaller:
         }
         self._timeout_seconds = timeout_seconds
         self._max_response_bytes = max_response_bytes
+        self._extra_request_body = extra_request_body
 
     @classmethod
     def from_settings(
@@ -104,6 +107,7 @@ class BamlCaller:
     ) -> BamlCaller:
         """Build a caller from the shared LLM connection settings and one call's own bounds."""
         return cls(
+            extra_request_body=settings.llm_extra_request_body,
             base_url=settings.llm_base_url,
             api_key=settings.llm_api_key,
             model=settings.llm_model,
@@ -115,15 +119,25 @@ class BamlCaller:
 
     def execute(self, request: HTTPRequest) -> str:
         """Run one bounded request and return the provider's raw assistant content."""
-        return execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
+        return execute_baml_request(request, self._timeout_seconds, self._max_response_bytes, self._extra_request_body)
 
     async def execute_async(self, request: HTTPRequest) -> str:
         """Run one bounded request off the event loop, since the transport is blocking."""
         return await asyncio.to_thread(self.execute, request)
 
 
-def execute_baml_request(request: HTTPRequest, timeout_seconds: float, max_response_bytes: int) -> str:
-    """Execute one non-streaming OpenAI-compatible request and return assistant content."""
+def execute_baml_request(
+    request: HTTPRequest,
+    timeout_seconds: float,
+    max_response_bytes: int,
+    extra_request_body: Mapping[str, Any] | None = None,
+) -> str:
+    """Execute one non-streaming OpenAI-compatible request and return assistant content.
+
+    *extra_request_body* carries provider-specific fields that are not part of the
+    OpenAI-compatible schema. It is supplied from configuration rather than inferred, so a
+    field only one provider understands is never sent to a different one.
+    """
     parsed_url = urlsplit(request.url)
     connection_type = http.client.HTTPSConnection if parsed_url.scheme == "https" else http.client.HTTPConnection
     connection = connection_type(parsed_url.hostname, parsed_url.port, timeout=timeout_seconds)
@@ -134,6 +148,8 @@ def execute_baml_request(request: HTTPRequest, timeout_seconds: float, max_respo
     request_body = request.body.json()
     request_body["stream"] = False
     request_body["response_format"] = {"type": "json_object"}
+    if extra_request_body:
+        request_body.update(extra_request_body)
     try:
         connection.request(
             request.method,

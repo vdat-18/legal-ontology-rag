@@ -15,12 +15,20 @@ _MAX_LLM_TEMPERATURE = 2.0
 
 @dataclass(frozen=True, slots=True)
 class Settings:
-    """LLM connection and bounded parser execution settings."""
+    """LLM connection and bounded parser execution settings.
+
+    ``llm_extra_request_body`` holds JSON merged into every chat-completion request, for provider
+    fields outside the OpenAI-compatible schema. It exists because DeepSeek's reasoning mode can
+    spend a whole completion on ``reasoning_content`` and return an empty ``content``, which no
+    caller can parse; ``{"thinking": {"type": "disabled"}}`` turns that off. It is configuration
+    rather than a model-name check, so a field one provider understands is never sent to another.
+    """
 
     llm_base_url: str
     llm_api_key: str = field(repr=False)
     llm_model: str
     llm_timeout_seconds: float
+    llm_extra_request_body: Mapping[str, object] = field(default_factory=dict)
     image_caption_max_concurrency: int = 4
     image_caption_max_output_tokens: int = 2048
     image_caption_max_context_characters: int = 4000
@@ -43,6 +51,7 @@ class Settings:
             llm_api_key=values["LLM_API_KEY"].strip(),
             llm_model=values["LLM_MODEL"].strip(),
             llm_timeout_seconds=float(values["LLM_TIMEOUT_SECONDS"]),
+            llm_extra_request_body=json.loads(values.get("LLM_EXTRA_REQUEST_BODY", "") or "{}"),
         )
 
 

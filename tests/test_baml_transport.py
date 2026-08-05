@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import http.client
 import json
+from typing import ClassVar
 
 import pytest
 from baml_py import Image
@@ -209,3 +210,92 @@ def test_openai_response_logs_token_usage() -> None:
         "model=provider/test-model input_tokens=30000 output_tokens=5000 total_tokens=35000" in message
         for message in messages
     )
+
+
+def test_extra_request_body_is_merged_into_the_request() -> None:
+    """A provider field outside the OpenAI schema reaches the wire when configured."""
+    sent: dict[str, object] = {}
+
+    class _FakeBody:
+        def json(self) -> dict[str, object]:
+            return {"model": "m", "messages": []}
+
+    class _FakeRequest:
+        url = "http://provider.test/v1/chat/completions"
+        method = "POST"
+        headers: ClassVar[dict[str, str]] = {"Content-Type": "application/json"}
+        body = _FakeBody()
+
+    class _FakeResponse:
+        status = 200
+        reason = "OK"
+
+        def read(self, _size: int) -> bytes:
+            return json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode()
+
+    class _FakeConnection:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def request(self, _method: str, _path: str, body: bytes, headers: dict[str, str]) -> None:
+            sent.update(json.loads(body))
+
+        def getresponse(self) -> _FakeResponse:
+            return _FakeResponse()
+
+        def close(self) -> None:
+            pass
+
+    original = http.client.HTTPConnection
+    http.client.HTTPConnection = _FakeConnection  # type: ignore[misc]
+    try:
+        baml_transport.execute_baml_request(_FakeRequest(), 30, 1_048_576, {"thinking": {"type": "disabled"}})
+    finally:
+        http.client.HTTPConnection = original  # type: ignore[misc]
+
+    assert sent["thinking"] == {"type": "disabled"}
+    assert sent["stream"] is False
+
+
+def test_no_extra_request_body_leaves_the_request_untouched() -> None:
+    """Without configuration nothing provider-specific is added, so other providers still work."""
+    sent: dict[str, object] = {}
+
+    class _FakeBody:
+        def json(self) -> dict[str, object]:
+            return {"model": "m", "messages": []}
+
+    class _FakeRequest:
+        url = "http://provider.test/v1/chat/completions"
+        method = "POST"
+        headers: ClassVar[dict[str, str]] = {"Content-Type": "application/json"}
+        body = _FakeBody()
+
+    class _FakeResponse:
+        status = 200
+        reason = "OK"
+
+        def read(self, _size: int) -> bytes:
+            return json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode()
+
+    class _FakeConnection:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def request(self, _method: str, _path: str, body: bytes, headers: dict[str, str]) -> None:
+            sent.update(json.loads(body))
+
+        def getresponse(self) -> _FakeResponse:
+            return _FakeResponse()
+
+        def close(self) -> None:
+            pass
+
+    original = http.client.HTTPConnection
+    http.client.HTTPConnection = _FakeConnection  # type: ignore[misc]
+    try:
+        baml_transport.execute_baml_request(_FakeRequest(), 30, 1_048_576)
+    finally:
+        http.client.HTTPConnection = original  # type: ignore[misc]
+
+    assert "thinking" not in sent

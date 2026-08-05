@@ -83,7 +83,12 @@ export default function Home() {
 
             {!turn.response && !turn.error && (
               <div className="bubble thinking" role="status">
-                Đang tra cứu đồ thị…
+                <span>Đang suy nghĩ</span>
+                <span className="dots" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                </span>
               </div>
             )}
 
