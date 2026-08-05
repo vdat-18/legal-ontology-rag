@@ -11,7 +11,14 @@ from typing import Any, Protocol
 from baml_py.logging import set_log_level
 
 from legal_rag.baml_client.sync_client import b
-from legal_rag.baml_client.types import EvolutionOperation, FactContext
+from legal_rag.baml_client.types import (
+    CandidateEvolutionBatchInput,
+    CandidateGenerationBatchInput,
+    EvolutionOperation,
+    EvolvedCandidateBatchItem,
+    FactContext,
+    GeneratedSingleTurnCandidateBatchItem,
+)
 from legal_rag.baml_client.types import EvolvedCandidate as BamlEvolvedCandidate
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
@@ -23,7 +30,7 @@ from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
 CANDIDATE_SCHEMA_VERSION = "1.1.0"
-CANDIDATE_GENERATION_PROMPT_VERSION = "1.1.0"
+CANDIDATE_GENERATION_PROMPT_VERSION = "1.2.0"
 
 _EVOLUTION_OPERATION_BY_ID: dict[str, EvolutionOperation] = {
     "concretizing": EvolutionOperation.Concretizing,
@@ -193,6 +200,11 @@ class CandidateGenerationClient(Protocol):
     ) -> BamlGeneratedCandidate:
         """Return one typed generated candidate."""
 
+    def generate_batch(
+        self, items: Sequence[CandidateGenerationBatchInput]
+    ) -> Sequence[GeneratedSingleTurnCandidateBatchItem]:
+        """Return one typed generated candidate for every batch item."""
+
     def evolve(
         self,
         query_vi: str,
@@ -202,6 +214,9 @@ class CandidateGenerationClient(Protocol):
         query_length: str,
     ) -> BamlEvolvedCandidate:
         """Return one typed evolved query and answer."""
+
+    def evolve_batch(self, items: Sequence[CandidateEvolutionBatchInput]) -> Sequence[EvolvedCandidateBatchItem]:
+        """Return one typed evolved candidate for every batch item."""
 
 
 class BamlCandidateGenerationClient:
@@ -243,23 +258,33 @@ class BamlCandidateGenerationClient:
         reasoning_hops: int,
         as_of_date: str | None,
     ) -> BamlGeneratedCandidate:
-        """Run one bounded BAML call and return its generated typed result."""
-        request = b.request.GenerateSingleTurnCandidate(
-            list(facts),
-            persona_description,
-            query_style,
-            query_length,
-            query_form,
-            query_type_description,
-            answerability,
-            bundle_kind,
-            list(bridge),
-            reasoning_hops,
-            as_of_date,
+        """Run one candidate through the batch endpoint."""
+        item = CandidateGenerationBatchInput(
+            task_id="single",
+            facts=list(facts),
+            persona_description=persona_description,
+            query_style=query_style,
+            query_length=query_length,
+            query_form=query_form,
+            query_type_description=query_type_description,
+            answerability=answerability,
+            bundle_kind=bundle_kind,
+            bridge=list(bridge),
+            reasoning_hops=reasoning_hops,
+            as_of_date=as_of_date,
+        )
+        return self.generate_batch((item,))[0].candidate
+
+    def generate_batch(
+        self, items: Sequence[CandidateGenerationBatchInput]
+    ) -> Sequence[GeneratedSingleTurnCandidateBatchItem]:
+        """Run one bounded BAML call for a candidate batch."""
+        request = b.request.GenerateSingleTurnCandidateBatch(
+            list(items),
             baml_options={"client_registry": self._generation_registry},
         )
         raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        return b.parse.GenerateSingleTurnCandidate(
+        return b.parse.GenerateSingleTurnCandidateBatch(
             raw_output, baml_options={"client_registry": self._generation_registry}
         )
 
@@ -271,17 +296,25 @@ class BamlCandidateGenerationClient:
         operation: EvolutionOperation,
         query_length: str,
     ) -> BamlEvolvedCandidate:
-        """Run one bounded BAML call and return its generated typed result."""
-        request = b.request.EvolveCandidate(
-            query_vi,
-            reference_answer_vi,
-            reasoning_vi,
-            operation,
-            query_length,
+        """Run one evolution through the batch endpoint."""
+        item = CandidateEvolutionBatchInput(
+            task_id="single",
+            query_vi=query_vi,
+            reference_answer_vi=reference_answer_vi,
+            reasoning_vi=reasoning_vi,
+            operation=operation,
+            query_length=query_length,
+        )
+        return self.evolve_batch((item,))[0].candidate
+
+    def evolve_batch(self, items: Sequence[CandidateEvolutionBatchInput]) -> Sequence[EvolvedCandidateBatchItem]:
+        """Run one bounded BAML call for an evolution batch."""
+        request = b.request.EvolveCandidateBatch(
+            list(items),
             baml_options={"client_registry": self._evolution_registry},
         )
         raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        return b.parse.EvolveCandidate(raw_output, baml_options={"client_registry": self._evolution_registry})
+        return b.parse.EvolveCandidateBatch(raw_output, baml_options={"client_registry": self._evolution_registry})
 
 
 def generate_candidate(
@@ -308,6 +341,54 @@ def generate_candidate(
         scenario.reasoning_hops,
         scenario.as_of_date.isoformat() if scenario.as_of_date else None,
     )
+    return _candidate_from_generated(scenario, raw, facts_by_id, generator_model)
+
+
+def generate_candidate_batch(
+    tasks: Sequence[tuple[str, Scenario]],
+    facts_by_id: Mapping[str, LegalFact],
+    persona_descriptions: Mapping[str, str],
+    query_type_descriptions: Mapping[str, str],
+    client: CandidateGenerationClient,
+    *,
+    generator_model: str,
+) -> tuple[tuple[str, CandidateDraft], ...]:
+    """Generate one candidate for every task in a single LLM request."""
+    items = [
+        CandidateGenerationBatchInput(
+            task_id=task_id,
+            facts=[build_fact_context(facts_by_id[fact_id]) for fact_id in scenario.fact_ids],
+            persona_description=persona_descriptions[scenario.persona],
+            query_style=scenario.query_style,
+            query_length=scenario.query_length,
+            query_form=scenario.query_form,
+            query_type_description=query_type_descriptions[scenario.query_type],
+            answerability=scenario.answerability,
+            bundle_kind=scenario.bundle_kind,
+            bridge=list(scenario.bridge),
+            reasoning_hops=scenario.reasoning_hops,
+            as_of_date=scenario.as_of_date.isoformat() if scenario.as_of_date else None,
+        )
+        for task_id, scenario in tasks
+    ]
+    generated_by_task_id = {result.task_id: result.candidate for result in client.generate_batch(items)}
+    return tuple(
+        (
+            task_id,
+            _candidate_from_generated(scenario, generated_by_task_id[task_id], facts_by_id, generator_model),
+        )
+        for task_id, scenario in tasks
+    )
+
+
+def _candidate_from_generated(
+    scenario: Scenario,
+    raw: BamlGeneratedCandidate,
+    facts_by_id: Mapping[str, LegalFact],
+    generator_model: str,
+) -> CandidateDraft:
+    """Attach one typed LLM result to its deterministic scenario metadata."""
+    facts = [facts_by_id[fact_id] for fact_id in scenario.fact_ids]
 
     required_claims = tuple(
         RequiredClaim(
@@ -411,6 +492,43 @@ def evolve_candidate(
             reference_answer_vi=reference_answer_vi,
             reasoning_vi=reasoning_vi,
             evolutions=tuple(applied),
+        )
+    )
+
+
+def evolve_candidate_batch(
+    tasks: Sequence[tuple[str, CandidateDraft]],
+    operation_id: str,
+    client: CandidateGenerationClient,
+) -> tuple[tuple[str, CandidateDraft], ...]:
+    """Apply one evolution operation to every task in a single LLM request."""
+    operation = _EVOLUTION_OPERATION_BY_ID[operation_id]
+    items = [
+        CandidateEvolutionBatchInput(
+            task_id=task_id,
+            query_vi=draft.query_vi,
+            reference_answer_vi=draft.reference_answer_vi,
+            reasoning_vi=draft.reasoning_vi,
+            operation=operation,
+            query_length=draft.query_length,
+        )
+        for task_id, draft in tasks
+    ]
+    evolved_by_task_id = {result.task_id: result.candidate for result in client.evolve_batch(items)}
+    return tuple(
+        (task_id, _apply_evolution(draft, operation_id, evolved_by_task_id[task_id])) for task_id, draft in tasks
+    )
+
+
+def _apply_evolution(draft: CandidateDraft, operation_id: str, result: BamlEvolvedCandidate) -> CandidateDraft:
+    """Return one draft updated with a completed evolution operation."""
+    return _with_identity(
+        replace(
+            draft,
+            query_vi=result.query_vi,
+            reference_answer_vi=result.reference_answer_vi,
+            reasoning_vi=result.reasoning_vi,
+            evolutions=(*draft.evolutions, operation_id),
         )
     )
 

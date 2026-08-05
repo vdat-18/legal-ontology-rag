@@ -8,7 +8,7 @@ from math import isfinite
 from pathlib import Path
 from typing import Any
 
-SYNTHESIS_CONFIG_SCHEMA_VERSION = "1.4.0"
+SYNTHESIS_CONFIG_SCHEMA_VERSION = "1.5.0"
 _MAX_LLM_TEMPERATURE = 2.0
 
 
@@ -106,6 +106,7 @@ class SynthesisSettings:
     fact_extraction_max_following_chunks: int
     evidence_relation_batch_size: int
     evidence_relation_max_concurrency: int
+    candidate_generation_batch_size: int
     candidate_generation_max_concurrency: int
     evidence_retrieval: EvidenceRetrievalSettings
     chunk_screening: LlmStageSettings
@@ -143,6 +144,7 @@ class SynthesisSettings:
             "fact_extraction_batch_size": self.fact_extraction_batch_size,
             "evidence_relation_batch_size": self.evidence_relation_batch_size,
             "evidence_relation_max_concurrency": self.evidence_relation_max_concurrency,
+            "candidate_generation_batch_size": self.candidate_generation_batch_size,
             "candidate_generation_max_concurrency": self.candidate_generation_max_concurrency,
         }
         for name, value in positive_limits.items():
@@ -197,6 +199,7 @@ class SynthesisSettings:
             fact_extraction_max_following_chunks=extraction["max_following_chunks"],
             evidence_relation_batch_size=relation["batch_size"],
             evidence_relation_max_concurrency=relation["max_concurrency"],
+            candidate_generation_batch_size=stages["candidate_generation"]["batch_size"],
             candidate_generation_max_concurrency=stages["candidate_generation"]["max_concurrency"],
             evidence_retrieval=_evidence_retrieval_settings(retrieval),
             chunk_screening=_stage_settings(screening),

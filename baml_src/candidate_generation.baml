@@ -33,42 +33,57 @@ class GeneratedSingleTurnCandidate {
   required_claims ClaimReference[] @description(#"Ít nhất một phần tử. Mỗi ý bắt buộc trong đáp án phải có một claim."#)
 }
 
-function GenerateSingleTurnCandidate(
-  facts: FactContext[],
-  persona_description: string,
-  query_style: string,
-  query_length: string,
-  query_form: string,
-  query_type_description: string,
-  answerability: string,
-  bundle_kind: string,
-  bridge: string[],
-  reasoning_hops: int,
-  as_of_date: string?
-) -> GeneratedSingleTurnCandidate {
+class CandidateGenerationBatchInput {
+  task_id string
+  facts FactContext[]
+  persona_description string
+  query_style string
+  query_length string
+  query_form string
+  query_type_description string
+  answerability string
+  bundle_kind string
+  bridge string[]
+  reasoning_hops int
+  as_of_date string?
+}
+
+class GeneratedSingleTurnCandidateBatchItem {
+  task_id string
+  candidate GeneratedSingleTurnCandidate
+}
+
+function GenerateSingleTurnCandidateBatch(
+  items: CandidateGenerationBatchInput[]
+) -> GeneratedSingleTurnCandidateBatchItem[] {
   client OpenAICompatibleProvider
   prompt #"
     {{ _.role("user") }}
 
-    Đóng vai {{ persona_description }} và viết một câu hỏi tiếng Việt về xử
-    phạt vi phạm giao thông đường bộ, dựa đúng trên các fact pháp lý đã duyệt
-    dưới đây. Sau đó sinh đáp án tham chiếu, lập luận, và các claim bắt buộc.
+    Với MỖI task dưới đây, viết một câu hỏi tiếng Việt về xử phạt vi phạm
+    giao thông đường bộ, dựa đúng trên các fact pháp lý đã duyệt của riêng
+    task đó. Sau đó sinh đáp án tham chiếu, lập luận, và các claim bắt buộc.
+    Trả về đúng một kết quả cho mỗi task, giữ nguyên task_id và đúng thứ tự.
+
+    {% for item in items %}
+    ===== TASK {{ item.task_id }} =====
+    Đóng vai: {{ item.persona_description }}
 
     Yêu cầu về câu hỏi:
-    - Dạng câu hỏi: {{ query_type_description }}
-    - Khả năng trả lời yêu cầu: {{ answerability }}
-    - Loại evidence bundle: {{ bundle_kind }}
-    - Số fact bắt buộc phải dùng: {{ reasoning_hops }}
-    {% if bridge %}- Cầu nối bắt buộc giữa các fact: {{ bridge }}{% endif %}
-    - Phong cách: {{ query_form }}
-    - Độ dài: {{ query_length }}{% if query_length == "short" %} (khoảng 5-10 từ){% elif query_length == "medium" %} (khoảng 10-20 từ){% elif query_length == "long" %} (trên 20 từ, có thể kèm chi tiết tình huống cụ thể){% endif %}
-    {% if as_of_date %}- Thời điểm áp dụng: {{ as_of_date }}{% endif %}
+    - Dạng câu hỏi: {{ item.query_type_description }}
+    - Khả năng trả lời yêu cầu: {{ item.answerability }}
+    - Loại evidence bundle: {{ item.bundle_kind }}
+    - Số fact bắt buộc phải dùng: {{ item.reasoning_hops }}
+    {% if item.bridge %}- Cầu nối bắt buộc giữa các fact: {{ item.bridge }}{% endif %}
+    - Phong cách: {{ item.query_form }}
+    - Độ dài: {{ item.query_length }}{% if item.query_length == "short" %} (khoảng 5-10 từ){% elif item.query_length == "medium" %} (khoảng 10-20 từ){% elif item.query_length == "long" %} (trên 20 từ, có thể kèm chi tiết tình huống cụ thể){% endif %}
+    {% if item.as_of_date %}- Thời điểm áp dụng: {{ item.as_of_date }}{% endif %}
 
     query_vi phải đọc đúng như một người Việt Nam bình thường — không phải
     luật sư, không phải cán bộ soạn văn bản — thực sự gõ câu hỏi này trên
     điện thoại khi cần hỏi gấp ngoài đường. Tuyệt đối không dùng văn phong
     hành chính, không viết như đơn từ hay báo cáo pháp lý. Trừ khi
-    {{ persona_description }} là luật sư hoặc cán bộ xử phạt, KHÔNG trích số
+    {{ item.persona_description }} là luật sư hoặc cán bộ xử phạt, KHÔNG trích số
     điều/khoản/điểm cụ thể trong query_vi — người bình thường không biết và
     không gõ số hiệu điều luật khi hỏi, chỉ luật sư/cán bộ mới quen cách
     trích dẫn này.
@@ -81,20 +96,20 @@ function GenerateSingleTurnCandidate(
     được cung cấp" — viết thẳng vào nội dung quy định như một câu trả lời
     pháp lý thật, không nhắc đến việc đang được cấp dữ liệu.
 
-    Cách gõ bắt buộc cho query_vi — "{{ query_style }}" (các câu ví dụ dưới
+    Cách gõ bắt buộc cho query_vi — "{{ item.query_style }}" (các câu ví dụ dưới
     đây chỉ để minh hoạ văn phong/cách gõ, KHÔNG copy nội dung — nội dung câu
     hỏi phải dựa đúng vào fact pháp lý được cung cấp ở phần dưới):
-    {% if query_style == "standard" %}
+    {% if item.query_style == "standard" %}
     Gõ đúng chính tả, đầy đủ dấu, câu hoàn chỉnh, giống văn viết bình thường
     khi soạn tin nhắn cẩn thận, có dấu chấm hỏi ở cuối.
     Ví dụ minh hoạ: "Xe ô tô vượt đèn đỏ thì bị phạt bao nhiêu tiền?"
-    {% elif query_style == "no_diacritics" %}
+    {% elif item.query_style == "no_diacritics" %}
     Gõ HOÀN TOÀN không dấu — kiểu gõ vội trên điện thoại chưa bật bàn phím
     tiếng Việt có dấu. Bỏ hết dấu thanh và dấu phụ, giữ chữ cái Latin gần
     nhất (ư→u, ơ→o, ă→a, đ→d, ê→e, ô→o). Không thêm lỗi chính tả nào khác
     ngoài việc bỏ dấu — từ ngữ vẫn đúng, chỉ là không dấu.
     Ví dụ minh hoạ: "xe oto vuot den do thi bi phat bao nhieu tien"
-    {% elif query_style == "misspelled" %}
+    {% elif item.query_style == "misspelled" %}
     Vẫn giữ dấu tiếng Việt nhưng gõ sai/tắt tự nhiên như gõ vội bằng điện
     thoại: dùng viết tắt kiểu chat phổ biến (ko/k = không, đc/dc = được,
     vs = với, ntn = như thế nào, j = gì, b = bạn, mng = mọi người,
@@ -102,12 +117,12 @@ function GenerateSingleTurnCandidate(
     thiếu hoặc lặp một vài chữ. KHÔNG bỏ hết dấu như no_diacritics — dấu
     tiếng Việt vẫn còn, chỉ sai/tắt rải rác một cách tự nhiên.
     Ví dụ minh hoạ: "oto vượt đèn đỏ thì phạt mấy tiền v ạ, có bị trừ điểm k"
-    {% elif query_style == "keyword_style" %}
+    {% elif item.query_style == "keyword_style" %}
     Gõ kiểu tìm trên Google — chỉ liệt kê từ khóa cốt lõi, KHÔNG viết thành
     câu hoàn chỉnh, không chủ ngữ/vị ngữ đầy đủ, không dấu chấm hỏi.
     Ví dụ minh hoạ: "oto vuot den do muc phat bao nhieu"
     {% else %}
-    Gõ đúng theo mô tả phong cách: {{ query_style }}.
+    Gõ đúng theo mô tả phong cách: {{ item.query_style }}.
     {% endif %}
 
     Nguyên tắc bắt buộc:
@@ -127,7 +142,7 @@ function GenerateSingleTurnCandidate(
     - Nếu có bridge, câu hỏi và lập luận phải sử dụng đúng cầu nối đó.
 
     Fact pháp lý:
-    {% for fact in facts %}
+    {% for fact in item.facts %}
     [{{ fact.fact_id }}] {{ fact.conduct }} — {{ fact.subject }}
     Điều khoản: {{ fact.provision_path }} ({{ fact.document_number }})
     Phạt tiền: {{ fact.monetary_penalty }}
@@ -137,6 +152,8 @@ function GenerateSingleTurnCandidate(
     Hiệu lực: {{ fact.valid_from }} đến {{ fact.valid_to }}
     Chunk căn cứ: {{ fact.evidence_chunk_ids }}
     ---
+    {% endfor %}
+    ===== END TASK {{ item.task_id }} =====
     {% endfor %}
 
     {{ ctx.output_format }}
@@ -189,45 +206,60 @@ class EvolvedCandidate {
   reasoning_vi string
 }
 
-function EvolveCandidate(
-  query_vi: string,
-  reference_answer_vi: string,
-  reasoning_vi: string,
-  operation: EvolutionOperation,
-  query_length: string
-) -> EvolvedCandidate {
+class CandidateEvolutionBatchInput {
+  task_id string
+  query_vi string
+  reference_answer_vi string
+  reasoning_vi string
+  operation EvolutionOperation
+  query_length string
+}
+
+class EvolvedCandidateBatchItem {
+  task_id string
+  candidate EvolvedCandidate
+}
+
+function EvolveCandidateBatch(
+  items: CandidateEvolutionBatchInput[]
+) -> EvolvedCandidateBatchItem[] {
   client OpenAICompatibleProvider
   prompt #"
     {{ _.role("user") }}
 
-    Biến đổi câu hỏi và đáp án dưới đây theo đúng một phép, không đổi căn cứ
-    pháp lý hay kết luận cuối cùng:
+    Với MỖI task dưới đây, biến đổi câu hỏi và đáp án theo đúng một phép,
+    không đổi căn cứ pháp lý hay kết luận cuối cùng. Trả về đúng một kết quả
+    cho mỗi task, giữ nguyên task_id và đúng thứ tự.
 
     - Concretizing: thêm tình tiết cụ thể vào tình huống
     - Reasoning: buộc suy luận từ quy định thay vì tra cứu trực tiếp
     - Hypothetical: đặt giả định "nếu ... thì"
 
-    Phép áp dụng: {{ operation }}
+    {% for item in items %}
+    ===== TASK {{ item.task_id }} =====
+    Phép áp dụng: {{ item.operation }}
 
     Câu hỏi gốc:
-    {{ query_vi }}
+    {{ item.query_vi }}
 
     Đáp án gốc:
-    {{ reference_answer_vi }}
+    {{ item.reference_answer_vi }}
 
     Lập luận gốc:
-    {{ reasoning_vi }}
+    {{ item.reasoning_vi }}
 
     Giữ nguyên chính xác cách gõ/văn phong của câu hỏi gốc ở trên — có dấu
     hay không dấu, viết tắt kiểu chat hay đầy đủ, viết thành câu hay chỉ liệt
     kê từ khóa. Chỉ thêm/đổi nội dung tình huống theo đúng phép biến đổi ở
     trên; không "sửa lại" câu hỏi về chính tả hay văn phong chuẩn mực.
 
-    Độ dài query_vi sau biến đổi vẫn phải giữ đúng mức "{{ query_length }}"
-    {% if query_length == "short" %}(khoảng 5-10 từ){% elif query_length == "medium" %}(khoảng 10-20 từ){% elif query_length == "long" %}(trên 20 từ){% endif %}
+    Độ dài query_vi sau biến đổi vẫn phải giữ đúng mức "{{ item.query_length }}"
+    {% if item.query_length == "short" %}(khoảng 5-10 từ){% elif item.query_length == "medium" %}(khoảng 10-20 từ){% elif item.query_length == "long" %}(trên 20 từ){% endif %}
     như câu gốc — KHÔNG được viết thành cả đoạn văn dài. Concretizing chỉ
     thêm ĐÚNG MỘT chi tiết cụ thể (ví dụ một con số, một mốc thời gian, một
     loại phương tiện), không kể lể thêm nhiều tình tiết cùng lúc.
+    ===== END TASK {{ item.task_id }} =====
+    {% endfor %}
 
     reference_answer_vi và reasoning_vi thì luôn viết tiếng Việt chuẩn mực,
     đầy đủ dấu, rõ ràng, đúng văn phong tư vấn pháp lý thật. Tuyệt đối không

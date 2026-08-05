@@ -27,6 +27,10 @@ describe retry-then-skip behavior.
   there is no `requested_*`/observed split.
 - Candidate identity is recomputed after every evolution from the final query,
   answer, reasoning, and claims.
+- Candidate generation and evolution use true LLM batches. The checked-in
+  config sends 5 tasks per request and permits 10 concurrent requests. Every
+  returned item carries its stable task id and is checkpointed separately, so
+  an interrupted run resumes only unfinished generation/evolution work.
 - Candidate review is outside this pipeline. Generated candidates proceed
   directly to downstream synthesis stages; any external-agent review does not
   block or change pipeline state.
@@ -1323,78 +1327,35 @@ giao khoảng hiệu lực và luân phiên theo trục ít dùng nhất),
 hợp CLI đầu-cuối: resume bỏ qua cặp đã kiểm, ghi tiến độ khi bị ngắt giữa
 chừng, không gọi lại LLM cho cặp đã xác nhận "không liên quan").
 
-### Phase 3 — Sinh single-turn và hai cổng kiểm chứng (mục 8) ✅ Đã triển khai, sau đó ❌ đã bỏ hai cổng + vòng tinh chỉnh
+### Phase 3 — Sinh single-turn theo batch (mục 8) ✅ Đã triển khai
 
-- `candidate_generation.py` — `generate_candidate` gọi BAML sinh candidate từ
-  một `Scenario` (Phase 2) + evidence đã chốt; mỗi claim chỉ tham chiếu
+- `candidate_generation.py` — `generate_candidate_batch` gọi BAML sinh tối đa
+  `candidate_generation.batch_size` candidate từ các `Scenario` (Phase 2) +
+  evidence đã chốt trong một request; mỗi claim chỉ tham chiếu
   `chunk_id`, còn `quoted_span` luôn được code tự lấy lại từ evidence thật
   của fact — không tin bản LLM tự chép lại, cùng kỷ luật với
   `fact_extraction.build_legal_fact` ở Phase 1; `answer_fields` chép trực
-  tiếp từ `LegalFact`, không đi qua LLM. `refine_surface` gọi lại
-  `CritiqueSurface` tối đa `max_quality_retries` lần, chỉ đổi `query_vi`,
-  đóng băng claims/evidence/answer_fields. `evolve_candidate` áp các phép
-  evolution đã cấu hình, giữ nguyên evidence, chỉ đổi `query_vi` và
-  `reference_answer_vi`.
-- `binding_gate.py` — Cổng 1: `check_binding` kiểm `chunk_id` thuộc evidence
-  set thật của fact, và
-  `rapidfuzz.fuzz.partial_ratio` giữa `quoted_span` và text chunk vượt
-  `span_match_threshold`. Thuần hàm, không gọi LLM, **không raise cho input
-  không hợp lệ** — trả về `BindingCheckResult` (passed, grounding_score,
-  violations) vì candidate bị loại là kết quả bình thường của một cổng lọc,
-  không phải lỗi chương trình.
-- `verification.py` — Cổng 2: `verify_candidate` gọi BAML `VerifyCandidate`
-  kiểm 6 chiều bằng model/prompt độc lập với generator, gán nhãn lại
-  `observed_query_type`/`observed_answerability`/`necessary_reasoning_hops`.
-  `passed` là phép AND tất định trên 6 giá trị bool do code tính, không tin
-  thẳng một verdict tổng hợp từ LLM.
-- `candidate_record.py` — module mới, ngoài kế hoạch ban đầu: `CandidateRecord`
-  gộp `CandidateDraft` + `BindingCheckResult` + `VerificationResult` (có thể
-  `None` nếu bị Cổng 1 loại) thành bản ghi cuối, với `review_status` suy ra
-  tất định (`rejected_by_binding_gate` | `binding_verified` |
-  `rejected_by_verification` | `automatically_verified`). Đặt ở module riêng
-  để tránh vòng import giữa `candidate_generation.py`, `binding_gate.py` và
-  `verification.py`.
+  tiếp từ `LegalFact`, không đi qua LLM. `evolve_candidate_batch` áp từng
+  phép evolution cho cả batch, giữ nguyên claims/evidence/answer_fields.
+- `candidate_pipeline.py` chia các task chưa hoàn thành thành batch 5, chạy
+  tối đa 10 batch đồng thời. Generation và từng vòng evolution đều
+  checkpoint riêng từng `task_id`; một batch lỗi sau retry không đánh dấu
+  các task đó là hoàn thành.
 
-**Các điểm lệch so với kế hoạch ban đầu, có lý do rõ:**
-
-- CLI **đọc** `scenarios.jsonl` do Phase 2 sinh ra, không tự chạy lại
-  scenario sampling — vì Phase 2 đã tách sampling thành output riêng, ổn
-  định, không cần tính lại mỗi lần sinh candidate (đã ghi ở Phase 2).
-- Không có "báo cáo loại bỏ theo từng cổng" dạng file riêng. Kết quả mỗi cổng
-  gắn trực tiếp vào từng `CandidateRecord` (`binding_check`, `verification`,
-  `review_status`), và CLI in tổng hợp số liệu qua log — đơn giản hơn một
-  file report riêng mà vẫn audit được từng candidate.
-- Generator và verifier dùng **cùng một model** cấu hình trong `Settings`,
-  khác nhau ở BAML function/prompt, chưa hỗ trợ hai model riêng biệt như mục
-  6 gợi ý ("giảm bias riêng của một model"). Prompt độc lập đã giảm được một
-  phần self-confirmation bias; hỗ trợ multi-model là mở rộng để lại cho sau,
-  cần thiết kế thêm cấu hình chọn model theo từng vai trò.
-- `evolution.json` áp dụng **tất cả** operation đã cấu hình (tới `max_rounds`)
-  cho **mọi** candidate qua được Cổng 1, không có lựa chọn candidate nào
-  được evolve. Đây là lựa chọn tất định, không hardcode (danh sách operation
-  đọc từ config, không viết cứng trong code), nhưng chưa có chính sách chọn
-  lọc candidate nào cần evolve — để trống config `operations` là cách tắt
-  evolution nếu không cần.
-
-BAML: `candidate_generation.baml` — class `FactContext`, `ClaimReference`,
-function `GenerateSingleTurnCandidate`, `CritiqueSurface`, enum
-`EvolutionOperation`, function `EvolveCandidate`. `candidate_verification.baml`
-— enum `Answerability`, class `VerificationResult`, function `VerifyCandidate`,
-dùng chung `FactContext`/`ClaimReference` từ file kia (cùng namespace BAML).
+BAML: `candidate_generation.baml` — `GenerateSingleTurnCandidateBatch` nhận
+`CandidateGenerationBatchInput[]`; `EvolveCandidateBatch` nhận
+`CandidateEvolutionBatchInput[]`. Mỗi output giữ nguyên `task_id` để Python
+ghép lại đúng scenario dù model thay đổi thứ tự phần tử.
 
 CLI: `legal-generate-candidates` (`candidate_generation_cli.py`) — đọc
-`legal_facts.jsonl`, `scenarios.jsonl`, và mọi `*.chunks.jsonl` trong một
-thư mục; với mỗi scenario sinh `--candidates-per-scenario` candidate độc
-lập, chạy nối tiếp sinh → tinh chỉnh bề mặt → evolution → Cổng 1 → Cổng 2
-(chỉ chạy nếu Cổng 1 qua); ghi toàn bộ candidate (kể cả bị loại) vào một
-file JSONL kèm `review_status`.
+`legal_facts.jsonl` và `scenarios.jsonl`; với mỗi scenario sinh
+`--candidates-per-scenario` attempt độc lập, chạy generation → evolution rồi
+ghi candidate hoàn thành. Batch size và concurrency lấy từ
+`synthesis_v1.json`, không phải tham số dòng lệnh.
 
-Test: `test_binding_gate.py` — đúng bảng ưu tiên cao nhất của Phase 3
-(span khớp hoàn toàn, span dưới ngưỡng, `chunk_id` ngoài evidence set, fact
-không tồn tại, chunk không tồn tại, claim rỗng, grounding_score trung bình
-nhiều span). `test_candidate_generation.py`,
-`test_verification.py` (gồm parametrize trên cả 6 chiều Cổng 2) theo mẫu mock
-BAML đã có. `tests/test_candidate_generation_cli.py` tích hợp CLI đầu-cuối.
+Test: `test_candidate_generation.py`, `test_candidate_pipeline.py` (batch
+generation/evolution, bounded concurrency, retry và resume) và
+`tests/test_candidate_generation_cli.py` tích hợp CLI đầu-cuối.
 
 ### Phase 4 — Pilot và ổn định schema (mục 9) ✅ Đã hoàn tất
 

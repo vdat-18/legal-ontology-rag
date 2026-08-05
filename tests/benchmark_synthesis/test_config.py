@@ -34,6 +34,7 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.fact_extraction.max_output_tokens == 32_768
     assert settings.evidence_relation_batch_size == 10
     assert settings.evidence_relation_max_concurrency == 10
+    assert settings.candidate_generation_batch_size == 5
     assert settings.candidate_generation_max_concurrency == 10
     assert settings.evidence_retrieval.max_candidates_per_fact == 5
     assert settings.evidence_retrieval.min_similarity == 0.5
@@ -45,8 +46,9 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.evidence_retrieval.dense_weight == 1.0
     assert settings.evidence_retrieval.lexical_authority_weight == 1.1
     assert settings.evidence_relation.max_output_tokens == 4096
+    assert settings.candidate_generation.max_output_tokens == 8192
     assert settings.candidate_critique.max_output_tokens == 2048
-    assert settings.candidate_evolution.max_output_tokens == 2048
+    assert settings.candidate_evolution.max_output_tokens == 8192
     assert settings.verification.max_output_tokens == 1024
 
 
@@ -89,3 +91,11 @@ def test_synthesis_settings_reject_non_positive_candidate_generation_max_concurr
 
     with pytest.raises(ValueError, match="candidate_generation_max_concurrency must be positive"):
         replace(settings, candidate_generation_max_concurrency=0)
+
+
+def test_synthesis_settings_reject_non_positive_candidate_generation_batch_size() -> None:
+    """Candidate generation cannot start with an empty batch size."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+
+    with pytest.raises(ValueError, match="candidate_generation_batch_size must be positive"):
+        replace(settings, candidate_generation_batch_size=0)

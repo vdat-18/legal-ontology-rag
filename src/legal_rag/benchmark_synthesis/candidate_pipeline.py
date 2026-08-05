@@ -5,12 +5,15 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
+from typing import cast
 
 from legal_rag.benchmark_synthesis.candidate_generation import (
     CandidateDraft,
     CandidateGenerationClient,
     evolve_candidate,
+    evolve_candidate_batch,
     generate_candidate,
+    generate_candidate_batch,
 )
 from legal_rag.benchmark_synthesis.candidate_record import CandidateProgressRecord
 from legal_rag.benchmark_synthesis.llm_execution import (
@@ -20,6 +23,7 @@ from legal_rag.benchmark_synthesis.llm_execution import (
 )
 from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
+from legal_rag.parser.hashing import sha256_json
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,12 +81,13 @@ def generate_candidates(
     context: CandidatePipelineContext,
     checkpoint: Callable[[CandidateProgressRecord], None],
     *,
+    batch_size: int,
     max_concurrency: int,
 ) -> tuple[LlmTaskFailure, ...]:
-    """Generate every not-yet-completed scenario attempt in bounded concurrent workers.
+    """Generate pending scenario attempts in bounded concurrent LLM batches.
 
-    process_candidate_task persists after each of its own internal stages, so checkpoint
-    runs from worker threads rather than only after a task finishes; the caller must make
+    process_candidate_batch persists each item after every internal stage, so checkpoint
+    runs from worker threads rather than only after a batch finishes; the caller must make
     checkpoint safe for concurrent invocation (e.g. with a lock).
     """
     pending: list[tuple[Scenario, int]] = []
@@ -92,26 +97,130 @@ def generate_candidates(
             if record is None or not record.completed:
                 pending.append((scenario, attempt_index))
 
+    batches = [pending[start : start + batch_size] for start in range(0, len(pending), batch_size)]
     failures: list[LlmTaskFailure] = []
     with ThreadPoolExecutor(max_workers=max_concurrency) as executor:
         futures = {
             executor.submit(
-                process_candidate_task,
-                scenario,
-                attempt_index,
-                progress_by_task_id.get(f"{scenario.scenario_id}:{attempt_index}"),
+                process_candidate_batch,
+                batch,
+                progress_by_task_id,
                 context,
                 checkpoint,
-            ): f"{scenario.scenario_id}:{attempt_index}"
-            for scenario, attempt_index in pending
+            ): tuple(f"{scenario.scenario_id}:{attempt_index}" for scenario, attempt_index in batch)
+            for batch in batches
         }
         for future in as_completed(futures):
-            task_id = futures[future]
+            task_ids = futures[future]
             try:
                 future.result()
             except LlmTaskExhaustedError as error:
-                failures.append(LlmTaskFailure(task_key=task_id, error=str(error)))
+                failures.extend(LlmTaskFailure(task_key=task_id, error=str(error)) for task_id in task_ids)
     return tuple(failures)
+
+
+def process_candidate_batch(
+    tasks: Sequence[tuple[Scenario, int]],
+    progress_by_task_id: Mapping[str, CandidateProgressRecord],
+    context: CandidatePipelineContext,
+    checkpoint: Callable[[CandidateProgressRecord], None],
+) -> None:
+    """Resume and complete one batch while checkpointing every task separately."""
+    task_metadata = {
+        f"{scenario.scenario_id}:{attempt_index}": (scenario, attempt_index) for scenario, attempt_index in tasks
+    }
+    current = {task_id: progress_by_task_id.get(task_id) for task_id in task_metadata}
+    generation_tasks = [
+        (task_id, scenario) for task_id, (scenario, _) in task_metadata.items() if current[task_id] is None
+    ]
+    if generation_tasks:
+        generated = execute_llm_task(
+            _batch_task_key(tuple(task_id for task_id, _ in generation_tasks), "generation"),
+            lambda: generate_candidate_batch(
+                generation_tasks,
+                context.facts_by_id,
+                context.persona_descriptions,
+                context.query_type_descriptions,
+                context.generation_client,
+                generator_model=context.generator_model,
+            ),
+            max_retries=context.llm_max_retries,
+            retry_delay_seconds=context.llm_retry_delay_seconds,
+        )
+        for task_id, draft in generated:
+            scenario, attempt_index = task_metadata[task_id]
+            record = CandidateProgressRecord(
+                task_id,
+                scenario.scenario_id,
+                attempt_index,
+                "generated",
+                draft,
+            )
+            current[task_id] = record
+            checkpoint(record)
+
+    evolved_task_ids = {
+        task_id
+        for task_id, record in current.items()
+        if record is not None and len(record.draft.evolutions) < len(context.evolution_operations)
+    }
+    for operation_index, operation_id in enumerate(context.evolution_operations):
+        evolution_tasks = [
+            (task_id, record.draft)
+            for task_id, record in current.items()
+            if record is not None and len(record.draft.evolutions) == operation_index
+        ]
+        if not evolution_tasks:
+            continue
+        evolved = execute_llm_task(
+            _batch_task_key(tuple(task_id for task_id, _ in evolution_tasks), f"evolution:{operation_id}"),
+            lambda evolution_tasks=evolution_tasks, operation_id=operation_id: evolve_candidate_batch(
+                evolution_tasks,
+                operation_id,
+                context.generation_client,
+            ),
+            max_retries=context.llm_max_retries,
+            retry_delay_seconds=context.llm_retry_delay_seconds,
+        )
+        for task_id, draft in evolved:
+            previous = cast(CandidateProgressRecord, current[task_id])
+            record = CandidateProgressRecord(
+                task_id,
+                previous.scenario_id,
+                previous.attempt_index,
+                "evolution",
+                draft,
+            )
+            current[task_id] = record
+            checkpoint(record)
+
+    for task_id in evolved_task_ids:
+        previous = cast(CandidateProgressRecord, current[task_id])
+        record = CandidateProgressRecord(
+            task_id,
+            previous.scenario_id,
+            previous.attempt_index,
+            "evolved",
+            previous.draft,
+        )
+        current[task_id] = record
+        checkpoint(record)
+
+    for task_id, record in current.items():
+        completed_record = cast(CandidateProgressRecord, record)
+        completed = CandidateProgressRecord(
+            task_id,
+            completed_record.scenario_id,
+            completed_record.attempt_index,
+            "completed",
+            completed_record.draft,
+        )
+        checkpoint(completed)
+
+
+def _batch_task_key(task_ids: Sequence[str], stage: str) -> str:
+    """Build one stable retry key for an ordered candidate batch."""
+    return f"candidate-batch:{sha256_json({'task_ids': list(task_ids), 'stage': stage})}:{stage}"
 
 
 def _evolve_with_checkpoints(

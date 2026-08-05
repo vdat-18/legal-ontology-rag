@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.4.0",
+  "schema_version": "1.5.0",
   "embedding_profile": "bge_m3",
   "embedding": {
     "batch_size": 64,
@@ -63,8 +63,9 @@
       "temperature": 0.0
     },
     "candidate_generation": {
+      "batch_size": 5,
       "max_concurrency": 10,
-      "max_output_tokens": 2048,
+      "max_output_tokens": 8192,
       "temperature": 0.0
     },
     "candidate_critique": {
@@ -72,7 +73,7 @@
       "temperature": 0.0
     },
     "candidate_evolution": {
-      "max_output_tokens": 2048,
+      "max_output_tokens": 8192,
       "temperature": 0.0
     },
     "verification": {

@@ -117,6 +117,7 @@ def main() -> None:
         progress_by_task_id,
         context,
         _persist,
+        batch_size=synthesis_settings.candidate_generation_batch_size,
         max_concurrency=synthesis_settings.candidate_generation_max_concurrency,
     )
 

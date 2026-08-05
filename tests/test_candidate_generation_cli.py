@@ -8,8 +8,14 @@ from pathlib import Path
 import pytest
 
 from legal_rag import candidate_generation_cli
+from legal_rag.baml_client.types import (
+    CandidateEvolutionBatchInput,
+    CandidateGenerationBatchInput,
+    EvolutionOperation,
+    EvolvedCandidateBatchItem,
+    GeneratedSingleTurnCandidateBatchItem,
+)
 from legal_rag.baml_client.types import ClaimReference as BamlClaimReference
-from legal_rag.baml_client.types import EvolutionOperation
 from legal_rag.baml_client.types import EvolvedCandidate as BamlEvolvedCandidate
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
 from legal_rag.benchmark_synthesis import candidate_generation
@@ -81,6 +87,12 @@ class _FakeGenerationClient:
             ],
         )
 
+    def generate_batch(self, items: list[CandidateGenerationBatchInput]) -> list[GeneratedSingleTurnCandidateBatchItem]:
+        """Generate one candidate for every batch item."""
+        return [
+            GeneratedSingleTurnCandidateBatchItem(task_id=item.task_id, candidate=self.generate()) for item in items
+        ]
+
     def evolve(
         self,
         query_vi: str,
@@ -93,6 +105,22 @@ class _FakeGenerationClient:
         return BamlEvolvedCandidate(
             query_vi=query_vi, reference_answer_vi=reference_answer_vi, reasoning_vi=reasoning_vi
         )
+
+    def evolve_batch(self, items: list[CandidateEvolutionBatchInput]) -> list[EvolvedCandidateBatchItem]:
+        """Evolve one candidate for every batch item."""
+        return [
+            EvolvedCandidateBatchItem(
+                task_id=item.task_id,
+                candidate=self.evolve(
+                    item.query_vi,
+                    item.reference_answer_vi,
+                    item.reasoning_vi,
+                    item.operation,
+                    item.query_length,
+                ),
+            )
+            for item in items
+        ]
 
 
 def _configure_cli(
