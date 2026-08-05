@@ -81,6 +81,22 @@ def _parser() -> argparse.ArgumentParser:
     )
     retrieve_parser.add_argument("--limit", type=int, default=10, help="Maximum chunks to retrieve per question.")
     retrieve_parser.add_argument(
+        "--retriever",
+        choices=("vector", "graph"),
+        default="vector",
+        help="Which retriever to score: the Milvus vector baseline or the Graphiti knowledge graph.",
+    )
+    retrieve_parser.add_argument(
+        "--group-id",
+        default="traffic_penalty_groundtruth_v1",
+        help="Graphiti group to search, for --retriever graph.",
+    )
+    retrieve_parser.add_argument(
+        "--no-graph-expansion",
+        action="store_true",
+        help="Disable graph-proximity expansion, to measure what the graph structure contributes.",
+    )
+    retrieve_parser.add_argument(
         "--k-values",
         type=_parse_k_values,
         default=DEFAULT_K_VALUES,
@@ -160,14 +176,25 @@ def _handle_retrieve(args: argparse.Namespace) -> None:
         msg = f"Evaluation file not found: {ground_truth_path}"
         raise SystemExit(msg)
 
-    from legal_rag.corrective_rag.generate.config import RAGConfig
-    from legal_rag.corrective_rag.retrieval.database import LegalVectorDB
-    from legal_rag.corrective_rag.retrieval.embeddings import EmbeddingModel
-
     samples = load_jsonl_samples(ground_truth_path)
     if not samples:
         msg = f"Evaluation file has no samples: {ground_truth_path}"
         raise SystemExit(msg)
+
+    retrieve = _retrieve_with_graph if args.retriever == "graph" else _retrieve_with_vector
+    rows = retrieve(samples, args)
+
+    _write_jsonl(args.predictions_output, rows)
+    metrics = evaluate_samples([EvaluationSample.from_mapping(row) for row in rows], k_values=args.k_values)
+    _write_json(args.metrics_output, metrics.to_dict())
+    _write_stdout(metrics.to_dict())
+
+
+def _retrieve_with_vector(samples: list[EvaluationSample], args: argparse.Namespace) -> list[dict[str, Any]]:
+    """Score the Milvus vector baseline, retrieving on each question as written."""
+    from legal_rag.corrective_rag.generate.config import RAGConfig
+    from legal_rag.corrective_rag.retrieval.database import LegalVectorDB
+    from legal_rag.corrective_rag.retrieval.embeddings import EmbeddingModel
 
     config = RAGConfig.from_env()
     embedder = EmbeddingModel(config.embedding_profile)
@@ -176,16 +203,60 @@ def _handle_retrieve(args: argparse.Namespace) -> None:
     try:
         for index, sample in enumerate(samples, 1):
             logger.info("Retrieving sample {}/{}", index, len(samples))
-            retrieved_chunks = db.search(sample.question, limit=args.limit)
-            rows.append(_retrieval_prediction_row(sample, retrieved_chunks))
+            rows.append(_retrieval_prediction_row(sample, db.search(sample.question, limit=args.limit)))
     finally:
         db.close()
         embedder.close()
+    return rows
 
-    _write_jsonl(args.predictions_output, rows)
-    metrics = evaluate_samples([EvaluationSample.from_mapping(row) for row in rows], k_values=args.k_values)
-    _write_json(args.metrics_output, metrics.to_dict())
-    _write_stdout(metrics.to_dict())
+
+def _retrieve_with_graph(samples: list[EvaluationSample], args: argparse.Namespace) -> list[dict[str, Any]]:
+    """Score the Graphiti knowledge graph on the same questions and the same chunk ids.
+
+    The graph is searched on each question as written, matching the vector baseline: query
+    rewriting is a separate pipeline stage that costs an LLM call, and this command is defined
+    as retrieval-only. A graph fact carries the provenance of every episode supporting it, and
+    an episode is named by its chunk id, so one fact can contribute several retrieved chunks.
+    """
+    import asyncio
+
+    from legal_rag.embedding.profiles import load_configured_embedding_profile
+    from legal_rag.graphiti_rag.client import build_graphiti
+    from legal_rag.graphiti_rag.retriever import search_facts
+    from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
+
+    settings = Settings.from_environment()
+    graphiti_settings = GraphitiSettings.from_environment()
+    profile = load_configured_embedding_profile(graphiti_settings.embedding_profile)
+    graphiti_client = build_graphiti(settings, Neo4jSettings.from_environment(), graphiti_settings, profile)
+
+    async def retrieve_all() -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        try:
+            for index, sample in enumerate(samples, 1):
+                logger.info("Retrieving sample {}/{}", index, len(samples))
+                facts = await search_facts(
+                    graphiti_client,
+                    sample.question,
+                    args.group_id,
+                    args.limit,
+                    expand_around_top_fact=not args.no_graph_expansion,
+                )
+                retrieved: list[dict[str, Any]] = []
+                seen: set[str] = set()
+                for fact in facts:
+                    for source in fact.sources:
+                        if source.chunk_id not in seen:
+                            seen.add(source.chunk_id)
+                            retrieved.append(
+                                {"chunk_id": source.chunk_id, "source_name": source.source_name, "text": fact.fact}
+                            )
+                rows.append(_retrieval_prediction_row(sample, retrieved[: args.limit]))
+        finally:
+            await graphiti_client.close()
+        return rows
+
+    return asyncio.run(retrieve_all())
 
 
 def _prediction_row(sample: EvaluationSample, result: dict[str, Any]) -> dict[str, Any]:
