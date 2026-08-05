@@ -137,7 +137,12 @@ def test_pipeline_skips_citation_coverage_when_corpus_is_unknown_and_does_not_lo
         logger.remove(sink_id)
 
     assert rewrite_client.calls == [sensitive_query]
-    assert search_calls[0][1:] == ("formal legal query", "group-1", 30, {"expand_around_top_fact": True})
+    assert search_calls[0][1:] == (
+        "formal legal query",
+        "group-1",
+        30,
+        {"expand_around_top_fact": True, "rerank_with_cross_encoder": False},
+    )
     assert generation_client.calls[0][0] == sensitive_query
     assert len(generation_client.calls[0][1]) == 1
     assert result.unindexed_citations == ()

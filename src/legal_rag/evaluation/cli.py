@@ -97,6 +97,11 @@ def _parser() -> argparse.ArgumentParser:
         help="Disable graph-proximity expansion, to measure what the graph structure contributes.",
     )
     retrieve_parser.add_argument(
+        "--cross-encoder",
+        action="store_true",
+        help="Rank with Graphiti's cross-encoder recipe instead of rank fusion.",
+    )
+    retrieve_parser.add_argument(
         "--k-values",
         type=_parse_k_values,
         default=DEFAULT_K_VALUES,
@@ -241,6 +246,7 @@ def _retrieve_with_graph(samples: list[EvaluationSample], args: argparse.Namespa
                     args.group_id,
                     args.limit,
                     expand_around_top_fact=not args.no_graph_expansion,
+                    rerank_with_cross_encoder=args.cross_encoder,
                 )
                 retrieved: list[dict[str, Any]] = []
                 seen: set[str] = set()

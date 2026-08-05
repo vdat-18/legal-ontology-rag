@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import functools
 import os
 from collections.abc import Mapping
+from typing import Any
 
 from graphiti_core import Graphiti
 from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
@@ -14,6 +16,31 @@ from openai import AsyncOpenAI
 from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.graphiti_rag.embedder import QwenGraphitiEmbedder
 from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
+
+
+def _build_openai_client(settings: Settings, llm_config: LLMConfig) -> AsyncOpenAI:
+    """Build the shared provider client, applying the configured provider-specific request fields.
+
+    Graphiti calls the provider directly for entity extraction and for cross-encoder reranking, so
+    those requests bypass this project's BAML transport and would otherwise miss the same settings.
+    That matters for DeepSeek: reasoning mode consumes the completion, which empties ``content`` for
+    extraction and leaves the reranker's single-token response with no ``logprobs.content`` to score,
+    so ranking fails outright. The fields come from configuration, never from a model-name guess.
+    """
+    client = AsyncOpenAI(api_key=llm_config.api_key, base_url=llm_config.base_url, timeout=settings.llm_timeout_seconds)
+    configured = dict(settings.llm_extra_request_body)
+    if not configured:
+        return client
+
+    create = client.chat.completions.create
+
+    @functools.wraps(create)
+    async def create_with_configured_body(*args: Any, **kwargs: Any) -> Any:
+        kwargs["extra_body"] = {**configured, **(kwargs.get("extra_body") or {})}
+        return await create(*args, **kwargs)
+
+    client.chat.completions.create = create_with_configured_body
+    return client
 
 
 def build_graphiti(
@@ -46,9 +73,7 @@ def build_graphiti(
     )
     # OpenAIGenericClient/OpenAIRerankerClient build an AsyncOpenAI client with no timeout when
     # none is given; pass one bound to the project's configured LLM timeout instead.
-    openai_client = AsyncOpenAI(
-        api_key=llm_config.api_key, base_url=llm_config.base_url, timeout=settings.llm_timeout_seconds
-    )
+    openai_client = _build_openai_client(settings, llm_config)
     llm_client = OpenAIGenericClient(config=llm_config, client=openai_client, structured_output_mode="json_object")
     resolved_embedder = embedder or QwenGraphitiEmbedder.from_profile(profile)
     return Graphiti(

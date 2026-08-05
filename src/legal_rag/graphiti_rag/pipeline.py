@@ -31,9 +31,9 @@ class GraphitiRAGResult:
 class GraphitiRAGPipeline:
     """End-to-end rewrite-search-then-generate pipeline over the Graphiti knowledge graph.
 
-    Retrieval order comes from Graphiti's hybrid search and cross-encoder reranker; the pipeline
-    keeps the top ``max_context_facts`` of that ranking as context rather than re-scoring facts
-    with any handcrafted rule.
+    Retrieval order comes from Graphiti's hybrid search — rank fusion by default, or a
+    cross-encoder when ``rerank_with_cross_encoder`` is set. The pipeline keeps the top
+    ``max_context_facts`` of that ranking rather than re-scoring facts with any handcrafted rule.
     """
 
     def __init__(
@@ -93,6 +93,7 @@ class GraphitiRAGPipeline:
             self._group_id,
             self._settings.search_num_results,
             expand_around_top_fact=self._settings.expand_around_top_fact,
+            rerank_with_cross_encoder=self._settings.rerank_with_cross_encoder,
         )
         fact_budget = self._settings.max_context_facts if max_facts is None else max_facts
         selected = candidates[:fact_budget]
