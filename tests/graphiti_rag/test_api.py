@@ -146,3 +146,25 @@ def test_pipeline_is_built_once_and_reused() -> None:
 
     assert len(built) == 1
     assert built[0].calls == [("first", None), ("second", None)]
+
+
+def test_allows_the_frontend_origin_so_the_browser_can_call_the_api() -> None:
+    """The chat frontend is a cross-origin caller and is blocked without an explicit allow list."""
+    pipeline = _FakePipeline()
+    app = server.create_app(pipeline_factory=lambda: pipeline, group_id="g1", cors_origins=("http://localhost:3000",))
+
+    with TestClient(app) as client:
+        response = client.post("/graphiti/query", json={"query": "q"}, headers={"Origin": "http://localhost:3000"})
+
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+def test_does_not_allow_an_unknown_origin() -> None:
+    """A wildcard would let any site call the API from a visitor's browser, so origins are pinned."""
+    pipeline = _FakePipeline()
+    app = server.create_app(pipeline_factory=lambda: pipeline, group_id="g1", cors_origins=("http://localhost:3000",))
+
+    with TestClient(app) as client:
+        response = client.post("/graphiti/query", json={"query": "q"}, headers={"Origin": "http://evil.test"})
+
+    assert "access-control-allow-origin" not in response.headers

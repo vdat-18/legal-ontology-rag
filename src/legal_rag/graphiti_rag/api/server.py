@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -148,13 +149,26 @@ def _to_response(result: GraphitiRAGResult) -> QueryResponse:
     )
 
 
+DEFAULT_CORS_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
+
+
 def create_app(
     *,
     pipeline_factory: PipelineFactory | None = None,
     group_id: str = "traffic_penalty_groundtruth_v1",
     corpus_config_path: Path | None = None,
+    cors_origins: Sequence[str] = DEFAULT_CORS_ORIGINS,
 ) -> FastAPI:
-    """Create the FastAPI application serving the Graphiti knowledge-graph pipeline."""
+    """Create the FastAPI application serving the Graphiti knowledge-graph pipeline.
+
+    Args:
+        pipeline_factory: Builds the pipeline; injected by tests so no Neo4j connection is opened.
+        group_id: The Graphiti group to answer from.
+        corpus_config_path: Corpus config used to flag citations outside the indexed documents.
+        cors_origins: Browser origins allowed to call this API. The chat frontend runs on its own
+            dev server, so it is a cross-origin caller and is blocked without an explicit allow
+            list; the default covers that dev server only, never a wildcard.
+    """
     provider = PipelineProvider(
         pipeline_factory=pipeline_factory, group_id=group_id, corpus_config_path=corpus_config_path
     )
@@ -171,6 +185,12 @@ def create_app(
         version="0.1.0",
         description="HTTP API for Vietnamese road-traffic-law question answering over a temporal knowledge graph.",
         lifespan=lifespan,
+    )
+    fastapi_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(cors_origins),
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type"],
     )
     fastapi_app.state.pipeline_provider = provider
 
