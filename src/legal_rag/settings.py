@@ -288,6 +288,7 @@ _GRAPHITI_TUNABLES: dict[str, Callable[[str], int | float]] = {
     "effective_date_max_output_tokens": int,
     "citation_max_output_tokens": int,
     "extraction_temperature": float,
+    "expand_around_top_fact": _parse_boolean,
     "max_response_bytes": int,
 }
 
@@ -306,6 +307,7 @@ class GraphitiSettings:
     effective_date_max_output_tokens: int = 2048
     citation_max_output_tokens: int = 2048
     extraction_temperature: float = 0.0
+    expand_around_top_fact: bool = True
     max_response_bytes: int = 1_048_576
 
     def __post_init__(self) -> None:

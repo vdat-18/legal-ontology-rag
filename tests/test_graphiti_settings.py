@@ -23,8 +23,9 @@ def test_every_declared_tunable_is_overridable_from_the_environment() -> None:
 
     for name, converter in _GRAPHITI_TUNABLES.items():
         default = getattr(defaults, name)
-        overridden = converter(str(default + 1))
-        settings = GraphitiSettings.from_environment({**base, f"GRAPHITI_{name.upper()}": str(overridden)})
+        # a boolean's only other value is its negation; numbers just move off the default
+        overridden = (not default) if isinstance(default, bool) else converter(str(default + 1))
+        settings = GraphitiSettings.from_environment({**base, f"GRAPHITI_{name.upper()}": str(overridden).lower()})
 
         assert getattr(settings, name) == overridden, name
 

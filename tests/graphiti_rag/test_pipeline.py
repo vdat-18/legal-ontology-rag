@@ -98,8 +98,8 @@ def _build_pipeline(
         RetrievedFact("Lower ranked fact.", (FactSource("chunk-2", "doc-2.docx"),)),
     ]
 
-    async def fake_search(*args: object) -> list[RetrievedFact]:
-        search_calls.append(args)
+    async def fake_search(*args: object, **kwargs: object) -> list[RetrievedFact]:
+        search_calls.append((*args, kwargs))
         return facts
 
     monkeypatch.setattr(pipeline_module, "load_configured_embedding_profile", lambda _profile: object())
@@ -137,7 +137,7 @@ def test_pipeline_skips_citation_coverage_when_corpus_is_unknown_and_does_not_lo
         logger.remove(sink_id)
 
     assert rewrite_client.calls == [sensitive_query]
-    assert search_calls[0][1:] == ("formal legal query", "group-1", 30)
+    assert search_calls[0][1:] == ("formal legal query", "group-1", 30, {"expand_around_top_fact": True})
     assert generation_client.calls[0][0] == sensitive_query
     assert len(generation_client.calls[0][1]) == 1
     assert result.unindexed_citations == ()

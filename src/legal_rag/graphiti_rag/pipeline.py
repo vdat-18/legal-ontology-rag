@@ -88,7 +88,11 @@ class GraphitiRAGPipeline:
             logger.debug("Query rewrite completed")
 
         candidates = await search_facts(
-            self._graphiti_client, rewritten_query, self._group_id, self._settings.search_num_results
+            self._graphiti_client,
+            rewritten_query,
+            self._group_id,
+            self._settings.search_num_results,
+            expand_around_top_fact=self._settings.expand_around_top_fact,
         )
         fact_budget = self._settings.max_context_facts if max_facts is None else max_facts
         selected = candidates[:fact_budget]

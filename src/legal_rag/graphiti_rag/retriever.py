@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from graphiti_core import Graphiti
 from graphiti_core.driver.driver import GraphDriver
+from graphiti_core.edges import EntityEdge
 from graphiti_core.nodes import EpisodicNode
 from loguru import logger
 
@@ -57,12 +58,39 @@ class RetrievedFact:
     sources: tuple[FactSource, ...]
 
 
+async def _search_edges(
+    graphiti_client: Graphiti, query: str, group_id: str, num_results: int, *, expand_around_top_fact: bool
+) -> list[EntityEdge]:
+    """Search the graph, optionally re-ranking a second pass by proximity to the top fact's entity.
+
+    Plain hybrid search ranks an edge only by how well its own text matches the query, so it uses
+    the graph as a store of independent facts. Graphiti reranks by graph distance when given a
+    center node, so a second pass centred on the best fact's source entity promotes facts that are
+    structurally adjacent to it — the penalty, remedy, and provision hanging off the same
+    violation — which plain text similarity would rank far lower. Results from the first pass keep
+    their order and the expansion is appended, so this can only add context, never displace the
+    best text match.
+    """
+    edges = await graphiti_client.search(query, group_ids=[group_id], num_results=num_results)
+    if not expand_around_top_fact or not edges:
+        return edges
+
+    neighbourhood = await graphiti_client.search(
+        query, group_ids=[group_id], num_results=num_results, center_node_uuid=edges[0].source_node_uuid
+    )
+    seen = {edge.uuid for edge in edges}
+    expanded = [*edges, *(edge for edge in neighbourhood if edge.uuid not in seen)]
+    logger.debug("Graph expansion added {} facts around the top fact's entity", len(expanded) - len(edges))
+    return expanded
+
+
 async def search_facts(
     graphiti_client: Graphiti,
     query: str,
     group_id: str,
     num_results: int,
     *,
+    expand_around_top_fact: bool = True,
     get_episodes_by_uuids: EpisodeLookup = EpisodicNode.get_by_uuids,
 ) -> list[RetrievedFact]:
     """Run Graphiti's hybrid search and return the relevance-ranked candidate facts with provenance.
@@ -74,7 +102,9 @@ async def search_facts(
     Raises:
         MissingProvenanceError: If an edge has no resolvable supporting episode at all.
     """
-    edges = await graphiti_client.search(query, group_ids=[group_id], num_results=num_results)
+    edges = await _search_edges(
+        graphiti_client, query, group_id, num_results, expand_around_top_fact=expand_around_top_fact
+    )
 
     episode_uuids = list({uuid for edge in edges for uuid in edge.episodes})
     episodes_by_uuid = {

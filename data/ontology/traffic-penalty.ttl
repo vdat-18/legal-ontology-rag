@@ -1,0 +1,82 @@
+@prefix : <https://github.com/vdat-18/legal-ontology-rag/ontology/traffic-penalty#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://github.com/vdat-18/legal-ontology-rag/ontology/traffic-penalty> a owl:Ontology ;
+    rdfs:comment "Vietnamese road-traffic-penalty ontology, generated from legal_rag.graphiti_rag.ontology." .
+
+#################  Classes  #################
+
+:Violation a owl:Class ;
+    rdfs:label "Violation" ;
+    rdfs:comment "A specific traffic violation or prohibited conduct described in a legal provision." .
+
+:Penalty a owl:Class ;
+    rdfs:label "Penalty" ;
+    rdfs:comment "A monetary fine or administrative sanction imposed for a violation." .
+
+:RemedialMeasure a owl:Class ;
+    rdfs:label "RemedialMeasure" ;
+    rdfs:comment "A corrective or remedial action required in addition to a penalty." .
+
+:LegalDocument a owl:Class ;
+    rdfs:label "LegalDocument" ;
+    rdfs:comment "A legal document: decree (Nghị định), circular (Thông tư), law (Luật), or decision (Quyết định)." .
+
+:Provision a owl:Class ;
+    rdfs:label "Provision" ;
+    rdfs:comment "A specific article, clause, or point within a legal document." .
+
+:Subject a owl:Class ;
+    rdfs:label "Subject" ;
+    rdfs:comment "A category of person or vehicle that a rule applies to." .
+
+:Authority a owl:Class ;
+    rdfs:label "Authority" ;
+    rdfs:comment "A government body responsible for enforcement, sanctioning, or issuance of a rule." .
+
+#################  Object properties  #################
+
+:PENALIZES a owl:ObjectProperty ;
+    rdfs:label "PENALIZES" ;
+    rdfs:comment "This violation is penalized by this fine or sanction." ;
+    rdfs:domain :Violation ;
+    rdfs:range :Penalty .
+
+:APPLIES_TO a owl:ObjectProperty ;
+    rdfs:label "APPLIES_TO" ;
+    rdfs:comment "This violation or rule applies to this subject or vehicle category." ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :Provision :Violation ) ] ;
+    rdfs:range :Subject .
+
+:REQUIRES_REMEDY a owl:ObjectProperty ;
+    rdfs:label "REQUIRES_REMEDY" ;
+    rdfs:comment "This violation requires this remedial measure in addition to any penalty." ;
+    rdfs:domain :Violation ;
+    rdfs:range :RemedialMeasure .
+
+:DEFINED_IN a owl:ObjectProperty ;
+    rdfs:label "DEFINED_IN" ;
+    rdfs:comment "This violation or rule is defined in this legal provision." ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :Penalty :RemedialMeasure :Violation ) ] ;
+    rdfs:range :Provision .
+
+:PART_OF a owl:ObjectProperty ;
+    rdfs:label "PART_OF" ;
+    rdfs:comment "This provision is part of this legal document." ;
+    rdfs:domain :Provision ;
+    rdfs:range :LegalDocument .
+
+:ENFORCED_BY a owl:ObjectProperty ;
+    rdfs:label "ENFORCED_BY" ;
+    rdfs:comment "This rule or violation is enforced or sanctioned by this authority." ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( :Provision :Violation ) ] ;
+    rdfs:range :Authority .
+
+:AMENDS a owl:ObjectProperty ;
+    rdfs:label "AMENDS" ;
+    rdfs:comment "This legal document amends, supersedes, or modifies that legal document." ;
+    rdfs:domain :LegalDocument ;
+    rdfs:range :LegalDocument .
