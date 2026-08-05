@@ -101,3 +101,30 @@ EDGE_TYPES: dict[str, type[BaseModel]] = {
     "ENFORCED_BY": EnforcedBy,
     "AMENDS": Amends,
 }
+
+EDGE_TYPE_MAP: dict[tuple[str, str], list[str]] = {
+    ("Violation", "Penalty"): ["PENALIZES"],
+    ("Violation", "Subject"): ["APPLIES_TO"],
+    ("Provision", "Subject"): ["APPLIES_TO"],
+    ("Violation", "RemedialMeasure"): ["REQUIRES_REMEDY"],
+    ("Violation", "Provision"): ["DEFINED_IN"],
+    ("Penalty", "Provision"): ["DEFINED_IN"],
+    ("RemedialMeasure", "Provision"): ["DEFINED_IN"],
+    ("Provision", "LegalDocument"): ["PART_OF"],
+    ("Violation", "Authority"): ["ENFORCED_BY"],
+    ("Provision", "Authority"): ["ENFORCED_BY"],
+    ("LegalDocument", "LegalDocument"): ["AMENDS"],
+}
+"""Which edge types may connect which entity types, as (source, target) -> allowed names.
+
+Without this map Graphiti defaults to ``{('Entity', 'Entity'): every edge type}``, so the model
+may attach any relation between any two entities. That default produced clearly wrong edges in
+the built graph: only ~62% of ``PENALIZES`` ran ``Violation -> Penalty``, the rest including
+``Penalty -> Violation`` (reversed) and ``Subject -> Subject``.
+
+Graphiti matches a candidate pair against the cartesian product of both nodes' labels, each
+extended with ``Entity`` (``edge_operations.py``), and offers the model only the types found
+here. ``('Entity', 'Entity')`` is deliberately absent: a pair the extractor could not classify
+falls back to a generic relation name rather than being forced into a typed edge it does not
+satisfy, which keeps the typed edges trustworthy for traversal.
+"""

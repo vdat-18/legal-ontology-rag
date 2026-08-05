@@ -1,0 +1,148 @@
+"""Tests for the Graphiti knowledge-graph RAG HTTP API."""
+
+from __future__ import annotations
+
+import pytest
+from fastapi.testclient import TestClient
+
+from legal_rag.graphiti_rag.api import server
+from legal_rag.graphiti_rag.pipeline import GraphitiRAGResult
+from legal_rag.graphiti_rag.retriever import FactSource, RetrievedFact
+
+_ENVIRONMENT = {
+    "LLM_BASE_URL": "http://provider.test/v1",
+    "LLM_API_KEY": "test-key",
+    "LLM_MODEL": "provider/test-model",
+    "LLM_TIMEOUT_SECONDS": "60",
+    "EMBEDDING_PROFILE": "qwen3_0_6b",
+    "NEO4J_URI": "bolt://localhost:7687",
+    "NEO4J_USER": "neo4j",
+    "NEO4J_PASSWORD": "password",
+}
+
+
+class _FakePipeline:
+    """Answer without touching Neo4j, an embedder, or a language model."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, int | None]] = []
+        self.closed = False
+
+    async def run(self, query: str, max_facts: int | None = None) -> GraphitiRAGResult:
+        """Record the call and return one fixed grounded answer."""
+        self.calls.append((query, max_facts))
+        return GraphitiRAGResult(
+            query=query,
+            rewritten_query="không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
+            answer="Phạt tiền từ 18 đến 20 triệu đồng.",
+            sources=(
+                RetrievedFact(
+                    fact="Không chấp hành hiệu lệnh của đèn tín hiệu bị phạt 18-20 triệu đồng.",
+                    sources=(FactSource(chunk_id="chunk-abc", source_name="168_2024_ND-CP.docx"),),
+                ),
+            ),
+            unindexed_citations=("100/2019/NĐ-CP",),
+        )
+
+    async def close(self) -> None:
+        """Record that the server released the pipeline."""
+        self.closed = True
+
+
+@pytest.fixture(autouse=True)
+def _environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Provide the settings the API reads, without depending on the developer's real .env."""
+    for name, value in _ENVIRONMENT.items():
+        monkeypatch.setenv(name, value)
+
+
+def test_health_does_not_load_the_pipeline() -> None:
+    """Health must answer while Neo4j and the embedder are still unavailable."""
+
+    def _fail_if_built() -> _FakePipeline:
+        message = "health must not build the pipeline"
+        raise AssertionError(message)
+
+    with TestClient(server.create_app(pipeline_factory=_fail_if_built, group_id="g1")) as client:
+        response = client.get("/health")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["pipeline_loaded"] is False
+    assert body["group_id"] == "g1"
+    assert body["neo4j_uri"] == "bolt://localhost:7687"
+
+
+def test_query_returns_the_answer_with_provenance_and_the_rewritten_query() -> None:
+    """The response carries the answer, every supporting chunk, and the query actually searched."""
+    pipeline = _FakePipeline()
+
+    with TestClient(server.create_app(pipeline_factory=lambda: pipeline, group_id="g1")) as client:
+        response = client.post("/graphiti/query", json={"query": "vượt đèn đỏ phạt bao nhiêu"})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "query": "vượt đèn đỏ phạt bao nhiêu",
+        "rewritten_query": "không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
+        "answer": "Phạt tiền từ 18 đến 20 triệu đồng.",
+        "sources": [
+            {
+                "fact": "Không chấp hành hiệu lệnh của đèn tín hiệu bị phạt 18-20 triệu đồng.",
+                "sources": [{"chunk_id": "chunk-abc", "source_name": "168_2024_ND-CP.docx"}],
+            }
+        ],
+        "unindexed_citations": ["100/2019/NĐ-CP"],
+    }
+    assert pipeline.calls == [("vượt đèn đỏ phạt bao nhiêu", None)]
+
+
+def test_query_forwards_max_facts_to_the_pipeline() -> None:
+    """An explicit max_facts override reaches the pipeline instead of being dropped."""
+    pipeline = _FakePipeline()
+
+    with TestClient(server.create_app(pipeline_factory=lambda: pipeline, group_id="g1")) as client:
+        client.post("/graphiti/query", json={"query": "q", "max_facts": 3})
+
+    assert pipeline.calls == [("q", 3)]
+
+
+@pytest.mark.parametrize("payload", [{"query": ""}, {"query": "q", "max_facts": 0}])
+def test_query_rejects_invalid_input(payload: dict[str, object]) -> None:
+    """An empty query or a non-positive max_facts is refused before the pipeline is built."""
+
+    def _fail_if_built() -> _FakePipeline:
+        message = "invalid input must not build the pipeline"
+        raise AssertionError(message)
+
+    with TestClient(server.create_app(pipeline_factory=_fail_if_built, group_id="g1")) as client:
+        response = client.post("/graphiti/query", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_shutdown_closes_the_pipeline() -> None:
+    """The Neo4j connection is released when the server stops, not leaked."""
+    pipeline = _FakePipeline()
+
+    with TestClient(server.create_app(pipeline_factory=lambda: pipeline, group_id="g1")) as client:
+        client.post("/graphiti/query", json={"query": "q"})
+
+    assert pipeline.closed is True
+
+
+def test_pipeline_is_built_once_and_reused() -> None:
+    """The embedder and Neo4j connection are created once, not per request."""
+    built: list[_FakePipeline] = []
+
+    def _factory() -> _FakePipeline:
+        pipeline = _FakePipeline()
+        built.append(pipeline)
+        return pipeline
+
+    with TestClient(server.create_app(pipeline_factory=_factory, group_id="g1")) as client:
+        client.post("/graphiti/query", json={"query": "first"})
+        client.post("/graphiti/query", json={"query": "second"})
+
+    assert len(built) == 1
+    assert built[0].calls == [("first", None), ("second", None)]

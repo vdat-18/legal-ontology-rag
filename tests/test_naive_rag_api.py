@@ -146,6 +146,7 @@ def test_redis_failure_crashes_startup() -> None:
         with pytest.raises(Exception, match="connection refused"), TestClient(app):
             pass
 
+
 @pytest.mark.usefixtures("_env")
 def test_store_turn_writes_to_redis() -> None:
     """Query stores the turn as JSON in Redis under the session key."""
@@ -195,4 +196,3 @@ def test_session_isolation_redis_keys() -> None:
     rpush_keys = [c[0][0] for c in mock_redis.rpush.call_args_list]
     assert "rag:history:iso-a" in rpush_keys
     assert "rag:history:iso-b" in rpush_keys
-

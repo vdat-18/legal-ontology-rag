@@ -16,7 +16,7 @@ from neo4j import AsyncDriver
 
 from legal_rag.chunker.models import Chunk
 from legal_rag.graphiti_rag.effective_date import EffectiveDateClient, extract_effective_date
-from legal_rag.graphiti_rag.ontology import EDGE_TYPES, ENTITY_TYPES
+from legal_rag.graphiti_rag.ontology import EDGE_TYPE_MAP, EDGE_TYPES, ENTITY_TYPES
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,6 +125,7 @@ async def _add_episode(graphiti_client: Graphiti, chunk: Chunk, reference_time: 
         group_id=group_id,
         entity_types=ENTITY_TYPES,
         edge_types=EDGE_TYPES,
+        edge_type_map=EDGE_TYPE_MAP,
     )
 
 
