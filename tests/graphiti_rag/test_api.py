@@ -52,6 +52,7 @@ class _FakePipeline:
                 ),
             ),
             unindexed_citations=("100/2019/NĐ-CP",),
+            suggestions=("Xe máy vượt đèn đỏ phạt bao nhiêu?",),
         )
 
     async def close(self) -> None:
@@ -103,6 +104,7 @@ def test_query_returns_the_answer_with_provenance_and_the_rewritten_query() -> N
             }
         ],
         "unindexed_citations": ["100/2019/NĐ-CP"],
+        "suggestions": ["Xe máy vượt đèn đỏ phạt bao nhiêu?"],
     }
     assert pipeline.calls == [("vượt đèn đỏ phạt bao nhiêu", None)]
 

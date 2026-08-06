@@ -14,6 +14,14 @@ from legal_rag.graphiti_rag.retriever import FactSource, RetrievedFact
 from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
 
 
+class _FakeFollowUpClient:
+    """Return fixed follow-up questions without contacting a provider."""
+
+    def suggest(self, _question: str, _answer: str) -> list[str]:
+        """Return one deterministic suggestion."""
+        return ["Xe máy thì sao?"]
+
+
 class _FakeGraphiti:
     """Record whether the pipeline releases its graph connection."""
 
@@ -109,6 +117,7 @@ def _build_pipeline(
     monkeypatch.setattr(pipeline_module, "BamlQueryRewriteClient", lambda *_args: rewrite_client)
     monkeypatch.setattr(pipeline_module, "BamlGenerationClient", lambda *_args: generation_client)
     monkeypatch.setattr(pipeline_module, "BamlDocumentCitationClient", lambda *_args: citation_client)
+    monkeypatch.setattr(pipeline_module, "BamlFollowUpClient", lambda *_args: _FakeFollowUpClient())
     monkeypatch.setattr(pipeline_module, "search_facts", fake_search)
     settings, neo4j_settings, graphiti_settings = _settings()
     pipeline = GraphitiRAGPipeline(

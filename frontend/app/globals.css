@@ -109,3 +109,11 @@ h4 { margin: 0 0 .4rem; font-size: .85rem; text-transform: uppercase; letter-spa
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+.suggestions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .1rem; }
+.suggestions button {
+  background: var(--panel); color: var(--muted); border: 1px dashed var(--border);
+  border-radius: 999px; padding: .4rem .8rem; cursor: pointer; font-size: .85rem; text-align: left;
+}
+.suggestions button:hover:not(:disabled) { border-style: solid; border-color: var(--accent); color: var(--text); }
+.suggestions button:disabled { opacity: .5; cursor: not-allowed; }

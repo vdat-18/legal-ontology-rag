@@ -15,6 +15,7 @@ from legal_rag.graphiti_rag.generator import generate_answer
 from legal_rag.graphiti_rag.provenance import BamlDocumentCitationClient, find_unindexed_document_citations
 from legal_rag.graphiti_rag.query_rewriter import BamlQueryRewriteClient
 from legal_rag.graphiti_rag.retriever import RetrievedFact, search_facts
+from legal_rag.graphiti_rag.suggestions import BamlFollowUpClient
 from legal_rag.naive_rag.generator import BamlGenerationClient
 from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
 
@@ -28,6 +29,12 @@ class GraphitiRAGResult:
     answer: str
     sources: tuple[RetrievedFact, ...] = ()
     unindexed_citations: tuple[str, ...] = ()
+    suggestions: tuple[str, ...] = ()
+
+
+async def _no_citations() -> list[str]:
+    """Stand in for the citation check when the indexed corpus is unknown."""
+    return []
 
 
 class GraphitiRAGPipeline:
@@ -64,6 +71,7 @@ class GraphitiRAGPipeline:
         self._generation_client = BamlGenerationClient(settings, graphiti_settings)
         self._query_rewrite_client = BamlQueryRewriteClient(settings, graphiti_settings)
         self._citation_client = BamlDocumentCitationClient(settings, graphiti_settings)
+        self._follow_up_client = BamlFollowUpClient(settings, graphiti_settings)
         logger.info("GraphitiRAGPipeline initialized for group '{}'", group_id)
 
     async def run(
@@ -108,14 +116,21 @@ class GraphitiRAGPipeline:
         selected = candidates[:fact_budget]
         answer = await asyncio.to_thread(generate_answer, query, selected, self._generation_client)
 
-        unindexed_citations: list[str] = []
-        if self._known_document_numbers is not None:
-            unindexed_citations = await asyncio.to_thread(
+        # Both only need the finished answer, so the second one is free in wall-clock terms.
+        citation_task = (
+            asyncio.to_thread(
                 find_unindexed_document_citations,
                 [answer, *(fact.fact for fact in selected)],
                 self._known_document_numbers,
                 self._citation_client,
             )
+            if self._known_document_numbers is not None
+            else _no_citations()
+        )
+        unindexed_citations, suggestions = await asyncio.gather(
+            citation_task,
+            asyncio.to_thread(self._follow_up_client.suggest, query, answer),
+        )
         if unindexed_citations:
             logger.warning("Answer cites document(s) outside the indexed corpus: {}", unindexed_citations)
 
@@ -126,6 +141,7 @@ class GraphitiRAGPipeline:
             answer=answer,
             sources=tuple(selected),
             unindexed_citations=tuple(unindexed_citations),
+            suggestions=tuple(suggestions),
         )
 
     async def close(self) -> None:

@@ -299,6 +299,8 @@ _GRAPHITI_TUNABLES: dict[str, Callable[[str], int | float]] = {
     "query_rewrite_max_output_tokens": int,
     "effective_date_max_output_tokens": int,
     "citation_max_output_tokens": int,
+    "follow_up_max_output_tokens": int,
+    "follow_up_temperature": float,
     "extraction_temperature": float,
     "expand_around_top_fact": _parse_boolean,
     "rerank_with_cross_encoder": _parse_boolean,
@@ -322,6 +324,8 @@ class GraphitiSettings:
     query_rewrite_max_output_tokens: int = 2048
     effective_date_max_output_tokens: int = 2048
     citation_max_output_tokens: int = 2048
+    follow_up_max_output_tokens: int = 2048
+    follow_up_temperature: float = 0.4
     extraction_temperature: float = 0.0
     expand_around_top_fact: bool = True
     rerank_with_cross_encoder: bool = False

@@ -56,6 +56,7 @@ class QueryResponse(BaseModel):
     answer: str
     sources: list[RetrievedFactResponse]
     unindexed_citations: list[str]
+    suggestions: list[str]
 
 
 class HistoryTurnResponse(BaseModel):
@@ -164,6 +165,7 @@ def _to_response(result: GraphitiRAGResult) -> QueryResponse:
             for fact in result.sources
         ],
         unindexed_citations=list(result.unindexed_citations),
+        suggestions=list(result.suggestions),
     )
 
 

@@ -19,6 +19,7 @@ export interface QueryResponse {
   answer: string;
   sources: RetrievedFact[];
   unindexed_citations: string[];
+  suggestions: string[];
 }
 
 /**

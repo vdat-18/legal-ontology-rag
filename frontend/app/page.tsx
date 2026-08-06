@@ -126,6 +126,18 @@ export default function Home() {
               </div>
             )}
 
+            {/* Only under the newest answer: older suggestions refer to a point the
+                conversation has already moved past. */}
+            {turn.response && index === turns.length - 1 && turn.response.suggestions.length > 0 && (
+              <div className="suggestions">
+                {turn.response.suggestions.map((suggestion) => (
+                  <button key={suggestion} onClick={() => submit(suggestion)} disabled={pending}>
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {turn.restoredAnswer && (
               <div className="bubble answer">
                 <p>{turn.restoredAnswer}</p>
