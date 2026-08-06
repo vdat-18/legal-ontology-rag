@@ -304,6 +304,8 @@ _GRAPHITI_TUNABLES: dict[str, Callable[[str], int | float]] = {
     "extraction_temperature": float,
     "expand_around_top_fact": _parse_boolean,
     "rerank_with_cross_encoder": _parse_boolean,
+    "reranker_model_id": str.strip,
+    "reranker_model_revision": str.strip,
     "max_response_bytes": int,
 }
 
@@ -332,6 +334,8 @@ class GraphitiSettings:
     extraction_temperature: float = 0.0
     expand_around_top_fact: bool = True
     rerank_with_cross_encoder: bool = False
+    reranker_model_id: str = "BAAI/bge-reranker-v2-m3"
+    reranker_model_revision: str = "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e"
     max_response_bytes: int = 1_048_576
 
     def __post_init__(self) -> None:

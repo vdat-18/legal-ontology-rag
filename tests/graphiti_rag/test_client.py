@@ -21,15 +21,16 @@ def test_build_graphiti_uses_the_generic_openai_compatible_client(monkeypatch: p
         captured["llm"] = kwargs
         return "llm", kwargs
 
-    def fake_reranker(**kwargs: object) -> tuple[str, dict[str, object]]:
-        return "reranker", kwargs
+    def fake_reranker(*args: object) -> tuple[str, tuple[object, ...]]:
+        # The local reranker loads a model from disk, so the test must not construct a real one.
+        return "reranker", args
 
     def fake_graphiti(**kwargs: object) -> dict[str, object]:
         return kwargs
 
     monkeypatch.setattr(client_module, "AsyncOpenAI", fake_openai_client)
     monkeypatch.setattr(client_module, "OpenAIGenericClient", fake_llm_client)
-    monkeypatch.setattr(client_module, "OpenAIRerankerClient", fake_reranker)
+    monkeypatch.setattr(client_module, "LocalCrossEncoderReranker", fake_reranker)
     monkeypatch.setattr(client_module, "Graphiti", fake_graphiti)
     settings = Settings("https://example.test/v1", "test-key", "gpt-5.4", 60)
     neo4j_settings = Neo4jSettings("bolt://localhost:7687", "neo4j", "example-password")

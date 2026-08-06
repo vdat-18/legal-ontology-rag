@@ -8,13 +8,13 @@ from collections.abc import Mapping
 from typing import Any
 
 from graphiti_core import Graphiti
-from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
 from graphiti_core.llm_client.config import LLMConfig
 from graphiti_core.llm_client.openai_generic_client import OpenAIGenericClient
 from openai import AsyncOpenAI
 
 from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.graphiti_rag.embedder import QwenGraphitiEmbedder
+from legal_rag.graphiti_rag.reranker import LocalCrossEncoderReranker
 from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
 
 
@@ -82,7 +82,9 @@ def build_graphiti(
         password=neo4j_settings.password,
         llm_client=llm_client,
         embedder=resolved_embedder,
-        cross_encoder=OpenAIRerankerClient(config=llm_config, client=openai_client),
+        cross_encoder=LocalCrossEncoderReranker(
+            graphiti_settings.reranker_model_id, graphiti_settings.reranker_model_revision
+        ),
     )
 
 
