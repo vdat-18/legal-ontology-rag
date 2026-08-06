@@ -45,6 +45,13 @@ class FactSource:
 
     chunk_id: str
     source_name: str
+    text: str = ""
+    """The source passage this fact was extracted from.
+
+    An extracted fact is a distilled claim and loses the wording around it — the article heading
+    that says which vehicle a penalty applies to, the clause numbering, the exceptions. Carrying
+    the passage lets an answer quote the provision instead of paraphrasing a paraphrase.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,7 +150,11 @@ async def search_facts(
         if missing_episode_uuids or not edge.episodes:
             raise MissingProvenanceError(edge.uuid, missing_episode_uuids)
         sources = tuple(
-            FactSource(chunk_id=episodes_by_uuid[uuid].name, source_name=episodes_by_uuid[uuid].source_description)
+            FactSource(
+                chunk_id=episodes_by_uuid[uuid].name,
+                source_name=episodes_by_uuid[uuid].source_description,
+                text=episodes_by_uuid[uuid].content or "",
+            )
             for uuid in edge.episodes
         )
         facts.append(RetrievedFact(fact=edge.fact, sources=sources))

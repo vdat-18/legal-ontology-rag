@@ -37,10 +37,11 @@ class _FakeEdge:
 class _FakeEpisode:
     """A minimal stand-in for graphiti_core's EpisodicNode."""
 
-    def __init__(self, uuid: str, name: str, source_description: str) -> None:
+    def __init__(self, uuid: str, name: str, source_description: str, content: str = "") -> None:
         self.uuid = uuid
         self.name = name
         self.source_description = source_description
+        self.content = content
 
 
 class _FakeGraphiti:

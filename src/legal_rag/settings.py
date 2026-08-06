@@ -233,8 +233,8 @@ class NaiveRagSettings:
     # DeepSeek spends output tokens on reasoning before the answer, and one context is sent per
     # supporting chunk, so a grounded answer over ten multi-source facts runs close to 3k tokens.
     # Too small a budget truncates the response into an empty string that cannot be parsed.
-    answer_max_output_tokens: int = 8192
-    answer_temperature: float = 0.3
+    answer_max_output_tokens: int = 16384
+    answer_temperature: float = 0.1
     max_response_bytes: int = 1_048_576
 
     def __post_init__(self) -> None:
@@ -319,12 +319,15 @@ class GraphitiSettings:
     # DeepSeek spends output tokens on reasoning before the answer, and one context is sent per
     # supporting chunk, so a grounded answer over ten multi-source facts runs close to 3k tokens.
     # Too small a budget truncates the response into an empty string that cannot be parsed.
-    answer_max_output_tokens: int = 8192
+    answer_max_output_tokens: int = 16384
     answer_temperature: float = 0.3
-    query_rewrite_max_output_tokens: int = 2048
-    effective_date_max_output_tokens: int = 2048
-    citation_max_output_tokens: int = 2048
-    follow_up_max_output_tokens: int = 2048
+    # A reasoning model spends most of a completion on reasoning_content before writing any
+    # answer, so these budgets cover the reasoning as well as the short output they ask for.
+    # Too small and the response is cut off mid-JSON, which cannot be parsed at all.
+    query_rewrite_max_output_tokens: int = 8192
+    effective_date_max_output_tokens: int = 8192
+    citation_max_output_tokens: int = 8192
+    follow_up_max_output_tokens: int = 8192
     follow_up_temperature: float = 0.4
     extraction_temperature: float = 0.0
     expand_around_top_fact: bool = True
