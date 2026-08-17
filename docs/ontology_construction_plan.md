@@ -1180,7 +1180,9 @@ ontology/
 
 - [x] Create `ontology/requirements/competency_questions.yaml` with all 16 mandatory CQs.
 - [x] Create reusable positive and boundary fixtures in `ontology/tests/fixtures/pilot_cq_fixtures.yaml`.
-- [ ] Create the versioned ontology requirements, glossary, and modeling-decision artifacts.
+- [x] Create `ontology/requirements/ontology_requirements.yaml` with versioned scope and granularity requirements.
+- [x] Create `ontology/glossary/terms.yaml` with canonical terms, boundaries, synonyms, and review status.
+- [x] Create `ontology/decisions/modeling_decisions.yaml` with rationale, CQ traceability, and pending reviews.
 - [ ] Define the OWL profile, namespaces, and module import policy.
 - [ ] Formalize one cohesive pilot module at a time.
 - [ ] Add SHACL shapes and executable CQ queries after the corresponding module exists.
