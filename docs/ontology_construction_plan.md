@@ -119,7 +119,8 @@ or any storage framework.
   regulated conduct; it does not attempt to model all road-traffic law.
 - **Baseline assumption:** both original/amending legal expressions and consolidated expressions may be represented,
   but their identity and authority must not be conflated.
-- **Open:** select the OWL profile and decide which closed-world data-quality constraints belong in SHACL.
+- **Selected for draft formalization:** use OWL 2 DL with open-world semantics; keep required-field, cardinality,
+  datatype, provenance-completeness, and temporal-order validation in a separate SHACL graph.
 - **Open:** name the legal-domain reviewer or define the approval process.
 - **Completed initial review:** Traffic Law Knowledge Base V1 and the principal external reuse candidates have been
   inventoried. The pilot conceptual model is now selected; term-level mappings remain pending legal and ontology review.
@@ -256,8 +257,9 @@ retrieval, procedures, authority, criminal liability, or local-law conflict that
 - Reference W3C and OASIS standards through their canonical published IRIs and specifications; avoid vendoring complete
   artifacts unless required and license-reviewed.
 - Preserve attribution for any LKIF-Core content adapted under CC BY 4.0.
-- Give the canonical local ontology its own controlled, resolvable namespace with version IRIs; select that namespace
-  only when formalization begins.
+- Use the proposed canonical root `https://w3id.org/legal-ontology-rag/ontology` with version IRIs and module-specific
+  namespaces. Treat it as non-resolvable until its redirect is registered and verified; public release is blocked until
+  that registration and an ontology license are complete.
 - Record every external mapping with source version, relation type, reviewer, and rationale. Similar labels alone do not
   justify `owl:equivalentClass` or `owl:equivalentProperty`.
 
@@ -1159,6 +1161,8 @@ executable CQ queries only after WP1-WP4 are approved. The expected structure is
 ```text
 ontology/
 |-- README.md
+|-- formalization_policy.yaml
+|-- legal_ontology.ttl
 |-- requirements/
 |   |-- ontology_requirements.yaml
 |   `-- competency_questions.yaml
@@ -1168,6 +1172,7 @@ ontology/
 |   `-- modeling_decisions.yaml
 |-- modules/
 |   |-- source_provenance.ttl
+|   |-- occurrence_context.ttl
 |   |-- normative_rule.ttl
 |   |-- legal_consequence.ttl
 |   `-- temporal_change.ttl
@@ -1183,7 +1188,7 @@ ontology/
 - [x] Create `ontology/requirements/ontology_requirements.yaml` with versioned scope and granularity requirements.
 - [x] Create `ontology/glossary/terms.yaml` with canonical terms, boundaries, synonyms, and review status.
 - [x] Create `ontology/decisions/modeling_decisions.yaml` with rationale, CQ traceability, and pending reviews.
-- [ ] Define the OWL profile, namespaces, and module import policy.
+- [x] Define the OWL profile, namespaces, and module import policy in `ontology/formalization_policy.yaml`.
 - [ ] Formalize one cohesive pilot module at a time.
 - [ ] Add SHACL shapes and executable CQ queries after the corresponding module exists.
 

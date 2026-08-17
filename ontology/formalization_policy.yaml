@@ -1,0 +1,207 @@
+schema_version: "0.1.0"
+artifact_id: road-traffic-ontology-formalization-policy
+artifact_version: "0.1.0"
+status: draft_formalization
+source_plan: docs/ontology_construction_plan.md
+review:
+  ontology_engineering_status: drafted
+  stakeholder_approval: pending
+  namespace_resolution: pending
+  ontology_license: pending
+profile:
+  ontology_language: OWL 2
+  conformance_target: OWL 2 DL
+  primary_serialization: Turtle
+  text_encoding: UTF-8
+  semantics:
+    open_world_assumption: true
+    unique_name_assumption: false
+  rationale: >-
+    OWL 2 DL provides a decidable semantic baseline for the approved reified rule, role, provenance, and temporal
+    patterns without committing V0.1 to the restrictions of OWL 2 EL, QL, or RL before formal axioms exist.
+  authoring_constraints:
+    - Keep controlled subject kinds, vehicle categories, and conduct concepts as SKOS concepts rather than OWL classes used as values.
+    - Keep source logic as an evidenced condition-expression structure; do not add SWRL or executable rule-language semantics.
+    - Use OWL axioms for domain meaning and inference, not for required-field or record-completeness validation.
+    - Put closed-world cardinality, datatype, provenance-presence, and temporal-order checks in SHACL.
+    - Do not add equivalence, disjointness, property characteristics, or cardinality axioms without CQ and modeling-decision traceability.
+  excluded_profiles:
+    - profile: OWL 2 Full
+      reason: Class-as-value metamodeling and unrestricted semantics are unnecessary for the approved pilot model.
+    - profile: OWL 2 EL
+      reason: No EL-specific scalability requirement has been established, and the final axiom set is not known yet.
+    - profile: OWL 2 QL
+      reason: Relational query rewriting is not a construction-stage requirement.
+    - profile: OWL 2 RL
+      reason: Rule-oriented materialization is not required at this stage; profile compatibility may be assessed after formalization.
+
+namespace_policy:
+  canonical_root:
+    ontology_iri: https://w3id.org/legal-ontology-rag/ontology
+    term_namespace: https://w3id.org/legal-ontology-rag/ontology#
+    version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0
+    preferred_prefix: lor
+    resolution_status: proposed_pending_w3id_registration
+  versioning:
+    scheme: semantic_versioning
+    immutable_version_iris: true
+    stable_term_iris_across_patch_versions: true
+    breaking_term_iri_changes_require_major_version: true
+  publication_gates:
+    - Register and verify the w3id.org redirect before claiming that the canonical namespace is resolvable.
+    - Publish human-readable and machine-readable namespace documentation at the redirect target.
+    - Select and record a repository and ontology license before public ontology distribution.
+    - Verify every external mapping and attribution before release.
+  prohibited_namespaces:
+    - namespace: https://w3id.org/vn-traffic-law/ontology#
+      reason: The reviewed namespace was unresolved and its ontology bundle did not provide an explicit license.
+
+prefixes:
+  - prefix: lor
+    namespace: https://w3id.org/legal-ontology-rag/ontology#
+    use: Root ontology metadata and shared integration terms only.
+  - prefix: lorsp
+    namespace: https://w3id.org/legal-ontology-rag/ontology/source-provenance#
+    use: Source, document structure, provenance, chunk, evidence, and supported-assertion terms.
+  - prefix: loroc
+    namespace: https://w3id.org/legal-ontology-rag/ontology/occurrence-context#
+    use: Conduct occurrences, subjects, role assignments, vehicles, and contextual CQ inputs.
+  - prefix: lortc
+    namespace: https://w3id.org/legal-ontology-rag/ontology/temporal-change#
+    use: Legal validity and evidenced amendment, replacement, repeal, or supersession terms.
+  - prefix: lornr
+    namespace: https://w3id.org/legal-ontology-rag/ontology/normative-rule#
+    use: Penalty rules, conduct specifications, applicability, conditions, and exceptions.
+  - prefix: lorlc
+    namespace: https://w3id.org/legal-ontology-rag/ontology/legal-consequence#
+    use: Consequences, monetary ranges, point deductions, additional sanctions, remedies, and targets.
+  - prefix: rdf
+    namespace: http://www.w3.org/1999/02/22-rdf-syntax-ns#
+    use: RDF syntax vocabulary.
+  - prefix: rdfs
+    namespace: http://www.w3.org/2000/01/rdf-schema#
+    use: Labels, comments, and class/property hierarchy.
+  - prefix: owl
+    namespace: http://www.w3.org/2002/07/owl#
+    use: OWL ontology declarations, axioms, imports, and version metadata.
+  - prefix: xsd
+    namespace: http://www.w3.org/2001/XMLSchema#
+    use: Datatypes.
+  - prefix: dcterms
+    namespace: http://purl.org/dc/terms/
+    use: Ontology title, description, dates, creator, source, and license metadata.
+  - prefix: prov
+    namespace: http://www.w3.org/ns/prov#
+    use: Reviewed provenance primitives referenced by published IRI.
+  - prefix: time
+    namespace: http://www.w3.org/2006/time#
+    use: Reviewed instant and interval primitives referenced by published IRI.
+  - prefix: skos
+    namespace: http://www.w3.org/2004/02/skos/core#
+    use: Reviewed controlled-vocabulary primitives referenced by published IRI.
+  - prefix: eli
+    namespace: http://data.europa.eu/eli/ontology#
+    use: Candidate alignment targets only; not imported or asserted equivalent in V0.1.
+
+module_policy:
+  root_ontology:
+    id: MOD-ROOT
+    file: ontology/legal_ontology.ttl
+    ontology_iri: https://w3id.org/legal-ontology-rag/ontology
+    version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0
+    namespace: https://w3id.org/legal-ontology-rag/ontology#
+    imports: [MOD-SOURCE, MOD-OCCURRENCE, MOD-TEMPORAL, MOD-NORMATIVE, MOD-CONSEQUENCE]
+  modules:
+    - id: MOD-SOURCE
+      file: ontology/modules/source_provenance.ttl
+      ontology_iri: https://w3id.org/legal-ontology-rag/ontology/source-provenance
+      version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/source-provenance
+      namespace: https://w3id.org/legal-ontology-rag/ontology/source-provenance#
+      imports: []
+      external_term_namespaces: [prov]
+    - id: MOD-OCCURRENCE
+      file: ontology/modules/occurrence_context.ttl
+      ontology_iri: https://w3id.org/legal-ontology-rag/ontology/occurrence-context
+      version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/occurrence-context
+      namespace: https://w3id.org/legal-ontology-rag/ontology/occurrence-context#
+      imports: []
+      external_term_namespaces: [skos, time]
+    - id: MOD-TEMPORAL
+      file: ontology/modules/temporal_change.ttl
+      ontology_iri: https://w3id.org/legal-ontology-rag/ontology/temporal-change
+      version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/temporal-change
+      namespace: https://w3id.org/legal-ontology-rag/ontology/temporal-change#
+      imports: [MOD-SOURCE]
+      external_term_namespaces: [time]
+    - id: MOD-NORMATIVE
+      file: ontology/modules/normative_rule.ttl
+      ontology_iri: https://w3id.org/legal-ontology-rag/ontology/normative-rule
+      version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/normative-rule
+      namespace: https://w3id.org/legal-ontology-rag/ontology/normative-rule#
+      imports: [MOD-SOURCE, MOD-OCCURRENCE, MOD-TEMPORAL]
+      external_term_namespaces: [skos]
+    - id: MOD-CONSEQUENCE
+      file: ontology/modules/legal_consequence.ttl
+      ontology_iri: https://w3id.org/legal-ontology-rag/ontology/legal-consequence
+      version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/legal-consequence
+      namespace: https://w3id.org/legal-ontology-rag/ontology/legal-consequence#
+      imports: [MOD-SOURCE, MOD-OCCURRENCE, MOD-NORMATIVE]
+      external_term_namespaces: [skos]
+  import_rules:
+    - The root ontology imports every local module and defines no domain terms that belong to a module.
+    - Each module imports only its direct local dependencies, and the local import graph must remain acyclic.
+    - A module must declare every direct local dependency whose terms appear in its axioms; do not rely on accidental transitive imports.
+    - Canonical ontology IRIs are used in `owl:imports`; development tools resolve them to repository files through an XML catalog.
+    - External standards are referenced by reviewed term IRIs without `owl:imports` in V0.1.
+    - Adding an external `owl:imports` statement requires semantic, license, version, dependency-size, and CQ-impact review.
+  local_resolution:
+    mechanism: XML catalog
+    planned_file: ontology/catalog-v001.xml
+    status: create_with_first_turtle_module
+
+external_dependency_policy:
+  - id: REUSE-PROV-001
+    prefix: prov
+    mode: term_iri_reference
+    owl_import: false
+  - id: REUSE-TIME-001
+    prefix: time
+    mode: term_iri_reference
+    owl_import: false
+  - id: REUSE-SKOS-001
+    prefix: skos
+    mode: term_iri_reference
+    owl_import: false
+  - id: REUSE-ELI-001
+    prefix: eli
+    mode: candidate_alignment_only
+    owl_import: false
+  - id: REUSE-TLKB-001
+    mode: reference_and_selective_pattern_adaptation
+    owl_import: false
+  - id: REUSE-LKIF-001
+    mode: reference_only
+    owl_import: false
+  - id: REUSE-AKN-001
+    mode: reference_only
+    owl_import: false
+  - id: REUSE-LRML-001
+    mode: reference_only
+    owl_import: false
+  - id: REUSE-ODP-001
+    mode: pattern_adaptation
+    owl_import: false
+
+validation_policy:
+  owl:
+    - Parse every module and the root ontology as Turtle.
+    - Confirm OWL 2 DL conformance after each module increment.
+    - Run a DL reasoner for consistency and unintended unsatisfiable classes.
+    - Verify that ontology IRIs, version IRIs, and imports match this policy.
+  shacl:
+    - Keep SHACL in ontology/shapes/legal_ontology.shacl.ttl and outside the OWL import graph.
+    - Validate required fields, cardinalities, datatypes, provenance completeness, and temporal ordering.
+    - Document every constraint that depends on closed-world or closed-shape assumptions.
+  traceability:
+    - Every local class and property must trace to at least one CQ, glossary term, requirement, or modeling decision.
+    - Every reused or aligned external term must trace to one reviewed reuse decision.
