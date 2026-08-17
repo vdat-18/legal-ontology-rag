@@ -1,0 +1,281 @@
+schema_version: "0.1.0"
+artifact_id: road-traffic-ontology-competency-questions
+artifact_version: "0.1.0"
+status: draft_formalization
+language: vi
+source_plan: docs/ontology_construction_plan.md
+approval:
+  project_owner_status: accepted
+  accepted_items:
+    - LR-001
+    - LR-002
+    - LR-003
+    - LR-004
+    - LR-005
+    - LR-006
+    - LR-007
+  accepted_on: "2026-08-17"
+  independent_legal_professional_review: not_asserted
+competency_questions:
+  - id: CQ-RULE-001
+    version: "0.1.0"
+    type: validation
+    priority: must
+    status: stakeholder_accepted_for_draft
+    question_vi: >-
+      Với hành vi, vai trò chủ thể, loại phương tiện, điều kiện và ngày xảy ra đã biết,
+      quy tắc xử phạt nào áp dụng?
+    expected_answer_fields:
+      - penalty_rule
+      - matched_conduct
+      - subject_role
+      - vehicle_category
+      - satisfied_conditions
+      - validity_interval
+      - source_provisions
+    requirement_ids: [PURP-001, PURP-002, USE-001, USE-002, SCOPE-002, SCOPE-003, SCOPE-004, SCOPE-005, SCOPE-006]
+    positive_fixture_ids: [FIX-NO-PLATE-RULE]
+    boundary_fixture_ids: [FIX-RULE-MISSING-CONTEXT]
+
+  - id: CQ-APPLICABILITY-001
+    version: "0.1.0"
+    type: relationship
+    priority: must
+    status: stakeholder_accepted_for_draft
+    question_vi: Một quy tắc xử phạt áp dụng cho vai trò chủ thể và loại phương tiện nào?
+    expected_answer_fields:
+      - penalty_rule
+      - required_subject_kind
+      - required_subject_role
+      - required_vehicle_category
+      - source_provisions
+    requirement_ids: [PURP-002, USE-002, USE-003, SCOPE-003, GRAN-002, GRAN-003]
+    positive_fixture_ids: [FIX-RIGHT-PASS-MOTORCYCLE, FIX-RIGHT-PASS-PRIMITIVE]
+    boundary_fixture_ids: [FIX-OWNER-NOT-DRIVER]
+
+  - id: CQ-CONDITION-001
+    version: "0.1.0"
+    type: relationship
+    priority: must
+    status: stakeholder_accepted_for_draft
+    question_vi: Những điều kiện nào phải thỏa mãn để quy tắc áp dụng?
+    expected_answer_fields:
+      - penalty_rule
+      - condition_expression
+      - condition_operands
+      - evidence_spans
+    requirement_ids: [PURP-002, USE-001, USE-002, SCOPE-004, GRAN-004]
+    positive_fixture_ids: [FIX-NO-PLATE-RULE]
+    boundary_fixture_ids: [FIX-NO-PLATE-NONREQUIRED-VEHICLE]
+
+  - id: CQ-EXCEPTION-001
+    version: "0.1.0"
+    type: relationship
+    priority: must
+    status: stakeholder_accepted_for_draft
+    question_vi: >-
+      Ngoại lệ nào loại trừ hoặc chuyển trường hợp khỏi quy tắc chung, và ngoại lệ dẫn
+      tới quy tắc nào nếu có?
+    expected_answer_fields:
+      - general_rule
+      - legal_exception
+      - cited_excluded_provisions
+      - applicable_target_rule_versions
+      - evidence_spans
+    requirement_ids: [PURP-002, USE-001, USE-002, SCOPE-004, SCOPE-006, GRAN-004]
+    positive_fixture_ids: [FIX-SIGN-TRAFFIC-LIGHT-EXCLUDED]
+    boundary_fixture_ids: [FIX-SIGN-GENERAL-NONEXCLUDED]
+
+  - id: CQ-NEGATIVE-001
+    version: "0.1.0"
+    type: validation
+    priority: must
+    status: stakeholder_accepted_for_draft
+    question_vi: Khi thiếu thông tin ngữ cảnh nào thì chưa thể xác định duy nhất quy tắc áp dụng?
+    expected_answer_fields:
+      - missing_context_dimensions
+      - remaining_candidate_rules
+      - determination_status
+    requirement_ids: [PURP-002, USE-002, USE-003, GRAN-002, GRAN-003, GRAN-008]
+    positive_fixture_ids: [FIX-RIGHT-PASS-MISSING-VEHICLE]
+    boundary_fixture_ids: [FIX-RIGHT-PASS-MOTORCYCLE]
+
+  - id: CQ-PENALTY-001
+    version: "0.1.0"
+    type: validation
+    priority: must
+    status: stakeholder_accepted_for_draft
+    question_vi: Quy tắc áp dụng quy định mức phạt tiền tối thiểu, tối đa và đơn vị tiền tệ nào?
+    expected_answer_fields:
+      - monetary_penalty
+      - minimum_amount
+      - maximum_amount
+      - currency
+      - source_provisions
+    requirement_ids: [USE-002, SCOPE-005, GRAN-005]
+    positive_fixture_ids: [FIX-NO-PLATE-RULE]
+    boundary_fixture_ids: [FIX-MONETARY-UNKNOWN-NOT-ZERO]
+
+  - id: CQ-CONSEQUENCE-001
+    version: "0.1.0"
+    type: validation
+    priority: must
+    status: stakeholder_accepted_for_draft
+    question_vi: Ngoài phạt tiền, quy tắc còn áp dụng hậu quả pháp lý nào?
+    expected_answer_fields:
+      - consequence_kind
+      - consequence_value
+      - affected_target
+      - responsible_role
+      - source_provisions
+    requirement_ids: [USE-002, SCOPE-005, GRAN-005]
+    positive_fixture_ids: [FIX-NO-PLATE-RULE]
+    boundary_fixture_ids: [FIX-CONSEQUENCE-ABSENCE-UNKNOWN]
+
+  - id: CQ-POINTS-001
+    version: "0.1.0"
+    type: validation
+    priority: must
+    status: stakeholder_accepted_for_draft
+    question_vi: >-
+      Quy tắc có trừ điểm giấy phép lái xe không; nếu có thì bao nhiêu điểm và áp dụng
+      cho vai trò nào?
+    expected_answer_fields:
+      - point_deduction
+      - point_value
+      - affected_license
+      - required_role
+      - source_provisions
+    requirement_ids: [PURP-002, USE-002, SCOPE-003, SCOPE-005, GRAN-002, GRAN-005]
+    positive_fixture_ids: [FIX-OBSTRUCTION-VEHICLE-OPERATOR]
+    boundary_fixture_ids: [FIX-OBSTRUCTION-NONOPERATOR]
+
+  - id: CQ-ADDITIONAL-001
+    version: "0.1.0"
+    type: validation
+    priority: must
+    status: stakeholder_accepted_for_draft
+    question_vi: Hình thức xử phạt bổ sung nào đi kèm quy tắc và đối tượng của hình thức đó là gì?
+    expected_answer_fields:
+      - additional_sanction
+      - affected_target
+      - source_provisions
+    requirement_ids: [USE-002, SCOPE-005, GRAN-005]
+    positive_fixture_ids: [FIX-NO-PLATE-RULE]
+    boundary_fixture_ids: [FIX-POINTS-NOT-ADDITIONAL-SANCTION]
+
+  - id: CQ-REMEDY-001
+    version: "0.1.0"
+    type: validation
+    priority: must
+    status: stakeholder_accepted_for_draft
+    question_vi: >-
+      Biện pháp khắc phục hậu quả hoặc nghĩa vụ khôi phục nào được quy tắc yêu cầu,
+      ai phải thực hiện và trong điều kiện nào?
+    expected_answer_fields:
+      - remedial_measure
+      - responsible_role
+      - affected_target
+      - applicability_conditions
+      - source_provisions
+    requirement_ids: [USE-002, SCOPE-003, SCOPE-004, SCOPE-005, GRAN-005]
+    positive_fixture_ids: [FIX-PLATE-COMPLIANCE-REMEDY]
+    boundary_fixture_ids: [FIX-ND118-FORM-NONNORMATIVE]
+
+  - id: CQ-SOURCE-001
+    version: "0.1.0"
+    type: validation
+    priority: must
+    status: stakeholder_accepted_for_draft
+    question_vi: Quy tắc và từng hậu quả pháp lý được quy định trực tiếp tại văn bản, điều, khoản, điểm nào?
+    expected_answer_fields:
+      - legal_resource
+      - legal_expression
+      - provision_path
+      - supported_rule_component
+    requirement_ids: [PURP-003, SCOPE-001, SCOPE-007, GRAN-006]
+    positive_fixture_ids: [FIX-NO-PLATE-RULE]
+    boundary_fixture_ids: [FIX-DOCUMENT-ONLY-CITATION]
+
+  - id: CQ-EVIDENCE-001
+    version: "0.1.0"
+    type: validation
+    priority: must
+    status: stakeholder_accepted_for_draft
+    question_vi: Đoạn văn chính xác nào làm bằng chứng cho một điều kiện, ngoại lệ hoặc hậu quả đã mô hình hóa?
+    expected_answer_fields:
+      - supported_assertion
+      - evidence_span
+      - source_chunk
+      - source_file
+      - legal_provision
+    requirement_ids: [PURP-003, SCOPE-001, SCOPE-007, GRAN-006]
+    positive_fixture_ids: [FIX-NO-PLATE-RULE]
+    boundary_fixture_ids: [FIX-RELATED-SPAN-NOT-EVIDENCE]
+
+  - id: CQ-TEMPORAL-001
+    version: "0.1.0"
+    type: validation
+    priority: must
+    status: stakeholder_accepted_for_draft
+    question_vi: Tại ngày xảy ra hành vi, phiên bản quy tắc nào có hiệu lực?
+    expected_answer_fields:
+      - occurrence_date
+      - applicable_rule_version
+      - validity_interval
+      - excluded_rule_versions
+      - source_provisions
+    requirement_ids: [PURP-001, USE-004, SCOPE-006, GRAN-007]
+    positive_fixture_ids: [FIX-ARTICLE13-PRE-AMENDMENT, FIX-ARTICLE13-POST-AMENDMENT]
+    boundary_fixture_ids: [FIX-NULL-VALID-TO-NOT-INFINITE]
+
+  - id: CQ-TEMPORAL-002
+    version: "0.1.0"
+    type: relationship
+    priority: must
+    status: stakeholder_accepted_for_draft
+    question_vi: Một quy tắc đã thay đổi như thế nào trước và sau văn bản sửa đổi hoặc thay thế?
+    expected_answer_fields:
+      - earlier_rule_version
+      - later_rule_version
+      - legal_change_type
+      - changed_fields
+      - effective_date
+      - source_provisions
+    requirement_ids: [PURP-001, USE-004, SCOPE-006, GRAN-007]
+    positive_fixture_ids: [FIX-ARTICLE13-EXPLICIT-AMENDMENT]
+    boundary_fixture_ids: [FIX-ND168-ND336-NO-CHANGE-LINK]
+
+  - id: CQ-COMPARISON-001
+    version: "0.1.0"
+    type: validation
+    priority: must
+    status: stakeholder_accepted_for_draft
+    question_vi: >-
+      Hai trường hợp có hành vi tương đương khác hậu quả vì khác vai trò chủ thể hoặc
+      loại phương tiện như thế nào?
+    expected_answer_fields:
+      - compared_rules
+      - shared_conduct_concept
+      - differing_context_dimensions
+      - differing_consequences
+      - source_provisions
+    requirement_ids: [PURP-002, USE-003, SCOPE-002, SCOPE-003, SCOPE-005, GRAN-008]
+    positive_fixture_ids: [FIX-RIGHT-PASS-COMPARISON]
+    boundary_fixture_ids: [FIX-LEXICAL-SIMILARITY-NOT-EQUIVALENCE]
+
+  - id: CQ-ASSEMBLY-001
+    version: "0.1.0"
+    type: foundational
+    priority: must
+    status: stakeholder_accepted_for_draft
+    question_vi: Những điều khoản hoặc đoạn bằng chứng nào cùng cấu thành một quy tắc hoàn chỉnh?
+    expected_answer_fields:
+      - penalty_rule
+      - rule_components
+      - component_contributions
+      - source_provisions
+      - evidence_spans
+    requirement_ids: [PURP-003, USE-001, USE-005, SCOPE-007, GRAN-001, GRAN-006]
+    positive_fixture_ids: [FIX-NO-PLATE-RULE, FIX-ACCIDENT-ASSEMBLY]
+    boundary_fixture_ids: [FIX-NEARBY-CHUNKS-NOT-A-RULE]

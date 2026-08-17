@@ -244,7 +244,7 @@ retrieval, procedures, authority, criminal liability, or local-law conflict that
 | Legal document identity and expressions | ELI `LegalResource`/`Work`, `LegalExpression`/`Expression`, and `Format` concepts | Align local document, expression, and file/manifestation distinctions after testing Vietnamese consolidation and amendment examples | Do not assume EU publication lifecycle semantics are identical to Vietnamese legal-document practice |
 | Extraction and review provenance | PROV-O `Entity`, `Activity`, `Agent`, `wasGeneratedBy`, `wasDerivedFrom`, and `wasAssociatedWith` | Reuse published terms for extraction and review activities | Exact quote selectors, chunk locations, and assertion support remain local extensions |
 | Legal validity intervals | OWL-Time `Instant`, `Interval`, `hasBeginning`, `hasEnd`, and XSD date representations | Reuse temporal primitives | Legal effect, amendment, repeal, and applicability are domain relations, not generic time relations |
-| Vehicle and conduct vocabularies | SKOS `ConceptScheme`, `Concept`, labels, notes, and mapping properties | Represent multilingual controlled concepts and candidate normalization mappings | `skos:broader` must not silently imply `rdfs:subClassOf` |
+| Vehicle, subject-kind, and conduct vocabularies | SKOS `ConceptScheme`, `Concept`, labels, notes, and mapping properties | Represent multilingual controlled concepts and candidate normalization mappings | `skos:broader` must not silently imply `rdfs:subClassOf` |
 | Legal roles and norms | LKIF role and norm modules | Compare role identity and norm reification alternatives during conceptual modeling | Prefer a small local adaptation unless the imported axioms and full dependency chain are proven necessary |
 | Article/clause/point structure | Akoma Ntoso plus ELI structural metadata | Guide mappings from source markup and provision locators | Keep processing markup separate from domain semantics |
 | Conditions and exceptions | LegalRuleML and n-ary relation patterns | Inform expression, scope, exception-target, and provenance design | Do not introduce a rule engine or full LegalRuleML serialization in V0.1 |
@@ -380,7 +380,7 @@ modeling use; it does not make the persisted `LegalFact` record authoritative or
 | Candidate | Why selected | CQs exercised | Verification status |
 | --- | --- | --- | --- |
 | Fact `17d76de...` - no plate, NĐ 168, Article 14(3)(a), (5)(a), and (8)(b) | One rule with condition, monetary range, points, additional sanction, and multi-provision assembly | `CQ-CONDITION-001`, `CQ-PENALTY-001`, `CQ-POINTS-001`, `CQ-ADDITIONAL-001`, `CQ-ASSEMBLY-001` | verified with corrected full paths and heading-derived applicability |
-| Fact `ce413f01...` - failure to follow signs/markings, Article 6(1)(a) | Broad exclusion list that tests the difference between condition and exception | `CQ-EXCEPTION-001`, `CQ-SOURCE-001` | source structure verified; each redirect target still requires expansion |
+| Fact `ce413f01...` - failure to follow signs/markings, Article 6(1)(a) | Broad exclusion list that tests the difference between condition and exception | `CQ-EXCEPTION-001`, `CQ-SOURCE-001` | verified; 30 cited locators resolve to 32 point-level targets, three of which have later target versions under NĐ 238 |
 | Facts `03386949...` and `964ee842...` - prohibited right-side passing | Similar conduct with different subject/vehicle contexts and monetary ranges | `CQ-APPLICABILITY-001`, `CQ-COMPARISON-001`, `CQ-NEGATIVE-001` | verified; the first record loses Article 7 heading context |
 | Fact `e394749f...` - unsafe road obstruction/discharge | Point deduction depends on the additional condition that the individual is a vehicle operator | `CQ-CONDITION-001`, `CQ-POINTS-001` | verified with Article 12(11)(a) and (17) as separate supporting provisions |
 | Fact `0c0dcf27...` - use of an administratively detained vehicle | Tests whether an extracted post-violation duty is truly a modeled remedial measure | `CQ-REMEDY-001`, `CQ-CONSEQUENCE-001` | rejected as a normative fixture; evidence comes from attached form `Bieu mau.doc` |
@@ -399,7 +399,7 @@ consequence clauses. Extracted records remain benchmark artifacts and are not ed
 | Finding | Source evidence | Modeling impact |
 | --- | --- | --- |
 | The no-plate rule is scoped by the Article 14 heading to motorcycle, moped, and similar-vehicle drivers. | NĐ 168 Article 14(3)(a), (5)(a), and (8)(b). | Preserve heading-derived role and vehicle applicability; attach provenance separately to money, confiscation, and points. |
-| The general signs/markings rule contains an explicit list of excluded provisions in the same article. | NĐ 168 Article 6(1)(a). | Model an evidenced exclusion set, but do not assert a redirect to a normalized specific rule until every cited provision is resolved. |
+| The general signs/markings rule contains an explicit list of excluded provisions in the same article. | NĐ 168 Article 6(1)(a). | Model one evidenced exclusion statement citing 30 locators that resolve to 32 point-level targets; link target rules only after rule assembly. |
 | The two right-side-passing records have different article-heading scopes and monetary ranges. | NĐ 168 Article 7(3)(đ) and Article 9(1)(d). | Keep legal role and vehicle category separate; do not rely on the first record's generic extracted subject. |
 | The point deduction for obstruction/discharge is supported outside the monetary-penalty clause and applies only when the individual is a vehicle operator. | NĐ 168 Article 12(11)(a) and (17). | Represent the role condition on the point consequence and retain component-level provenance. |
 | The detained-vehicle record was extracted from an attached administrative form rather than the decree's normative article structure. | Attachment `Bieu mau.doc`, form content headed `Quyền và nghĩa vụ`, item 3(b). | Do not treat attachment content as a `LegalProvision` or classify its duties as `RemedialMeasure` without a governing normative citation. |
@@ -408,9 +408,63 @@ consequence clauses. Extracted records remain benchmark artifacts and are not ed
 | A genuine explicit amendment is available for the temporal pilot. | NĐ 238 Article 3 amends NĐ 168 Article 13(8)(b); NĐ 238 is effective from 2026-08-15. | Use an evidenced `LegalChange` event and distinct earlier/later rule expressions; Article 13(11)(a) supplies the associated remedial classification. |
 
 NĐ 168 took effect on 2025-01-01 for the reviewed pilot provisions. NĐ 238 took effect on 2026-08-15. The selected
-NĐ 168 no-plate, signs/markings, right-side-passing, obstruction/discharge, and accident provisions were not changed by
-NĐ 238; the replacement temporal fixture at Article 13(8)(b) was changed and therefore requires two validity-bounded
-rule expressions. Legal status must be rechecked when the corpus gains another amending or repealing document.
+NĐ 168 no-plate, right-side-passing, obstruction/discharge, and accident provisions were not changed by NĐ 238. The
+wording of the signs/markings rule also remains unchanged, but three of its cited exclusion targets receive later rule
+versions. The replacement temporal fixture at Article 13(8)(b) was changed directly and therefore requires two
+validity-bounded rule expressions. Legal status must be rechecked when the corpus gains another amending or repealing
+document.
+
+### Article 6(1)(a) Exception Target Resolution
+
+The phrase beginning with `trừ` in NĐ 168 Article 6(1)(a) is legally functional: it removes cases addressed by cited
+specific provisions from the general signs/markings offense. It is not merely descriptive text and is not modeled as
+one negated atomic condition. The 30 cited locators resolve to 32 point-level targets because the whole-clause citation
+to clause 7 contains three points.
+
+| Cited target | Provision-defined excluded case | Resolution |
+| --- | --- | --- |
+| Article 6(2)(a) | Improper lane change or missing lane-change signal. | Specific-offense target; its later expression includes unsafe lane-change distance under NĐ 238 Article 19(2). |
+| Article 6(2)(c) | Failure to yield at a road intersection. | Specific-offense target. |
+| Article 6(2)(d) | Specified improper stopping or parking outside urban areas. | Specific-offense target. |
+| Article 6(2)(đ) | Specified improper stopping or parking near curbs, bus lanes, utilities, fire access, pedestrian crossings, or prohibitory signs. | Specific-offense target. |
+| Article 6(3)(a) | Exceeding the speed limit by 5 km/h to under 10 km/h. | Specific-offense target. |
+| Article 6(3)(d) | Improper stopping or parking at a level railway crossing or within railway protection and safety areas. | Specific-offense target. |
+| Article 6(3)(đ) | Stopping or parking at specified intersections, entrances, narrow roads, obscured signs or signals, median openings, or unsafe opposing distances. | Specific-offense target. |
+| Article 6(3)(e) | Specified improper parking near curbs, bus lanes, utilities, sidewalks, fire access, or prohibitory signs. | Specific-offense target. |
+| Article 6(3)(n) | Driving in a road tunnel without low-beam lighting. | Specific-offense target. |
+| Article 6(3)(o) | Driving below the posted minimum speed. | Specific-offense target. |
+| Article 6(4)(a) | Entering an electronic toll-only lane without the required tag. | Specific-offense target. |
+| Article 6(4)(b) | Stopping or parking on the prohibited side of a road, near obscured curves or slopes, on bridges, under overpasses, or parallel to another stopped vehicle. | Specific-offense target. |
+| Article 6(4)(đ) | Reversing, turning, stopping, parking, or failing to provide required warnings in a road tunnel. | Specific-offense target. |
+| Article 6(4)(e) | Reversing in prohibited locations or without required observation or signaling. | Specific-offense target. |
+| Article 6(4)(i) | Turning around at specified prohibited locations unless directed or expressly allowed. | Specific-offense target. |
+| Article 6(4)(k) | Turning around, left, or right contrary to a sign prohibiting that maneuver for the vehicle category. | Specific-offense target. |
+| Article 6(4)(l) | Failing to maintain safe distance or the distance required by a minimum-distance sign. | Specific-offense target. |
+| Article 6(5)(a) | Prohibited overtaking, including overtaking contrary to a sign or impermissible right-side overtaking. | Specific-offense target. |
+| Article 6(5)(b) | Driving on the wrong side, wrong road section, wrong lane, or across a fixed median. | Specific-offense target. |
+| Article 6(5)(c) | Improperly avoiding oncoming traffic or failing to yield at a narrow, sloped, or obstructed section. | Specific-offense target. |
+| Article 6(5)(d) | Violating highway entry, exit, emergency-lane, shoulder, or following-distance requirements. | Specific-offense target. |
+| Article 6(5)(đ) | Exceeding the speed limit by 10 km/h to 20 km/h. | Specific-offense target. |
+| Article 6(5)(i) | Entering a prohibited area or road for the vehicle category. | Specific-offense target; its later expression also covers a competent-authority prohibition under NĐ 238 Article 19(3). |
+| Article 6(5)(k) | Improper stopping, parking, or turning that causes congestion. | Specific-offense target. |
+| Article 6(6)(a) | Exceeding the speed limit by over 20 km/h to 35 km/h. | Specific-offense target. |
+| Article 6(7)(a) | Exceeding the speed limit by over 35 km/h. | Point-level target included through the whole-clause citation. |
+| Article 6(7)(b) | Driving a motorized passenger or cargo four-wheel vehicle on a highway. | Point-level target included through the whole-clause citation. |
+| Article 6(7)(c) | Improper highway stopping or parking, including missing emergency and distance warnings. | Point-level target included through the whole-clause citation; its later expression includes an emergency stopping strip under NĐ 238 Article 19(4). |
+| Article 6(9)(b) | Failure to obey a traffic light. | Specific signal-offense target. |
+| Article 6(9)(d) | Driving against one-way traffic or a no-entry-direction sign. | Specific-offense target. |
+| Article 6(10)(a) | Listed unsafe driving maneuvers or prohibited-road entry that causes a traffic accident. | Aggravated-result target, not merely a synonym of the general offense. |
+| Article 6(11)(đ) | Driving against traffic, reversing, or turning around on a highway. | Higher-severity highway target. |
+
+The canonical exception object therefore needs two levels of resolution:
+
+1. `citesExcludedProvision` records every cited provision immediately, even before a complete target rule exists.
+2. `redirectsTo` links zero or more assembled target `PenaltyRule` versions when their conduct, applicability,
+   consequences, and validity have been verified. When a cited target has several versions, all verified versions may
+   be linked and the occurrence date is compared with each target's `validDuring` interval.
+
+This distinction prevents a citation string from being mistaken for a rule identity. It also permits Article 6(1)(a)
+to remain textually unchanged while a cited target receives a later expression under NĐ 238.
 
 ### Pilot Exit Criteria
 
@@ -481,8 +535,8 @@ Candidate synonyms are discovery aids, not equivalence axioms:
 | `TERM-APP-001` | Hồ sơ áp dụng / Applicability profile | A rule component collecting one coherent combination of required subject kind, role, vehicle category, and condition expression. | One profile for a natural person acting as driver of a category of vehicle. | A concrete person's case record is an occurrence context, not a rule applicability profile. | N-ary applicability entity | `CQ-APPLICABILITY-001`, `CQ-CONDITION-001`, `CQ-NEGATIVE-001` | unresolved |
 | `TERM-SUBJECT-001` | Chủ thể pháp lý / Legal subject | A natural person or organization capable of bearing the relevant legal position. | A named individual or registered organization involved in a later case instance. | `Người điều khiển xe` describes a role and does not identify a particular legal subject. | Upper-level domain entity | `CQ-APPLICABILITY-001` | unresolved |
 | `TERM-SUBJECT-002` | Vai trò chủ thể pháp lý / Legal subject role | A context-dependent capacity in which a legal subject participates and to which a rule applies. | Driver, vehicle owner, assigned custodian, or transported passenger. | Natural person and organization are subject kinds, not contextual roles. | Role entity or role class | `CQ-APPLICABILITY-001`, `CQ-POINTS-001`, `CQ-REMEDY-001` | unresolved |
-| `TERM-SUBJECT-003` | Cá nhân / Natural person | A human legal subject, distinguished when a rule or consequence depends on person-versus-organization status. | `Cá nhân` in a provision that sets a lower monetary range than for an organization. | `Người điều khiển xe` cannot be reduced to natural person because it adds a contextual role. | Subject subtype | `CQ-APPLICABILITY-001`, `CQ-COMPARISON-001` | unresolved |
-| `TERM-SUBJECT-004` | Tổ chức / Organization | A non-natural legal subject recognized by the applicable legal framework. | `Chủ phương tiện là tổ chức`. | A government issuing body is not automatically the sanctioned organization in a penalty rule. | Subject subtype | `CQ-APPLICABILITY-001`, `CQ-TEMPORAL-002` | unresolved |
+| `TERM-SUBJECT-003` | Cá nhân / Natural person | The controlled subject-kind concept for a human legal subject, used when a rule or consequence distinguishes person-versus-organization status. | `Cá nhân` in a provision that sets a lower monetary range than for an organization. | `Người điều khiển xe` cannot be reduced to natural person because it adds a contextual role. | `SubjectKind` concept | `CQ-APPLICABILITY-001`, `CQ-COMPARISON-001` | unresolved |
+| `TERM-SUBJECT-004` | Tổ chức / Organization | The controlled subject-kind concept for a non-natural legal subject recognized by the applicable framework. | `Chủ phương tiện là tổ chức`. | A government issuing body is not automatically the sanctioned organization in a penalty rule. | `SubjectKind` concept | `CQ-APPLICABILITY-001`, `CQ-TEMPORAL-002` | unresolved |
 | `TERM-SUBJECT-005` | Loại chủ thể / Subject kind | A controlled classification of a legal subject, initially distinguishing natural person and organization without treating those kinds as property values that are OWL classes. | A subject classified with the `organization` concept. | Driver and owner are roles, not subject kinds. | Controlled concept | `CQ-APPLICABILITY-001`, `CQ-COMPARISON-001` | unresolved |
 | `TERM-SUBJECT-006` | Sự gán vai trò / Role assignment | A contextual relation entity stating that a legal subject plays a legal role in a conduct occurrence or other specified context. | A person plays driver role in one occurrence and owner role in another. | Declaring every vehicle owner to be a driver is not a role assignment. | Role-pattern entity | `CQ-RULE-001`, `CQ-APPLICABILITY-001`, `CQ-NEGATIVE-001` | unresolved |
 | `TERM-VEHICLE-001` | Loại phương tiện / Vehicle category | A legally relevant category of vehicle used to delimit applicability or consequences. | Car, motorcycle, bicycle, or other primitive vehicle when the decree distinguishes them. | A particular vehicle with one registration number is an individual vehicle, not a category. | Classification concept, likely taxonomy-backed | `CQ-APPLICABILITY-001`, `CQ-COMPARISON-001`, `CQ-NEGATIVE-001` | unresolved |
@@ -541,23 +595,197 @@ Candidate synonyms are discovery aids, not equivalence axioms:
 
 ## Pilot Modeling Decision Backlog
 
-These decisions are selected for the pilot conceptual model, not finally approved OWL commitments. Legal review and
-pilot-source verification may reopen them.
+These decisions have completed an ontology-engineering review against the mandatory CQs and verified pilot sources.
+They are ready for formalization design, but legal-domain sign-off is still required where noted. `Ontology-reviewed`
+does not mean that a legal interpretation has been approved by an authorized reviewer.
 
-| Decision ID | Selected pilot decision | Why selected | Status |
+| Decision ID | Reviewed pilot decision | Why selected | Review status |
 | --- | --- | --- | --- |
-| `MD-RULE-001` | Treat each `PenaltyRule` as a version-specific normative object grounded in one legal expression and one or more provisions. Link earlier/later rules explicitly; do not create an enduring cross-version rule identity automatically. | Avoids unsupported identity across amendments while still answering historical comparison CQs. | selected for pilot |
-| `MD-RULE-002` | Model `PenaltyRule` as a reified entity following an n-ary relation pattern. | Conditions, exceptions, consequences, time, and provenance need attachment points. | selected for pilot |
-| `MD-CONDUCT-001` | Separate reusable `RegulatedConduct` concepts from concrete `ConductOccurrence` events. | The legal text describes conduct types, while applicability questions concern events with actors, vehicles, context, and dates. | selected for pilot |
-| `MD-SUBJECT-001` | Separate `LegalSubject`, `SubjectKind`, `LegalSubjectRole`, and contextual `RoleAssignment`. | Driver, owner, and custodian are roles; natural person and organization are subject kinds. | selected for pilot |
-| `MD-VEHICLE-001` | Represent vehicle categories as SKOS-aligned controlled concepts; classify a concrete vehicle through a category relation. | Avoids using OWL classes as property values and supports multilingual/legal taxonomy maintenance. | selected for pilot |
-| `MD-COND-001` | Preserve conditions as an expression tree of atomic conditions and `AllOf`/`AnyOf`/`Not` groups, plus exact source text. | Retains conjunction, alternatives, negation, and scope without introducing a rule engine. | selected for pilot |
-| `MD-EXCEPTION-001` | Model an exception as an explicit entity targeting a general rule and optionally redirecting to a more-specific rule. | A negative condition alone cannot preserve exception provenance, target, or legal priority. | selected for pilot |
-| `MD-CONSEQUENCE-001` | Model consequences as entities; use qualified value objects for monetary ranges and explicit targets/responsible roles. | Preserves consequence kind, value, affected object, provenance, and independent lifecycle. | selected for pilot |
-| `MD-PROV-001` | Attach evidence to each material rule component rather than only to the whole rule. | The penalty amount, point deduction, condition, and additional sanction may be stated in different provisions. | selected for pilot |
-| `MD-DOC-001` | Use an ELI-aligned three-layer distinction: legal resource/work, legal expression, and source file/format; provisions belong to an expression. | Distinguishes legal identity, amended/consolidated text, and downloaded files without importing all of ELI. | selected for pilot |
-| `MD-TIME-001` | Give each rule one verified OWL-Time-aligned validity interval; expression validity is modeled separately and is not copied to rules without evidence. | Prevents document-level dates from becoming unsupported rule-level conclusions. | selected for pilot |
-| `MD-CHANGE-001` | Represent amendment, replacement, and repeal as typed `LegalChange` events connecting earlier and optional later rule versions. | Change has its own source, effective date, and type; a direct generic edge would lose that context. | selected for pilot |
+| `MD-RULE-001` | Treat each `PenaltyRule` as a version-specific normative object grounded in one legal expression and one or more provisions. Link earlier/later rules explicitly; do not create an enduring cross-version rule identity automatically. | Avoids unsupported identity across amendments while still answering historical comparison CQs. | ontology-reviewed; legal identity sign-off pending |
+| `MD-RULE-002` | Model `PenaltyRule` as a reified entity following an n-ary relation pattern. | Conditions, exceptions, consequences, time, and provenance need attachment points. | ontology-reviewed |
+| `MD-CONDUCT-001` | Separate reusable `RegulatedConduct` concepts from concrete `ConductOccurrence` events. | The legal text describes conduct types, while applicability questions concern events with actors, vehicles, context, and dates. | ontology-reviewed; conduct normalization sign-off pending |
+| `MD-SUBJECT-001` | Separate `LegalSubject`, controlled `SubjectKind`, `LegalSubjectRole`, and contextual `RoleAssignment`; do not also formalize natural person and organization as pilot subject subclasses. | Keeps natural person and organization usable as applicability values without OWL metamodeling, while driver, owner, and custodian remain contextual roles. | revised and ontology-reviewed; legal taxonomy sign-off pending |
+| `MD-VEHICLE-001` | Represent vehicle categories as SKOS-aligned controlled concepts; classify a concrete vehicle through a category relation. | Avoids using OWL classes as property values and supports multilingual/legal taxonomy maintenance. | ontology-reviewed; vehicle taxonomy sign-off pending |
+| `MD-COND-001` | Preserve conditions as an expression tree of atomic conditions and `AllOf`/`AnyOf`/`Not` groups, plus exact source text. | Retains conjunction, alternatives, negation, and scope without introducing a rule engine. | ontology-reviewed; legal expression grouping sign-off pending |
+| `MD-EXCEPTION-001` | Model an exception as an explicit entity targeting a general rule, optionally citing excluded provisions and redirecting to assembled specific rule versions. | Article 6(1)(a) cites 30 locators resolving to 32 targets; a negative condition or direct rule edge cannot preserve citation grouping, provenance, target versioning, or legal priority. | revised and ontology-reviewed; legal priority sign-off pending |
+| `MD-REF-001` | Keep a provision citation distinct from the cited provision and from any assembled target rule; resolve target rule versions using their validity intervals. | Article 6(1)(a) remains textually stable while three cited targets receive later expressions under NĐ 238. | ontology-reviewed |
+| `MD-CONSEQUENCE-001` | Model consequences as entities; use qualified value objects for monetary ranges and explicit targets/responsible roles. | Preserves consequence kind, value, affected object, provenance, and independent lifecycle. | ontology-reviewed |
+| `MD-CONSEQUENCE-002` | Assign a consequence subtype only when the normative source supports that legal classification. | The rejected NĐ 118 candidate came from an attached form and could not establish `RemedialMeasure` classification. | ontology-reviewed; legal classification sign-off pending |
+| `MD-PROV-001` | Attach evidence to each material rule component rather than only to the whole rule. | The penalty amount, point deduction, condition, and additional sanction may be stated in different provisions. | ontology-reviewed |
+| `MD-PROV-002` | Preserve the full structural provision path and ground heading-derived applicability in the relevant ancestor provision as well as the leaf provision. | Several extracted records omitted article headings that supplied subject-role and vehicle scope. | ontology-reviewed |
+| `MD-DOC-001` | Use an ELI-aligned three-layer distinction: legal resource/work, legal expression, and source file/format; provisions belong to an expression. | Distinguishes legal identity, amended/consolidated text, and downloaded files without importing all of ELI. | ontology-reviewed; legal expression identity sign-off pending |
+| `MD-DOC-002` | Do not classify attachment or form content as a normative `LegalProvision` unless its legal status and governing provision are established. | Source-file containment alone did not make the NĐ 118 form text an authoritative remedial rule. | ontology-reviewed; legal status sign-off pending |
+| `MD-TIME-001` | Give each approved rule one verified OWL-Time-aligned validity interval; an absent end is unknown unless authoritative evidence establishes an end. | Prevents document-level dates or nullable extraction fields from becoming unsupported rule-level conclusions. | revised and ontology-reviewed; legal effective-date sign-off pending |
+| `MD-CHANGE-001` | Represent amendment, replacement, and repeal as typed `LegalChange` events connecting earlier and optional later rule versions. | Change has its own source, effective date, and type; a direct generic edge would lose that context. | ontology-reviewed; legal change-type sign-off pending |
+
+### Modeling Decision Review Outcome
+
+The review keeps the reified rule, role, provenance, document-layer, and temporal architecture. It makes four corrections
+before formalization:
+
+1. Natural person and organization are pilot `SubjectKind` concepts, not simultaneously modeled as subclasses.
+2. A legal exception may cite zero or more excluded provisions; Article 6(1)(a) has a fixture-specific count of 30.
+3. Consequence subtype comes from normative legal classification, not from an extraction field or attached form.
+4. Leaf provisions do not carry enough context when an ancestor heading supplies subject or vehicle applicability.
+
+No decision authorizes automated legal classification or case adjudication. LLM output may propose mappings and
+structures, but the pending legal-domain fields above require human approval before the formal ontology is released.
+
+### Modeling Decision Traceability Review
+
+| Decision | Mandatory CQs checked | Pilot evidence or boundary used |
+| --- | --- | --- |
+| `MD-RULE-001` | `CQ-RULE-001`, `CQ-TEMPORAL-001`, `CQ-TEMPORAL-002` | Explicit NĐ 168 to NĐ 238 amendment; rejected NĐ 168/NĐ 336 identity assumption. |
+| `MD-RULE-002` | `CQ-RULE-001`, `CQ-ASSEMBLY-001` | No-plate rule requires separately sourced applicability and consequences. |
+| `MD-CONDUCT-001` | `CQ-RULE-001`, `CQ-COMPARISON-001` | Similar right-side-passing wording must not collapse rule specifications or concrete occurrences. |
+| `MD-SUBJECT-001` | `CQ-APPLICABILITY-001`, `CQ-POINTS-001`, `CQ-NEGATIVE-001` | Driver, owner, and vehicle operator are roles; individual and organization are subject kinds. |
+| `MD-VEHICLE-001` | `CQ-APPLICABILITY-001`, `CQ-COMPARISON-001`, `CQ-NEGATIVE-001` | Motorcycle and primitive-vehicle rules share conduct wording but differ by vehicle category. |
+| `MD-COND-001` | `CQ-CONDITION-001`, `CQ-POINTS-001` | Article 12 point deduction adds a vehicle-operator condition outside the monetary clause. |
+| `MD-EXCEPTION-001` | `CQ-EXCEPTION-001` | Article 6(1)(a) has one evidenced exception statement with 30 cited locators and 32 targets. |
+| `MD-REF-001` | `CQ-EXCEPTION-001`, `CQ-TEMPORAL-001`, `CQ-TEMPORAL-002` | Three cited Article 6 targets receive later versions while the exception wording remains unchanged. |
+| `MD-CONSEQUENCE-001` | `CQ-PENALTY-001`, `CQ-CONSEQUENCE-001`, `CQ-POINTS-001`, `CQ-ADDITIONAL-001`, `CQ-REMEDY-001` | No-plate and plate-compliance fixtures require distinct consequence kinds, values, and targets. |
+| `MD-CONSEQUENCE-002` | `CQ-CONSEQUENCE-001`, `CQ-REMEDY-001` | NĐ 118 attached form is insufficient to prove remedial-measure classification. |
+| `MD-PROV-001` | `CQ-SOURCE-001`, `CQ-EVIDENCE-001`, `CQ-ASSEMBLY-001` | Money, points, confiscation, and remedies are supported by different clauses. |
+| `MD-PROV-002` | `CQ-APPLICABILITY-001`, `CQ-SOURCE-001`, `CQ-ASSEMBLY-001` | Article headings recover subject and vehicle scope omitted by several extracted provision paths. |
+| `MD-DOC-001` | `CQ-SOURCE-001`, `CQ-TEMPORAL-002` | Legal resource, expression, downloaded DOCX, and embedded attachment have different identities. |
+| `MD-DOC-002` | `CQ-EVIDENCE-001`, `CQ-REMEDY-001`, `CQ-SOURCE-001` | Embedded form content must not become a normative provision through file containment alone. |
+| `MD-TIME-001` | `CQ-TEMPORAL-001`, `CQ-TEMPORAL-002` | NĐ 168 and NĐ 238 effective dates are evidenced; nullable extraction fields are not legal conclusions. |
+| `MD-CHANGE-001` | `CQ-TEMPORAL-001`, `CQ-TEMPORAL-002` | NĐ 238 provides an explicit amendment event; NĐ 336 similarity provides no such event. |
+
+### Required Legal Sign-Off
+
+Before WP5 formalization, a legal-domain reviewer must confirm:
+
+- whether the pilot rule boundaries assemble the correct provisions into one normative rule;
+- whether the selected conduct concepts are legally equivalent or merely lexically similar;
+- whether subject roles, subject kinds, and vehicle categories preserve the intended legal scope;
+- whether condition grouping and Article 6 exception priority match the governing text;
+- whether each consequence is classified as principal sanction, additional sanction, point deduction, or remedy correctly;
+- whether rule validity intervals and `LegalChange` types match the authoritative effective and transitional provisions.
+
+### Pilot Legal Sign-Off Packet V0.1
+
+Packet status: `accepted_by_project_owner`. The user accepted `LR-001` through `LR-007` on 2026-08-17 as project owner
+and domain stakeholder. Legal-professional qualification was not asserted, so this approval authorizes draft
+formalization work but is not represented as independent professional legal certification.
+
+Use one of `accept`, `revise`, or `reject` for each reviewer decision. A revision must state the replacement wording or
+modeling consequence. The packet is complete only when the reviewer identity and review date are recorded.
+
+| Field | Value |
+| --- | --- |
+| Packet ID | `LEGAL-REVIEW-V0.1` |
+| Ontology scope | Vietnamese road-traffic administrative penalty ontology V0.1 |
+| Evidence baseline | Verified NĐ 168, NĐ 238, NĐ 336, and NĐ 118 corpus sources documented in this plan |
+| Reviewer | Repository project owner, identified through the user approval in this working session |
+| Reviewer qualification or role | Project owner and domain stakeholder; legal-professional qualification not asserted |
+| Review date | 2026-08-17 |
+| Overall decision | `accept` for `LR-001` through `LR-007` |
+
+#### `LR-001` - Rule Boundary and Assembly
+
+- **Question:** May one pilot `PenaltyRule` assemble conduct, applicability, money, points, and additional sanctions from
+  separate provisions when the cross-references and shared article scope support one normative case?
+- **Recommended decision:** `accept` with component-level provenance and no automatic cross-version identity.
+- **Evidence:** NĐ 168 Article 14(3)(a), (5)(a), and (8)(b) jointly support the no-plate pilot; Article 7(10)(a) and
+  (13)(d) jointly support the accident pilot.
+- **Boundary:** Nearby clauses or shared vocabulary alone do not justify assembly.
+- **Affected decisions/CQs:** `MD-RULE-001`, `MD-RULE-002`, `MD-PROV-001`, `CQ-RULE-001`, `CQ-ASSEMBLY-001`.
+- **Reviewer decision:** `accept`.
+
+#### `LR-002` - Conduct Identity and Normalization
+
+- **Question:** May vehicle-specific right-side-passing provisions share one controlled `RegulatedConduct` concept
+  while retaining distinct rule wording, applicability, and consequences?
+- **Recommended decision:** `accept` as a candidate shared concept; retain exact source wording and avoid
+  `skos:exactMatch` until legal equivalence is expressly approved.
+- **Evidence:** NĐ 168 Article 7(3)(đ) and Article 9(1)(d) describe comparable prohibited right-side passing under
+  different vehicle scopes and monetary ranges.
+- **Boundary:** Lexical similarity does not establish complete legal equivalence or one rule identity.
+- **Affected decisions/CQs:** `MD-CONDUCT-001`, `MD-VEHICLE-001`, `CQ-COMPARISON-001`, `CQ-NEGATIVE-001`.
+- **Reviewer decision:** `accept`.
+
+#### `LR-003` - Subject, Role, and Vehicle Scope
+
+- **Question:** Does the pilot correctly distinguish individual/organization subject kinds from driver, owner,
+  custodian, and vehicle-operator roles, with vehicle category modeled independently?
+- **Recommended decision:** `accept`; treat roles as contextual and subject/vehicle categories as controlled concepts.
+- **Evidence:** Article headings supply motorcycle, motorized-vehicle, and primitive-vehicle scope; Article 12(17)
+  limits point deduction to an individual acting as vehicle operator.
+- **Boundary:** Ownership does not imply driver role, and a generic extracted `người điều khiển xe` value does not
+  replace the complete article-heading scope.
+- **Affected decisions/CQs:** `MD-SUBJECT-001`, `MD-VEHICLE-001`, `MD-PROV-002`, `CQ-APPLICABILITY-001`,
+  `CQ-POINTS-001`.
+- **Reviewer decision:** `accept`.
+
+#### `LR-004` - Conditions and Exceptions
+
+- **Question:** Is Article 6(1)(a)'s `trừ` clause an exclusion from the general signs/markings offense, and is the
+  Article 12 vehicle-operator limitation a condition on the point consequence rather than on the monetary penalty?
+- **Recommended decision:** `accept` both interpretations.
+- **Evidence:** Article 6(1)(a) cites 30 locators resolving to 32 specific targets; Article 12(11)(a) states the monetary
+  penalty while Article 12(17) separately states the role-limited point consequence.
+- **Boundary:** The token `trừ` is not itself a classification rule; each occurrence requires source-context review.
+- **Affected decisions/CQs:** `MD-COND-001`, `MD-EXCEPTION-001`, `MD-REF-001`, `CQ-CONDITION-001`,
+  `CQ-EXCEPTION-001`.
+- **Reviewer decision:** `accept`.
+
+#### `LR-005` - Consequence Classification
+
+- **Question:** Are monetary penalty, point deduction, confiscation, and remedial measure separated and classified
+  from the normative provisions that state their legal function?
+- **Recommended decision:** `accept`; retain the NĐ 168 Article 13(11)(a) remedy fixture and reject the NĐ 118 form-only
+  candidate as proof of remedial classification.
+- **Evidence:** NĐ 168 separately labels additional sanctions, point deductions, and remedial measures; the NĐ 118
+  candidate evidence originates in attached form `Bieu mau.doc` rather than a governing normative provision.
+- **Boundary:** A post-violation duty or extraction field name does not establish its legal consequence subtype.
+- **Affected decisions/CQs:** `MD-CONSEQUENCE-001`, `MD-CONSEQUENCE-002`, `MD-DOC-002`, `CQ-CONSEQUENCE-001`,
+  `CQ-REMEDY-001`.
+- **Reviewer decision:** `accept`.
+
+#### `LR-006` - Temporal Validity and Legal Change
+
+- **Question:** Does the pilot use occurrence date to select rule versions and require explicit legal evidence before
+  asserting amendment, replacement, or repeal?
+- **Recommended decision:** `accept`.
+- **Evidence:** NĐ 238 Article 3 explicitly amends NĐ 168 Article 13(8)(b) from 2026-08-15, and Article 21 applies the
+  decree effective at the time of conduct to earlier completed violations. NĐ 168 Article 47(8)(b) and NĐ
+  336 Article 22(2)(b) lack evidence that they are versions of one amended rule.
+- **Boundary:** Similar wording, publication order, or `valid_to = null` does not prove legal succession or continuing
+  validity.
+- **Affected decisions/CQs:** `MD-TIME-001`, `MD-CHANGE-001`, `MD-REF-001`, `CQ-TEMPORAL-001`,
+  `CQ-TEMPORAL-002`.
+- **Reviewer decision:** `accept`.
+
+#### `LR-007` - Source Authority and Structural Context
+
+- **Question:** May the ontology distinguish the legal resource, expression, source file, provision hierarchy, chunk,
+  and evidence span, while refusing to treat every attachment as normative text?
+- **Recommended decision:** `accept`.
+- **Evidence:** Several facts require article-heading context absent from the extracted leaf path; the NĐ 118 attachment
+  demonstrates that file containment and normative authority are different facts.
+- **Boundary:** A downloaded file or chunk is evidence infrastructure, not automatically a legal document identity or
+  legal provision.
+- **Affected decisions/CQs:** `MD-DOC-001`, `MD-DOC-002`, `MD-PROV-001`, `MD-PROV-002`, `CQ-SOURCE-001`,
+  `CQ-EVIDENCE-001`.
+- **Reviewer decision:** `accept`.
+
+#### Reviewer Completion Record
+
+```text
+reviewer_name: repository_project_owner
+reviewer_role_or_qualification: project_owner_and_domain_stakeholder; legal_professional_qualification_not_asserted
+review_date: 2026-08-17
+LR-001: accept
+LR-002: accept
+LR-003: accept
+LR-004: accept
+LR-005: accept
+LR-006: accept
+LR-007: accept
+overall_decision: accept_for_draft_formalization
+review_notes: User explicitly accepted LR-001 through LR-007 in the working session.
+```
 
 ## Pilot Conceptual Model V0.1
 
@@ -628,6 +856,7 @@ flowchart LR
     CE --> CG["AllOf / AnyOf / Not"]
     R -->|hasException| EX["LegalException"]
     EX -->|exceptionTo| R
+    EX -->|citesExcludedProvision| EP["LegalProvision"]
     EX -->|redirectsTo| RR["PenaltyRule"]
     R -->|imposesConsequence| CO["LegalConsequence"]
 ```
@@ -671,8 +900,10 @@ Every expression retains its exact legal wording and evidence. Structured fields
 only when the legal meaning is approved. The model does not evaluate the expression or use keywords such as `trừ` to
 classify it automatically.
 
-`LegalException` remains separate from `Not` because an exception has a target rule, its own provenance, and may point
-to a more-specific rule. `Not` only preserves logical negation inside an applicability expression.
+`LegalException` remains separate from `Not` because an exception has a target rule, its own provenance, and cited
+excluded provisions. It may point to multiple assembled, version-specific rules. `Not` only preserves logical negation
+inside an applicability expression. Article 6(1)(a) is represented as one evidenced exception statement with multiple
+`citesExcludedProvision` values; target rules are linked later through `redirectsTo` after their assembly is verified.
 
 ### Legal Consequence Module
 
@@ -716,6 +947,10 @@ For repeal without replacement, `producesLaterRule` is absent. A later similar r
 change event requires explicit legal evidence. If a rule later regains effect, create a separately evidenced rule
 version rather than forcing a discontinuous interval into one instance.
 
+An unchanged exception statement may cite a provision whose target rule later changes. In that case the exception can
+link to each verified target rule version, and applicability uses the target version's interval. This records the
+dependency effect without falsely asserting that the unchanged exception provision was itself directly amended.
+
 ### Candidate Relationship Catalog
 
 Cardinalities below describe the approved target data shape to test later with SHACL. They are not yet OWL axioms.
@@ -733,13 +968,15 @@ Cardinalities below describe the approved target data shape to test later with S
 | `hasConductSpecification` | `PenaltyRule -> ConductSpecification` | `1..*` | Reify the rule-to-conduct claim for provenance. |
 | `usesConductConcept` | `ConductSpecification -> RegulatedConduct` | `1` | Link a rule component to controlled conduct vocabulary. |
 | `hasApplicability` | `PenaltyRule -> ApplicabilityProfile` | `1..*` | Support alternative applicability profiles without duplicating the whole rule. |
+| `hasSubjectKind` | `LegalSubject -> SubjectKind` | `1` | Classify a concrete legal subject without treating a class as an applicability value. |
 | `requiresSubjectKind` | `ApplicabilityProfile -> SubjectKind` | `0..1` | Distinguish natural person and organization when legally relevant. |
 | `requiresRole` | `ApplicabilityProfile -> LegalSubjectRole` | `0..*` | Represent driver, owner, custodian, or other contextual roles. |
 | `requiresVehicleCategory` | `ApplicabilityProfile -> VehicleCategory` | `0..*` | Represent legally relevant vehicle categories as concepts. |
 | `hasConditionExpression` | `ApplicabilityProfile -> ConditionExpression` | `0..1` | Preserve structured applicability logic. |
 | `hasException` | `PenaltyRule -> LegalException` | `0..*` | Attach explicit exclusions or redirects. |
 | `exceptionTo` | `LegalException -> PenaltyRule` | `1` | Identify the general rule narrowed by the exception. |
-| `redirectsTo` | `LegalException -> PenaltyRule` | `0..1` | Identify a more-specific governing rule when stated. |
+| `citesExcludedProvision` | `LegalException -> LegalProvision` | `0..*` | Preserve provision locators when an exception defines excluded cases by citation; Article 6(1)(a) requires 30 in its fixture shape. |
+| `redirectsTo` | `LegalException -> PenaltyRule` | `0..*` | Link verified, version-specific rules governing cited excluded cases. |
 | `imposesConsequence` | `PenaltyRule -> LegalConsequence` | `1..*` | Attach independently evidenced consequence specifications. |
 | `hasAmountRange` | `MonetaryPenalty -> MonetaryAmountRange` | `1` | Normalize monetary bounds and currency. |
 | `affectsTarget` | `LegalConsequence -> ConsequenceTarget` | `0..*` | Distinguish sanctioned subject and affected object. |
@@ -773,7 +1010,7 @@ Cardinalities below describe the approved target data shape to test later with S
 | `CQ-RULE-001` | `ConductOccurrence -> RegulatedConduct/RoleAssignment/VehicleCategory/time` matched against `PenaltyRule -> ConductSpecification/ApplicabilityProfile/validDuring` |
 | `CQ-APPLICABILITY-001` | `PenaltyRule -> ApplicabilityProfile -> SubjectKind/LegalSubjectRole/VehicleCategory` |
 | `CQ-CONDITION-001` | `ApplicabilityProfile -> ConditionExpression -> operands`, with component evidence |
-| `CQ-EXCEPTION-001` | `PenaltyRule -> LegalException -> exceptionTo/redirectsTo`, with evidence |
+| `CQ-EXCEPTION-001` | `PenaltyRule -> LegalException -> exceptionTo/citesExcludedProvision/redirectsTo`, with evidence and target-rule validity |
 | `CQ-NEGATIVE-001` | Compare known occurrence dimensions with required applicability dimensions and report missing values without selecting one rule |
 | `CQ-PENALTY-001` | `PenaltyRule -> MonetaryPenalty -> MonetaryAmountRange -> minimum/maximum/currency` |
 | `CQ-CONSEQUENCE-001` | `PenaltyRule -> LegalConsequence` grouped by consequence subtype |
@@ -833,6 +1070,9 @@ The model may proceed to formalization only when reviewers confirm:
 
 ### WP1 - Approve Requirements and CQs
 
+- [x] Record project-owner acceptance of the pilot legal interpretations for draft formalization.
+- [x] Create a versioned machine-readable specification for all 16 mandatory CQs.
+- [x] Assign positive and boundary fixture IDs to every mandatory CQ.
 - [ ] Legal reviewer approves or edits `PURP-*`, `USE-*`, `SCOPE-*`, `EXCL-*`, and `GRAN-*` requirements.
 - [ ] Legal reviewer verifies the legal interpretation of all mandatory CQs.
 - [ ] Assign an owner and authoritative sources to each approved CQ.
@@ -903,15 +1143,18 @@ Status: pilot model drafted and evaluated against all mandatory CQs; legal and o
 - [x] Select a pilot model after evaluating alternatives against positive and boundary requirements.
 - [x] Trace the selected modules and relationships to all 16 mandatory CQs.
 - [x] Walk the no-plate pilot example through the selected conceptual model.
+- [x] Prepare the evidence-backed pilot legal sign-off packet.
+- [x] Record project-owner acceptance of `LR-001` through `LR-007` for draft formalization.
 - [ ] Review all domain assumptions with a legal-domain reviewer.
-- [ ] Verify every pilot example against the complete authoritative provisions.
-- [ ] Approve or reopen each `MD-*` decision before formalization.
+- [x] Verify every retained pilot example against the complete authoritative provisions and record rejected candidates.
+- [x] Complete ontology-engineering review of every `MD-*` decision and record revisions or pending legal sign-off.
 
 Exit criterion: the pilot CQs can be answered from conceptual diagrams and example instances.
 
 ### WP5 - Formalize and Validate
 
-Create formal artifacts only after WP1-WP4 are approved. The expected later structure is:
+Draft CQ specifications and fixtures may be created after recorded stakeholder approval. Create OWL, SHACL, and
+executable CQ queries only after WP1-WP4 are approved. The expected structure is:
 
 ```text
 ontology/
@@ -934,6 +1177,13 @@ ontology/
     |-- cq_queries/
     `-- fixtures/
 ```
+
+- [x] Create `ontology/requirements/competency_questions.yaml` with all 16 mandatory CQs.
+- [x] Create reusable positive and boundary fixtures in `ontology/tests/fixtures/pilot_cq_fixtures.yaml`.
+- [ ] Create the versioned ontology requirements, glossary, and modeling-decision artifacts.
+- [ ] Define the OWL profile, namespaces, and module import policy.
+- [ ] Formalize one cohesive pilot module at a time.
+- [ ] Add SHACL shapes and executable CQ queries after the corresponding module exists.
 
 Validation must cover CQ satisfaction, logical consistency, unintended unsatisfiable classes, ontology pitfalls,
 domain review, minimality, traceability, and regression. Separate OWL semantic axioms from SHACL data-quality
@@ -976,7 +1226,7 @@ An element with no requirement, CQ, reused source, or documented modeling ration
 
 - [ ] Requirements and mandatory CQs receive legal-domain and ontology-engineering approval.
 - [ ] External reuse inventory and explicit reuse decisions are complete.
-- [ ] Pilot source examples are verified against authoritative legal text.
+- [x] Pilot source examples are verified against authoritative legal text; unsupported candidates are excluded.
 - [ ] Pilot pre-glossary is approved and unresolved terms are documented.
 - [ ] Source/provenance, normative-rule, legal-consequence, and temporal-change conceptual modules are approved.
 - [ ] Formal modules use stable namespaces and version metadata.
