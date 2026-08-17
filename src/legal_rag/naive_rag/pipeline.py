@@ -10,7 +10,7 @@ from legal_rag.datastores.milvus import build_milvus_client
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.embedding.profiles import load_configured_embedding_profile
 from legal_rag.naive_rag.generator import BamlGenerationClient, generate_answer
-from legal_rag.naive_rag.retriever import RetrievedChunk, Retriever
+from legal_rag.naive_rag.retriever import RetrievedChunk, Retriever, SearchMode
 from legal_rag.settings import MilvusSettings, NaiveRagSettings, Settings
 
 
@@ -41,10 +41,12 @@ class NaiveRAGPipeline:
         self._generation_client = BamlGenerationClient(settings, naive_rag_settings)
         logger.info("NaiveRAGPipeline initialized")
 
-    def run(self, query: str, top_k: int | None = None) -> RAGResult:
-        """Retrieve chunks for query and generate an answer, optionally overriding top_k."""
+    def run(self, query: str, top_k: int | None = None, search_mode: str | None = None) -> RAGResult:
+        """Retrieve chunks and generate an answer, optionally overriding top_k and search mode."""
         k = top_k or self.settings.top_k
-        hits = self._retriever.retrieve(query, top_k=k)
+        mode = SearchMode(search_mode) if search_mode else None
+        hits = self._retriever.retrieve(query, top_k=k, mode=mode)
         answer = generate_answer(query, hits, self._generation_client)
-        logger.info("Naive RAG pipeline completed with {} sources", len(hits))
+        active = search_mode or self.settings.search_mode
+        logger.info("Pipeline completed: {} sources, {} search", len(hits), active)
         return RAGResult(query=query, answer=answer, sources=tuple(hits))
