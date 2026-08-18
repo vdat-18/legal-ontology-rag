@@ -1178,6 +1178,8 @@ ontology/
 |   `-- temporal_change.ttl
 |-- shapes/
 |   `-- legal_ontology.shacl.ttl
+|-- reports/
+|   `-- v0.1_qa_report.md
 `-- tests/
     |-- cq_queries/
     `-- fixtures/
@@ -1200,6 +1202,9 @@ ontology/
 - [x] Formalize the legal-consequence module and activate its root import and local catalog mappings.
 - [x] Add legal-consequence SHACL shapes, boundary fixtures, and consequence/comparison CQ projections.
 - [x] Run integrated regression across all five modules, nine SHACL cases, and all 16 mandatory CQ projections.
+- [x] Add reusable automated QA for syntax, module policy, imports, catalog mappings, modeling guardrails, and traceability.
+- [x] Add pytest regression for all nine SHACL cases and all 16 mandatory CQ projections.
+- [x] Document V0.1 semantic limitations, QA evidence, and open public-release gates.
 - [x] Formalize one cohesive pilot module at a time.
 - [x] Add SHACL shapes and executable CQ queries after the corresponding module exists.
 

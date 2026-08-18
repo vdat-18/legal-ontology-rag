@@ -40,3 +40,8 @@ The legal-consequence module separates monetary penalties, point deductions, add
 measures. Qualified monetary ranges retain decimal bounds and controlled currency, while targets and responsible roles
 remain explicit. All 16 mandatory CQs now have executable structural projections; legal applicability, condition
 satisfaction, and change interpretation still require semantic confirmation outside these projections.
+
+Automated ontology QA lives in `tests/ontology/`, backed by reusable loaders and validators in
+`src/legal_rag/ontology_validation/`. It checks Turtle parsing, policy and import consistency, catalog resolution,
+modeling guardrails, SHACL fixtures, all mandatory CQ projections, and traceability. See
+`ontology/reports/v0.1_qa_report.md` for the validated scope, semantic limitations, and open public-release gates.
