@@ -71,3 +71,8 @@ class OntologyPaths:
     def namespace_publication_contract(self) -> Path:
         """Return the ontology namespace-publication contract path."""
         return self.ontology_dir / "namespace_publication.yaml"
+
+    @property
+    def external_reuse_registry(self) -> Path:
+        """Return the ontology external-reuse registry path."""
+        return self.ontology_dir / "external_reuse_registry.yaml"

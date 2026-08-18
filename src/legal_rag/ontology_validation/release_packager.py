@@ -20,6 +20,8 @@ from legal_rag.ontology_validation.release_models import (
     ReleaseFileRecord,
     ReleaseGateResult,
 )
+from legal_rag.ontology_validation.reuse_config import ExternalReuseSettings
+from legal_rag.ontology_validation.reuse_review import collect_external_reuse_issues
 from legal_rag.ontology_validation.semantic_config import SemanticQaSettings
 from legal_rag.ontology_validation.semantic_models import SEMANTIC_QA_REPORT_SCHEMA_VERSION
 from legal_rag.ontology_validation.semantic_qa import semantic_input_sha256
@@ -44,6 +46,7 @@ def build_ontology_release(
         _ontology_identity_gate(settings),
         _license_gate(settings),
         _reuse_decisions_gate(project_root, settings),
+        _external_reuse_gate(project_root, settings),
         _inventory_gate(settings, semantic_report_path),
         _output_paths_gate(output_directory, settings),
     )
@@ -133,6 +136,13 @@ def _reuse_decisions_gate(project_root: Path, settings: OntologyReleaseSettings)
     available = {item["id"] for item in policy["external_dependency_policy"]}
     missing = tuple(sorted(set(settings.required_reuse_decisions) - available))
     return _gate("reuse-decision-inventory", not missing, f"Missing reuse decisions: {', '.join(missing)}")
+
+
+def _external_reuse_gate(project_root: Path, settings: OntologyReleaseSettings) -> ReleaseGateResult:
+    """Require the current formal graph to satisfy the versioned external-reuse registry."""
+    reuse_settings = ExternalReuseSettings.from_path(settings.external_reuse_registry_path, project_root)
+    issues = collect_external_reuse_issues(project_root, reuse_settings)
+    return _gate("external-reuse-registry", not issues, f"External reuse issues: {', '.join(issues)}")
 
 
 def _inventory_gate(

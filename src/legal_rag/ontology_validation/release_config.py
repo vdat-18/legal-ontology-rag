@@ -34,6 +34,7 @@ class OntologyReleaseSettings:
     required_reuse_decisions: tuple[str, ...]
     source_paths: tuple[Path, ...]
     semantic_contract_path: Path
+    external_reuse_registry_path: Path
     semantic_report_archive_path: str
     archive_root: str
     archive_file: str
@@ -67,6 +68,7 @@ class OntologyReleaseSettings:
             required_reuse_decisions=tuple(document["required_reuse_decisions"]),
             source_paths=tuple(project_root / item for item in inputs["source_files"]),
             semantic_contract_path=project_root / inputs["semantic_contract_file"],
+            external_reuse_registry_path=project_root / inputs["external_reuse_registry_file"],
             semantic_report_archive_path=inputs["semantic_report_archive_path"],
             archive_root=output["archive_root"],
             archive_file=output["archive_file"],

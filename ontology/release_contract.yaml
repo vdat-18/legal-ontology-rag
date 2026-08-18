@@ -16,11 +16,12 @@ approvals:
     evidence: user-confirmed:2026-08-18:CC-BY-4.0
   external_reuse_review:
     status: pending
-    evidence: null
+    evidence: ontology/external_reuse_registry.yaml; ontology/reports/external_reuse_review.json
   independent_legal_review:
     status: pending
     evidence: null
 required_reuse_decisions:
+  - REUSE-DCTERMS-001
   - REUSE-PROV-001
   - REUSE-TIME-001
   - REUSE-SKOS-001
@@ -32,6 +33,7 @@ required_reuse_decisions:
   - REUSE-ODP-001
 inputs:
   semantic_contract_file: ontology/semantic_qa_contract.yaml
+  external_reuse_registry_file: ontology/external_reuse_registry.yaml
   semantic_report_archive_path: qa/semantic_qa_report.json
   source_files:
     - ontology/legal_ontology.ttl
@@ -43,6 +45,7 @@ inputs:
     - ontology/shapes/legal_ontology.shacl.ttl
     - ontology/catalog-v001.xml
     - ontology/formalization_policy.yaml
+    - ontology/external_reuse_registry.yaml
     - ontology/semantic_qa_contract.yaml
     - ontology/release_contract.yaml
     - ontology/namespace_publication.yaml
@@ -81,6 +84,7 @@ inputs:
     - ontology/tests/fixtures/pilot_cq_fixtures.yaml
     - ontology/README.md
     - ontology/reports/v0.1_qa_report.md
+    - ontology/reports/external_reuse_review.json
 output:
   archive_root: legal-ontology-rag-0.1.0
   archive_file: legal-ontology-rag-0.1.0.zip

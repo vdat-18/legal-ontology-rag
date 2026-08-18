@@ -171,6 +171,10 @@ module_policy:
     status: active_incremental
 
 external_dependency_policy:
+  - id: REUSE-DCTERMS-001
+    prefix: dcterms
+    mode: term_iri_reference
+    owl_import: false
   - id: REUSE-PROV-001
     prefix: prov
     mode: term_iri_reference
@@ -218,6 +222,7 @@ validation_policy:
   traceability:
     - Every local class and property must trace to at least one CQ, glossary term, requirement, or modeling decision.
     - Every reused or aligned external term must trace to one reviewed reuse decision.
+    - Validate term-level external reuse against ontology/external_reuse_registry.yaml.
   release:
     - Apply ontology/release_contract.yaml only after semantic QA passes for the exact packaged input closure.
     - Require explicit namespace, ontology-license, external-reuse, and independent legal-review approvals.

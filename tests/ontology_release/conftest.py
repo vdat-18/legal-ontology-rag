@@ -43,12 +43,64 @@ def write_releasable_project(path: Path, source_project_root: Path) -> tuple[Ont
         yaml.safe_dump(
             {
                 "external_dependency_policy": [
-                    {"id": "REUSE-PROV-001"},
-                    {"id": "REUSE-TIME-001"},
+                    {
+                        "id": "REUSE-DCTERMS-001",
+                        "mode": "term_iri_reference",
+                        "owl_import": False,
+                    },
                 ]
             },
             sort_keys=False,
         ),
+        encoding="utf-8",
+    )
+    reuse_registry = {
+        "schema_version": "0.1.0",
+        "artifact_id": "test-external-reuse-registry",
+        "artifact_version": "0.1.0",
+        "status": "approved-test-fixture",
+        "review": {
+            "reviewed_on": "2026-08-18",
+            "reviewer_role": "test",
+            "project_owner_approval": "approved",
+        },
+        "scope": {
+            "formal_artifacts": ["ontology/legal_ontology.ttl"],
+            "foundational_namespaces": [
+                "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+                "http://www.w3.org/2002/07/owl#",
+            ],
+        },
+        "resources": [
+            {
+                "id": "REUSE-DCTERMS-001",
+                "resource": "DCMI Metadata Terms",
+                "authority": "Dublin Core Metadata Initiative",
+                "source_version": "test snapshot",
+                "source_url": "https://www.dublincore.org/specifications/dublin-core/dcmi-terms/",
+                "namespace": "http://purl.org/dc/terms/",
+                "license": "CC-BY-4.0",
+                "attribution": "Dublin Core Metadata Initiative",
+                "decision": "reuse",
+                "policy_mode": "term_iri_reference",
+                "formal_use": "active_terms",
+                "owl_import": False,
+                "review_status": "ontology_reviewed",
+                "compatibility": "Metadata-only test use.",
+                "boundaries": ["Use only the reviewed license predicate."],
+                "terms": [
+                    {
+                        "iri": "http://purl.org/dc/terms/license",
+                        "local_use": "Ontology license metadata.",
+                        "declaration_in_owl_closure": False,
+                    }
+                ],
+            }
+        ],
+        "review_conclusion": {},
+    }
+    (ontology_directory / "external_reuse_registry.yaml").write_text(
+        yaml.safe_dump(reuse_registry, sort_keys=False),
         encoding="utf-8",
     )
     shutil.copyfile(
@@ -71,13 +123,15 @@ def write_releasable_project(path: Path, source_project_root: Path) -> tuple[Ont
             "external_reuse_review": {"status": "approved", "evidence": "review:REUSE-001"},
             "independent_legal_review": {"status": "approved", "evidence": "review:LEGAL-001"},
         },
-        "required_reuse_decisions": ["REUSE-PROV-001", "REUSE-TIME-001"],
+        "required_reuse_decisions": ["REUSE-DCTERMS-001"],
         "inputs": {
             "semantic_contract_file": "ontology/semantic_qa_contract.yaml",
+            "external_reuse_registry_file": "ontology/external_reuse_registry.yaml",
             "semantic_report_archive_path": "qa/semantic_qa_report.json",
             "source_files": [
                 "ontology/legal_ontology.ttl",
                 "ontology/formalization_policy.yaml",
+                "ontology/external_reuse_registry.yaml",
                 "ontology/semantic_qa_contract.yaml",
                 "ontology/release_contract.yaml",
             ],

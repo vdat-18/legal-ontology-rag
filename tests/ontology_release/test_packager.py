@@ -7,6 +7,8 @@ import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 
+import yaml
+
 from legal_rag.ontology_validation.paths import OntologyPaths
 from legal_rag.ontology_validation.release_config import OntologyReleaseSettings
 from legal_rag.ontology_validation.release_packager import build_ontology_release
@@ -45,6 +47,7 @@ def test_production_release_is_blocked_by_explicit_publication_gates(
     assert report.overall_status == "blocked"
     assert gates["human-approvals"].status == "failed"
     assert gates["ontology-license"].status == "passed"
+    assert gates["external-reuse-registry"].status == "passed"
     assert gates["release-file-inventory"].status == "passed"
     assert gates["semantic-qa"].status == "passed"
     assert report.archive_path is None
@@ -121,6 +124,44 @@ def test_stale_semantic_report_blocks_release(
 
     assert report.overall_status == "blocked"
     assert {item.gate_id: item.status for item in report.gates}["semantic-qa"] == "failed"
+    assert report.archive_path is None
+
+
+def test_external_reuse_issue_blocks_release(
+    monkeypatch,
+    tmp_path: Path,
+    project_root: Path,
+) -> None:
+    """An approved human label cannot override a failing technical reuse registry."""
+    release_project = tmp_path / "project"
+    settings, semantic_report_path = write_releasable_project(release_project, project_root)
+    registry_path = release_project / "ontology" / "external_reuse_registry.yaml"
+    registry = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
+    registry["resources"][0]["terms"].append(
+        {
+            "iri": "https://example.test/not-used",
+            "local_use": "Negative release fixture.",
+            "declaration_in_owl_closure": False,
+        }
+    )
+    registry_path.write_text(yaml.safe_dump(registry, sort_keys=False), encoding="utf-8")
+    monkeypatch.setattr(
+        "legal_rag.ontology_validation.release_packager.semantic_input_sha256",
+        lambda _paths, _settings: "semantic-input",
+    )
+
+    report = build_ontology_release(
+        release_project,
+        settings,
+        semantic_report_path,
+        tmp_path / "release",
+        CHECKED_AT,
+    )
+
+    gates = {item.gate_id: item for item in report.gates}
+    assert report.overall_status == "blocked"
+    assert gates["human-approvals"].status == "passed"
+    assert gates["external-reuse-registry"].status == "failed"
     assert report.archive_path is None
 
 

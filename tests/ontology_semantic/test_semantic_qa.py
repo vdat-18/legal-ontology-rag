@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -95,3 +96,21 @@ def test_current_formal_artifacts_have_complete_structural_traceability(
 ) -> None:
     """The report-level audit agrees with the existing traceability regression suite."""
     assert collect_traceability_issues(ontology_paths, semantic_settings) == ()
+
+
+def test_external_reuse_registry_change_invalidates_semantic_digest(
+    tmp_path: Path,
+    project_root: Path,
+) -> None:
+    """Semantic evidence becomes stale when its external-reuse contract changes."""
+    copied_root = tmp_path / "project"
+    shutil.copytree(project_root / "ontology", copied_root / "ontology")
+    copied_paths = OntologyPaths(copied_root)
+    copied_settings = SemanticQaSettings.from_path(copied_paths.semantic_qa_contract, copied_root)
+    original = semantic_input_sha256(copied_paths, copied_settings)
+    copied_paths.external_reuse_registry.write_text(
+        copied_paths.external_reuse_registry.read_text(encoding="utf-8") + "\n",
+        encoding="utf-8",
+    )
+
+    assert semantic_input_sha256(copied_paths, copied_settings) != original

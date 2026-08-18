@@ -131,6 +131,7 @@ def semantic_input_sha256(paths: OntologyPaths, settings: SemanticQaSettings) ->
         paths.modeling_decisions,
         paths.query_manifest,
         paths.semantic_qa_contract,
+        paths.external_reuse_registry,
         *(module.path for module in modules),
         *(case.query_path for case in query_cases),
         *(case.fixture_path for case in query_cases),

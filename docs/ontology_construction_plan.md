@@ -1084,15 +1084,17 @@ Exit criterion: a reviewer can decide whether a proposed term or relationship be
 
 ### WP2 - Inventory Reusable Knowledge Resources
 
-Status: initial inventory completed; licensing clarification and term-level mappings pending.
+Status: ontology-engineering review completed; project-owner acceptance and TLKB licensing clarification pending.
 
 - [x] Inventory Traffic Law Knowledge Base V1 referenced by `docs/references/references.md`.
 - [x] Record its namespace, version, license gap, classes, properties, CQs, SHACL shapes, and SPARQL queries.
 - [x] Assess ELI, Akoma Ntoso, LegalRuleML, LKIF-Core, PROV-O, OWL-Time, SKOS, and the n-ary relation pattern.
 - [x] Record an initial reuse, alignment, adaptation, reference, or rejection decision with rationale for each resource.
+- [x] Record source/version/license/attribution evidence and exact active term IRIs in a versioned reuse registry.
+- [x] Validate active term inventory, non-use boundaries, foundational declarations, and external import policy.
 - [ ] Obtain an explicit license and namespace-resolution decision from the Traffic Law Knowledge Base V1 owner.
-- [ ] Create reviewed term-level mappings from the selected conceptual model to ELI, PROV-O, OWL-Time, SKOS, and any
-      approved LKIF-Core terms.
+- [ ] Obtain project-owner acceptance of `REUSE-DCTERMS-001` through `REUSE-ODP-001`.
+- [ ] Add future term mappings only after evidence supports ELI or LKIF-Core alignment; none are asserted in V0.1.
 
 Exit criterion: local modeling does not duplicate or import external semantics accidentally.
 
@@ -1209,7 +1211,9 @@ ontology/
 - [x] Bind semantic-QA evidence to the complete versioned semantic input closure with SHA-256.
 - [x] Add fail-closed V0.1 release packaging with explicit approvals, deterministic manifest, and archive checksum.
 - [x] Select CC BY 4.0 for the ontology and add both the license file and root `dcterms:license` metadata.
-- [ ] Register and verify the canonical namespace, review external reuse, and obtain independent legal approval.
+- [x] Complete technical external-reuse review with exact term inventory, evidence, boundaries, and automated gates.
+- [ ] Record project-owner acceptance of the external-reuse review and obtain independent legal approval.
+- [ ] Register and verify the canonical namespace when public publication becomes necessary.
 - [x] Add a versioned namespace-publication contract, static site builder, manifest, and copy-ready W3ID PR bundle.
 - [x] Add a manual least-privilege Pages workflow and bounded live deployment/W3ID verifier.
 - [ ] Deploy and verify every publication target, submit the W3ID pull request, and record merge evidence.

@@ -57,11 +57,18 @@ CC BY 4.0 through `LICENSE` and root `dcterms:license` metadata. All current sem
 digest of every semantic input so changed ontology, shape, CQ, fixture, registry, catalog, or policy files invalidate
 stale QA evidence.
 
+`external_reuse_registry.yaml` records the completed ontology-engineering review of ten external resources and the
+exact 23 external term IRIs used by OWL or SHACL. Dublin Core, PROV-O, SKOS, and OWL-Time are reused by term reference
+without `owl:imports`; ELI remains candidate-only; TLKB, LKIF-Core, Akoma Ntoso, LegalRuleML, and the n-ary relation
+pattern remain references or local pattern adaptations. The local review command passes all six structural gates, while
+`project_owner_approval` deliberately remains `pending` until explicit acceptance is recorded.
+
 `release_contract.yaml` defines the immutable V0.1 distribution boundary. The release command checks the bound semantic
-report, ontology identity, license, external-reuse decision inventory, explicit human approvals, and the declared file
+report, ontology identity, license, the live external-reuse registry, explicit human approvals, and the declared file
 inventory. A successful run creates a metadata-normalized ZIP with an internal `MANIFEST.json` plus a separate SHA-256
-checksum. The current contract remains intentionally blocked while namespace resolution, external reuse, and independent
-legal review are pending; no release archive should exist before those decisions are recorded.
+checksum. The current contract remains intentionally blocked while namespace resolution, external-reuse owner
+acceptance, and independent legal review are pending; no release archive should exist before those decisions are
+recorded.
 
 `namespace_publication.yaml` defines the canonical namespace deployment and W3ID registration boundary. The publication
 command validates all ontology/version IRIs against Turtle and the XML catalog, creates HTML plus byte-identical Turtle
