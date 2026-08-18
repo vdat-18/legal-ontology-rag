@@ -28,6 +28,7 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
 from legal_rag.ontology_population import extraction
 from legal_rag.ontology_population.writer import read_population_progress, read_population_records
+from legal_rag.settings import Settings
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -36,9 +37,11 @@ class _CliPopulationClient:
     """Return one complete monetary rule without calling an external model."""
 
     calls = 0
+    settings: Settings | None = None
 
-    def __init__(self, *_: object) -> None:
-        """Accept the production client's constructor arguments."""
+    def __init__(self, settings: Settings, *_: object) -> None:
+        """Capture the settings passed to the production client boundary."""
+        type(self).settings = settings
 
     def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
         """Return one typed rule per target chunk."""
@@ -99,17 +102,31 @@ def test_cli_writes_reviewable_records_progress_and_validated_graph(
     progress_path = tmp_path / "progress.jsonl"
     graph_path = tmp_path / "population.ttl"
     preflight_path = tmp_path / "preflight.json"
+    dotenv_path = tmp_path / ".env"
     write_chunks(chunks_path, (legal_chunk,))
     write_chunk_screening(
         screening_path,
         (ChunkScreeningRecord(chunk_id=legal_chunk.chunk_id, has_penalty_content=True, reason="Penalty rule."),),
     )
     write_document_metadata(metadata_path, document_metadata)
+    dotenv_path.write_text(
+        "\n".join(
+            (
+                "LLM_BASE_URL=https://dotenv.test/v1",
+                "LLM_API_KEY=dotenv-key",
+                "LLM_MODEL=dotenv-model",
+                "LLM_TIMEOUT_SECONDS=45",
+            )
+        ),
+        encoding="utf-8",
+    )
     _CliPopulationClient.calls = 0
+    _CliPopulationClient.settings = None
     monkeypatch.setattr(extraction, "BamlOntologyPopulationClient", _CliPopulationClient)
-    monkeypatch.setenv("LLM_BASE_URL", "https://example.test/v1")
-    monkeypatch.setenv("LLM_API_KEY", "test-key")
-    monkeypatch.setenv("LLM_MODEL", "test-model")
+    monkeypatch.setattr(ontology_population_cli, "find_dotenv", lambda **_: str(dotenv_path))
+    monkeypatch.setenv("LLM_BASE_URL", "https://stale.test/v1")
+    monkeypatch.setenv("LLM_API_KEY", "stale-key")
+    monkeypatch.setenv("LLM_MODEL", "stale-model")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
     monkeypatch.setattr(
         sys,
@@ -140,3 +157,9 @@ def test_cli_writes_reviewable_records_progress_and_validated_graph(
     assert len(Graph().parse(graph_path, format="turtle")) > 0
     assert json.loads(preflight_path.read_text(encoding="utf-8"))["overall_status"] == "ready"
     assert _CliPopulationClient.calls == 1
+    assert _CliPopulationClient.settings == Settings(
+        llm_base_url="https://dotenv.test/v1",
+        llm_api_key="dotenv-key",
+        llm_model="dotenv-model",
+        llm_timeout_seconds=45,
+    )

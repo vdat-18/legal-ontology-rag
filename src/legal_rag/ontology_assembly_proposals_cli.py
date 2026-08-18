@@ -51,7 +51,7 @@ def main() -> None:
     arguments = _parser().parse_args()
     dotenv_path = find_dotenv(usecwd=True)
     if dotenv_path:
-        load_dotenv(dotenv_path)
+        load_dotenv(dotenv_path, override=True)
     provider_settings = Settings.from_environment()
     assembly_settings = AssemblySettings.from_path(arguments.assembly_contract_path)
     candidates = read_assembly_candidates(arguments.candidates_path)

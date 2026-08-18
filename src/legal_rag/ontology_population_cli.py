@@ -117,7 +117,7 @@ def main() -> None:
     if remaining_targets:
         dotenv_path = find_dotenv(usecwd=True)
         if dotenv_path:
-            load_dotenv(dotenv_path)
+            load_dotenv(dotenv_path, override=True)
         settings = Settings.from_environment()
         client = BamlOntologyPopulationClient(settings, population_settings)
         extract_population_from_document(

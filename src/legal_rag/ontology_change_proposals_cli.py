@@ -49,7 +49,7 @@ def main() -> None:
     arguments = _parser().parse_args()
     dotenv_path = find_dotenv(usecwd=True)
     if dotenv_path:
-        load_dotenv(dotenv_path)
+        load_dotenv(dotenv_path, override=True)
     provider_settings = Settings.from_environment()
     change_settings = ChangeResolutionSettings.from_path(arguments.change_contract_path)
     candidates = read_change_candidates(arguments.candidates_path)
