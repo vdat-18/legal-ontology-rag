@@ -61,3 +61,8 @@ class OntologyPaths:
     def semantic_qa_contract(self) -> Path:
         """Return the ontology semantic-QA contract path."""
         return self.ontology_dir / "semantic_qa_contract.yaml"
+
+    @property
+    def release_contract(self) -> Path:
+        """Return the ontology release contract path."""
+        return self.ontology_dir / "release_contract.yaml"

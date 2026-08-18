@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
@@ -12,6 +13,7 @@ from legal_rag.ontology_validation.loader import (
     load_graph,
     load_module_policy,
     load_query_cases,
+    load_validation_cases,
     load_yaml,
     merge_graphs,
 )
@@ -101,6 +103,7 @@ def run_semantic_qa(
         checked_at=checked_at,
         ontology_path=str(settings.ontology_path.relative_to(paths.project_root).as_posix()),
         catalog_path=str(settings.catalog_path.relative_to(paths.project_root).as_posix()),
+        input_sha256=semantic_input_sha256(paths, settings),
         tool_image=settings.image,
         profile=settings.profile,
         reasoner=settings.reasoner,
@@ -110,6 +113,37 @@ def run_semantic_qa(
         unexpected_equivalences=unexpected_equivalences,
         traceability_issues=traceability_issues,
     )
+
+
+def semantic_input_sha256(paths: OntologyPaths, settings: SemanticQaSettings) -> str:
+    """Hash every versioned file that can affect the semantic-QA result."""
+    modules = load_module_policy(paths.project_root, paths.policy)
+    query_cases = load_query_cases(paths.project_root, paths.query_manifest)
+    validation_cases = load_validation_cases(paths.project_root, paths.query_manifest)
+    input_paths = {
+        settings.ontology_path,
+        settings.catalog_path,
+        paths.policy,
+        paths.shapes,
+        paths.competency_questions,
+        paths.requirements,
+        paths.glossary,
+        paths.modeling_decisions,
+        paths.query_manifest,
+        paths.semantic_qa_contract,
+        *(module.path for module in modules),
+        *(case.query_path for case in query_cases),
+        *(case.fixture_path for case in query_cases),
+        *(case.fixture_path for case in validation_cases),
+    }
+    digest = hashlib.sha256()
+    for path in sorted(input_paths):
+        relative_path = path.resolve().relative_to(paths.project_root.resolve()).as_posix()
+        digest.update(relative_path.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
 
 
 def collect_traceability_issues(

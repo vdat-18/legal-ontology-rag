@@ -30,7 +30,7 @@ traceability:
   require_named_shape_traceability: true
   require_mandatory_cq_coverage: true
 output:
-  report_schema_version: "0.1.0"
+  report_schema_version: "0.2.0"
   profile_report_file: owl_profile.txt
   reasoned_ontology_file: reasoned_ontology.ttl
   quality_report_file: robot_quality.tsv

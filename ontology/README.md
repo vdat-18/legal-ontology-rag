@@ -53,7 +53,14 @@ materializes reasoning output, audits unsatisfiable classes and unintended infer
 rules, and repeats traceability plus mandatory-CQ coverage in one machine-readable report. Minimal declarations for
 referenced PROV-O, SKOS, OWL-Time, and Dublin Core entities live in the foundational source module so the import closure
 is OWL 2 DL without importing external ontology bundles. The current semantic checks pass except ROBOT's intentional
-`missing_ontology_license` release error.
+`missing_ontology_license` release error. Each report contains a digest of every semantic input so changed ontology,
+shape, CQ, fixture, registry, catalog, or policy files invalidate stale QA evidence.
+
+`release_contract.yaml` defines the immutable V0.1 distribution boundary. The release command checks the bound semantic
+report, ontology identity, license, external-reuse decision inventory, explicit human approvals, and the declared file
+inventory. A successful run creates a metadata-normalized ZIP with an internal `MANIFEST.json` plus a separate SHA-256
+checksum. The current contract remains intentionally blocked while namespace resolution, licensing, external reuse, and
+independent legal review are pending; no release archive should exist before those decisions are recorded.
 
 `population_contract.yaml` defines the versioned chunk-to-instance boundary. The corresponding pipeline creates
 reviewable typed records, deterministic RDF instances, exact evidence links, and writes Turtle only after SHACL

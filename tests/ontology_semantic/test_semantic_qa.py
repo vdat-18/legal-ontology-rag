@@ -7,7 +7,11 @@ from pathlib import Path
 
 from legal_rag.ontology_validation.paths import OntologyPaths
 from legal_rag.ontology_validation.semantic_config import SemanticQaSettings
-from legal_rag.ontology_validation.semantic_qa import collect_traceability_issues, run_semantic_qa
+from legal_rag.ontology_validation.semantic_qa import (
+    collect_traceability_issues,
+    run_semantic_qa,
+    semantic_input_sha256,
+)
 
 from .conftest import FakeRobotRunner
 
@@ -28,6 +32,7 @@ def test_all_checks_pass_with_clean_typed_tool_results(
     assert report.unsatisfiable_class_iris == ()
     assert report.unexpected_equivalences == ()
     assert report.traceability_issues == ()
+    assert report.input_sha256 == semantic_input_sha256(ontology_paths, semantic_settings)
     assert [call[0] for call in runner.calls] == ["validate-profile", "reason", "report"]
 
 

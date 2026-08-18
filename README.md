@@ -222,8 +222,25 @@ uv run --extra dev legal-validate-ontology-semantics `
 This command uses the pinned `obolibrary/robot:v1.9.10` Docker image with networking disabled. It validates the complete
 OWL 2 DL import closure, runs HermiT, audits unsatisfiable classes and unintended inferred equivalences, executes the
 ROBOT quality report, and records traceability/CQ coverage. The report is written before the command fails an open gate.
+The report also binds its result to a SHA-256 digest of the complete semantic input closure, so a report becomes stale
+when an ontology module, SHACL graph, CQ query, fixture, registry, catalog, policy, or semantic contract changes.
 The current ontology passes profile, reasoning, inference, and traceability checks; public release remains blocked by
 the intentionally unresolved ontology license and independent legal review.
+
+After every semantic gate passes, build the immutable V0.1 distribution with:
+
+```powershell
+uv run --extra dev legal-package-ontology-release `
+  ontology/release_contract.yaml `
+  data/ontology/qa/semantic_qa_report.json `
+  data/ontology/releases/v0.1.0 `
+  data/ontology/releases/v0.1.0/release_report.json
+```
+
+The release command verifies the semantic-input digest, ontology/version IRIs, license metadata and file, external-reuse
+decision inventory, explicit human approvals, and the complete source inventory. It always writes a readiness report
+before failing an open gate. Once all gates pass, it emits a reproducible ZIP containing a machine-readable manifest and
+a separate `.sha256` checksum. Runtime data, populated instances, retrieval indexes, and GraphRAG artifacts are excluded.
 
 ## Operations
 
@@ -255,5 +272,8 @@ Regenerate the local BAML client after changing or pulling files under `baml_src
 .venv\Scripts\python.exe -m pytest -q
 uv run --extra dev legal-validate-ontology-semantics ontology/semantic_qa_contract.yaml `
   data/ontology/qa/artifacts data/ontology/qa/semantic_qa_report.json
+uv run --extra dev legal-package-ontology-release ontology/release_contract.yaml `
+  data/ontology/qa/semantic_qa_report.json data/ontology/releases/v0.1.0 `
+  data/ontology/releases/v0.1.0/release_report.json
 docker compose config --quiet
 ```

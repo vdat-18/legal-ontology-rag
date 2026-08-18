@@ -1,0 +1,92 @@
+schema_version: "0.1.0"
+artifact_id: legal-ontology-rag-release
+artifact_version: "0.1.0"
+status: blocked_pending_release_approvals
+ontology:
+  ontology_iri: https://w3id.org/legal-ontology-rag/ontology
+  version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0
+  root_file: ontology/legal_ontology.ttl
+  license_file: LICENSE
+approvals:
+  namespace_resolution:
+    status: pending
+    evidence: null
+  ontology_license:
+    status: pending
+    evidence: null
+  external_reuse_review:
+    status: pending
+    evidence: null
+  independent_legal_review:
+    status: pending
+    evidence: null
+required_reuse_decisions:
+  - REUSE-PROV-001
+  - REUSE-TIME-001
+  - REUSE-SKOS-001
+  - REUSE-ELI-001
+  - REUSE-TLKB-001
+  - REUSE-LKIF-001
+  - REUSE-AKN-001
+  - REUSE-LRML-001
+  - REUSE-ODP-001
+inputs:
+  semantic_contract_file: ontology/semantic_qa_contract.yaml
+  semantic_report_archive_path: qa/semantic_qa_report.json
+  source_files:
+    - ontology/legal_ontology.ttl
+    - ontology/modules/source_provenance.ttl
+    - ontology/modules/occurrence_context.ttl
+    - ontology/modules/temporal_change.ttl
+    - ontology/modules/normative_rule.ttl
+    - ontology/modules/legal_consequence.ttl
+    - ontology/shapes/legal_ontology.shacl.ttl
+    - ontology/catalog-v001.xml
+    - ontology/formalization_policy.yaml
+    - ontology/semantic_qa_contract.yaml
+    - ontology/release_contract.yaml
+    - ontology/requirements/competency_questions.yaml
+    - ontology/requirements/ontology_requirements.yaml
+    - ontology/glossary/terms.yaml
+    - ontology/decisions/modeling_decisions.yaml
+    - ontology/tests/cq_queries/query_manifest.yaml
+    - ontology/tests/cq_queries/cq_additional_001.rq
+    - ontology/tests/cq_queries/cq_applicability_001.rq
+    - ontology/tests/cq_queries/cq_assembly_001.rq
+    - ontology/tests/cq_queries/cq_comparison_001.rq
+    - ontology/tests/cq_queries/cq_condition_001.rq
+    - ontology/tests/cq_queries/cq_consequence_001.rq
+    - ontology/tests/cq_queries/cq_evidence_001.rq
+    - ontology/tests/cq_queries/cq_exception_001.rq
+    - ontology/tests/cq_queries/cq_negative_001_occurrence_context.rq
+    - ontology/tests/cq_queries/cq_penalty_001.rq
+    - ontology/tests/cq_queries/cq_points_001.rq
+    - ontology/tests/cq_queries/cq_remedy_001.rq
+    - ontology/tests/cq_queries/cq_rule_001_normative_candidate.rq
+    - ontology/tests/cq_queries/cq_source_001.rq
+    - ontology/tests/cq_queries/cq_temporal_001_validity_projection.rq
+    - ontology/tests/cq_queries/cq_temporal_002_change_projection.rq
+    - ontology/tests/fixtures/source_provenance_valid.ttl
+    - ontology/tests/fixtures/source_provenance_boundary.ttl
+    - ontology/tests/fixtures/occurrence_context_valid.ttl
+    - ontology/tests/fixtures/occurrence_context_boundary.ttl
+    - ontology/tests/fixtures/temporal_change_valid.ttl
+    - ontology/tests/fixtures/temporal_change_boundary.ttl
+    - ontology/tests/fixtures/normative_rule_valid.ttl
+    - ontology/tests/fixtures/normative_rule_boundary.ttl
+    - ontology/tests/fixtures/legal_consequence_boundary.ttl
+    - ontology/tests/fixtures/pilot_cq_fixtures.yaml
+    - ontology/README.md
+    - ontology/reports/v0.1_qa_report.md
+output:
+  archive_root: legal-ontology-rag-0.1.0
+  archive_file: legal-ontology-rag-0.1.0.zip
+  checksum_file: legal-ontology-rag-0.1.0.zip.sha256
+  manifest_archive_path: MANIFEST.json
+  report_schema_version: "0.1.0"
+release_boundaries:
+  - A release is created only from a passing semantic-QA report for the same ontology version.
+  - Human namespace, license, external-reuse, and independent legal approvals remain explicit fail-closed gates.
+  - The source inventory is explicit; runtime data, generated populations, and GraphRAG artifacts are excluded.
+  - Archive entry ordering, timestamps, permissions, and JSON serialization are normalized for reproducible packaging.
+  - The checksum authenticates the complete archive but does not provide a digital signature or legal certification.

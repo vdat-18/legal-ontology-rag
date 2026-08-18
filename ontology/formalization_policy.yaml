@@ -209,6 +209,7 @@ validation_policy:
     - Confirm OWL 2 DL conformance after each module increment.
     - Run a DL reasoner for consistency and unintended unsatisfiable classes.
     - Run the pinned ROBOT and HermiT workflow defined by ontology/semantic_qa_contract.yaml without network access.
+    - Bind semantic reports to the complete versioned semantic input closure with SHA-256.
     - Verify that ontology IRIs, version IRIs, and imports match this policy.
   shacl:
     - Keep SHACL in ontology/shapes/legal_ontology.shacl.ttl and outside the OWL import graph.
@@ -217,3 +218,7 @@ validation_policy:
   traceability:
     - Every local class and property must trace to at least one CQ, glossary term, requirement, or modeling decision.
     - Every reused or aligned external term must trace to one reviewed reuse decision.
+  release:
+    - Apply ontology/release_contract.yaml only after semantic QA passes for the exact packaged input closure.
+    - Require explicit namespace, ontology-license, external-reuse, and independent legal-review approvals.
+    - Emit a reproducible archive, internal file manifest, external checksum, and durable readiness report.

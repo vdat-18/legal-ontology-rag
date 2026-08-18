@@ -1205,6 +1205,12 @@ ontology/
 - [x] Add reusable automated QA for syntax, module policy, imports, catalog mappings, modeling guardrails, and traceability.
 - [x] Add pytest regression for all nine SHACL cases and all 16 mandatory CQ projections.
 - [x] Document V0.1 semantic limitations, QA evidence, and open public-release gates.
+- [x] Add pinned OWL 2 DL, HermiT, ROBOT quality, inference, traceability, and mandatory-CQ semantic gates.
+- [x] Bind semantic-QA evidence to the complete versioned semantic input closure with SHA-256.
+- [x] Add fail-closed V0.1 release packaging with explicit approvals, deterministic manifest, and archive checksum.
+- [ ] Select the ontology license and add both the license file and root `dcterms:license` metadata.
+- [ ] Register and verify the canonical namespace, review external reuse, and obtain independent legal approval.
+- [ ] Run semantic QA on the approved release inputs and package the immutable V0.1 distribution.
 - [x] Formalize one cohesive pilot module at a time.
 - [x] Add SHACL shapes and executable CQ queries after the corresponding module exists.
 

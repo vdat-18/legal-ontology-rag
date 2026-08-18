@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
-SEMANTIC_QA_REPORT_SCHEMA_VERSION = "0.1.0"
+SEMANTIC_QA_REPORT_SCHEMA_VERSION = "0.2.0"
 
 CheckStatus = Literal["passed", "failed", "blocked"]
 
@@ -49,6 +49,7 @@ class SemanticQaReport:
     checked_at: datetime
     ontology_path: str
     catalog_path: str
+    input_sha256: str
     tool_image: str
     profile: str
     reasoner: str
@@ -65,6 +66,7 @@ class SemanticQaReport:
             "checked_at": self.checked_at.isoformat(),
             "ontology_path": self.ontology_path,
             "catalog_path": self.catalog_path,
+            "input_sha256": self.input_sha256,
             "tool_image": self.tool_image,
             "profile": self.profile,
             "reasoner": self.reasoner,
