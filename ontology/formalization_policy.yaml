@@ -110,9 +110,11 @@ module_policy:
     ontology_iri: https://w3id.org/legal-ontology-rag/ontology
     version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0
     namespace: https://w3id.org/legal-ontology-rag/ontology#
-    imports: [MOD-SOURCE, MOD-OCCURRENCE, MOD-TEMPORAL, MOD-NORMATIVE, MOD-CONSEQUENCE]
+    planned_imports: [MOD-SOURCE, MOD-OCCURRENCE, MOD-TEMPORAL, MOD-NORMATIVE, MOD-CONSEQUENCE]
+    active_imports: [MOD-SOURCE]
   modules:
     - id: MOD-SOURCE
+      formalization_status: active
       file: ontology/modules/source_provenance.ttl
       ontology_iri: https://w3id.org/legal-ontology-rag/ontology/source-provenance
       version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/source-provenance
@@ -120,13 +122,15 @@ module_policy:
       imports: []
       external_term_namespaces: [prov]
     - id: MOD-OCCURRENCE
+      formalization_status: planned
       file: ontology/modules/occurrence_context.ttl
       ontology_iri: https://w3id.org/legal-ontology-rag/ontology/occurrence-context
       version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/occurrence-context
       namespace: https://w3id.org/legal-ontology-rag/ontology/occurrence-context#
-      imports: []
+      imports: [MOD-SOURCE]
       external_term_namespaces: [skos, time]
     - id: MOD-TEMPORAL
+      formalization_status: planned
       file: ontology/modules/temporal_change.ttl
       ontology_iri: https://w3id.org/legal-ontology-rag/ontology/temporal-change
       version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/temporal-change
@@ -134,6 +138,7 @@ module_policy:
       imports: [MOD-SOURCE]
       external_term_namespaces: [time]
     - id: MOD-NORMATIVE
+      formalization_status: planned
       file: ontology/modules/normative_rule.ttl
       ontology_iri: https://w3id.org/legal-ontology-rag/ontology/normative-rule
       version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/normative-rule
@@ -141,6 +146,7 @@ module_policy:
       imports: [MOD-SOURCE, MOD-OCCURRENCE, MOD-TEMPORAL]
       external_term_namespaces: [skos]
     - id: MOD-CONSEQUENCE
+      formalization_status: planned
       file: ontology/modules/legal_consequence.ttl
       ontology_iri: https://w3id.org/legal-ontology-rag/ontology/legal-consequence
       version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/legal-consequence
@@ -148,7 +154,7 @@ module_policy:
       imports: [MOD-SOURCE, MOD-OCCURRENCE, MOD-NORMATIVE]
       external_term_namespaces: [skos]
   import_rules:
-    - The root ontology imports every local module and defines no domain terms that belong to a module.
+    - The root ontology imports every formalized local module and defines no domain terms that belong to a module.
     - Each module imports only its direct local dependencies, and the local import graph must remain acyclic.
     - A module must declare every direct local dependency whose terms appear in its axioms; do not rely on accidental transitive imports.
     - Canonical ontology IRIs are used in `owl:imports`; development tools resolve them to repository files through an XML catalog.
@@ -156,8 +162,8 @@ module_policy:
     - Adding an external `owl:imports` statement requires semantic, license, version, dependency-size, and CQ-impact review.
   local_resolution:
     mechanism: XML catalog
-    planned_file: ontology/catalog-v001.xml
-    status: create_with_first_turtle_module
+    file: ontology/catalog-v001.xml
+    status: active_incremental
 
 external_dependency_policy:
   - id: REUSE-PROV-001

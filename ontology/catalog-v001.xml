@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog" prefer="system">
+  <uri
+    name="https://w3id.org/legal-ontology-rag/ontology"
+    uri="legal_ontology.ttl"
+  />
+  <uri
+    name="https://w3id.org/legal-ontology-rag/ontology/0.1.0"
+    uri="legal_ontology.ttl"
+  />
+  <uri
+    name="https://w3id.org/legal-ontology-rag/ontology/source-provenance"
+    uri="modules/source_provenance.ttl"
+  />
+  <uri
+    name="https://w3id.org/legal-ontology-rag/ontology/0.1.0/source-provenance"
+    uri="modules/source_provenance.ttl"
+  />
+</catalog>

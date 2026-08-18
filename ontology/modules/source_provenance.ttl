@@ -1,0 +1,253 @@
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://w3id.org/legal-ontology-rag/ontology/source-provenance> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/legal-ontology-rag/ontology/0.1.0/source-provenance> ;
+    owl:versionInfo "0.1.0" ;
+    dcterms:title "Source and Provenance Module"@en,
+        "Mô-đun nguồn và xuất xứ"@vi ;
+    dcterms:description "Document identity, legal expressions, structural provisions, source carriers, chunks, exact evidence, and assertion-level provenance."@en ;
+    dcterms:issued "2026-08-18"^^xsd:date ;
+    dcterms:source "docs/ontology_construction_plan.md" .
+
+lorsp:requirementReference a owl:AnnotationProperty ;
+    rdfs:label "requirement reference"@en ;
+    rdfs:comment "Stable identifier of an ontology requirement supporting a formal element."@en ;
+    lorsp:requirementReference "PURP-003" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001" .
+
+lorsp:competencyQuestionReference a owl:AnnotationProperty ;
+    rdfs:label "competency question reference"@en ;
+    rdfs:comment "Stable identifier of a competency question requiring a formal element."@en ;
+    lorsp:requirementReference "PURP-003" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001" .
+
+lorsp:glossaryReference a owl:AnnotationProperty ;
+    rdfs:label "glossary reference"@en ;
+    rdfs:comment "Stable identifier of the canonical glossary term represented by a formal element."@en ;
+    lorsp:requirementReference "PURP-003" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001" .
+
+lorsp:modelingDecisionReference a owl:AnnotationProperty ;
+    rdfs:label "modeling decision reference"@en ;
+    rdfs:comment "Stable identifier of a reviewed modeling decision supporting a formal element."@en ;
+    lorsp:requirementReference "PURP-003" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001" .
+
+lorsp:LegalResource a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Legal resource"@en,
+        "Văn bản pháp luật"@vi ;
+    rdfs:comment "A document-level legal work identified independently from its expressions and digital carriers."@en ;
+    lorsp:requirementReference "SCOPE-001" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-TEMPORAL-002" ;
+    lorsp:glossaryReference "TERM-DOC-001" ;
+    lorsp:modelingDecisionReference "MD-DOC-001" .
+
+lorsp:LegalExpression a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Legal expression"@en,
+        "Biểu hiện văn bản pháp luật"@vi ;
+    rdfs:comment "A particular original, amended, or consolidated expression of a legal resource."@en ;
+    lorsp:requirementReference "SCOPE-001", "SCOPE-006" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-TEMPORAL-002" ;
+    lorsp:glossaryReference "TERM-EXPR-001" ;
+    lorsp:modelingDecisionReference "MD-DOC-001" .
+
+lorsp:SourceFile a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Source file"@en,
+        "Tệp nguồn"@vi ;
+    rdfs:comment "A digital carrier from which provisions, chunks, and evidence locations are obtained."@en ;
+    lorsp:requirementReference "SCOPE-001" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EVIDENCE-001" ;
+    lorsp:glossaryReference "TERM-FILE-001" ;
+    lorsp:modelingDecisionReference "MD-DOC-001", "MD-DOC-002" .
+
+lorsp:LegalProvision a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Legal provision"@en,
+        "Quy định cấu trúc"@vi ;
+    rdfs:comment "A structurally addressable part of one legal expression, such as an article, clause, or point."@en ;
+    lorsp:requirementReference "SCOPE-001", "SCOPE-007", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:glossaryReference "TERM-PROVISION-001" ;
+    lorsp:modelingDecisionReference "MD-PROV-002", "MD-DOC-001", "MD-DOC-002" .
+
+lorsp:ProvisionCitation a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Provision citation"@en,
+        "Dẫn chiếu điều khoản"@vi ;
+    rdfs:comment "A reference object that identifies or points to one or more legal provisions."@en ;
+    lorsp:requirementReference "SCOPE-001", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EXCEPTION-001" ;
+    lorsp:glossaryReference "TERM-CITATION-001" ;
+    lorsp:modelingDecisionReference "MD-REF-001" .
+
+lorsp:SourceChunk a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Source chunk"@en,
+        "Đoạn chia nguồn"@vi ;
+    rdfs:comment "A processing segment derived from a source file while retaining its source identity."@en ;
+    lorsp:requirementReference "SCOPE-001", "SCOPE-007" ;
+    lorsp:competencyQuestionReference "CQ-EVIDENCE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:glossaryReference "TERM-CHUNK-001" ;
+    lorsp:modelingDecisionReference "MD-PROV-001" .
+
+lorsp:EvidenceSpan a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Evidence span"@en,
+        "Đoạn trích bằng chứng"@vi ;
+    rdfs:comment "An exact contiguous quotation from a source chunk that directly supports a modeled assertion."@en ;
+    lorsp:requirementReference "PURP-003", "SCOPE-007", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EVIDENCE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:glossaryReference "TERM-EVIDENCE-001" ;
+    lorsp:modelingDecisionReference "MD-PROV-001" .
+
+lorsp:SupportedAssertion a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Supported assertion"@en,
+        "Mệnh đề được hỗ trợ"@vi ;
+    rdfs:comment "A specific modeled claim whose provenance can be evaluated independently."@en ;
+    lorsp:requirementReference "PURP-003", "SCOPE-007" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EVIDENCE-001" ;
+    lorsp:glossaryReference "TERM-ASSERTION-001" ;
+    lorsp:modelingDecisionReference "MD-PROV-001" .
+
+lorsp:IssuingBody a owl:Class ;
+    rdfs:subClassOf prov:Agent ;
+    rdfs:label "Issuing body"@en,
+        "Cơ quan ban hành"@vi ;
+    rdfs:comment "The organization legally responsible for promulgating a legal resource."@en ;
+    lorsp:requirementReference "SCOPE-001" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001" ;
+    lorsp:glossaryReference "TERM-ISSUER-001" ;
+    lorsp:modelingDecisionReference "MD-DOC-001" .
+
+lorsp:hasExpression a owl:ObjectProperty ;
+    rdfs:domain lorsp:LegalResource ;
+    rdfs:range lorsp:LegalExpression ;
+    rdfs:label "has expression"@en ;
+    rdfs:comment "Links a legal resource to one of its original, amended, or consolidated expressions."@en ;
+    lorsp:requirementReference "SCOPE-001", "SCOPE-006" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-TEMPORAL-002" ;
+    lorsp:modelingDecisionReference "MD-DOC-001" .
+
+lorsp:representedBy a owl:ObjectProperty ;
+    rdfs:domain lorsp:LegalExpression ;
+    rdfs:range lorsp:SourceFile ;
+    rdfs:label "represented by"@en ;
+    rdfs:comment "Links a legal expression to a digital source file carrying that expression."@en ;
+    lorsp:requirementReference "SCOPE-001" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EVIDENCE-001" ;
+    lorsp:modelingDecisionReference "MD-DOC-001" .
+
+lorsp:containsProvision a owl:ObjectProperty ;
+    rdfs:domain lorsp:LegalExpression ;
+    rdfs:range lorsp:LegalProvision ;
+    rdfs:label "contains provision"@en ;
+    rdfs:comment "Links a legal expression to a structurally addressable provision that belongs to it."@en ;
+    lorsp:requirementReference "SCOPE-001", "SCOPE-007" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:modelingDecisionReference "MD-DOC-001", "MD-PROV-002" .
+
+lorsp:hasChildProvision a owl:ObjectProperty ;
+    rdfs:domain lorsp:LegalProvision ;
+    rdfs:range lorsp:LegalProvision ;
+    rdfs:label "has child provision"@en ;
+    rdfs:comment "Links a structural provision to an immediately nested provision without assuming a fixed hierarchy depth."@en ;
+    lorsp:requirementReference "SCOPE-001", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:modelingDecisionReference "MD-PROV-002" .
+
+lorsp:derivedFromFile a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasDerivedFrom ;
+    rdfs:domain lorsp:SourceChunk ;
+    rdfs:range lorsp:SourceFile ;
+    rdfs:label "derived from file"@en ;
+    rdfs:comment "Identifies the source file from which a processing chunk was derived."@en ;
+    lorsp:requirementReference "SCOPE-001", "SCOPE-007" ;
+    lorsp:competencyQuestionReference "CQ-EVIDENCE-001" ;
+    lorsp:glossaryReference "TERM-CHUNK-001" ;
+    lorsp:modelingDecisionReference "MD-PROV-001" .
+
+lorsp:containsSpan a owl:ObjectProperty ;
+    rdfs:domain lorsp:SourceChunk ;
+    rdfs:range lorsp:EvidenceSpan ;
+    rdfs:label "contains span"@en ;
+    rdfs:comment "Locates an exact evidence span within a source chunk."@en ;
+    lorsp:requirementReference "PURP-003", "SCOPE-007" ;
+    lorsp:competencyQuestionReference "CQ-EVIDENCE-001" ;
+    lorsp:glossaryReference "TERM-EVIDENCE-001" ;
+    lorsp:modelingDecisionReference "MD-PROV-001" .
+
+lorsp:refersToProvision a owl:ObjectProperty ;
+    rdfs:domain lorsp:ProvisionCitation ;
+    rdfs:range lorsp:LegalProvision ;
+    rdfs:label "refers to provision"@en ;
+    rdfs:comment "Resolves a provision citation to a cited structural provision without identifying the two objects."@en ;
+    lorsp:requirementReference "SCOPE-001", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EXCEPTION-001" ;
+    lorsp:glossaryReference "TERM-CITATION-001", "TERM-PROVISION-001" ;
+    lorsp:modelingDecisionReference "MD-REF-001" .
+
+lorsp:issuedBy a owl:ObjectProperty ;
+    rdfs:domain lorsp:LegalResource ;
+    rdfs:range lorsp:IssuingBody ;
+    rdfs:label "issued by"@en ;
+    rdfs:comment "Links a legal resource to the organization legally responsible for its promulgation."@en ;
+    lorsp:requirementReference "SCOPE-001" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001" ;
+    lorsp:glossaryReference "TERM-ISSUER-001" ;
+    lorsp:modelingDecisionReference "MD-DOC-001" .
+
+lorsp:groundedIn a owl:ObjectProperty ;
+    rdfs:range lorsp:LegalProvision ;
+    rdfs:label "grounded in"@en ;
+    rdfs:comment "Links a modeled assertion or material rule component to an authoritative supporting provision."@en ;
+    lorsp:requirementReference "PURP-003", "SCOPE-007" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:modelingDecisionReference "MD-PROV-001", "MD-PROV-002" .
+
+lorsp:supportedBy a owl:ObjectProperty ;
+    rdfs:range lorsp:EvidenceSpan ;
+    rdfs:label "supported by"@en ;
+    rdfs:comment "Links a modeled assertion or material rule component to exact evidence directly supporting it."@en ;
+    lorsp:requirementReference "PURP-003", "SCOPE-007" ;
+    lorsp:competencyQuestionReference "CQ-EVIDENCE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:modelingDecisionReference "MD-PROV-001" .
+
+lorsp:exactText a owl:DatatypeProperty ;
+    rdfs:domain lorsp:EvidenceSpan ;
+    rdfs:range rdf:langString ;
+    rdfs:label "exact text"@en ;
+    rdfs:comment "Stores the exact contiguous quotation represented by an evidence span."@en ;
+    lorsp:requirementReference "PURP-003", "SCOPE-007" ;
+    lorsp:competencyQuestionReference "CQ-EVIDENCE-001" ;
+    lorsp:glossaryReference "TERM-EVIDENCE-001" ;
+    lorsp:modelingDecisionReference "MD-PROV-001" .
+
+lorsp:structuralPath a owl:DatatypeProperty ;
+    rdfs:domain lorsp:LegalProvision ;
+    rdfs:range xsd:string ;
+    rdfs:label "structural path"@en ;
+    rdfs:comment "Stores the complete reviewed article, clause, point, and ancestor-heading locator for a provision."@en ;
+    lorsp:requirementReference "SCOPE-001", "SCOPE-007" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:glossaryReference "TERM-PROVISION-001" ;
+    lorsp:modelingDecisionReference "MD-PROV-002" .
+
+lorsp:citationText a owl:DatatypeProperty ;
+    rdfs:domain lorsp:ProvisionCitation ;
+    rdfs:range rdf:langString ;
+    rdfs:label "citation text"@en ;
+    rdfs:comment "Stores the source wording of a provision citation separately from the provision it identifies."@en ;
+    lorsp:requirementReference "SCOPE-001", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EXCEPTION-001" ;
+    lorsp:glossaryReference "TERM-CITATION-001" ;
+    lorsp:modelingDecisionReference "MD-REF-001" .
