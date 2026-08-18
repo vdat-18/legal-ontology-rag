@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from legal_rag.ontology_validation.loader import load_yaml
 from legal_rag.ontology_validation.reuse_config import ExternalReuseSettings
 
 
@@ -11,9 +12,9 @@ def test_registry_pins_review_scope_decisions_and_human_approval(
     project_root: Path,
     reuse_settings: ExternalReuseSettings,
 ) -> None:
-    """The registry records exact technical decisions without granting owner acceptance."""
+    """The registry records exact decisions and attributable project-owner acceptance."""
     assert reuse_settings.artifact_version == "0.1.0"
-    assert reuse_settings.project_owner_approval == "pending"
+    assert reuse_settings.project_owner_approval == "approved"
     assert len(reuse_settings.formal_paths) == 7
     assert len(reuse_settings.resources) == 10
     assert {resource.decision_id for resource in reuse_settings.resources} == {
@@ -30,6 +31,9 @@ def test_registry_pins_review_scope_decisions_and_human_approval(
     }
     scripts = (project_root / "pyproject.toml").read_text(encoding="utf-8")
     assert 'legal-review-ontology-reuse = "legal_rag.ontology_reuse_review_cli:main"' in scripts
+    review = load_yaml(project_root / "ontology" / "external_reuse_registry.yaml")["review"]
+    assert review["project_owner_accepted_on"] == "2026-08-18"
+    assert review["project_owner_approval_evidence"].startswith("user-confirmed:2026-08-18:")
 
 
 def test_registry_lists_exactly_twenty_three_active_external_terms(

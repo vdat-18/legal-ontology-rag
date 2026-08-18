@@ -18,15 +18,15 @@ def _issues(project_root: Path, settings: ExternalReuseSettings) -> set[str]:
     return {issue for check in report.checks for issue in check.issues}
 
 
-def test_current_external_reuse_review_passes_without_human_approval(
+def test_current_external_reuse_review_passes_with_recorded_human_approval(
     project_root: Path,
     reuse_settings: ExternalReuseSettings,
 ) -> None:
-    """The reviewed graph is structurally clean while owner acceptance remains pending."""
+    """The reviewed graph is structurally clean and reports recorded owner acceptance."""
     report = run_external_reuse_review(project_root, reuse_settings, CHECKED_AT)
 
     assert report.overall_status == "passed"
-    assert report.project_owner_approval == "pending"
+    assert report.project_owner_approval == "approved"
     assert len(report.active_external_terms) == 23
     assert all(check.status == "passed" for check in report.checks)
 

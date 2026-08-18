@@ -12,6 +12,8 @@ from pathlib import Path
 
 from rdflib import DCTERMS, OWL, Graph, URIRef
 
+from legal_rag.ontology_validation.legal_review import collect_legal_review_packet_issues
+from legal_rag.ontology_validation.legal_review_config import LegalReviewSettings
 from legal_rag.ontology_validation.loader import load_yaml
 from legal_rag.ontology_validation.paths import OntologyPaths
 from legal_rag.ontology_validation.release_config import OntologyReleaseSettings
@@ -47,6 +49,7 @@ def build_ontology_release(
         _license_gate(settings),
         _reuse_decisions_gate(project_root, settings),
         _external_reuse_gate(project_root, settings),
+        _legal_review_packet_gate(project_root, settings),
         _inventory_gate(settings, semantic_report_path),
         _output_paths_gate(output_directory, settings),
     )
@@ -143,6 +146,17 @@ def _external_reuse_gate(project_root: Path, settings: OntologyReleaseSettings) 
     reuse_settings = ExternalReuseSettings.from_path(settings.external_reuse_registry_path, project_root)
     issues = collect_external_reuse_issues(project_root, reuse_settings)
     return _gate("external-reuse-registry", not issues, f"External reuse issues: {', '.join(issues)}")
+
+
+def _legal_review_packet_gate(project_root: Path, settings: OntologyReleaseSettings) -> ReleaseGateResult:
+    """Require complete independent-review questions, coverage, evidence, and decision records."""
+    review_settings = LegalReviewSettings.from_paths(
+        settings.legal_review_contract_path,
+        settings.legal_review_decisions_path,
+        project_root,
+    )
+    issues = collect_legal_review_packet_issues(project_root, review_settings)
+    return _gate("independent-legal-review-packet", not issues, f"Legal review packet issues: {', '.join(issues)}")
 
 
 def _inventory_gate(

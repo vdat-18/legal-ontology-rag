@@ -60,15 +60,21 @@ stale QA evidence.
 `external_reuse_registry.yaml` records the completed ontology-engineering review of ten external resources and the
 exact 23 external term IRIs used by OWL or SHACL. Dublin Core, PROV-O, SKOS, and OWL-Time are reused by term reference
 without `owl:imports`; ELI remains candidate-only; TLKB, LKIF-Core, Akoma Ntoso, LegalRuleML, and the n-ary relation
-pattern remain references or local pattern adaptations. The local review command passes all six structural gates, while
-`project_owner_approval` deliberately remains `pending` until explicit acceptance is recorded.
+pattern remain references or local pattern adaptations. The local review command passes all six structural gates, and
+the project owner accepted `REUSE-DCTERMS-001` through `REUSE-ODP-001` on 2026-08-18.
+
+`legal_review_contract.yaml` and `legal_review_decisions.yaml` define the independent legal-review boundary before the
+V0.1 freeze. Eleven review items cover all open modeling-decision legal topics and every glossary term, with explicit
+questions, evidence files, affected IDs, and acceptance criteria. The generated packet and readiness report live under
+`reviews/v0.1/`. Packet structure passes, but every `ILR-*` decision and the reviewer identity remain pending; no
+independent legal approval is asserted.
 
 `release_contract.yaml` defines the immutable V0.1 distribution boundary. The release command checks the bound semantic
-report, ontology identity, license, the live external-reuse registry, explicit human approvals, and the declared file
+report, ontology identity, license, the live external-reuse registry, legal-review packet completeness, explicit human
+approvals, and the declared file
 inventory. A successful run creates a metadata-normalized ZIP with an internal `MANIFEST.json` plus a separate SHA-256
-checksum. The current contract remains intentionally blocked while namespace resolution, external-reuse owner
-acceptance, and independent legal review are pending; no release archive should exist before those decisions are
-recorded.
+checksum. The current contract remains intentionally blocked while namespace resolution and independent legal review
+are pending; no release archive should exist before those decisions are recorded.
 
 `namespace_publication.yaml` defines the canonical namespace deployment and W3ID registration boundary. The publication
 command validates all ontology/version IRIs against Turtle and the XML catalog, creates HTML plus byte-identical Turtle

@@ -48,6 +48,7 @@ def test_production_release_is_blocked_by_explicit_publication_gates(
     assert gates["human-approvals"].status == "failed"
     assert gates["ontology-license"].status == "passed"
     assert gates["external-reuse-registry"].status == "passed"
+    assert gates["independent-legal-review-packet"].status == "passed"
     assert gates["release-file-inventory"].status == "passed"
     assert gates["semantic-qa"].status == "passed"
     assert report.archive_path is None
@@ -162,6 +163,38 @@ def test_external_reuse_issue_blocks_release(
     assert report.overall_status == "blocked"
     assert gates["human-approvals"].status == "passed"
     assert gates["external-reuse-registry"].status == "failed"
+    assert report.archive_path is None
+
+
+def test_incomplete_legal_review_packet_blocks_release(
+    monkeypatch,
+    tmp_path: Path,
+    project_root: Path,
+) -> None:
+    """Human approval metadata cannot override an incomplete independent legal-review packet."""
+    release_project = tmp_path / "project"
+    settings, semantic_report_path = write_releasable_project(release_project, project_root)
+    decisions_path = release_project / "ontology" / "legal_review_decisions.yaml"
+    decisions = yaml.safe_load(decisions_path.read_text(encoding="utf-8"))
+    decisions["decisions"].pop()
+    decisions_path.write_text(yaml.safe_dump(decisions, sort_keys=False), encoding="utf-8")
+    monkeypatch.setattr(
+        "legal_rag.ontology_validation.release_packager.semantic_input_sha256",
+        lambda _paths, _settings: "semantic-input",
+    )
+
+    report = build_ontology_release(
+        release_project,
+        settings,
+        semantic_report_path,
+        tmp_path / "release",
+        CHECKED_AT,
+    )
+
+    gates = {item.gate_id: item for item in report.gates}
+    assert report.overall_status == "blocked"
+    assert gates["human-approvals"].status == "passed"
+    assert gates["independent-legal-review-packet"].status == "failed"
     assert report.archive_path is None
 
 

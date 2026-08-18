@@ -221,7 +221,23 @@ uv run --extra dev legal-review-ontology-reuse `
 The registry records source, version, license, attribution, compatibility, boundaries, and exact term IRIs for Dublin
 Core, PROV-O, SKOS, and OWL-Time. It also records ELI as candidate-only and the remaining legal resources as reviewed
 references or patterns. The command rejects unregistered semantic IRIs, candidate/reference namespace use, missing
-foundational declarations, and external OWL imports. Technical checks pass; project-owner acceptance remains explicit.
+foundational declarations, and external OWL imports. Technical checks pass, and project-owner acceptance of all ten
+reviewed decisions was recorded on 2026-08-18.
+
+Prepare the independent legal-review packet locally with:
+
+```powershell
+uv run --extra dev legal-prepare-ontology-legal-review `
+  ontology/legal_review_contract.yaml `
+  ontology/legal_review_decisions.yaml `
+  ontology/reviews/v0.1/legal_review_packet.md `
+  ontology/reviews/v0.1/legal_review_readiness.json
+```
+
+The packet contains 11 bounded legal questions covering every open modeling topic and every V0.1 glossary term. The
+command verifies registry traceability, evidence files, question coverage, and attributable human decision records. A
+pending packet is structurally valid; only an independent qualified reviewer may fill the reviewer record and change
+the `ILR-*` decisions. LLM output may help summarize evidence but cannot approve an item.
 
 Run the ontology semantic release gates with pinned ROBOT and HermiT tooling:
 
@@ -238,8 +254,7 @@ ROBOT quality report, and records traceability/CQ coverage. The report is writte
 The report also binds its result to a SHA-256 digest of the complete semantic input closure, so a report becomes stale
 when an ontology module, SHACL graph, CQ query, fixture, registry, catalog, policy, or semantic contract changes.
 The current ontology passes every semantic gate, including ROBOT's ontology-license rule. Public release remains
-blocked by namespace resolution, project-owner acceptance of the completed external-reuse review, and independent legal
-review.
+blocked by namespace resolution and independent legal review; external-reuse review is approved.
 
 After every semantic gate passes, build the immutable V0.1 distribution with:
 
@@ -252,7 +267,8 @@ uv run --extra dev legal-package-ontology-release `
 ```
 
 The release command verifies the semantic-input digest, ontology/version IRIs, license metadata and file, the complete
-external-reuse registry against the current graph, explicit human approvals, and the complete source inventory. It
+external-reuse registry, independent legal-review packet structure, explicit human approvals, and the complete source
+inventory. It
 always writes a readiness report
 before failing an open gate. Once all gates pass, it emits a reproducible ZIP containing a machine-readable manifest and
 a separate `.sha256` checksum. Runtime data, populated instances, retrieval indexes, and GraphRAG artifacts are excluded.

@@ -76,3 +76,13 @@ class OntologyPaths:
     def external_reuse_registry(self) -> Path:
         """Return the ontology external-reuse registry path."""
         return self.ontology_dir / "external_reuse_registry.yaml"
+
+    @property
+    def legal_review_contract(self) -> Path:
+        """Return the independent legal-review contract path."""
+        return self.ontology_dir / "legal_review_contract.yaml"
+
+    @property
+    def legal_review_decisions(self) -> Path:
+        """Return the independent legal-review decisions path."""
+        return self.ontology_dir / "legal_review_decisions.yaml"

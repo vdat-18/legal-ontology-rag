@@ -28,7 +28,7 @@ def release_settings(project_root: Path) -> OntologyReleaseSettings:
 def write_releasable_project(path: Path, source_project_root: Path) -> tuple[OntologyReleaseSettings, Path]:
     """Create one minimal approved project and passing semantic report."""
     ontology_directory = path / "ontology"
-    ontology_directory.mkdir(parents=True)
+    shutil.copytree(source_project_root / "ontology", ontology_directory)
     (ontology_directory / "legal_ontology.ttl").write_text(
         """@prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -127,11 +127,15 @@ def write_releasable_project(path: Path, source_project_root: Path) -> tuple[Ont
         "inputs": {
             "semantic_contract_file": "ontology/semantic_qa_contract.yaml",
             "external_reuse_registry_file": "ontology/external_reuse_registry.yaml",
+            "legal_review_contract_file": "ontology/legal_review_contract.yaml",
+            "legal_review_decisions_file": "ontology/legal_review_decisions.yaml",
             "semantic_report_archive_path": "qa/semantic_qa_report.json",
             "source_files": [
                 "ontology/legal_ontology.ttl",
                 "ontology/formalization_policy.yaml",
                 "ontology/external_reuse_registry.yaml",
+                "ontology/legal_review_contract.yaml",
+                "ontology/legal_review_decisions.yaml",
                 "ontology/semantic_qa_contract.yaml",
                 "ontology/release_contract.yaml",
             ],

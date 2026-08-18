@@ -1,0 +1,23 @@
+schema_version: "0.1.0"
+artifact_id: legal-ontology-rag-independent-legal-review-decisions
+artifact_version: "0.1.0"
+contract_id: legal-ontology-rag-independent-legal-review
+contract_version: "0.1.0"
+status: pending_independent_legal_review
+reviewer:
+  name: null
+  qualifications: null
+  organization: null
+  reviewed_on: null
+decisions:
+  - {id: ILR-001, decision: pending, rationale: null, evidence_refs: [], requested_changes: []}
+  - {id: ILR-002, decision: pending, rationale: null, evidence_refs: [], requested_changes: []}
+  - {id: ILR-003, decision: pending, rationale: null, evidence_refs: [], requested_changes: []}
+  - {id: ILR-004, decision: pending, rationale: null, evidence_refs: [], requested_changes: []}
+  - {id: ILR-005, decision: pending, rationale: null, evidence_refs: [], requested_changes: []}
+  - {id: ILR-006, decision: pending, rationale: null, evidence_refs: [], requested_changes: []}
+  - {id: ILR-007, decision: pending, rationale: null, evidence_refs: [], requested_changes: []}
+  - {id: ILR-008, decision: pending, rationale: null, evidence_refs: [], requested_changes: []}
+  - {id: ILR-009, decision: pending, rationale: null, evidence_refs: [], requested_changes: []}
+  - {id: ILR-010, decision: pending, rationale: null, evidence_refs: [], requested_changes: []}
+  - {id: ILR-011, decision: pending, rationale: null, evidence_refs: [], requested_changes: []}

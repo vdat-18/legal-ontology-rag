@@ -40,5 +40,5 @@ def test_cli_persists_failed_report_before_raising(
 
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["overall_status"] == "failed"
-    assert report["project_owner_approval"] == "pending"
+    assert report["project_owner_approval"] == "approved"
     assert any("listed-term-not-used:https://example.test/not-used" in check["issues"] for check in report["checks"])

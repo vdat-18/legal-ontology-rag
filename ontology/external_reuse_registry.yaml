@@ -1,11 +1,13 @@
 schema_version: "0.1.0"
 artifact_id: legal-ontology-rag-external-reuse-registry
 artifact_version: "0.1.0"
-status: ontology_review_complete_pending_project_owner_acceptance
+status: project_owner_approved_for_v0.1
 review:
   reviewed_on: "2026-08-18"
   reviewer_role: ontology_engineering
-  project_owner_approval: pending
+  project_owner_approval: approved
+  project_owner_accepted_on: "2026-08-18"
+  project_owner_approval_evidence: user-confirmed:2026-08-18:REUSE-DCTERMS-001-through-REUSE-ODP-001
 scope:
   formal_artifacts:
     - ontology/legal_ontology.ttl
@@ -286,4 +288,4 @@ review_conclusion:
   reference_or_pattern_resources: [REUSE-TLKB-001, REUSE-LKIF-001, REUSE-AKN-001, REUSE-LRML-001, REUSE-ODP-001]
   owl_imports_approved: []
   external_equivalence_axioms_approved: []
-  release_recommendation: technically_ready_for_project_owner_acceptance
+  release_recommendation: approved_for_v0.1_subject_to_remaining_release_gates
