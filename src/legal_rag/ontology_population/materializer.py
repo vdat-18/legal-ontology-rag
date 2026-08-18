@@ -313,11 +313,25 @@ def _scoped_concept(
     scheme: URIRef,
 ) -> URIRef:
     """Create a rule-scoped concept without asserting cross-rule equivalence."""
-    concept = _iri(data, f"concept/{kind}", {"population_id": record.population_id, "label": label})
+    concept = population_scoped_concept_iri(str(data), record.population_id, kind, label)
     graph.add((concept, RDF.type, concept_class))
     graph.add((concept, SKOS.inScheme, scheme))
     graph.add((concept, SKOS.prefLabel, Literal(label, lang="vi")))
     return concept
+
+
+def population_scoped_concept_iri(
+    instance_namespace: str,
+    population_id: str,
+    kind: str,
+    label: str,
+) -> URIRef:
+    """Return one rule-scoped controlled-concept IRI."""
+    return _iri(
+        Namespace(instance_namespace),
+        f"concept/{kind}",
+        {"population_id": population_id, "label": label},
+    )
 
 
 def _add_component_evidence(

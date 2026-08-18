@@ -452,3 +452,106 @@ occurrence-level exception applicability remain deferred.
 `tests/ontology_exception/` covers contract and command packaging, exhaustive bounds, typed source/target membership,
 exact exception and citation binding, zero-result resume, fragment merging, review gates, grouped citation RDF, SHACL,
 CQ projection, persistence, and the complete three-command workflow without a real LLM call.
+
+## Reviewed Concept Normalization And Taxonomy Resolution
+
+Run this phase after canonical rules, legal changes, and exceptions are available. Population intentionally creates one
+rule-scoped conduct, role, or vehicle concept per canonical rule. This phase is the only boundary allowed to merge those
+occurrences into reusable identities or add taxonomy relations.
+
+```text
+canonical population
+  -> extract rule-scoped conduct, role, and vehicle occurrences
+  -> exhaustive same-kind candidate pairs
+  -> typed LLM semantic proposals with exact evidence from both sides
+  -> mandatory human review
+  -> accepted-equivalence components and reviewed taxonomy relations
+  -> canonical concept registry + remapped RDF
+  -> complete SHACL and CQ validation
+```
+
+The versioned boundary is `ontology/concept_resolution_contract.yaml`; the typed model contract is
+`baml_src/ontology_concept_resolution.baml`. Subject kinds are not re-extracted because `NaturalPerson` and
+`Organization` are already controlled ontology concepts. Consequence targets remain deferred because one target label
+may denote a person, role, license, vehicle, object, or state rather than one homogeneous taxonomy.
+
+### 1. Build candidates offline
+
+```powershell
+uv run --extra dev legal-build-concept-candidates `
+  data/ontology/change/canonical_population.jsonl `
+  ontology/concept_resolution_contract.yaml `
+  data/ontology/concept/candidates.json
+```
+
+Candidate generation extracts `RegulatedConduct`, `LegalSubjectRole`, and `VehicleCategory` occurrences and enumerates
+every pair within each kind. It performs no regex, keyword filtering, lexical similarity, embeddings, handcrafted score,
+or automatic semantic merge. `max_total_pairs` bounds the exhaustive workload.
+
+### 2. Run the LLM proposal step
+
+This is the only concept-resolution command that calls an LLM:
+
+```powershell
+.venv\Scripts\baml-cli.exe generate
+
+uv run --extra dev legal-propose-concept-relations `
+  data/ontology/change/corpus_manifest.json `
+  data/ontology/concept/candidates.json `
+  ontology/concept_resolution_contract.yaml `
+  data/ontology/concept/proposals.jsonl `
+  data/ontology/concept/progress.jsonl `
+  data/ontology/concept/reviews.jsonl
+```
+
+For each pair the model may propose `SameConcept`, `LeftBroaderThanRight`, `LeftNarrowerThanRight`, `Related`, or
+`Distinct`, or return no proposal when evidence is insufficient. Every proposal must copy exact evidence owned by both
+occurrences. `SameConcept` must select one supplied Vietnamese label; other relations cannot silently choose a canonical
+label. Completed zero-proposal pairs are checkpointed so retries do not repeat finished model work.
+
+### 3. Review every proposal manually
+
+Review legal meaning, both exact evidence spans, direction, and preferred label. Do not accept equality from shared words,
+provision location, consequence values, or similar rule scope. Resolve every generated review row:
+
+```json
+{
+  "schema_version": "0.1.0",
+  "proposal_id": "...",
+  "decision": "accepted",
+  "reviewer": "reviewer-name",
+  "reviewed_on": "2026-08-18",
+  "note": "Confirmed legal identity and both evidence sources."
+}
+```
+
+### 4. Finalize offline
+
+```powershell
+uv run --extra dev legal-finalize-concept-resolution `
+  data/ontology/change/corpus_manifest.json `
+  data/ontology/change/canonical_population.jsonl `
+  data/ontology/change/legal_change_events.jsonl `
+  data/ontology/exception/legal_exceptions.jsonl `
+  data/ontology/concept/candidates.json `
+  data/ontology/concept/proposals.jsonl `
+  data/ontology/concept/reviews.jsonl `
+  ontology/population_contract.yaml `
+  ontology/concept_resolution_contract.yaml `
+  data/ontology/concept/canonical_concepts.jsonl `
+  data/ontology/concept/concept_relations.jsonl `
+  data/ontology/concept/canonical_graph.ttl
+```
+
+Finalization verifies that candidates still match the canonical population, requires complete attributable reviews,
+forms equivalence components only from accepted `SameConcept` proposals, and rejects conflicting labels, contradictory
+relations, self-relations after merging, or broader cycles. Rejected and zero-proposal pairs remain separate concepts.
+
+The RDF graph replaces rule-scoped concept references with canonical concept IRIs, preserves all Vietnamese aliases and
+source evidence, and emits SKOS `broader`, `narrower`, or `related` only for reviewed relations. `Distinct` remains an
+auditable JSON decision and is not converted into an OWL disjointness axiom. SKOS hierarchy does not imply
+`rdfs:subClassOf`, rule equivalence, legal priority, condition satisfaction, or occurrence-level applicability.
+
+`tests/ontology_concept/` covers exhaustive same-kind pairing, configured bounds, persistence, typed fake-model input,
+exact evidence binding, invalid labels and paraphrases, zero-result resume, mandatory review, conservative rejection,
+canonical RDF remapping, reviewed SKOS hierarchy, SHACL, and the complete three-command workflow without a real LLM.

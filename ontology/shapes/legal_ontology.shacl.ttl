@@ -188,6 +188,28 @@ lorsh:VehicleCategoryShape a sh:NodeShape ;
     lorsp:competencyQuestionReference "CQ-APPLICABILITY-001", "CQ-COMPARISON-001" ;
     lorsp:modelingDecisionReference "MD-VEHICLE-001" .
 
+lorsh:ConceptHierarchyShape a sh:NodeShape ;
+    sh:targetSubjectsOf skos:broader ;
+    sh:property [
+        sh:path skos:broader ;
+        sh:class skos:Concept ;
+        sh:message "Every reviewed broader target must remain a controlled SKOS concept."@en
+    ] ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "A reviewed concept hierarchy must not contain a broader cycle."@en ;
+        sh:select """
+            PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+            SELECT $this
+            WHERE {
+                $this skos:broader+ $this .
+            }
+        """
+    ] ;
+    lorsp:requirementReference "GRAN-002", "GRAN-003", "GRAN-008" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-APPLICABILITY-001", "CQ-COMPARISON-001" ;
+    lorsp:modelingDecisionReference "MD-CONDUCT-001", "MD-SUBJECT-001", "MD-VEHICLE-001" .
+
 lorsh:LegalSubjectShape a sh:NodeShape ;
     sh:targetClass loroc:LegalSubject ;
     sh:property [

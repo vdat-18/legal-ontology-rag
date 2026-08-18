@@ -193,6 +193,23 @@ uv run --extra dev legal-finalize-legal-exceptions <corpus_manifest.json> <canon
 Only proposal generation calls the LLM. Human review owns exception scope, grouped citation resolution, and
 version-specific redirect targets; finalization writes outputs only after SHACL conformance.
 
+Normalize reusable conduct, role, and vehicle concepts after exception resolution:
+
+```powershell
+uv run --extra dev legal-build-concept-candidates <canonical_population.jsonl> `
+  ontology/concept_resolution_contract.yaml <candidates.json>
+uv run --extra dev legal-propose-concept-relations <corpus_manifest.json> <candidates.json> `
+  ontology/concept_resolution_contract.yaml <proposals.jsonl> <progress.jsonl> <reviews.jsonl>
+uv run --extra dev legal-finalize-concept-resolution <corpus_manifest.json> <canonical_population.jsonl> `
+  <legal_change_events.jsonl> <legal_exceptions.jsonl> <candidates.json> <proposals.jsonl> <reviews.jsonl> `
+  ontology/population_contract.yaml ontology/concept_resolution_contract.yaml `
+  <canonical_concepts.jsonl> <concept_relations.jsonl> <canonical_graph.ttl>
+```
+
+Candidate generation exhaustively pairs concepts only within the same kind and makes no semantic decision. Only the
+proposal command calls the LLM. Accepted `SameConcept` decisions remap rules to a shared canonical identity; reviewed
+broader, narrower, and related decisions become SKOS relations without becoming OWL subclass or equivalence axioms.
+
 ## Operations
 
 - Health: Neo4j exposes its browser health endpoint on port 7474; Milvus exposes health and Prometheus metrics on port 9091. Container logs use bounded rotation.

@@ -71,5 +71,14 @@ target windows without keyword classification or similarity scoring. Typed propo
 and grouped citation wording, while humans approve the general rule, cited provisions, and version-specific redirects.
 The formal model adds `hasProvisionCitation` so one exception can retain locator grouping separately from direct
 `citesExcludedProvision` and `redirectsTo` projections. Finalization validates the complete graph against SHACL and
-`CQ-EXCEPTION-001`. Legal priority evaluation, unpopulated provision targets, occurrence applicability, and concept
-equivalence remain deferred.
+`CQ-EXCEPTION-001`. Concept equivalence is handled only by the subsequent reviewed concept-resolution boundary; legal
+priority evaluation, unpopulated provision targets, and occurrence applicability remain deferred.
+
+`concept_resolution_contract.yaml` implements reviewed consolidation for rule-scoped `RegulatedConduct`,
+`LegalSubjectRole`, and `VehicleCategory` occurrences. Candidate construction exhaustively enumerates same-kind pairs
+without lexical filtering or semantic scoring. Typed LLM proposals must bind exact evidence from both occurrences, and
+every proposed merge or taxonomy relation requires attributable human acceptance. Finalization computes canonical
+identities only from accepted `SameConcept` decisions, remaps rule references, and materializes reviewed SKOS
+`broader`/`narrower`/`related` relations. It does not assert OWL equivalence or subclass semantics. Subject kinds remain
+the pre-approved controlled concepts; consequence-target consolidation, legal priority, and occurrence applicability
+remain deferred.
