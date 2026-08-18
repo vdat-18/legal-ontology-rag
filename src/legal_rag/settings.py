@@ -214,6 +214,10 @@ _NAIVE_RAG_TUNABLES: dict[str, Callable[[str], str | bool | float | int]] = {
     "answer_max_output_tokens": int,
     "answer_temperature": float,
     "max_response_bytes": int,
+    "search_mode": str.strip,
+    "hybrid_rrf_k": int,
+    "hybrid_pool_multiplier": int,
+    "bm25_corpus_limit": int,
 }
 
 
@@ -236,6 +240,10 @@ class NaiveRagSettings:
     answer_max_output_tokens: int = 16384
     answer_temperature: float = 0.1
     max_response_bytes: int = 1_048_576
+    search_mode: str = "semantic"
+    hybrid_rrf_k: int = 60
+    hybrid_pool_multiplier: int = 3
+    bm25_corpus_limit: int = 16384
 
     def __post_init__(self) -> None:
         """Reject invalid external-service configuration before connecting to Milvus."""
@@ -266,6 +274,21 @@ class NaiveRagSettings:
         if not isinstance(self.milvus_flush_after_insert, bool):
             msg = "milvus_flush_after_insert must be a boolean"
             raise TypeError(msg)
+
+        valid_modes = {"keyword", "semantic", "hybrid"}
+        if self.search_mode not in valid_modes:
+            msg = f"search_mode must be one of {valid_modes}, got {self.search_mode!r}"
+            raise ValueError(msg)
+
+        positive_hybrid = {
+            "hybrid_rrf_k": self.hybrid_rrf_k,
+            "hybrid_pool_multiplier": self.hybrid_pool_multiplier,
+            "bm25_corpus_limit": self.bm25_corpus_limit,
+        }
+        for name, value in positive_hybrid.items():
+            if value < 1:
+                msg = f"{name} must be positive, got {value}"
+                raise ValueError(msg)
 
         if not isfinite(self.answer_temperature) or not 0 <= self.answer_temperature <= _MAX_LLM_TEMPERATURE:
             msg = f"answer_temperature must be between 0 and {_MAX_LLM_TEMPERATURE}, got {self.answer_temperature}"

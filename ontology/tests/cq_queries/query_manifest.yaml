@@ -1,0 +1,126 @@
+schema_version: "0.5.0"
+artifact_id: road-traffic-ontology-cq-query-manifest
+artifact_version: "0.5.0"
+status: v0.1_frozen
+queries:
+  - cq_id: CQ-SOURCE-001
+    file: ontology/tests/cq_queries/cq_source_001.rq
+    fixture: ontology/tests/fixtures/source_provenance_valid.ttl
+    execution_status: executable_source_provenance_projection
+    expected_minimum_rows: 1
+    expected_columns: [assertion, provision, provisionPath, expression, resource]
+  - cq_id: CQ-EVIDENCE-001
+    file: ontology/tests/cq_queries/cq_evidence_001.rq
+    fixture: ontology/tests/fixtures/source_provenance_valid.ttl
+    execution_status: executable_source_provenance_projection
+    expected_minimum_rows: 1
+    expected_columns: [assertion, evidenceSpan, exactText, sourceChunk, sourceFile, provision]
+  - cq_id: CQ-RULE-001
+    file: ontology/tests/cq_queries/cq_rule_001_normative_candidate.rq
+    fixture: ontology/tests/fixtures/normative_rule_valid.ttl
+    execution_status: executable_normative_candidate_projection
+    expected_rows: 2
+    expected_columns: [occurrence, penaltyRule, conduct, subjectKind, role, vehicleCategory, requiredSubjectKind, requiredRole, requiredVehicleCategory, validityInterval, sourceProvision]
+    deferred_output_fields: [satisfied_conditions, applicability_determination]
+  - cq_id: CQ-NEGATIVE-001
+    file: ontology/tests/cq_queries/cq_negative_001_occurrence_context.rq
+    fixture: ontology/tests/fixtures/occurrence_context_boundary.ttl
+    execution_status: executable_occurrence_context_projection
+    expected_rows: 2
+    expected_columns: [occurrence, missingDimension]
+    deferred_output_fields: [remaining_candidate_rules, determination_status]
+  - cq_id: CQ-TEMPORAL-001
+    file: ontology/tests/cq_queries/cq_temporal_001_validity_projection.rq
+    fixture: ontology/tests/fixtures/temporal_change_valid.ttl
+    execution_status: executable_temporal_projection
+    expected_rows: 2
+    expected_columns: [occurrence, occurrenceTime, ruleVersion, validFrom, validTo, sourceProvision]
+    deferred_output_fields: [applicable_rule_version, excluded_rule_versions]
+  - cq_id: CQ-TEMPORAL-002
+    file: ontology/tests/cq_queries/cq_temporal_002_change_projection.rq
+    fixture: ontology/tests/fixtures/temporal_change_valid.ttl
+    execution_status: executable_temporal_change_projection
+    expected_rows: 1
+    expected_columns: [legalChange, earlierRuleVersion, laterRuleVersion, changeType, effectiveDate, sourceProvision]
+    deferred_output_fields: [changed_fields]
+  - cq_id: CQ-APPLICABILITY-001
+    file: ontology/tests/cq_queries/cq_applicability_001.rq
+    fixture: ontology/tests/fixtures/normative_rule_valid.ttl
+    execution_status: executable_normative_projection
+    expected_rows: 2
+    expected_columns: [penaltyRule, applicability, requiredSubjectKind, requiredRole, requiredVehicleCategory, sourceProvision]
+  - cq_id: CQ-CONDITION-001
+    file: ontology/tests/cq_queries/cq_condition_001.rq
+    fixture: ontology/tests/fixtures/normative_rule_valid.ttl
+    execution_status: executable_condition_tree_projection
+    expected_rows: 4
+    expected_columns: [penaltyRule, applicability, rootExpression, conditionExpression, expressionType, operand, evidenceSpan]
+    deferred_output_fields: [condition_satisfaction]
+  - cq_id: CQ-EXCEPTION-001
+    file: ontology/tests/cq_queries/cq_exception_001.rq
+    fixture: ontology/tests/fixtures/normative_rule_valid.ttl
+    execution_status: executable_exception_projection
+    expected_rows: 1
+    expected_columns: [generalRule, legalException, provisionCitation, citationText, citedExcludedProvision, redirectedRule, evidenceSpan]
+  - cq_id: CQ-ASSEMBLY-001
+    file: ontology/tests/cq_queries/cq_assembly_001.rq
+    fixture: ontology/tests/fixtures/normative_rule_valid.ttl
+    execution_status: executable_rule_assembly_projection
+    expected_rows: 10
+    expected_columns: [penaltyRule, componentRelation, ruleComponent, provision, evidenceSpan, exactText]
+  - cq_id: CQ-PENALTY-001
+    file: ontology/tests/cq_queries/cq_penalty_001.rq
+    fixture: ontology/tests/fixtures/normative_rule_valid.ttl
+    execution_status: executable_consequence_projection
+    expected_rows: 1
+    expected_columns: [penaltyRule, monetaryPenalty, minimumAmount, maximumAmount, currency, sourceProvision]
+  - cq_id: CQ-CONSEQUENCE-001
+    file: ontology/tests/cq_queries/cq_consequence_001.rq
+    fixture: ontology/tests/fixtures/normative_rule_valid.ttl
+    execution_status: executable_consequence_projection
+    expected_rows: 5
+    expected_columns: [penaltyRule, legalConsequence, consequenceType, affectedTarget, responsibleRole, sourceProvision]
+  - cq_id: CQ-POINTS-001
+    file: ontology/tests/cq_queries/cq_points_001.rq
+    fixture: ontology/tests/fixtures/normative_rule_valid.ttl
+    execution_status: executable_consequence_projection
+    expected_rows: 1
+    expected_columns: [penaltyRule, pointDeduction, pointValue, affectedLicense, requiredRole, sourceProvision]
+  - cq_id: CQ-ADDITIONAL-001
+    file: ontology/tests/cq_queries/cq_additional_001.rq
+    fixture: ontology/tests/fixtures/normative_rule_valid.ttl
+    execution_status: executable_consequence_projection
+    expected_rows: 2
+    expected_columns: [penaltyRule, additionalSanction, affectedTarget, sourceProvision]
+  - cq_id: CQ-REMEDY-001
+    file: ontology/tests/cq_queries/cq_remedy_001.rq
+    fixture: ontology/tests/fixtures/normative_rule_valid.ttl
+    execution_status: executable_consequence_projection
+    expected_rows: 1
+    expected_columns: [penaltyRule, remedialMeasure, responsibleRole, affectedTarget, conditionExpression, sourceProvision]
+  - cq_id: CQ-COMPARISON-001
+    file: ontology/tests/cq_queries/cq_comparison_001.rq
+    fixture: ontology/tests/fixtures/normative_rule_valid.ttl
+    execution_status: executable_structural_comparison_projection
+    expected_rows: 4
+    expected_columns: [leftRule, rightRule, sharedConduct, leftSubjectKind, rightSubjectKind, leftConsequenceType, rightConsequenceType]
+validation_cases:
+  - fixture: ontology/tests/fixtures/source_provenance_valid.ttl
+    expected_conforms: true
+  - fixture: ontology/tests/fixtures/source_provenance_boundary.ttl
+    expected_conforms: false
+  - fixture: ontology/tests/fixtures/occurrence_context_valid.ttl
+    expected_conforms: true
+  - fixture: ontology/tests/fixtures/occurrence_context_boundary.ttl
+    expected_conforms: false
+  - fixture: ontology/tests/fixtures/temporal_change_valid.ttl
+    expected_conforms: true
+  - fixture: ontology/tests/fixtures/temporal_change_boundary.ttl
+    expected_conforms: false
+  - fixture: ontology/tests/fixtures/normative_rule_valid.ttl
+    expected_conforms: true
+  - fixture: ontology/tests/fixtures/normative_rule_boundary.ttl
+    expected_conforms: false
+  - fixture: ontology/tests/fixtures/legal_consequence_boundary.ttl
+    expected_conforms: false
+deferred_queries: []

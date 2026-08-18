@@ -8,6 +8,7 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Literal
 
 import redis
 from fastapi import Depends, FastAPI, Header, HTTPException
@@ -22,6 +23,7 @@ class QueryRequest(BaseModel):
 
     query: str = Field(min_length=1)
     top_k: int | None = Field(default=None)
+    search_mode: Literal["keyword", "semantic", "hybrid"] | None = Field(default=None)
 
 
 class SourceChunk(BaseModel):
@@ -183,7 +185,7 @@ def query(
     latency["context_build_ms"] = (time.perf_counter() - t0) * 1000
 
     t0 = time.perf_counter()
-    result = _state.pipeline.run(contextual_query, top_k=request.top_k)
+    result = _state.pipeline.run(contextual_query, top_k=request.top_k, search_mode=request.search_mode)
     latency["pipeline_ms"] = (time.perf_counter() - t0) * 1000
 
     t0 = time.perf_counter()

@@ -1,0 +1,11 @@
+PREFIX lorlc: <https://w3id.org/legal-ontology-rag/ontology/legal-consequence#>
+PREFIX lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#>
+
+SELECT DISTINCT ?penaltyRule ?additionalSanction ?affectedTarget ?sourceProvision
+WHERE {
+  ?penaltyRule lorlc:imposesConsequence ?additionalSanction .
+  ?additionalSanction a lorlc:AdditionalSanction ;
+    lorlc:affectsTarget ?affectedTarget ;
+    lorsp:groundedIn ?sourceProvision .
+}
+ORDER BY ?penaltyRule ?additionalSanction ?affectedTarget

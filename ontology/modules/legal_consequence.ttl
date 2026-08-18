@@ -1,0 +1,201 @@
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix lorlc: <https://w3id.org/legal-ontology-rag/ontology/legal-consequence#> .
+@prefix loroc: <https://w3id.org/legal-ontology-rag/ontology/occurrence-context#> .
+@prefix lornr: <https://w3id.org/legal-ontology-rag/ontology/normative-rule#> .
+@prefix lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://w3id.org/legal-ontology-rag/ontology/legal-consequence> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/legal-ontology-rag/ontology/0.1.0/legal-consequence> ;
+    owl:versionInfo "0.1.0" ;
+    owl:imports <https://w3id.org/legal-ontology-rag/ontology/normative-rule>,
+        <https://w3id.org/legal-ontology-rag/ontology/occurrence-context>,
+        <https://w3id.org/legal-ontology-rag/ontology/source-provenance> ;
+    dcterms:title "Legal Consequence Module"@en,
+        "Mô-đun hậu quả pháp lý"@vi ;
+    dcterms:description "Independently evidenced monetary penalties, point deductions, additional sanctions, remedial measures, qualified values, and consequence targets."@en ;
+    dcterms:issued "2026-08-18"^^xsd:date ;
+    dcterms:source "docs/ontology_construction_plan.md" .
+
+lorlc:LegalConsequence a owl:Class ;
+    rdfs:subClassOf lornr:RuleComponent ;
+    rdfs:label "Legal consequence"@en,
+        "Hậu quả pháp lý"@vi ;
+    rdfs:comment "An independently evidenced legal effect imposed or required by a penalty rule."@en ;
+    lorsp:requirementReference "PURP-003", "USE-002", "SCOPE-005", "SCOPE-007", "GRAN-001", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-CONSEQUENCE-001", "CQ-SOURCE-001", "CQ-EVIDENCE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:glossaryReference "TERM-CONSEQUENCE-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002", "MD-PROV-001" .
+
+lorlc:MonetaryPenalty a owl:Class ;
+    rdfs:subClassOf lorlc:LegalConsequence ;
+    rdfs:label "Monetary penalty"@en,
+        "Phạt tiền"@vi ;
+    rdfs:comment "A legally classified consequence requiring payment within an evidenced monetary range and currency."@en ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-PENALTY-001", "CQ-CONSEQUENCE-001" ;
+    lorsp:glossaryReference "TERM-MONEY-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002" .
+
+lorlc:MonetaryAmountRange a owl:Class ;
+    rdfs:label "Monetary amount range"@en,
+        "Khoảng tiền phạt"@vi ;
+    rdfs:comment "A qualified value containing normalized lower and upper monetary bounds and one controlled currency."@en ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
+    lorsp:glossaryReference "TERM-MONEY-002" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
+
+lorlc:Currency a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Currency"@en,
+        "Loại tiền tệ"@vi ;
+    rdfs:comment "A controlled identifier for the currency used by a normalized monetary amount range."@en ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
+    lorsp:glossaryReference "TERM-MONEY-003" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
+
+lorlc:PointDeduction a owl:Class ;
+    rdfs:subClassOf lorlc:LegalConsequence ;
+    rdfs:label "Driver-license point deduction"@en,
+        "Trừ điểm giấy phép lái xe"@vi ;
+    rdfs:comment "A legally classified consequence deducting an evidenced number of points from a relevant driver license."@en ;
+    lorsp:requirementReference "PURP-002", "USE-002", "SCOPE-003", "SCOPE-005", "GRAN-002", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-POINTS-001", "CQ-CONSEQUENCE-001" ;
+    lorsp:glossaryReference "TERM-POINTS-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002" .
+
+lorlc:AdditionalSanction a owl:Class ;
+    rdfs:subClassOf lorlc:LegalConsequence ;
+    rdfs:label "Additional sanction"@en,
+        "Hình thức xử phạt bổ sung"@vi ;
+    rdfs:comment "A consequence expressly classified by the authoritative source as an additional sanction."@en ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-ADDITIONAL-001", "CQ-CONSEQUENCE-001" ;
+    lorsp:glossaryReference "TERM-ADDITIONAL-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002" .
+
+lorlc:RemedialMeasure a owl:Class ;
+    rdfs:subClassOf lorlc:LegalConsequence ;
+    rdfs:label "Remedial measure"@en,
+        "Biện pháp khắc phục hậu quả"@vi ;
+    rdfs:comment "A consequence expressly classified by the governing normative source as a remedial measure."@en ;
+    lorsp:requirementReference "PURP-002", "USE-002", "SCOPE-003", "SCOPE-004", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-REMEDY-001", "CQ-CONSEQUENCE-001" ;
+    lorsp:glossaryReference "TERM-REMEDY-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002" .
+
+lorlc:ConsequenceTarget a owl:Class ;
+    rdfs:label "Consequence target"@en,
+        "Đối tượng của hậu quả"@vi ;
+    rdfs:comment "A person, role, license, vehicle, plate, object, or state directly affected by a legal consequence."@en ;
+    lorsp:requirementReference "PURP-002", "USE-002", "SCOPE-003", "SCOPE-005", "GRAN-002", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-POINTS-001", "CQ-ADDITIONAL-001", "CQ-REMEDY-001", "CQ-CONSEQUENCE-001" ;
+    lorsp:glossaryReference "TERM-TARGET-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
+
+lorlc:currencyScheme a skos:ConceptScheme,
+        owl:NamedIndividual ;
+    skos:prefLabel "Currency scheme"@en,
+        "Hệ khái niệm tiền tệ"@vi ;
+    skos:hasTopConcept lorlc:VND ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
+    lorsp:glossaryReference "TERM-MONEY-003" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
+
+lorlc:VND a lorlc:Currency,
+        owl:NamedIndividual ;
+    skos:inScheme lorlc:currencyScheme ;
+    skos:topConceptOf lorlc:currencyScheme ;
+    skos:notation "VND" ;
+    skos:prefLabel "Vietnamese đồng"@en,
+        "Đồng Việt Nam"@vi ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
+    lorsp:glossaryReference "TERM-MONEY-003" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
+
+lorlc:imposesConsequence a owl:ObjectProperty ;
+    rdfs:domain lornr:PenaltyRule ;
+    rdfs:range lorlc:LegalConsequence ;
+    rdfs:label "imposes consequence"@en ;
+    rdfs:comment "Links a penalty rule to an independently evidenced legal consequence."@en ;
+    lorsp:requirementReference "PURP-003", "USE-002", "SCOPE-005", "SCOPE-007", "GRAN-001", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-PENALTY-001", "CQ-CONSEQUENCE-001", "CQ-POINTS-001", "CQ-ADDITIONAL-001", "CQ-REMEDY-001", "CQ-ASSEMBLY-001" ;
+    lorsp:glossaryReference "TERM-RULE-001", "TERM-CONSEQUENCE-001" ;
+    lorsp:modelingDecisionReference "MD-RULE-002", "MD-CONSEQUENCE-001", "MD-PROV-001" .
+
+lorlc:hasAmountRange a owl:ObjectProperty ;
+    rdfs:domain lorlc:MonetaryPenalty ;
+    rdfs:range lorlc:MonetaryAmountRange ;
+    rdfs:label "has amount range"@en ;
+    rdfs:comment "Links a monetary penalty to its normalized qualified monetary range."@en ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
+    lorsp:glossaryReference "TERM-MONEY-001", "TERM-MONEY-002" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
+
+lorlc:minimumAmount a owl:DatatypeProperty ;
+    rdfs:domain lorlc:MonetaryAmountRange ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "minimum amount"@en ;
+    rdfs:comment "Stores the normalized lower monetary bound without replacing the exact source wording."@en ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
+    lorsp:glossaryReference "TERM-MONEY-002" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-PROV-001" .
+
+lorlc:maximumAmount a owl:DatatypeProperty ;
+    rdfs:domain lorlc:MonetaryAmountRange ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "maximum amount"@en ;
+    rdfs:comment "Stores the normalized upper monetary bound without replacing the exact source wording."@en ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
+    lorsp:glossaryReference "TERM-MONEY-002" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-PROV-001" .
+
+lorlc:currency a owl:ObjectProperty ;
+    rdfs:domain lorlc:MonetaryAmountRange ;
+    rdfs:range lorlc:Currency ;
+    rdfs:label "currency"@en ;
+    rdfs:comment "Identifies the controlled currency of a normalized monetary range."@en ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
+    lorsp:glossaryReference "TERM-MONEY-002", "TERM-MONEY-003" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
+
+lorlc:pointValue a owl:DatatypeProperty ;
+    rdfs:domain lorlc:PointDeduction ;
+    rdfs:range xsd:integer ;
+    rdfs:label "point value"@en ;
+    rdfs:comment "Stores the evidenced number of driver-license points deducted by a point-deduction consequence."@en ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-POINTS-001", "CQ-CONSEQUENCE-001" ;
+    lorsp:glossaryReference "TERM-POINTS-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002" .
+
+lorlc:affectsTarget a owl:ObjectProperty ;
+    rdfs:domain lorlc:LegalConsequence ;
+    rdfs:range lorlc:ConsequenceTarget ;
+    rdfs:label "affects target"@en ;
+    rdfs:comment "Identifies a person, role, license, vehicle, plate, object, or state directly affected by a consequence."@en ;
+    lorsp:requirementReference "PURP-002", "USE-002", "SCOPE-003", "SCOPE-005", "GRAN-002", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-CONSEQUENCE-001", "CQ-POINTS-001", "CQ-ADDITIONAL-001", "CQ-REMEDY-001" ;
+    lorsp:glossaryReference "TERM-TARGET-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
+
+lorlc:mustBePerformedBy a owl:ObjectProperty ;
+    rdfs:domain lorlc:RemedialMeasure ;
+    rdfs:range loroc:LegalSubjectRole ;
+    rdfs:label "must be performed by"@en ;
+    rdfs:comment "Identifies the controlled contextual role responsible for performing a remedial measure."@en ;
+    lorsp:requirementReference "PURP-002", "USE-002", "SCOPE-003", "SCOPE-005", "GRAN-002", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-REMEDY-001", "CQ-CONSEQUENCE-001" ;
+    lorsp:glossaryReference "TERM-REMEDY-001", "TERM-SUBJECT-002" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-SUBJECT-001" .

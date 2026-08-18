@@ -1,0 +1,25 @@
+@prefix ex: <https://w3id.org/legal-ontology-rag/test/occurrence-context-boundary#> .
+@prefix loroc: <https://w3id.org/legal-ontology-rag/ontology/occurrence-context#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+ex:rightPassConduct a loroc:RegulatedConduct ;
+    skos:inScheme loroc:conductScheme ;
+    skos:prefLabel "Vượt xe về bên phải trái quy định"@vi .
+
+ex:driverRole a loroc:LegalSubjectRole ;
+    skos:inScheme loroc:subjectRoleScheme ;
+    skos:prefLabel "Người điều khiển xe"@vi .
+
+ex:subject a loroc:LegalSubject ;
+    loroc:hasSubjectKind loroc:naturalPerson .
+
+ex:uncategorizedVehicle a loroc:Vehicle .
+
+ex:occurrence a loroc:ConductOccurrence ;
+    loroc:hasConductConcept ex:rightPassConduct ;
+    loroc:involvesVehicle ex:uncategorizedVehicle .
+
+ex:roleAssignment a loroc:RoleAssignment ;
+    loroc:rolePlayer ex:subject ;
+    loroc:playsRole ex:driverRole ;
+    loroc:inOccurrence ex:occurrence .

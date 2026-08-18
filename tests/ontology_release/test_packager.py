@@ -1,0 +1,228 @@
+"""Tests for ontology release gates and reproducible packaging."""
+
+from __future__ import annotations
+
+import json
+import zipfile
+from datetime import UTC, datetime
+from pathlib import Path
+
+import yaml
+
+from legal_rag.ontology_validation.paths import OntologyPaths
+from legal_rag.ontology_validation.release_config import OntologyReleaseSettings
+from legal_rag.ontology_validation.release_packager import build_ontology_release
+from legal_rag.ontology_validation.semantic_config import SemanticQaSettings
+from legal_rag.ontology_validation.semantic_models import SEMANTIC_QA_REPORT_SCHEMA_VERSION
+from legal_rag.ontology_validation.semantic_qa import semantic_input_sha256
+
+from .conftest import write_releasable_project
+
+CHECKED_AT = datetime(2026, 8, 18, 12, 0, tzinfo=UTC)
+
+
+def test_production_contract_builds_internal_freeze_without_public_namespace(
+    tmp_path: Path,
+    project_root: Path,
+    release_settings: OntologyReleaseSettings,
+) -> None:
+    """Public namespace deployment is not required to create the approved internal V0.1 archive."""
+    semantic_settings = SemanticQaSettings.from_path(release_settings.semantic_contract_path, project_root)
+    report_path = tmp_path / "semantic-report.json"
+    report_path.write_text(
+        json.dumps(
+            {
+                "schema_version": SEMANTIC_QA_REPORT_SCHEMA_VERSION,
+                "overall_status": "passed",
+                "ontology_path": "ontology/legal_ontology.ttl",
+                "input_sha256": semantic_input_sha256(OntologyPaths(project_root), semantic_settings),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = build_ontology_release(project_root, release_settings, report_path, tmp_path / "release", CHECKED_AT)
+    gates = {item.gate_id: item for item in report.gates}
+
+    assert report.overall_status == "released"
+    assert gates["human-approvals"].status == "passed"
+    assert gates["ontology-license"].status == "passed"
+    assert gates["external-reuse-registry"].status == "passed"
+    assert gates["internal-legal-review-packet"].status == "passed"
+    assert gates["release-file-inventory"].status == "passed"
+    assert gates["semantic-qa"].status == "passed"
+    assert Path(report.archive_path or "").is_file()
+    assert (tmp_path / "release" / release_settings.checksum_file).is_file()
+
+
+def test_release_archive_is_reproducible_and_self_describing(
+    monkeypatch,
+    tmp_path: Path,
+    project_root: Path,
+) -> None:
+    """Identical approved inputs produce identical ZIP bytes, checksums, and internal manifests."""
+    release_project = tmp_path / "project"
+    settings, semantic_report_path = write_releasable_project(release_project, project_root)
+    monkeypatch.setattr(
+        "legal_rag.ontology_validation.release_packager.semantic_input_sha256",
+        lambda _paths, _settings: "semantic-input",
+    )
+
+    first = build_ontology_release(
+        release_project,
+        settings,
+        semantic_report_path,
+        tmp_path / "first",
+        CHECKED_AT,
+    )
+    second = build_ontology_release(
+        release_project,
+        settings,
+        semantic_report_path,
+        tmp_path / "second",
+        datetime(2026, 8, 19, 12, 0, tzinfo=UTC),
+    )
+
+    assert first.overall_status == "released"
+    assert second.overall_status == "released"
+    assert first.archive_sha256 == second.archive_sha256
+    first_archive = Path(first.archive_path or "")
+    second_archive = Path(second.archive_path or "")
+    assert first_archive.read_bytes() == second_archive.read_bytes()
+    assert (tmp_path / "first" / settings.checksum_file).read_text(encoding="ascii") == (
+        tmp_path / "second" / settings.checksum_file
+    ).read_text(encoding="ascii")
+
+    with zipfile.ZipFile(first_archive) as archive:
+        names = archive.namelist()
+        assert names == sorted(names)
+        assert all(item.date_time == (1980, 1, 1, 0, 0, 0) for item in archive.infolist())
+        manifest = json.loads(archive.read(f"{settings.archive_root}/MANIFEST.json"))
+    assert manifest["artifact_version"] == "0.1.0"
+    assert manifest["files"] == [item.to_dict() for item in first.files]
+
+
+def test_stale_semantic_report_blocks_release(
+    monkeypatch,
+    tmp_path: Path,
+    project_root: Path,
+) -> None:
+    """A passing status cannot authorize changed semantic inputs."""
+    release_project = tmp_path / "project"
+    settings, semantic_report_path = write_releasable_project(release_project, project_root)
+    monkeypatch.setattr(
+        "legal_rag.ontology_validation.release_packager.semantic_input_sha256",
+        lambda _paths, _settings: "changed-input",
+    )
+
+    report = build_ontology_release(
+        release_project,
+        settings,
+        semantic_report_path,
+        tmp_path / "release",
+        CHECKED_AT,
+    )
+
+    assert report.overall_status == "blocked"
+    assert {item.gate_id: item.status for item in report.gates}["semantic-qa"] == "failed"
+    assert report.archive_path is None
+
+
+def test_external_reuse_issue_blocks_release(
+    monkeypatch,
+    tmp_path: Path,
+    project_root: Path,
+) -> None:
+    """An approved human label cannot override a failing technical reuse registry."""
+    release_project = tmp_path / "project"
+    settings, semantic_report_path = write_releasable_project(release_project, project_root)
+    registry_path = release_project / "ontology" / "external_reuse_registry.yaml"
+    registry = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
+    registry["resources"][0]["terms"].append(
+        {
+            "iri": "https://example.test/not-used",
+            "local_use": "Negative release fixture.",
+            "declaration_in_owl_closure": False,
+        }
+    )
+    registry_path.write_text(yaml.safe_dump(registry, sort_keys=False), encoding="utf-8")
+    monkeypatch.setattr(
+        "legal_rag.ontology_validation.release_packager.semantic_input_sha256",
+        lambda _paths, _settings: "semantic-input",
+    )
+
+    report = build_ontology_release(
+        release_project,
+        settings,
+        semantic_report_path,
+        tmp_path / "release",
+        CHECKED_AT,
+    )
+
+    gates = {item.gate_id: item for item in report.gates}
+    assert report.overall_status == "blocked"
+    assert gates["human-approvals"].status == "passed"
+    assert gates["external-reuse-registry"].status == "failed"
+    assert report.archive_path is None
+
+
+def test_incomplete_legal_review_packet_blocks_release(
+    monkeypatch,
+    tmp_path: Path,
+    project_root: Path,
+) -> None:
+    """Human approval metadata cannot override an incomplete internal legal-review packet."""
+    release_project = tmp_path / "project"
+    settings, semantic_report_path = write_releasable_project(release_project, project_root)
+    decisions_path = release_project / "ontology" / "legal_review_decisions.yaml"
+    decisions = yaml.safe_load(decisions_path.read_text(encoding="utf-8"))
+    decisions["decisions"].pop()
+    decisions_path.write_text(yaml.safe_dump(decisions, sort_keys=False), encoding="utf-8")
+    monkeypatch.setattr(
+        "legal_rag.ontology_validation.release_packager.semantic_input_sha256",
+        lambda _paths, _settings: "semantic-input",
+    )
+
+    report = build_ontology_release(
+        release_project,
+        settings,
+        semantic_report_path,
+        tmp_path / "release",
+        CHECKED_AT,
+    )
+
+    gates = {item.gate_id: item for item in report.gates}
+    assert report.overall_status == "blocked"
+    assert gates["human-approvals"].status == "passed"
+    assert gates["internal-legal-review-packet"].status == "failed"
+    assert report.archive_path is None
+
+
+def test_existing_release_outputs_are_never_replaced(
+    monkeypatch,
+    tmp_path: Path,
+    project_root: Path,
+) -> None:
+    """Immutable output paths fail closed before a prior release can be overwritten."""
+    release_project = tmp_path / "project"
+    settings, semantic_report_path = write_releasable_project(release_project, project_root)
+    monkeypatch.setattr(
+        "legal_rag.ontology_validation.release_packager.semantic_input_sha256",
+        lambda _paths, _settings: "semantic-input",
+    )
+    output_directory = tmp_path / "release"
+    output_directory.mkdir()
+    archive_path = output_directory / settings.archive_file
+    archive_path.write_bytes(b"existing-release")
+
+    report = build_ontology_release(
+        release_project,
+        settings,
+        semantic_report_path,
+        output_directory,
+        CHECKED_AT,
+    )
+
+    assert report.overall_status == "blocked"
+    assert {item.gate_id: item.status for item in report.gates}["immutable-output-paths"] == "failed"
+    assert archive_path.read_bytes() == b"existing-release"

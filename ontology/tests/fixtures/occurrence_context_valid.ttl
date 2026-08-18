@@ -1,0 +1,36 @@
+@prefix ex: <https://w3id.org/legal-ontology-rag/test/occurrence-context#> .
+@prefix loroc: <https://w3id.org/legal-ontology-rag/ontology/occurrence-context#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix time: <http://www.w3.org/2006/time#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:noPlateConduct a loroc:RegulatedConduct ;
+    skos:inScheme loroc:conductScheme ;
+    skos:prefLabel "Điều khiển xe không gắn biển số"@vi .
+
+ex:driverRole a loroc:LegalSubjectRole ;
+    skos:inScheme loroc:subjectRoleScheme ;
+    skos:prefLabel "Người điều khiển xe"@vi .
+
+ex:motorcycleCategory a loroc:VehicleCategory ;
+    skos:inScheme loroc:vehicleCategoryScheme ;
+    skos:prefLabel "Xe mô tô hoặc xe tương tự phải gắn biển số"@vi .
+
+ex:subject a loroc:LegalSubject ;
+    loroc:hasSubjectKind loroc:naturalPerson .
+
+ex:vehicle a loroc:Vehicle ;
+    loroc:hasVehicleCategory ex:motorcycleCategory .
+
+ex:instant a time:Instant ;
+    time:inXSDDateTimeStamp "2025-01-01T09:00:00Z"^^xsd:dateTimeStamp .
+
+ex:occurrence a loroc:ConductOccurrence ;
+    loroc:hasConductConcept ex:noPlateConduct ;
+    loroc:involvesVehicle ex:vehicle ;
+    loroc:occursAt ex:instant .
+
+ex:roleAssignment a loroc:RoleAssignment ;
+    loroc:rolePlayer ex:subject ;
+    loroc:playsRole ex:driverRole ;
+    loroc:inOccurrence ex:occurrence .

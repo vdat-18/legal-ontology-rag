@@ -1,0 +1,15 @@
+PREFIX lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#>
+PREFIX lortc: <https://w3id.org/legal-ontology-rag/ontology/temporal-change#>
+PREFIX time: <http://www.w3.org/2006/time#>
+
+# Evidenced change projection. Similar rule text without a LegalChange event produces no row.
+SELECT DISTINCT ?legalChange ?earlierRuleVersion ?laterRuleVersion ?changeType ?effectiveDate ?sourceProvision
+WHERE {
+  ?legalChange a lortc:LegalChange ;
+    lortc:changesEarlierRule ?earlierRuleVersion ;
+    lortc:changeType ?changeType ;
+    lortc:effectiveAt/time:inXSDDateTime ?effectiveDate ;
+    lorsp:groundedIn ?sourceProvision .
+  OPTIONAL { ?legalChange lortc:producesLaterRule ?laterRuleVersion }
+}
+ORDER BY ?effectiveDate ?legalChange

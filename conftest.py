@@ -1,7 +1,9 @@
-"""Keep the generated BAML client in step with ``baml_src`` before tests import it.
+"""Pytest configuration: repo root on ``sys.path``, and a BAML client in step with ``baml_src``.
 
-The client is generated code and is not committed, so a clean checkout has none at all and a
-checkout that pulls a schema change has a stale one. Either way the failure lands during test
+The root goes on the path so the ``evaluations`` package, which lives outside ``src``, imports.
+
+The BAML client is generated code and is not committed, so a clean checkout has none at all and
+a checkout that pulls a schema change has a stale one. Either way the failure lands during test
 collection as an ImportError for a type that does exist in ``baml_src`` — which reads like a
 broken test rather than a missing build step. Regenerating here makes ``pytest`` work from a
 clean checkout without a separate command to remember.
@@ -17,6 +19,9 @@ from pathlib import Path
 _ROOT = Path(__file__).parent
 _BAML_SOURCE = _ROOT / "baml_src"
 _GENERATED_CLIENT = _ROOT / "src" / "legal_rag" / "baml_client"
+
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
 
 def _generator_command() -> list[str] | None:

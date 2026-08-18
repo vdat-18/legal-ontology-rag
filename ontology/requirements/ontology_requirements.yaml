@@ -1,0 +1,167 @@
+schema_version: "0.1.0"
+artifact_id: road-traffic-ontology-requirements
+artifact_version: "0.1.0"
+status: v0.1_frozen
+language: en
+source_plan: docs/ontology_construction_plan.md
+approval:
+  project_owner_status: accepted
+  accepted_items: [LR-001, LR-002, LR-003, LR-004, LR-005, LR-006, LR-007]
+  accepted_on: "2026-08-17"
+  independent_legal_professional_review: not_asserted
+  ai_assisted_internal_legal_review: approved
+  project_owner_v0.1_acceptance: user-confirmed:2026-08-18:ILR-001-through-ILR-011
+requirement_categories:
+  - id: purpose
+    requirements:
+      - id: PURP-001
+        priority: must
+        status: accepted_for_v0.1
+        statement: Provide explicit and versioned semantics for Vietnamese road-traffic administrative penalty rules.
+      - id: PURP-002
+        priority: must
+        status: accepted_for_v0.1
+        statement: >-
+          Represent enough legal context to distinguish rules that concern similar conduct but differ by subject,
+          vehicle, condition, exception, source, or effective time.
+      - id: PURP-003
+        priority: must
+        status: accepted_for_v0.1
+        statement: Make every material assertion traceable to an authoritative provision and exact evidence span.
+
+  - id: intended_use
+    requirements:
+      - id: USE-001
+        priority: must
+        status: accepted_for_v0.1
+        statement: Describe a penalty rule as a contextual legal object rather than an unconditional conduct-to-penalty pair.
+      - id: USE-002
+        priority: must
+        status: accepted_for_v0.1
+        statement: >-
+          Determine which legal consequences apply when conduct, subject role, vehicle category, conditions, and date
+          are known.
+      - id: USE-003
+        priority: must
+        status: accepted_for_v0.1
+        statement: Explain why two similar cases have different consequences.
+      - id: USE-004
+        priority: must
+        status: accepted_for_v0.1
+        statement: Represent amendments and determine which version of a rule is applicable at a specified date.
+      - id: USE-005
+        priority: must
+        status: accepted_for_v0.1
+        statement: >-
+          Validate ontology completeness and correctness through executable CQ fixtures in a later formalization phase.
+
+  - id: in_scope
+    requirements:
+      - id: SCOPE-001
+        priority: must
+        status: accepted_for_v0.1
+        statement: Legal documents, provisions, citations, chunks, quoted evidence spans, and issuing bodies.
+      - id: SCOPE-002
+        priority: must
+        status: accepted_for_v0.1
+        statement: Regulated conduct and the legal rule that regulates it.
+      - id: SCOPE-003
+        priority: must
+        status: accepted_for_v0.1
+        statement: Legal subjects, contextual subject roles, and vehicle categories.
+      - id: SCOPE-004
+        priority: must
+        status: accepted_for_v0.1
+        statement: Applicability conditions and exceptions.
+      - id: SCOPE-005
+        priority: must
+        status: accepted_for_v0.1
+        statement: >-
+          Monetary penalties, driver-license point deductions, additional sanctions, and remedial measures.
+      - id: SCOPE-006
+        priority: must
+        status: accepted_for_v0.1
+        statement: Effective intervals, amendment, replacement, and supersession of rules or provisions.
+      - id: SCOPE-007
+        priority: must
+        status: accepted_for_v0.1
+        statement: >-
+          Direct provenance from a modeled rule and consequence to the provisions and evidence that support them.
+
+  - id: explicitly_out_of_scope
+    requirements:
+      - id: EXCL-001
+        priority: boundary
+        status: accepted_for_v0.1
+        statement: Retrieval, ranking, query planning, graph traversal, answer generation, and GraphRAG evaluation.
+      - id: EXCL-002
+        priority: boundary
+        status: accepted_for_v0.1
+        statement: Graphiti, Neo4j, BAML, and other runtime or persistence projections.
+      - id: EXCL-003
+        priority: boundary
+        status: accepted_for_v0.1
+        statement: Ontology population from chunks and production extraction prompts.
+      - id: EXCL-004
+        priority: boundary
+        status: accepted_for_v0.1
+        statement: >-
+          Enforcement authority and competence boundaries except when a pilot example exposes a required dependency.
+      - id: EXCL-005
+        priority: boundary
+        status: accepted_for_v0.1
+        statement: Administrative procedure, complaints, appeals, and adjudication.
+      - id: EXCL-006
+        priority: boundary
+        status: accepted_for_v0.1
+        statement: Criminal and civil liability.
+      - id: EXCL-007
+        priority: boundary
+        status: accepted_for_v0.1
+        statement: >-
+          Detailed road infrastructure, vehicle engineering, registration, inspection, and driver-training models
+          beyond distinctions required by a V0.1 CQ.
+      - id: EXCL-008
+        priority: boundary
+        status: accepted_for_v0.1
+        statement: >-
+          Computing a final combined sanction for multiple simultaneous violations. Each applicable rule may be
+          represented, but sanction aggregation policy is deferred.
+
+  - id: required_granularity
+    requirements:
+      - id: GRAN-001
+        priority: must
+        status: accepted_for_v0.1
+        statement: A legal rule is distinguishable from the conduct it regulates and the consequence it imposes.
+      - id: GRAN-002
+        priority: must
+        status: accepted_for_v0.1
+        statement: A subject role such as `người điều khiển xe` is distinguishable from a natural or legal person.
+      - id: GRAN-003
+        priority: must
+        status: accepted_for_v0.1
+        statement: Vehicle category is modeled separately when it changes applicability or consequence.
+      - id: GRAN-004
+        priority: must
+        status: accepted_for_v0.1
+        statement: >-
+          Conditions and exceptions are first-class candidates because they may have provenance and may alter
+          applicability.
+      - id: GRAN-005
+        priority: must
+        status: accepted_for_v0.1
+        statement: >-
+          Monetary amount, point deduction, additional sanction, and remedial measure are distinct consequence kinds.
+      - id: GRAN-006
+        priority: must
+        status: accepted_for_v0.1
+        statement: A provision citation and its exact quoted evidence are distinct provenance objects.
+      - id: GRAN-007
+        priority: must
+        status: accepted_for_v0.1
+        statement: Temporal applicability belongs to the rule or legal expression, not to the conduct in the abstract.
+      - id: GRAN-008
+        priority: must
+        status: accepted_for_v0.1
+        statement: The same normalized conduct may participate in multiple rules without forcing those rules to be identical.

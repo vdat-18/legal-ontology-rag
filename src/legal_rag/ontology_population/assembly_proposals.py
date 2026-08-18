@@ -1,0 +1,285 @@
+"""Generate typed cross-chunk rule-assembly proposals for human review."""
+
+from __future__ import annotations
+
+import hashlib
+from collections.abc import Callable, Mapping, Sequence
+from functools import partial
+from typing import Protocol
+
+from baml_py.logging import set_log_level
+
+from legal_rag.baml_client.sync_client import b
+from legal_rag.baml_client.types import (
+    AssemblyConditionSummary,
+    AssemblyConsequenceSummary,
+    OntologyConditionKind,
+    OntologyConsequenceKind,
+    OntologyCurrency,
+    OntologyEvidenceEntry,
+    OntologyPopulationSummary,
+    OntologySubjectKind,
+    RuleAssemblyWindowInput,
+    RuleAssemblyWindowResult,
+)
+from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
+from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
+from legal_rag.chunker.models import Chunk
+from legal_rag.ontology_population.assembly_config import AssemblySettings
+from legal_rag.ontology_population.assembly_models import AssemblyCandidateWindow, AssemblyProposal
+from legal_rag.ontology_population.extraction import build_population_record
+from legal_rag.ontology_population.models import OntologyPopulationRecord, population_identity
+from legal_rag.settings import Settings
+
+
+class AssemblyProposalClient(Protocol):
+    """Boundary implemented by a rule-assembly language-model client."""
+
+    @property
+    def model(self) -> str:
+        """Return the model identifier recorded on proposals."""
+
+    def propose_batch(self, windows: Sequence[RuleAssemblyWindowInput]) -> Sequence[RuleAssemblyWindowResult]:
+        """Return typed assembly proposals for candidate windows."""
+
+
+class BamlAssemblyProposalClient:
+    """Typed BAML assembly client backed by an OpenAI-compatible provider."""
+
+    def __init__(self, settings: Settings, assembly_settings: AssemblySettings) -> None:
+        """Create a bounded runtime BAML client."""
+        set_log_level("OFF")
+        self._registry = build_client_registry(
+            base_url=settings.llm_base_url,
+            api_key=settings.llm_api_key,
+            model=settings.llm_model,
+            max_output_tokens=assembly_settings.max_output_tokens,
+            temperature=assembly_settings.temperature,
+            timeout_seconds=settings.llm_timeout_seconds,
+        )
+        self._timeout_seconds = settings.llm_timeout_seconds
+        self._max_response_bytes = assembly_settings.max_response_bytes
+        self._model = settings.llm_model
+
+    @property
+    def model(self) -> str:
+        """Return the configured model identifier."""
+        return self._model
+
+    def propose_batch(self, windows: Sequence[RuleAssemblyWindowInput]) -> Sequence[RuleAssemblyWindowResult]:
+        """Run one bounded BAML call over candidate windows."""
+        request = b.request.ProposeOntologyRuleAssemblies(
+            list(windows), baml_options={"client_registry": self._registry}
+        )
+        raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
+        return b.parse.ProposeOntologyRuleAssemblies(raw_output, baml_options={"client_registry": self._registry})
+
+
+def build_assembly_proposal_run_id(
+    candidate_run_id: str,
+    assembly_settings: AssemblySettings,
+    settings: Settings,
+) -> str:
+    """Fingerprint every input that can change semantic assembly proposals."""
+    return population_identity(
+        {
+            "candidate_run_id": candidate_run_id,
+            "prompt_version": assembly_settings.prompt_version,
+            "batch_size": assembly_settings.batch_size,
+            "max_output_tokens": assembly_settings.max_output_tokens,
+            "temperature": assembly_settings.temperature,
+            "llm_base_url": settings.llm_base_url,
+            "llm_model": settings.llm_model,
+        }
+    )
+
+
+def propose_assemblies(
+    windows: Sequence[AssemblyCandidateWindow],
+    records: Sequence[OntologyPopulationRecord],
+    chunks: Sequence[Chunk],
+    metadata: DocumentMetadataRecord,
+    client: AssemblyProposalClient,
+    assembly_settings: AssemblySettings,
+    *,
+    run_id: str,
+    on_batch_processed: Callable[[Sequence[tuple[str, tuple[AssemblyProposal, ...]]]], None] | None = None,
+) -> tuple[AssemblyProposal, ...]:
+    """Generate source-grounded proposals in bounded resumable batches."""
+    records_by_id = {record.population_id: record for record in records}
+    chunks_by_id = {chunk.chunk_id: chunk for chunk in chunks}
+    proposals = []
+    for batch_start in range(0, len(windows), assembly_settings.batch_size):
+        batch = windows[batch_start : batch_start + assembly_settings.batch_size]
+        inputs = tuple(_window_input(window, records_by_id) for window in batch)
+        batch_results = execute_llm_task(
+            _batch_task_key(inputs, run_id),
+            partial(
+                _build_batch_proposals,
+                client,
+                inputs,
+                batch,
+                records_by_id,
+                chunks_by_id,
+                metadata,
+                assembly_settings,
+                run_id,
+            ),
+            max_retries=assembly_settings.max_retries,
+            retry_delay_seconds=assembly_settings.retry_delay_seconds,
+        )
+        for _, candidate_proposals in batch_results:
+            proposals.extend(candidate_proposals)
+        if on_batch_processed is not None:
+            on_batch_processed(batch_results)
+    return tuple(proposals)
+
+
+def _build_batch_proposals(
+    client: AssemblyProposalClient,
+    inputs: Sequence[RuleAssemblyWindowInput],
+    windows: Sequence[AssemblyCandidateWindow],
+    records_by_id: Mapping[str, OntologyPopulationRecord],
+    chunks_by_id: Mapping[str, Chunk],
+    metadata: DocumentMetadataRecord,
+    assembly_settings: AssemblySettings,
+    run_id: str,
+) -> tuple[tuple[str, tuple[AssemblyProposal, ...]], ...]:
+    """Translate one typed model response and enforce candidate membership."""
+    results = client.propose_batch(inputs)
+    requested_ids = [item.candidate_id for item in inputs]
+    result_ids = [result.candidate_id for result in results]
+    if len(result_ids) != len(set(result_ids)) or set(result_ids) != set(requested_ids):
+        msg = "Assembly response must contain exactly one result per candidate window"
+        raise ValueError(msg)
+    results_by_id = {result.candidate_id: result for result in results}
+    windows_by_id = {window.candidate_id: window for window in windows}
+    translated = []
+    for candidate_id in requested_ids:
+        window = windows_by_id[candidate_id]
+        used_members: set[str] = set()
+        candidate_proposals = []
+        for raw in results_by_id[candidate_id].proposals:
+            members = tuple(sorted(raw.member_population_ids))
+            if len(members) < 2 or len(members) != len(set(members)) or not set(members) <= set(window.population_ids):
+                msg = "Assembly proposal members must be unique candidate-window population ids"
+                raise ValueError(msg)
+            if used_members & set(members):
+                msg = "Assembly proposals within one candidate window must not overlap members"
+                raise ValueError(msg)
+            used_members.update(members)
+            anchor = min(
+                (records_by_id[member] for member in members),
+                key=lambda record: (
+                    chunks_by_id[record.source_chunk_id].scope_id,
+                    chunks_by_id[record.source_chunk_id].chunk_index,
+                    record.population_id,
+                ),
+            )
+            assembled_record = build_population_record(
+                raw.assembled_rule,
+                anchor.source_chunk_id,
+                metadata,
+                {chunk_id: chunk.text for chunk_id, chunk in chunks_by_id.items()},
+            )
+            member_evidence = set().union(*(_record_evidence(records_by_id[member]) for member in members))
+            if not _record_evidence(assembled_record) <= member_evidence:
+                msg = "Assembled rule evidence must come from its proposed member records"
+                raise ValueError(msg)
+            proposal_id = population_identity(
+                {
+                    "run_id": run_id,
+                    "member_population_ids": members,
+                    "assembled_population_id": assembled_record.population_id,
+                }
+            )
+            candidate_proposals.append(
+                AssemblyProposal(
+                    proposal_id=proposal_id,
+                    candidate_id=candidate_id,
+                    member_population_ids=members,
+                    assembled_record=assembled_record,
+                    rationale_vi=raw.rationale_vi,
+                    proposed_by_model=client.model,
+                    prompt_version=assembly_settings.prompt_version,
+                    run_id=run_id,
+                )
+            )
+        translated.append((candidate_id, tuple(candidate_proposals)))
+    return tuple(translated)
+
+
+def _window_input(
+    window: AssemblyCandidateWindow,
+    records_by_id: Mapping[str, OntologyPopulationRecord],
+) -> RuleAssemblyWindowInput:
+    """Build one complete typed BAML candidate window."""
+    return RuleAssemblyWindowInput(
+        candidate_id=window.candidate_id,
+        records=[summarize_population_record(records_by_id[population_id]) for population_id in window.population_ids],
+    )
+
+
+def summarize_population_record(record: OntologyPopulationRecord) -> OntologyPopulationSummary:
+    """Translate a population record without dropping semantic or evidence fields."""
+    return OntologyPopulationSummary(
+        population_id=record.population_id,
+        source_chunk_id=record.source_chunk_id,
+        conduct_label_vi=record.conduct_label_vi,
+        subject_kind=OntologySubjectKind(record.subject_kind) if record.subject_kind else None,
+        role_labels_vi=list(record.role_labels_vi),
+        vehicle_category_labels_vi=list(record.vehicle_category_labels_vi),
+        condition_root_id=record.condition_root_id,
+        conditions=[
+            AssemblyConditionSummary(
+                condition_id=condition.condition_id,
+                kind=OntologyConditionKind(condition.kind),
+                text_vi=condition.text_vi,
+                operand_ids=list(condition.operand_ids),
+                evidence=[_evidence_entry(item.chunk_id, item.exact_text) for item in condition.evidence],
+            )
+            for condition in record.conditions
+        ],
+        consequences=[
+            AssemblyConsequenceSummary(
+                consequence_id=consequence.consequence_id,
+                kind=OntologyConsequenceKind(consequence.kind),
+                minimum_amount=str(consequence.minimum_amount) if consequence.minimum_amount is not None else None,
+                maximum_amount=str(consequence.maximum_amount) if consequence.maximum_amount is not None else None,
+                currency=OntologyCurrency(consequence.currency_code) if consequence.currency_code else None,
+                point_value=consequence.point_value,
+                target_label_vi=consequence.target_label_vi,
+                responsible_role_label_vi=consequence.responsible_role_label_vi,
+                evidence=[_evidence_entry(item.chunk_id, item.exact_text) for item in consequence.evidence],
+            )
+            for consequence in record.consequences
+        ],
+        valid_from=record.valid_from.isoformat() if record.valid_from else None,
+        valid_to=record.valid_to.isoformat() if record.valid_to else None,
+        document_number=record.document_number,
+        provision_path=record.provision_path,
+        evidence=[_evidence_entry(item.chunk_id, item.exact_text) for item in record.evidence],
+    )
+
+
+def _evidence_entry(chunk_id: str, exact_text: str) -> OntologyEvidenceEntry:
+    """Build one BAML evidence entry."""
+    return OntologyEvidenceEntry(chunk_id=chunk_id, quoted_span=exact_text)
+
+
+def _record_evidence(record: OntologyPopulationRecord) -> set[tuple[str, str]]:
+    """Collect every exact evidence span available on one population record."""
+    evidence = {(item.chunk_id, item.exact_text) for item in record.evidence}
+    for condition in record.conditions:
+        evidence.update((item.chunk_id, item.exact_text) for item in condition.evidence)
+    for consequence in record.consequences:
+        evidence.update((item.chunk_id, item.exact_text) for item in consequence.evidence)
+    return evidence
+
+
+def _batch_task_key(inputs: Sequence[RuleAssemblyWindowInput], run_id: str) -> str:
+    """Return a deterministic retry key for one proposal batch."""
+    candidate_ids = "\0".join(item.candidate_id for item in inputs)
+    digest = hashlib.sha256(f"{run_id}\0{candidate_ids}".encode()).hexdigest()
+    return f"ontology-assembly:{digest}"

@@ -25,7 +25,13 @@ dependencies = [
 vietnamese = []
 evaluation = ["deepeval==4.1.1"]
 api = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "redis>=5.0"]
-dev = ["ruff==0.15.21", "pytest>=8.0"]
+dev = [
+    "pyshacl>=0.30,<0.31",
+    "pytest>=8.0",
+    "pyyaml>=6.0",
+    "rdflib>=7.1,<8",
+    "ruff==0.15.21",
+]
 naive-rag = ["pymilvus>=3.0", "milvus-lite>=2.4", "sentence-transformers>=3.0"]
 corrective-rag = [
     "httpx>=0.27",
@@ -48,6 +54,25 @@ legal-backfill-extraction-progress = "legal_rag.extraction_progress_backfill_cli
 legal-migrate-legal-facts = "legal_rag.legal_fact_migration_cli:main"
 legal-rebind-fact-evidence = "legal_rag.fact_evidence_rebinding_cli:main"
 legal-build-evidence-graph = "legal_rag.evidence_graph_cli:main"
+legal-build-assembly-candidates = "legal_rag.ontology_assembly_candidates_cli:main"
+legal-propose-rule-assemblies = "legal_rag.ontology_assembly_proposals_cli:main"
+legal-finalize-rule-assemblies = "legal_rag.ontology_assembly_finalize_cli:main"
+legal-build-change-candidates = "legal_rag.ontology_change_candidates_cli:main"
+legal-propose-legal-changes = "legal_rag.ontology_change_proposals_cli:main"
+legal-finalize-legal-changes = "legal_rag.ontology_change_finalize_cli:main"
+legal-build-exception-candidates = "legal_rag.ontology_exception_candidates_cli:main"
+legal-propose-legal-exceptions = "legal_rag.ontology_exception_proposals_cli:main"
+legal-finalize-legal-exceptions = "legal_rag.ontology_exception_finalize_cli:main"
+legal-build-concept-candidates = "legal_rag.ontology_concept_candidates_cli:main"
+legal-propose-concept-relations = "legal_rag.ontology_concept_proposals_cli:main"
+legal-finalize-concept-resolution = "legal_rag.ontology_concept_finalize_cli:main"
+legal-validate-ontology-semantics = "legal_rag.ontology_semantic_qa_cli:main"
+legal-package-ontology-release = "legal_rag.ontology_release_cli:main"
+legal-build-ontology-publication = "legal_rag.ontology_publication_cli:main"
+legal-verify-ontology-publication = "legal_rag.ontology_publication_verification_cli:main"
+legal-review-ontology-reuse = "legal_rag.ontology_reuse_review_cli:main"
+legal-review-ontology-internally = "legal_rag.ontology_legal_review_cli:main"
+legal-populate-ontology = "legal_rag.ontology_population_cli:main"
 legal-generate-candidates = "legal_rag.candidate_generation_cli:main"
 legal-export-groundtruth = "legal_rag.groundtruth_export_cli:main"
 legal-assemble-groundtruth = "legal_rag.groundtruth_assembly_cli:main"
@@ -56,7 +81,6 @@ legal-naive-rag-query = "legal_rag.naive_rag_query_cli:main"
 legal-graphiti-index = "legal_rag.graphiti_index_cli:main"
 legal-graphiti-query = "legal_rag.graphiti_query_cli:main"
 legal-graphiti-api = "legal_rag.graphiti_rag.api.server:main"
-legal-graphiti-export-ontology = "legal_rag.graphiti_ontology_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/legal_rag"]

@@ -1,0 +1,65 @@
+{
+  "active_external_terms": [
+    "http://purl.org/dc/terms/description",
+    "http://purl.org/dc/terms/issued",
+    "http://purl.org/dc/terms/license",
+    "http://purl.org/dc/terms/source",
+    "http://purl.org/dc/terms/title",
+    "http://www.w3.org/2004/02/skos/core#Concept",
+    "http://www.w3.org/2004/02/skos/core#ConceptScheme",
+    "http://www.w3.org/2004/02/skos/core#broader",
+    "http://www.w3.org/2004/02/skos/core#definition",
+    "http://www.w3.org/2004/02/skos/core#hasTopConcept",
+    "http://www.w3.org/2004/02/skos/core#inScheme",
+    "http://www.w3.org/2004/02/skos/core#notation",
+    "http://www.w3.org/2004/02/skos/core#prefLabel",
+    "http://www.w3.org/2004/02/skos/core#topConceptOf",
+    "http://www.w3.org/2006/time#Instant",
+    "http://www.w3.org/2006/time#Interval",
+    "http://www.w3.org/2006/time#hasBeginning",
+    "http://www.w3.org/2006/time#hasEnd",
+    "http://www.w3.org/2006/time#inXSDDateTime",
+    "http://www.w3.org/2006/time#inXSDDateTimeStamp",
+    "http://www.w3.org/ns/prov#Agent",
+    "http://www.w3.org/ns/prov#Entity",
+    "http://www.w3.org/ns/prov#wasDerivedFrom"
+  ],
+  "artifact_id": "legal-ontology-rag-external-reuse-registry",
+  "artifact_version": "0.1.0",
+  "checked_at": "2026-08-18T12:41:16.686837+00:00",
+  "checks": [
+    {
+      "check_id": "policy-registry-consistency",
+      "issues": [],
+      "status": "passed"
+    },
+    {
+      "check_id": "active-term-inventory",
+      "issues": [],
+      "status": "passed"
+    },
+    {
+      "check_id": "owl-closure-declarations",
+      "issues": [],
+      "status": "passed"
+    },
+    {
+      "check_id": "non-active-resource-boundaries",
+      "issues": [],
+      "status": "passed"
+    },
+    {
+      "check_id": "external-owl-imports",
+      "issues": [],
+      "status": "passed"
+    },
+    {
+      "check_id": "review-evidence",
+      "issues": [],
+      "status": "passed"
+    }
+  ],
+  "overall_status": "passed",
+  "project_owner_approval": "approved",
+  "schema_version": "0.1.0"
+}

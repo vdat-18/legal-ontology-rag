@@ -6,6 +6,12 @@ import threading
 import time
 from datetime import date
 
+from legal_rag.baml_client.types import (
+    CandidateEvolutionBatchInput,
+    CandidateGenerationBatchInput,
+    EvolvedCandidateBatchItem,
+    GeneratedSingleTurnCandidateBatchItem,
+)
 from legal_rag.baml_client.types import ClaimReference as BamlClaimReference
 from legal_rag.baml_client.types import EvolvedCandidate as BamlEvolvedCandidate
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
@@ -54,13 +60,13 @@ def _scenario(scenario_id: str) -> Scenario:
     )
 
 
-def _context(generation_client: object) -> CandidatePipelineContext:
+def _context(generation_client: object, evolution_operations: tuple[str, ...] = ()) -> CandidatePipelineContext:
     """Build a pipeline context with no evolution rounds, for fast deterministic tests."""
     return CandidatePipelineContext(
         facts_by_id={"fact-1": _fact()},
         persona_descriptions={"tai_xe_ca_nhan": "Tài xế cá nhân"},
         query_type_descriptions={"penalty_for_conduct": "Mức phạt của một hành vi"},
-        evolution_operations=(),
+        evolution_operations=evolution_operations,
         generation_client=generation_client,
         generator_model="m",
         llm_max_retries=0,
@@ -87,9 +93,31 @@ class _FakeGenerationClient:
         """Return the fixed generated candidate."""
         return _generated()
 
+    def generate_batch(self, items: list[CandidateGenerationBatchInput]) -> list[GeneratedSingleTurnCandidateBatchItem]:
+        """Generate one fixed result for every batch item."""
+        return [
+            GeneratedSingleTurnCandidateBatchItem(task_id=item.task_id, candidate=self.generate()) for item in items
+        ]
+
     def evolve(self, *args: object, **kwargs: object) -> BamlEvolvedCandidate:
         """Unused when evolution_operations is empty."""
         raise NotImplementedError
+
+    def evolve_batch(self, items: list[CandidateEvolutionBatchInput]) -> list[EvolvedCandidateBatchItem]:
+        """Evolve every batch item through the single-item fake."""
+        return [
+            EvolvedCandidateBatchItem(
+                task_id=item.task_id,
+                candidate=self.evolve(
+                    item.query_vi,
+                    item.reference_answer_vi,
+                    item.reasoning_vi,
+                    item.operation,
+                    item.query_length,
+                ),
+            )
+            for item in items
+        ]
 
 
 def _draft(scenario_id: str) -> CandidateDraft:
@@ -137,6 +165,7 @@ def test_generate_candidates_skips_already_completed_tasks() -> None:
         progress_by_task_id,
         _context(_CountingClient()),
         lambda record: progress_by_task_id.__setitem__(record.task_id, record),
+        batch_size=1,
         max_concurrency=1,
     )
 
@@ -157,6 +186,7 @@ def test_generate_candidates_respects_candidates_per_scenario() -> None:
         progress_by_task_id,
         _context(_FakeGenerationClient()),
         lambda record: progress_by_task_id.__setitem__(record.task_id, record),
+        batch_size=2,
         max_concurrency=2,
     )
 
@@ -190,6 +220,7 @@ def test_generate_candidates_reports_a_task_that_fails_every_attempt_as_a_failur
         progress_by_task_id,
         _context(_FailsOnFirstCallClient()),
         lambda record: progress_by_task_id.__setitem__(record.task_id, record),
+        batch_size=1,
         max_concurrency=1,
     )
 
@@ -224,9 +255,47 @@ def test_generate_candidates_bounds_concurrent_generation_calls() -> None:
         progress_by_task_id,
         _context(_TrackingClient()),
         lambda record: progress_by_task_id.__setitem__(record.task_id, record),
+        batch_size=1,
         max_concurrency=2,
     )
 
     assert failures == ()
     assert max_observed == 2
     assert len(progress_by_task_id) == 4
+
+
+def test_generate_candidates_batches_generation_and_evolution_calls() -> None:
+    """Both LLM stages receive at most batch_size tasks per request."""
+    scenarios = [_scenario(f"scenario-{index}") for index in range(12)]
+    progress_by_task_id: dict[str, CandidateProgressRecord] = {}
+    generation_batch_sizes: list[int] = []
+    evolution_batch_sizes: list[int] = []
+
+    class _BatchTrackingClient(_FakeGenerationClient):
+        def generate_batch(
+            self, items: list[CandidateGenerationBatchInput]
+        ) -> list[GeneratedSingleTurnCandidateBatchItem]:
+            generation_batch_sizes.append(len(items))
+            return super().generate_batch(items)
+
+        def evolve(self, *args: object, **kwargs: object) -> BamlEvolvedCandidate:
+            return BamlEvolvedCandidate(query_vi="evolved-q", reference_answer_vi="evolved-a", reasoning_vi="evolved-r")
+
+        def evolve_batch(self, items: list[CandidateEvolutionBatchInput]) -> list[EvolvedCandidateBatchItem]:
+            evolution_batch_sizes.append(len(items))
+            return super().evolve_batch(items)
+
+    failures = generate_candidates(
+        scenarios,
+        1,
+        progress_by_task_id,
+        _context(_BatchTrackingClient(), ("concretizing",)),
+        lambda record: progress_by_task_id.__setitem__(record.task_id, record),
+        batch_size=5,
+        max_concurrency=1,
+    )
+
+    assert failures == ()
+    assert generation_batch_sizes == [5, 5, 2]
+    assert evolution_batch_sizes == [5, 5, 2]
+    assert all(record.completed for record in progress_by_task_id.values())

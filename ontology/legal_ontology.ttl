@@ -1,0 +1,18 @@
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://w3id.org/legal-ontology-rag/ontology> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/legal-ontology-rag/ontology/0.1.0> ;
+    owl:versionInfo "0.1.0" ;
+    owl:imports <https://w3id.org/legal-ontology-rag/ontology/legal-consequence>,
+        <https://w3id.org/legal-ontology-rag/ontology/normative-rule>,
+        <https://w3id.org/legal-ontology-rag/ontology/occurrence-context>,
+        <https://w3id.org/legal-ontology-rag/ontology/source-provenance>,
+        <https://w3id.org/legal-ontology-rag/ontology/temporal-change> ;
+    dcterms:title "Vietnamese Road Traffic Legal Ontology"@en,
+        "Bản thể pháp luật giao thông đường bộ Việt Nam"@vi ;
+    dcterms:description "Frozen V0.1 root ontology importing all five reviewed domain modules."@en ;
+    dcterms:issued "2026-08-18"^^xsd:date ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    dcterms:source "docs/ontology_construction_plan.md" .

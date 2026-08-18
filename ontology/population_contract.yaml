@@ -1,0 +1,48 @@
+schema_version: "0.1.0"
+artifact_id: road-traffic-ontology-population-contract
+artifact_version: "0.1.0"
+status: pilot_internal_validation
+ontology_version: "0.1.0"
+instance_namespace: https://w3id.org/legal-ontology-rag/data/
+language: vi
+input:
+  chunk_schema_version: "1.0.0"
+  document_metadata_schema_version: "1.0.0"
+  requires_chunk_screening: true
+  reading_window:
+    max_preceding_chunks: 1
+    max_following_chunks: 1
+output:
+  record_schema_version: "0.1.0"
+  rdf_serialization: turtle
+  validated_graph_only: true
+extraction:
+  batch_size: 1
+  max_output_tokens: 32768
+  temperature: 0.0
+  max_retries: 2
+  retry_delay_seconds: 120
+  max_response_bytes: 1048576
+population_scope:
+  included:
+    - source_provenance
+    - normative_rule
+    - temporal_validity
+    - legal_consequence
+  excluded:
+    - id: occurrence_context
+      reason: Concrete occurrences are case or query input, not facts extracted from normative source documents.
+    - id: cross_document_legal_change
+      reason: Amendment, replacement, and repeal links require reviewed multi-document assembly.
+    - id: concept_equivalence
+      reason: Lexical similarity is insufficient to merge conduct, role, vehicle, or target concepts.
+validation:
+  ontology_graph: ontology/legal_ontology.ttl
+  shapes_graph: ontology/shapes/legal_ontology.shacl.ttl
+  inference: rdfs
+  advanced_shacl: true
+semantic_boundaries:
+  - LLM output is a source-grounded candidate structure, not a final legal applicability decision.
+  - Every material component must retain exact chunk evidence and an authoritative provision path.
+  - Missing validity end and missing consequence values remain unknown.
+  - Candidate concepts are scoped to a populated rule until a separate semantic consolidation review approves reuse.

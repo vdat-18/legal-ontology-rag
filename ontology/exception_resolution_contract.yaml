@@ -1,0 +1,40 @@
+schema_version: "0.1.0"
+artifact_id: road-traffic-ontology-exception-resolution-contract
+artifact_version: "0.1.0"
+status: pilot_internal_validation
+population_schema_version: "0.1.0"
+candidate_selection:
+  version: "0.1.0"
+  mode: exhaustive_bounded_source_general_target_windows
+  max_source_chunks_per_window: 6
+  max_general_rules_per_window: 6
+  max_target_rules_per_window: 64
+  max_total_windows: 10000
+  explanation: >-
+    Structural batching only determines which same-document general rules, corpus target rules, and source chunks reach
+    the LLM. It does not classify exception language, resolve a citation, or select a redirected rule.
+proposal:
+  prompt_version: "0.1.0"
+  batch_size: 1
+  max_output_tokens: 32768
+  temperature: 0.0
+  max_retries: 2
+  retry_delay_seconds: 120
+  max_response_bytes: 1048576
+review:
+  human_review_required: true
+  allowed_decisions: [pending, accepted, rejected]
+  require_every_proposal_reviewed_before_finalization: true
+  accepted_fragments_with_same_exception_identity: merge_citations_and_targets
+finalization:
+  preserve_grouped_provision_citations: true
+  materialize_direct_excluded_provision_projection: true
+  redirect_only_to_reviewed_canonical_rule_versions: true
+  validate_complete_graph_with_shacl: true
+semantic_boundaries:
+  - Candidate membership, wording similarity, and the presence of a token such as "trừ" do not prove a legal exception.
+  - Every exception proposal requires exact source evidence and one reviewed general rule version.
+  - Every grouped citation must preserve exact citation wording and resolve to at least one target rule provision.
+  - Redirected rules are version-specific canonical rules selected from the candidate window; no enduring identity is inferred.
+  - Human acceptance owns exception scope, citation resolution, and redirect targets.
+  - Exception priority evaluation and occurrence-level applicability remain deferred.

@@ -1,0 +1,395 @@
+schema_version: "0.1.0"
+artifact_id: road-traffic-ontology-pilot-cq-fixtures
+artifact_version: "0.1.0"
+status: v0.1_frozen
+source_plan: docs/ontology_construction_plan.md
+approval:
+  project_owner_status: accepted
+  accepted_on: "2026-08-17"
+  independent_legal_professional_review: not_asserted
+  ai_assisted_internal_legal_review: approved
+  project_owner_v0.1_acceptance: user-confirmed:2026-08-18:ILR-001-through-ILR-011
+fixtures:
+  - id: FIX-NO-PLATE-RULE
+    fixture_kind: positive
+    verification_status: source_verified
+    source_fact_ids:
+      - 17d76decdff806557ec7d66aa393496ab2c81f5fb59902008b8e3acab2b2cd69
+    given:
+      conduct_concept: driving_vehicle_without_required_plate
+      subject_kind: natural_person
+      subject_role: driver
+      vehicle_category: motorcycle_moped_or_similar_requiring_plate
+      occurrence_date: "2025-01-01"
+      vehicle_is_legally_required_to_have_plate: true
+    expected:
+      determination_status: applicable_rule_found
+      rule_key: nd168_article14_no_plate_v1
+      monetary_penalty:
+        minimum_amount: 4000000
+        maximum_amount: 6000000
+        currency: VND
+      consequences:
+        - kind: additional_sanction
+          action: confiscation
+          affected_target: vehicle_plate
+        - kind: point_deduction
+          point_value: 6
+          affected_target: driver_license
+      provision_paths:
+        - NĐ 168 Article 14(3)(a)
+        - NĐ 168 Article 14(5)(a)
+        - NĐ 168 Article 14(8)(b)
+
+  - id: FIX-RULE-MISSING-CONTEXT
+    fixture_kind: boundary
+    verification_status: conceptual_boundary
+    given:
+      conduct_concept: driving_vehicle_without_required_plate
+      subject_role: unknown
+      vehicle_category: unknown
+      occurrence_date: unknown
+    expected:
+      determination_status: insufficient_context
+      missing_context_dimensions: [subject_role, vehicle_category, occurrence_date]
+      selected_rule: null
+
+  - id: FIX-NO-PLATE-NONREQUIRED-VEHICLE
+    fixture_kind: boundary
+    verification_status: conceptual_boundary
+    given:
+      conduct_concept: driving_vehicle_without_required_plate
+      subject_role: driver
+      vehicle_is_legally_required_to_have_plate: false
+      occurrence_date: "2025-01-01"
+    expected:
+      determination_status: condition_not_satisfied
+      excluded_rule_key: nd168_article14_no_plate_v1
+
+  - id: FIX-RIGHT-PASS-MOTORCYCLE
+    fixture_kind: positive
+    verification_status: source_verified
+    source_fact_ids:
+      - 033869497d637229d6ed2db7d73450f51e667e234097b2b8f45dd8f341af0691
+    given:
+      conduct_concept: prohibited_right_side_passing
+      subject_role: driver
+      vehicle_category: motorcycle_moped_or_similar
+      occurrence_date: "2025-01-01"
+    expected:
+      determination_status: applicable_rule_found
+      rule_key: nd168_article7_right_side_passing_v1
+      monetary_penalty:
+        minimum_amount: 600000
+        maximum_amount: 800000
+        currency: VND
+      provision_paths: [NĐ 168 Article 7(3)(đ)]
+
+  - id: FIX-RIGHT-PASS-PRIMITIVE
+    fixture_kind: positive
+    verification_status: source_verified
+    source_fact_ids:
+      - 964ee842be04a502f06d0909904a61193af51d04ff26fce649de0d742d7815ec
+    given:
+      conduct_concept: prohibited_right_side_passing
+      subject_role: driver
+      vehicle_category: bicycle_bicycle_machine_or_other_primitive_vehicle
+      occurrence_date: "2025-01-01"
+    expected:
+      determination_status: applicable_rule_found
+      rule_key: nd168_article9_right_side_passing_v1
+      monetary_penalty:
+        minimum_amount: 100000
+        maximum_amount: 200000
+        currency: VND
+      provision_paths: [NĐ 168 Article 9(1)(d)]
+
+  - id: FIX-OWNER-NOT-DRIVER
+    fixture_kind: boundary
+    verification_status: conceptual_boundary
+    given:
+      conduct_concept: prohibited_right_side_passing
+      subject_role: vehicle_owner
+      vehicle_category: motorcycle_moped_or_similar
+      occurrence_date: "2025-01-01"
+    expected:
+      determination_status: required_role_not_satisfied
+      selected_rule: null
+
+  - id: FIX-RIGHT-PASS-MISSING-VEHICLE
+    fixture_kind: positive
+    verification_status: conceptual_boundary
+    given:
+      conduct_concept: prohibited_right_side_passing
+      subject_role: driver
+      vehicle_category: unknown
+      occurrence_date: "2025-01-01"
+    expected:
+      determination_status: insufficient_context
+      missing_context_dimensions: [vehicle_category]
+      remaining_candidate_rule_keys:
+        - nd168_article7_right_side_passing_v1
+        - nd168_article9_right_side_passing_v1
+
+  - id: FIX-RIGHT-PASS-COMPARISON
+    fixture_kind: positive
+    verification_status: source_verified
+    based_on_fixture_ids: [FIX-RIGHT-PASS-MOTORCYCLE, FIX-RIGHT-PASS-PRIMITIVE]
+    expected:
+      shared_conduct_concept: prohibited_right_side_passing
+      differing_context_dimensions: [vehicle_category]
+      differing_consequences: [monetary_penalty]
+      exact_rule_identity_shared: false
+
+  - id: FIX-SIGN-TRAFFIC-LIGHT-EXCLUDED
+    fixture_kind: positive
+    verification_status: source_verified
+    given:
+      conduct_concept: failure_to_obey_traffic_light
+      subject_role: driver
+      vehicle_category: automobile_or_similar
+      occurrence_date: "2025-01-01"
+    expected:
+      general_rule_key: nd168_article6_general_signs_markings_v1
+      general_rule_applies: false
+      exclusion_provision: NĐ 168 Article 6(9)(b)
+      redirected_rule_key: nd168_article6_traffic_light_v1
+      cited_locator_count_on_exception: 30
+      resolved_point_target_count: 32
+
+  - id: FIX-SIGN-GENERAL-NONEXCLUDED
+    fixture_kind: boundary
+    verification_status: conceptual_boundary
+    given:
+      conduct_concept: generic_sign_or_marking_noncompliance
+      matches_any_cited_specific_target: false
+      subject_role: driver
+      vehicle_category: automobile_or_similar
+      occurrence_date: "2025-01-01"
+    expected:
+      determination_status: general_rule_remains_candidate
+      rule_key: nd168_article6_general_signs_markings_v1
+      fabricated_redirect: false
+
+  - id: FIX-OBSTRUCTION-VEHICLE-OPERATOR
+    fixture_kind: positive
+    verification_status: source_verified
+    source_fact_ids:
+      - e394749f038020c4042830dd02868111907885e6d51bf1126cde965ed77bd294
+    given:
+      conduct_concept: unsafe_road_obstruction_or_discharge
+      subject_kind: natural_person
+      subject_role: vehicle_operator
+      occurrence_date: "2025-01-01"
+    expected:
+      monetary_penalty:
+        minimum_amount: 6000000
+        maximum_amount: 8000000
+        currency: VND
+      point_deduction:
+        point_value: 2
+        affected_target: driver_license
+      provision_paths:
+        - NĐ 168 Article 12(11)(a)
+        - NĐ 168 Article 12(17)
+
+  - id: FIX-OBSTRUCTION-NONOPERATOR
+    fixture_kind: boundary
+    verification_status: source_verified_boundary
+    source_fact_ids:
+      - e394749f038020c4042830dd02868111907885e6d51bf1126cde965ed77bd294
+    given:
+      conduct_concept: unsafe_road_obstruction_or_discharge
+      subject_kind: natural_person
+      subject_role: non_vehicle_operator
+      occurrence_date: "2025-01-01"
+    expected:
+      monetary_penalty:
+        minimum_amount: 6000000
+        maximum_amount: 8000000
+        currency: VND
+      point_deduction: null
+      reason: vehicle_operator_role_condition_not_satisfied
+
+  - id: FIX-POINTS-NOT-ADDITIONAL-SANCTION
+    fixture_kind: boundary
+    verification_status: source_verified_boundary
+    based_on_fixture_ids: [FIX-NO-PLATE-RULE]
+    expected:
+      point_deduction_kind: point_deduction
+      additional_sanction_kind: additional_sanction
+      kinds_are_identical: false
+
+  - id: FIX-PLATE-COMPLIANCE-REMEDY
+    fixture_kind: positive
+    verification_status: source_verified
+    source_fact_ids:
+      - d801280d465237da33d1263cfe23ccbb61de587ceb43a79997dac4b286b6638f
+    given:
+      conduct_concept: plate_noncompliance
+      subject_role: driver
+      occurrence_date: "2025-01-01"
+    expected:
+      remedial_measure:
+        action: restore_plate_compliance_or_original_state
+        legal_classification: remedial_measure
+      provision_paths:
+        - NĐ 168 Article 13(8)(b)
+        - NĐ 168 Article 13(11)(a)
+
+  - id: FIX-ND118-FORM-NONNORMATIVE
+    fixture_kind: boundary
+    verification_status: source_rejected
+    rejected_source_fact_ids:
+      - 0c0dcf27cdca5434ce695214cd0039d2c5d33b93ccb2d395bd9464712524a4a3
+    given:
+      source_file: Bieu mau.doc
+      source_scope: attachment_form
+      extracted_classification: remedial_measure
+    expected:
+      accepted_as_normative_provision: false
+      accepted_consequence_classification: false
+      reason: governing_normative_provision_not_established
+
+  - id: FIX-MONETARY-UNKNOWN-NOT-ZERO
+    fixture_kind: boundary
+    verification_status: conceptual_boundary
+    given:
+      monetary_consequence_evidence: absent
+    expected:
+      monetary_penalty: null
+      amount_zero_asserted: false
+      determination_status: unknown_or_not_evidenced
+
+  - id: FIX-CONSEQUENCE-ABSENCE-UNKNOWN
+    fixture_kind: boundary
+    verification_status: conceptual_boundary
+    given:
+      extracted_consequence_array: []
+      complete_provision_reviewed: false
+    expected:
+      no_other_consequence_asserted: false
+      determination_status: incomplete_evidence
+
+  - id: FIX-DOCUMENT-ONLY-CITATION
+    fixture_kind: boundary
+    verification_status: conceptual_boundary
+    given:
+      legal_resource: NĐ 168/2024/NĐ-CP
+      provision_path: null
+    expected:
+      provenance_complete: false
+      missing_fields: [legal_provision]
+
+  - id: FIX-RELATED-SPAN-NOT-EVIDENCE
+    fixture_kind: boundary
+    verification_status: conceptual_boundary
+    given:
+      asserted_consequence: six_point_deduction
+      quoted_span_states_point_value: false
+      quoted_span_is_only_related_context: true
+    expected:
+      evidence_accepted: false
+      reason: span_does_not_directly_support_assertion
+
+  - id: FIX-ARTICLE13-PRE-AMENDMENT
+    fixture_kind: positive
+    verification_status: source_verified
+    given:
+      provision: NĐ 168 Article 13(8)(b)
+      occurrence_date: "2026-08-14"
+    expected:
+      applicable_rule_version: nd168_article13_8_b_original
+      later_rule_version_applies: false
+      source_effective_from: "2025-01-01"
+
+  - id: FIX-ARTICLE13-POST-AMENDMENT
+    fixture_kind: positive
+    verification_status: source_verified
+    given:
+      provision: NĐ 168 Article 13(8)(b)
+      occurrence_date: "2026-08-15"
+    expected:
+      applicable_rule_version: nd168_article13_8_b_as_amended_by_nd238
+      earlier_rule_version_applies: false
+      source_effective_from: "2026-08-15"
+
+  - id: FIX-ARTICLE13-EXPLICIT-AMENDMENT
+    fixture_kind: positive
+    verification_status: source_verified
+    given:
+      earlier_rule_version: nd168_article13_8_b_original
+      change_source: NĐ 238 Article 3
+    expected:
+      legal_change_type: amendment
+      later_rule_version: nd168_article13_8_b_as_amended_by_nd238
+      effective_date: "2026-08-15"
+      changed_component: conduct_specification
+
+  - id: FIX-NULL-VALID-TO-NOT-INFINITE
+    fixture_kind: boundary
+    verification_status: conceptual_boundary
+    given:
+      extracted_valid_to: null
+      authoritative_end_evidence: absent
+    expected:
+      infinite_validity_asserted: false
+      determination_status: end_unknown
+
+  - id: FIX-ND168-ND336-NO-CHANGE-LINK
+    fixture_kind: boundary
+    verification_status: source_verified_boundary
+    source_fact_ids:
+      - 027e7dc8f263381e55cf1fdac7ca3bf3f505d9b2dbe9662e640e9bd267e1bdf7
+      - 3673bb62d828902789a3cf3d8daf563483c0a8d5a6354f87b9dfbe69684a3a0e
+    given:
+      earlier_candidate: NĐ 168 Article 47(8)(b)
+      later_candidate: NĐ 336 Article 22(2)(b)
+      textual_similarity: true
+      explicit_legal_change_evidence: false
+    expected:
+      amendment_asserted: false
+      replacement_asserted: false
+      shared_rule_identity_asserted: false
+
+  - id: FIX-LEXICAL-SIMILARITY-NOT-EQUIVALENCE
+    fixture_kind: boundary
+    verification_status: conceptual_boundary
+    given:
+      source_phrases_lexically_similar: true
+      approved_conduct_mapping: absent
+    expected:
+      exact_equivalence_asserted: false
+      comparison_allowed: true
+
+  - id: FIX-ACCIDENT-ASSEMBLY
+    fixture_kind: positive
+    verification_status: source_verified
+    source_fact_ids:
+      - 11091af300d7ad8a11588032086b50d9863bbc2abc2e0cbc01b33f8f7bd108fc
+    given:
+      conduct_concept: unsafe_maneuver_causing_traffic_accident
+      subject_role: driver
+      vehicle_category: motorcycle_moped_or_similar
+      occurrence_date: "2025-01-01"
+    expected:
+      rule_key: nd168_article7_accident_composite_v1
+      monetary_penalty:
+        minimum_amount: 10000000
+        maximum_amount: 14000000
+        currency: VND
+      point_deduction:
+        point_value: 10
+      provision_paths:
+        - NĐ 168 Article 7(10)(a)
+        - NĐ 168 Article 7(13)(d)
+
+  - id: FIX-NEARBY-CHUNKS-NOT-A-RULE
+    fixture_kind: boundary
+    verification_status: conceptual_boundary
+    given:
+      chunks_are_adjacent: true
+      explicit_rule_component_relationships: absent
+    expected:
+      automatic_rule_assembly: false
+      reason: document_order_is_not_semantic_evidence

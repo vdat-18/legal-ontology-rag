@@ -1,0 +1,29 @@
+PREFIX loroc: <https://w3id.org/legal-ontology-rag/ontology/occurrence-context#>
+PREFIX lornr: <https://w3id.org/legal-ontology-rag/ontology/normative-rule#>
+PREFIX lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#>
+PREFIX lortc: <https://w3id.org/legal-ontology-rag/ontology/temporal-change#>
+
+# Candidate projection only. Condition satisfaction and final legal applicability require semantic confirmation.
+SELECT DISTINCT ?occurrence ?penaltyRule ?conduct ?subjectKind ?role ?vehicleCategory
+    ?requiredSubjectKind ?requiredRole ?requiredVehicleCategory ?validityInterval ?sourceProvision
+WHERE {
+  ?occurrence a loroc:ConductOccurrence ;
+    loroc:hasConductConcept ?conduct .
+  ?roleAssignment loroc:inOccurrence ?occurrence ;
+    loroc:rolePlayer ?subject ;
+    loroc:playsRole ?role .
+  ?subject loroc:hasSubjectKind ?subjectKind .
+  OPTIONAL {
+    ?occurrence loroc:involvesVehicle ?vehicle .
+    ?vehicle loroc:hasVehicleCategory ?vehicleCategory .
+  }
+  ?penaltyRule a lornr:PenaltyRule ;
+    lornr:hasConductSpecification/lornr:usesConductConcept ?conduct ;
+    lornr:hasApplicability ?applicability ;
+    lortc:validDuring ?validityInterval ;
+    lorsp:groundedIn ?sourceProvision .
+  OPTIONAL { ?applicability lornr:requiresSubjectKind ?requiredSubjectKind }
+  OPTIONAL { ?applicability lornr:requiresRole ?requiredRole }
+  OPTIONAL { ?applicability lornr:requiresVehicleCategory ?requiredVehicleCategory }
+}
+ORDER BY ?occurrence ?penaltyRule

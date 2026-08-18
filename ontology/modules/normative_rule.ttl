@@ -1,0 +1,253 @@
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix loroc: <https://w3id.org/legal-ontology-rag/ontology/occurrence-context#> .
+@prefix lornr: <https://w3id.org/legal-ontology-rag/ontology/normative-rule#> .
+@prefix lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#> .
+@prefix lortc: <https://w3id.org/legal-ontology-rag/ontology/temporal-change#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://w3id.org/legal-ontology-rag/ontology/normative-rule> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/legal-ontology-rag/ontology/0.1.0/normative-rule> ;
+    owl:versionInfo "0.1.0" ;
+    owl:imports <https://w3id.org/legal-ontology-rag/ontology/occurrence-context>,
+        <https://w3id.org/legal-ontology-rag/ontology/source-provenance>,
+        <https://w3id.org/legal-ontology-rag/ontology/temporal-change> ;
+    dcterms:title "Normative Rule and Applicability Module"@en,
+        "Mô-đun quy tắc pháp lý và phạm vi áp dụng"@vi ;
+    dcterms:description "Version-specific penalty rules, independently evidenced rule components, applicability profiles, condition trees, and legal exceptions."@en ;
+    dcterms:issued "2026-08-18"^^xsd:date ;
+    dcterms:source "docs/ontology_construction_plan.md" .
+
+lornr:PenaltyRule a owl:Class ;
+    rdfs:label "Penalty rule"@en,
+        "Quy tắc xử phạt"@vi ;
+    rdfs:comment "A version-specific normative object connecting regulated conduct, applicability, exceptions, consequences, provenance, and legal validity."@en ;
+    lorsp:requirementReference "PURP-001", "PURP-002", "USE-001", "USE-002", "SCOPE-002", "SCOPE-003", "SCOPE-004", "SCOPE-005", "SCOPE-006", "GRAN-001", "GRAN-007" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-ASSEMBLY-001", "CQ-TEMPORAL-001", "CQ-TEMPORAL-002" ;
+    lorsp:glossaryReference "TERM-RULE-001", "TERM-RULE-002" ;
+    lorsp:modelingDecisionReference "MD-RULE-001", "MD-RULE-002" .
+
+lornr:RuleComponent a owl:Class ;
+    rdfs:subClassOf lorsp:SupportedAssertion ;
+    rdfs:label "Rule component"@en,
+        "Thành phần quy tắc"@vi ;
+    rdfs:comment "A material part of a penalty rule whose authoritative provision and exact evidence can be evaluated independently."@en ;
+    lorsp:requirementReference "PURP-003", "SCOPE-007", "GRAN-004", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EVIDENCE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:glossaryReference "TERM-RULE-003" ;
+    lorsp:modelingDecisionReference "MD-RULE-002", "MD-PROV-001", "MD-PROV-002" .
+
+lornr:ConductSpecification a owl:Class ;
+    rdfs:subClassOf lornr:RuleComponent ;
+    rdfs:label "Conduct specification"@en,
+        "Đặc tả hành vi trong quy tắc"@vi ;
+    rdfs:comment "An independently evidenced rule component linking one penalty rule to a reusable regulated-conduct concept."@en ;
+    lorsp:requirementReference "PURP-002", "PURP-003", "SCOPE-002", "SCOPE-007", "GRAN-001", "GRAN-008" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-EVIDENCE-001", "CQ-ASSEMBLY-001", "CQ-COMPARISON-001" ;
+    lorsp:glossaryReference "TERM-CONDUCT-003" ;
+    lorsp:modelingDecisionReference "MD-RULE-002", "MD-CONDUCT-001", "MD-PROV-001" .
+
+lornr:ApplicabilityProfile a owl:Class ;
+    rdfs:subClassOf lornr:RuleComponent ;
+    rdfs:label "Applicability profile"@en,
+        "Hồ sơ áp dụng"@vi ;
+    rdfs:comment "One coherent, independently evidenced combination of required subject kind, role, vehicle category, and condition expression."@en ;
+    lorsp:requirementReference "PURP-002", "PURP-003", "USE-001", "USE-002", "SCOPE-003", "SCOPE-004", "SCOPE-007", "GRAN-002", "GRAN-003", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-APPLICABILITY-001", "CQ-CONDITION-001", "CQ-NEGATIVE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:glossaryReference "TERM-APP-001" ;
+    lorsp:modelingDecisionReference "MD-RULE-002", "MD-SUBJECT-001", "MD-VEHICLE-001", "MD-COND-001", "MD-PROV-001" .
+
+lornr:ConditionExpression a owl:Class ;
+    rdfs:subClassOf lornr:RuleComponent ;
+    rdfs:label "Condition expression"@en,
+        "Biểu thức điều kiện"@vi ;
+    rdfs:comment "An evidenced expression preserving the source structure of applicability conditions without executable rule semantics."@en ;
+    lorsp:requirementReference "PURP-002", "PURP-003", "SCOPE-004", "SCOPE-007", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-CONDITION-001", "CQ-NEGATIVE-001", "CQ-EVIDENCE-001" ;
+    lorsp:glossaryReference "TERM-COND-002" ;
+    lorsp:modelingDecisionReference "MD-COND-001", "MD-PROV-001" .
+
+lornr:AtomicCondition a owl:Class ;
+    rdfs:subClassOf lornr:ConditionExpression ;
+    rdfs:label "Atomic condition"@en,
+        "Điều kiện nguyên tử"@vi ;
+    rdfs:comment "A single evidenced applicability proposition whose structured meaning is added only after semantic review."@en ;
+    lorsp:requirementReference "PURP-002", "SCOPE-004", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-CONDITION-001" ;
+    lorsp:glossaryReference "TERM-COND-001", "TERM-COND-002" ;
+    lorsp:modelingDecisionReference "MD-COND-001" .
+
+lornr:AllOf a owl:Class ;
+    rdfs:subClassOf lornr:ConditionExpression ;
+    rdfs:label "All of"@en,
+        "Tất cả điều kiện"@vi ;
+    rdfs:comment "A source-evidenced conjunction whose operands are condition expressions; operand cardinality is validated in SHACL."@en ;
+    lorsp:requirementReference "PURP-002", "SCOPE-004", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-CONDITION-001", "CQ-NEGATIVE-001" ;
+    lorsp:glossaryReference "TERM-COND-002" ;
+    lorsp:modelingDecisionReference "MD-COND-001" .
+
+lornr:AnyOf a owl:Class ;
+    rdfs:subClassOf lornr:ConditionExpression ;
+    rdfs:label "Any of"@en,
+        "Bất kỳ điều kiện nào"@vi ;
+    rdfs:comment "A source-evidenced disjunction whose operands are condition expressions; operand cardinality is validated in SHACL."@en ;
+    lorsp:requirementReference "PURP-002", "SCOPE-004", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-CONDITION-001", "CQ-NEGATIVE-001" ;
+    lorsp:glossaryReference "TERM-COND-002" ;
+    lorsp:modelingDecisionReference "MD-COND-001" .
+
+lornr:Not a owl:Class ;
+    rdfs:subClassOf lornr:ConditionExpression ;
+    rdfs:label "Not"@en,
+        "Phủ định điều kiện"@vi ;
+    rdfs:comment "A source-evidenced negation within a condition tree, distinct from a legal exception targeting a rule."@en ;
+    lorsp:requirementReference "PURP-002", "SCOPE-004", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-CONDITION-001", "CQ-NEGATIVE-001", "CQ-EXCEPTION-001" ;
+    lorsp:glossaryReference "TERM-COND-002", "TERM-EXCEPTION-001" ;
+    lorsp:modelingDecisionReference "MD-COND-001", "MD-EXCEPTION-001" .
+
+lornr:LegalException a owl:Class ;
+    rdfs:subClassOf lornr:RuleComponent ;
+    rdfs:label "Legal exception"@en,
+        "Ngoại lệ pháp lý"@vi ;
+    rdfs:comment "An evidenced specification that narrows a general rule and may cite excluded provisions or redirect to verified rule versions."@en ;
+    lorsp:requirementReference "PURP-002", "PURP-003", "USE-001", "USE-002", "SCOPE-004", "SCOPE-006", "SCOPE-007", "GRAN-004", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-EXCEPTION-001", "CQ-EVIDENCE-001", "CQ-TEMPORAL-001", "CQ-ASSEMBLY-001" ;
+    lorsp:glossaryReference "TERM-EXCEPTION-001" ;
+    lorsp:modelingDecisionReference "MD-EXCEPTION-001", "MD-REF-001", "MD-PROV-001" .
+
+lornr:hasConductSpecification a owl:ObjectProperty ;
+    rdfs:domain lornr:PenaltyRule ;
+    rdfs:range lornr:ConductSpecification ;
+    rdfs:label "has conduct specification"@en ;
+    rdfs:comment "Links a penalty rule to an independently evidenced specification of the conduct it regulates."@en ;
+    lorsp:requirementReference "PURP-002", "PURP-003", "SCOPE-002", "GRAN-001", "GRAN-008" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-ASSEMBLY-001", "CQ-COMPARISON-001" ;
+    lorsp:glossaryReference "TERM-RULE-001", "TERM-CONDUCT-003" ;
+    lorsp:modelingDecisionReference "MD-RULE-002", "MD-CONDUCT-001" .
+
+lornr:usesConductConcept a owl:ObjectProperty ;
+    rdfs:domain lornr:ConductSpecification ;
+    rdfs:range loroc:RegulatedConduct ;
+    rdfs:label "uses conduct concept"@en ;
+    rdfs:comment "Connects an evidenced conduct specification to a reusable regulated-conduct concept."@en ;
+    lorsp:requirementReference "PURP-002", "SCOPE-002", "GRAN-008" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-COMPARISON-001" ;
+    lorsp:glossaryReference "TERM-CONDUCT-001", "TERM-CONDUCT-003" ;
+    lorsp:modelingDecisionReference "MD-CONDUCT-001" .
+
+lornr:hasApplicability a owl:ObjectProperty ;
+    rdfs:domain lornr:PenaltyRule ;
+    rdfs:range lornr:ApplicabilityProfile ;
+    rdfs:label "has applicability"@en ;
+    rdfs:comment "Links a penalty rule to one coherent applicability profile without duplicating the whole rule."@en ;
+    lorsp:requirementReference "PURP-002", "USE-001", "USE-002", "SCOPE-003", "SCOPE-004" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-APPLICABILITY-001", "CQ-CONDITION-001", "CQ-NEGATIVE-001" ;
+    lorsp:glossaryReference "TERM-RULE-001", "TERM-APP-001" ;
+    lorsp:modelingDecisionReference "MD-RULE-002", "MD-SUBJECT-001", "MD-VEHICLE-001", "MD-COND-001" .
+
+lornr:requiresSubjectKind a owl:ObjectProperty ;
+    rdfs:domain lornr:ApplicabilityProfile ;
+    rdfs:range loroc:SubjectKind ;
+    rdfs:label "requires subject kind"@en ;
+    rdfs:comment "States a legally relevant subject-kind requirement using a controlled concept rather than an OWL class value."@en ;
+    lorsp:requirementReference "PURP-002", "SCOPE-003", "GRAN-002" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-APPLICABILITY-001", "CQ-NEGATIVE-001" ;
+    lorsp:glossaryReference "TERM-APP-001", "TERM-SUBJECT-005" ;
+    lorsp:modelingDecisionReference "MD-SUBJECT-001" .
+
+lornr:requiresRole a owl:ObjectProperty ;
+    rdfs:domain lornr:ApplicabilityProfile ;
+    rdfs:range loroc:LegalSubjectRole ;
+    rdfs:label "requires role"@en ;
+    rdfs:comment "States one or more contextual legal roles required by an applicability profile."@en ;
+    lorsp:requirementReference "PURP-002", "SCOPE-003", "GRAN-002" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-APPLICABILITY-001", "CQ-NEGATIVE-001", "CQ-POINTS-001", "CQ-REMEDY-001" ;
+    lorsp:glossaryReference "TERM-APP-001", "TERM-SUBJECT-002" ;
+    lorsp:modelingDecisionReference "MD-SUBJECT-001" .
+
+lornr:requiresVehicleCategory a owl:ObjectProperty ;
+    rdfs:domain lornr:ApplicabilityProfile ;
+    rdfs:range loroc:VehicleCategory ;
+    rdfs:label "requires vehicle category"@en ;
+    rdfs:comment "States one or more legally relevant vehicle-category requirements using controlled concepts."@en ;
+    lorsp:requirementReference "PURP-002", "SCOPE-003", "GRAN-003", "GRAN-008" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-APPLICABILITY-001", "CQ-NEGATIVE-001", "CQ-COMPARISON-001" ;
+    lorsp:glossaryReference "TERM-APP-001", "TERM-VEHICLE-001" ;
+    lorsp:modelingDecisionReference "MD-VEHICLE-001" .
+
+lornr:hasConditionExpression a owl:ObjectProperty ;
+    rdfs:domain lornr:ApplicabilityProfile ;
+    rdfs:range lornr:ConditionExpression ;
+    rdfs:label "has condition expression"@en ;
+    rdfs:comment "Links an applicability profile to its source-evidenced condition tree without asserting executable semantics."@en ;
+    lorsp:requirementReference "PURP-002", "SCOPE-004", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-CONDITION-001", "CQ-NEGATIVE-001" ;
+    lorsp:glossaryReference "TERM-APP-001", "TERM-COND-002" ;
+    lorsp:modelingDecisionReference "MD-COND-001" .
+
+lornr:hasOperand a owl:ObjectProperty ;
+    rdfs:domain lornr:ConditionExpression ;
+    rdfs:range lornr:ConditionExpression ;
+    rdfs:label "has operand"@en ;
+    rdfs:comment "Preserves an operand edge within an evidenced condition tree; operator-specific cardinalities belong to SHACL."@en ;
+    lorsp:requirementReference "PURP-002", "SCOPE-004", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-CONDITION-001", "CQ-NEGATIVE-001" ;
+    lorsp:glossaryReference "TERM-COND-002" ;
+    lorsp:modelingDecisionReference "MD-COND-001" .
+
+lornr:hasException a owl:ObjectProperty ;
+    rdfs:domain lornr:PenaltyRule ;
+    rdfs:range lornr:LegalException ;
+    rdfs:label "has exception"@en ;
+    rdfs:comment "Links a general penalty rule to an independently evidenced legal exception."@en ;
+    lorsp:requirementReference "PURP-002", "PURP-003", "USE-001", "SCOPE-004", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-EXCEPTION-001", "CQ-ASSEMBLY-001" ;
+    lorsp:glossaryReference "TERM-RULE-001", "TERM-EXCEPTION-001" ;
+    lorsp:modelingDecisionReference "MD-RULE-002", "MD-EXCEPTION-001" .
+
+lornr:exceptionTo a owl:ObjectProperty ;
+    rdfs:domain lornr:LegalException ;
+    rdfs:range lornr:PenaltyRule ;
+    rdfs:label "exception to"@en ;
+    rdfs:comment "Identifies the general, version-specific penalty rule narrowed by a legal exception."@en ;
+    lorsp:requirementReference "PURP-002", "USE-001", "USE-002", "SCOPE-004", "SCOPE-006" ;
+    lorsp:competencyQuestionReference "CQ-EXCEPTION-001", "CQ-TEMPORAL-001" ;
+    lorsp:glossaryReference "TERM-EXCEPTION-001", "TERM-RULE-002" ;
+    lorsp:modelingDecisionReference "MD-EXCEPTION-001", "MD-RULE-001" .
+
+lornr:citesExcludedProvision a owl:ObjectProperty ;
+    rdfs:domain lornr:LegalException ;
+    rdfs:range lorsp:LegalProvision ;
+    rdfs:label "cites excluded provision"@en ;
+    rdfs:comment "Preserves each cited provision locator grouped by an evidenced exception statement."@en ;
+    lorsp:requirementReference "PURP-002", "PURP-003", "SCOPE-001", "SCOPE-004", "GRAN-004", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-EXCEPTION-001", "CQ-SOURCE-001" ;
+    lorsp:glossaryReference "TERM-EXCEPTION-001", "TERM-PROVISION-001" ;
+    lorsp:modelingDecisionReference "MD-EXCEPTION-001", "MD-REF-001", "MD-PROV-002" .
+
+lornr:hasProvisionCitation a owl:ObjectProperty ;
+    rdfs:domain lornr:LegalException ;
+    rdfs:range lorsp:ProvisionCitation ;
+    rdfs:label "has provision citation"@en ;
+    rdfs:comment "Links an evidenced legal exception to a grouped citation object that preserves source wording and resolves to one or more excluded provisions."@en ;
+    lorsp:requirementReference "PURP-002", "PURP-003", "SCOPE-001", "SCOPE-004", "GRAN-004", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-EXCEPTION-001", "CQ-SOURCE-001" ;
+    lorsp:glossaryReference "TERM-EXCEPTION-001", "TERM-CITATION-001" ;
+    lorsp:modelingDecisionReference "MD-EXCEPTION-001", "MD-REF-001" .
+
+lornr:redirectsTo a owl:ObjectProperty ;
+    rdfs:domain lornr:LegalException ;
+    rdfs:range lornr:PenaltyRule ;
+    rdfs:label "redirects to"@en ;
+    rdfs:comment "Links an exception to verified, version-specific penalty rules governing cited excluded cases."@en ;
+    lorsp:requirementReference "PURP-002", "USE-002", "USE-004", "SCOPE-004", "SCOPE-006", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-EXCEPTION-001", "CQ-TEMPORAL-001", "CQ-TEMPORAL-002" ;
+    lorsp:glossaryReference "TERM-EXCEPTION-001", "TERM-RULE-002" ;
+    lorsp:modelingDecisionReference "MD-EXCEPTION-001", "MD-REF-001", "MD-RULE-001" .
+
+lortc:changesEarlierRule rdfs:range lornr:PenaltyRule .
+
+lortc:producesLaterRule rdfs:range lornr:PenaltyRule .

@@ -1,0 +1,71 @@
+schema_version: "0.1.0"
+artifact_id: legal-ontology-rag-internal-legal-review-decisions
+artifact_version: "0.1.0"
+contract_id: legal-ontology-rag-internal-legal-review
+contract_version: "0.1.0"
+status: approved
+project_owner_acceptance:
+  status: approved
+  accepted_on: "2026-08-18"
+  evidence: user-confirmed:2026-08-18:ILR-001-through-ILR-011
+reviewer:
+  name: Codex
+  qualifications: AI-assisted internal Vietnamese legal-domain and ontology analysis; not licensed legal-professional certification
+  organization: Solo-project coding agent
+  reviewed_on: "2026-08-18"
+decisions:
+  - id: ILR-001
+    decision: accept
+    rationale: Version-specific rule and expression identities are correctly separated; similarity cannot create cross-version identity without an explicit legal-change source.
+    evidence_refs: [docs/ontology_construction_plan.md#lr-001, NĐ 168 Article 13(8)(b), NĐ 238 Article 3]
+    requested_changes: []
+  - id: ILR-002
+    decision: accept
+    rationale: Shared conduct concepts are safe because exact wording, applicability, consequences, and rule identity remain separate and independently evidenced.
+    evidence_refs: [docs/ontology_construction_plan.md#lr-002, NĐ 168 Article 7(3)(đ), NĐ 168 Article 9(1)(d)]
+    requested_changes: []
+  - id: ILR-003
+    decision: accept
+    rationale: Subject kind and contextual role separation preserves the legal difference between a person, driver, owner, custodian, and vehicle operator.
+    evidence_refs: [docs/ontology_construction_plan.md#lr-003, NĐ 168 Article 12(17)]
+    requested_changes: []
+  - id: ILR-004
+    decision: accept
+    rationale: Vehicle categories are controlled legal-context values and SKOS relations do not assert OWL or automatic legal subsumption.
+    evidence_refs: [docs/ontology_construction_plan.md#lr-003, ontology/modules/occurrence_context.ttl]
+    requested_changes: []
+  - id: ILR-005
+    decision: accept
+    rationale: Condition trees preserve conjunction, alternatives, negation, and source scope without evaluating condition truth or executing legal rules.
+    evidence_refs: [docs/ontology_construction_plan.md#lr-004, NĐ 168 Article 12(11)(a), NĐ 168 Article 12(17)]
+    requested_changes: []
+  - id: ILR-006
+    decision: accept
+    rationale: Explicit exception entities preserve the Article 6 exclusion wording and grouped citations while leaving legal priority and target applicability for reviewed interpretation.
+    evidence_refs: [docs/ontology_construction_plan.md#lr-004, NĐ 168 Article 6(1)(a), ontology/tests/cq_queries/cq_exception_001.rq]
+    requested_changes: []
+  - id: ILR-007
+    decision: accept
+    rationale: Consequence subtypes remain distinct and require normative classification evidence; attachment or form content alone cannot establish a remedial measure.
+    evidence_refs: [docs/ontology_construction_plan.md#lr-005, NĐ 168 Article 13(11)(a), data/processed/groundtruth/118_2021_ND-CP_477969.source.jsonl]
+    requested_changes: []
+  - id: ILR-008
+    decision: accept
+    rationale: Legal resource, expression, provision, file, attachment, and chunk identities are correctly separated, preventing file containment from creating normative authority.
+    evidence_refs: [docs/ontology_construction_plan.md#lr-007, ontology/modules/source_provenance.ttl]
+    requested_changes: []
+  - id: ILR-009
+    decision: accept
+    rationale: Validity and change events require authoritative dates and explicit change evidence; missing ends remain unknown and textual similarity cannot prove succession.
+    evidence_refs: [docs/ontology_construction_plan.md#lr-006, NĐ 238 Article 3, ontology/tests/fixtures/temporal_change_valid.ttl]
+    requested_changes: []
+  - id: ILR-010
+    decision: accept
+    rationale: Component-level provenance and exact evidence spans prevent one quotation from silently supporting unrelated legal assertions.
+    evidence_refs: [docs/ontology_construction_plan.md#lr-007, ontology/modules/source_provenance.ttl, ontology/tests/cq_queries/cq_evidence_001.rq]
+    requested_changes: []
+  - id: ILR-011
+    decision: accept
+    rationale: V0.1 scope and CQs clearly separate structural ontology answers from final applicability, procedure, adjudication, liability, and sanction aggregation.
+    evidence_refs: [ontology/requirements/ontology_requirements.yaml, ontology/requirements/competency_questions.yaml, ontology/reports/v0.1_qa_report.md]
+    requested_changes: []

@@ -309,8 +309,8 @@ def test_baml_candidate_generation_client_parses_typed_result(monkeypatch: pytes
         candidate_generation,
         "execute_baml_request",
         lambda *args, **kwargs: (
-            '{"query_vi":"q","reference_answer_vi":"a","reasoning_vi":"r",'
-            '"required_claims":[{"claim":"c","fact_id":"fact-1","evidence_chunk_ids":["chunk-1"]}]}'
+            '[{"task_id":"single","candidate":{"query_vi":"q","reference_answer_vi":"a","reasoning_vi":"r",'
+            '"required_claims":[{"claim":"c","fact_id":"fact-1","evidence_chunk_ids":["chunk-1"]}]}}]'
         ),
     )
     fact_context = FactContext(

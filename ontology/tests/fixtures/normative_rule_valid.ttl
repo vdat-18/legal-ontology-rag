@@ -1,0 +1,262 @@
+@prefix ex: <https://w3id.org/legal-ontology-rag/test/normative-rule#> .
+@prefix lorlc: <https://w3id.org/legal-ontology-rag/ontology/legal-consequence#> .
+@prefix loroc: <https://w3id.org/legal-ontology-rag/ontology/occurrence-context#> .
+@prefix lornr: <https://w3id.org/legal-ontology-rag/ontology/normative-rule#> .
+@prefix lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#> .
+@prefix lortc: <https://w3id.org/legal-ontology-rag/ontology/temporal-change#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix time: <http://www.w3.org/2006/time#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:resource a lorsp:LegalResource ;
+    lorsp:hasExpression ex:expression .
+
+ex:expression a lorsp:LegalExpression ;
+    lorsp:representedBy ex:file ;
+    lorsp:containsProvision ex:generalRuleProvision,
+        ex:conductProvision,
+        ex:applicabilityProvision,
+        ex:conditionProvision,
+        ex:exceptionProvision,
+        ex:moneyProvision,
+        ex:pointsProvision,
+        ex:additionalProvision,
+        ex:remedyProvision,
+        ex:redirectedRuleProvision .
+
+ex:file a lorsp:SourceFile .
+
+ex:generalRuleProvision a lorsp:LegalProvision ;
+    lorsp:structuralPath "Pilot Article 1, general rule" .
+
+ex:conductProvision a lorsp:LegalProvision ;
+    lorsp:structuralPath "Pilot Article 1(1), conduct" .
+
+ex:applicabilityProvision a lorsp:LegalProvision ;
+    lorsp:structuralPath "Pilot Article 1 heading, applicability" .
+
+ex:conditionProvision a lorsp:LegalProvision ;
+    lorsp:structuralPath "Pilot Article 1(1)(a), conditions" .
+
+ex:exceptionProvision a lorsp:LegalProvision ;
+    lorsp:structuralPath "Pilot Article 2(1)(a), exception" .
+
+ex:moneyProvision a lorsp:LegalProvision ;
+    lorsp:structuralPath "Pilot Article 1(2), monetary penalty" .
+
+ex:pointsProvision a lorsp:LegalProvision ;
+    lorsp:structuralPath "Pilot Article 1(3), point deduction" .
+
+ex:additionalProvision a lorsp:LegalProvision ;
+    lorsp:structuralPath "Pilot Article 1(4), additional sanction" .
+
+ex:remedyProvision a lorsp:LegalProvision ;
+    lorsp:structuralPath "Pilot Article 1(5), remedial measure" .
+
+ex:redirectedRuleProvision a lorsp:LegalProvision ;
+    lorsp:structuralPath "Pilot Article 3, redirected specific rule" .
+
+ex:chunk a lorsp:SourceChunk ;
+    lorsp:derivedFromFile ex:file ;
+    lorsp:containsSpan ex:conductSpan,
+        ex:applicabilitySpan,
+        ex:conditionRootSpan,
+        ex:conditionOneSpan,
+        ex:conditionTwoSpan,
+        ex:exceptionSpan,
+        ex:moneySpan,
+        ex:pointsSpan,
+        ex:additionalSpan,
+        ex:remedySpan,
+        ex:redirectedConductSpan,
+        ex:redirectedApplicabilitySpan,
+        ex:redirectedConsequenceSpan .
+
+ex:conductSpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Điều khiển xe không gắn biển số theo quy định."@vi .
+
+ex:applicabilitySpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Người điều khiển xe mô tô thuộc phạm vi áp dụng."@vi .
+
+ex:conditionRootSpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Phương tiện phải thuộc diện gắn biển số và đang tham gia giao thông."@vi .
+
+ex:conditionOneSpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Phương tiện thuộc diện phải gắn biển số."@vi .
+
+ex:conditionTwoSpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Phương tiện đang tham gia giao thông."@vi .
+
+ex:exceptionSpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Trừ trường hợp được điều chỉnh tại Điều 3."@vi .
+
+ex:moneySpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."@vi .
+
+ex:pointsSpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Bị trừ 06 điểm giấy phép lái xe."@vi .
+
+ex:additionalSpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Bị tịch thu biển số sử dụng không đúng quy định."@vi .
+
+ex:remedySpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Buộc thực hiện đúng quy định về biển số."@vi .
+
+ex:redirectedConductSpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Hành vi cụ thể thuộc quy tắc tại Điều 3."@vi .
+
+ex:redirectedApplicabilitySpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Tổ chức là chủ thể thuộc Điều 3."@vi .
+
+ex:redirectedConsequenceSpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Tịch thu biển số đối với trường hợp thuộc Điều 3."@vi .
+
+ex:noPlateConduct a loroc:RegulatedConduct ;
+    skos:inScheme loroc:conductScheme ;
+    skos:prefLabel "Điều khiển xe không gắn biển số"@vi .
+
+ex:driverRole a loroc:LegalSubjectRole ;
+    skos:inScheme loroc:subjectRoleScheme ;
+    skos:prefLabel "Người điều khiển xe"@vi .
+
+ex:motorcycleCategory a loroc:VehicleCategory ;
+    skos:inScheme loroc:vehicleCategoryScheme ;
+    skos:prefLabel "Xe mô tô"@vi .
+
+ex:subject a loroc:LegalSubject ;
+    loroc:hasSubjectKind loroc:naturalPerson .
+
+ex:vehicle a loroc:Vehicle ;
+    loroc:hasVehicleCategory ex:motorcycleCategory .
+
+ex:occurrenceInstant a time:Instant ;
+    time:inXSDDateTime "2025-03-01T09:00:00Z"^^xsd:dateTime .
+
+ex:occurrence a loroc:ConductOccurrence ;
+    loroc:hasConductConcept ex:noPlateConduct ;
+    loroc:involvesVehicle ex:vehicle ;
+    loroc:occursAt ex:occurrenceInstant .
+
+ex:roleAssignment a loroc:RoleAssignment ;
+    loroc:rolePlayer ex:subject ;
+    loroc:playsRole ex:driverRole ;
+    loroc:inOccurrence ex:occurrence .
+
+ex:generalRule a lornr:PenaltyRule ;
+    lornr:hasConductSpecification ex:conductSpecification ;
+    lornr:hasApplicability ex:applicabilityProfile ;
+    lornr:hasException ex:legalException ;
+    lorlc:imposesConsequence ex:monetaryPenalty,
+        ex:pointDeduction,
+        ex:additionalSanction,
+        ex:remedialMeasure ;
+    lorsp:groundedIn ex:generalRuleProvision ;
+    lortc:validDuring ex:generalRuleInterval .
+
+ex:conductSpecification a lornr:ConductSpecification ;
+    lornr:usesConductConcept ex:noPlateConduct ;
+    lorsp:groundedIn ex:conductProvision ;
+    lorsp:supportedBy ex:conductSpan .
+
+ex:applicabilityProfile a lornr:ApplicabilityProfile ;
+    lornr:requiresSubjectKind loroc:naturalPerson ;
+    lornr:requiresRole ex:driverRole ;
+    lornr:requiresVehicleCategory ex:motorcycleCategory ;
+    lornr:hasConditionExpression ex:allConditions ;
+    lorsp:groundedIn ex:applicabilityProvision ;
+    lorsp:supportedBy ex:applicabilitySpan .
+
+ex:allConditions a lornr:AllOf ;
+    lornr:hasOperand ex:plateRequiredCondition,
+        ex:inTrafficCondition ;
+    lorsp:groundedIn ex:conditionProvision ;
+    lorsp:supportedBy ex:conditionRootSpan .
+
+ex:plateRequiredCondition a lornr:AtomicCondition ;
+    lorsp:groundedIn ex:conditionProvision ;
+    lorsp:supportedBy ex:conditionOneSpan .
+
+ex:inTrafficCondition a lornr:AtomicCondition ;
+    lorsp:groundedIn ex:conditionProvision ;
+    lorsp:supportedBy ex:conditionTwoSpan .
+
+ex:legalException a lornr:LegalException ;
+    lornr:exceptionTo ex:generalRule ;
+    lornr:citesExcludedProvision ex:redirectedRuleProvision ;
+    lornr:hasProvisionCitation ex:exceptionCitation ;
+    lornr:redirectsTo ex:redirectedRule ;
+    lorsp:groundedIn ex:exceptionProvision ;
+    lorsp:supportedBy ex:exceptionSpan .
+
+ex:exceptionCitation a lorsp:ProvisionCitation ;
+    lorsp:citationText "Điều 3"@vi ;
+    lorsp:refersToProvision ex:redirectedRuleProvision .
+
+ex:redirectedRule a lornr:PenaltyRule ;
+    lornr:hasConductSpecification ex:redirectedConductSpecification ;
+    lornr:hasApplicability ex:redirectedApplicabilityProfile ;
+    lorlc:imposesConsequence ex:redirectedAdditionalSanction ;
+    lorsp:groundedIn ex:redirectedRuleProvision ;
+    lortc:validDuring ex:redirectedRuleInterval .
+
+ex:redirectedConductSpecification a lornr:ConductSpecification ;
+    lornr:usesConductConcept ex:noPlateConduct ;
+    lorsp:groundedIn ex:redirectedRuleProvision ;
+    lorsp:supportedBy ex:redirectedConductSpan .
+
+ex:redirectedApplicabilityProfile a lornr:ApplicabilityProfile ;
+    lornr:requiresSubjectKind loroc:organization ;
+    lornr:requiresRole ex:driverRole ;
+    lornr:requiresVehicleCategory ex:motorcycleCategory ;
+    lorsp:groundedIn ex:redirectedRuleProvision ;
+    lorsp:supportedBy ex:redirectedApplicabilitySpan .
+
+ex:monetaryPenalty a lorlc:MonetaryPenalty ;
+    lorlc:hasAmountRange ex:monetaryRange ;
+    lorsp:groundedIn ex:moneyProvision ;
+    lorsp:supportedBy ex:moneySpan .
+
+ex:monetaryRange a lorlc:MonetaryAmountRange ;
+    lorlc:minimumAmount "4000000"^^xsd:decimal ;
+    lorlc:maximumAmount "6000000"^^xsd:decimal ;
+    lorlc:currency lorlc:VND .
+
+ex:pointDeduction a lorlc:PointDeduction ;
+    lorlc:pointValue 6 ;
+    lorlc:affectsTarget ex:driverLicenseTarget ;
+    lorsp:groundedIn ex:pointsProvision ;
+    lorsp:supportedBy ex:pointsSpan .
+
+ex:additionalSanction a lorlc:AdditionalSanction ;
+    lorlc:affectsTarget ex:plateTarget ;
+    lorsp:groundedIn ex:additionalProvision ;
+    lorsp:supportedBy ex:additionalSpan .
+
+ex:remedialMeasure a lorlc:RemedialMeasure ;
+    lorlc:affectsTarget ex:plateTarget ;
+    lorlc:mustBePerformedBy ex:driverRole ;
+    lorsp:groundedIn ex:remedyProvision ;
+    lorsp:supportedBy ex:remedySpan .
+
+ex:redirectedAdditionalSanction a lorlc:AdditionalSanction ;
+    lorlc:affectsTarget ex:redirectedPlateTarget ;
+    lorsp:groundedIn ex:redirectedRuleProvision ;
+    lorsp:supportedBy ex:redirectedConsequenceSpan .
+
+ex:driverLicenseTarget a lorlc:ConsequenceTarget .
+
+ex:plateTarget a lorlc:ConsequenceTarget .
+
+ex:redirectedPlateTarget a lorlc:ConsequenceTarget .
+
+ex:generalRuleInterval a lortc:ValidityInterval ;
+    time:hasBeginning ex:generalRuleBeginning .
+
+ex:redirectedRuleInterval a lortc:ValidityInterval ;
+    time:hasBeginning ex:redirectedRuleBeginning .
+
+ex:generalRuleBeginning a time:Instant ;
+    time:inXSDDateTime "2025-01-01T00:00:00Z"^^xsd:dateTime .
+
+ex:redirectedRuleBeginning a time:Instant ;
+    time:inXSDDateTime "2025-01-01T00:00:00Z"^^xsd:dateTime .

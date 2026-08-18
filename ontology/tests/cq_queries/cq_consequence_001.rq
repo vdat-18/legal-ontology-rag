@@ -1,0 +1,18 @@
+PREFIX lorlc: <https://w3id.org/legal-ontology-rag/ontology/legal-consequence#>
+PREFIX lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#>
+
+SELECT DISTINCT ?penaltyRule ?legalConsequence ?consequenceType ?affectedTarget ?responsibleRole ?sourceProvision
+WHERE {
+  ?penaltyRule lorlc:imposesConsequence ?legalConsequence .
+  ?legalConsequence a ?consequenceType ;
+    lorsp:groundedIn ?sourceProvision .
+  VALUES ?consequenceType {
+    lorlc:MonetaryPenalty
+    lorlc:PointDeduction
+    lorlc:AdditionalSanction
+    lorlc:RemedialMeasure
+  }
+  OPTIONAL { ?legalConsequence lorlc:affectsTarget ?affectedTarget }
+  OPTIONAL { ?legalConsequence lorlc:mustBePerformedBy ?responsibleRole }
+}
+ORDER BY ?penaltyRule ?consequenceType ?legalConsequence

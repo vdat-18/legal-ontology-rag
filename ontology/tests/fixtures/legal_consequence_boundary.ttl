@@ -1,0 +1,28 @@
+@prefix ex: <https://w3id.org/legal-ontology-rag/test/legal-consequence-boundary#> .
+@prefix lorlc: <https://w3id.org/legal-ontology-rag/ontology/legal-consequence#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:unclassifiedConsequence a lorlc:LegalConsequence .
+
+ex:missingRangePenalty a lorlc:MonetaryPenalty .
+
+ex:reversedRangePenalty a lorlc:MonetaryPenalty ;
+    lorlc:hasAmountRange ex:reversedRange .
+
+ex:reversedRange a lorlc:MonetaryAmountRange ;
+    lorlc:minimumAmount "6000000"^^xsd:decimal ;
+    lorlc:maximumAmount "4000000"^^xsd:decimal ;
+    lorlc:currency lorlc:VND .
+
+ex:zeroPointDeduction a lorlc:PointDeduction ;
+    lorlc:pointValue 0 ;
+    lorlc:affectsTarget ex:licenseTarget .
+
+ex:targetlessAdditionalSanction a lorlc:AdditionalSanction .
+
+ex:unassignedRemedialMeasure a lorlc:RemedialMeasure ;
+    lorlc:affectsTarget ex:plateTarget .
+
+ex:licenseTarget a lorlc:ConsequenceTarget .
+
+ex:plateTarget a lorlc:ConsequenceTarget .
