@@ -63,6 +63,9 @@ packages = ["src/legal_rag"]
 
 [tool.ruff]
 line-length = 120
+# Without this, first-party detection depends on the working directory, so import order can be
+# reported differently from a clean checkout than from an installed one.
+src = ["src", "."]
 extend-exclude = [".agents", "data", "src/legal_rag/baml_client"]
 
 [tool.ruff.lint]

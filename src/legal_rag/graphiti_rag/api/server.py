@@ -218,7 +218,14 @@ def create_app(
         try:
             yield
         finally:
-            await _get_provider(app_instance).close()
+            # Both hold sockets: the pipeline a Neo4j driver, the store a Redis connection.
+            # Closing the store in its own finally means a failure closing one still releases
+            # the other, rather than leaking whichever came second.
+            try:
+                await _get_provider(app_instance).close()
+            finally:
+                if history is not None:
+                    await run_in_threadpool(history.close)
 
     fastapi_app = FastAPI(
         title="Legal Graphiti Knowledge-Graph RAG API",

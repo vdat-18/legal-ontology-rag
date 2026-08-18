@@ -22,6 +22,9 @@ class ConversationHistory(Protocol):
     def append(self, session_id: str, question: str, answer: str) -> None:
         """Record one completed turn against the session."""
 
+    def close(self) -> None:
+        """Release whatever connection the store holds."""
+
 
 class RedisConversationHistory:
     """Conversation history in Redis, bounded per session and expiring when a chat goes idle.

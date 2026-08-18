@@ -187,10 +187,15 @@ class _FakeHistory:
 
     def __init__(self) -> None:
         self.turns: dict[str, list[ConversationTurn]] = {}
+        self.closed = False
 
     def load(self, session_id: str) -> list[ConversationTurn]:
         """Return the recorded turns for a session."""
         return list(self.turns.get(session_id, []))
+
+    def close(self) -> None:
+        """Record that the server released the store."""
+        self.closed = True
 
     def append(self, session_id: str, question: str, answer: str) -> None:
         """Record one completed turn."""
@@ -275,3 +280,33 @@ def test_history_endpoint_is_empty_for_an_unknown_session() -> None:
 
     assert response.status_code == 200
     assert response.json()["turns"] == []
+
+
+def test_shutdown_closes_the_history_store() -> None:
+    """The Redis connection is released on shutdown, not just the Neo4j one."""
+    pipeline = _FakePipeline()
+    history = _FakeHistory()
+
+    with TestClient(server.create_app(pipeline_factory=lambda: pipeline, group_id="g1", history=history)) as client:
+        client.post("/graphiti/query", json={"query": "q", "session_id": "s1"})
+
+    assert history.closed is True
+    assert pipeline.closed is True
+
+
+def test_a_failure_closing_the_pipeline_still_closes_the_history_store() -> None:
+    """One store leaking because the other raised would be invisible until connections ran out."""
+
+    class _FailingPipeline(_FakePipeline):
+        async def close(self) -> None:
+            """Fail the way a broken driver would."""
+            message = "driver already closed"
+            raise RuntimeError(message)
+
+    history = _FakeHistory()
+    app = server.create_app(pipeline_factory=_FailingPipeline, group_id="g1", history=history)
+
+    with pytest.raises(RuntimeError), TestClient(app) as client:
+        client.post("/graphiti/query", json={"query": "q", "session_id": "s1"})
+
+    assert history.closed is True
