@@ -5,9 +5,10 @@
 <https://w3id.org/legal-ontology-rag/ontology> a owl:Ontology ;
     owl:versionIRI <https://w3id.org/legal-ontology-rag/ontology/0.1.0> ;
     owl:versionInfo "0.1.0" ;
-    owl:imports <https://w3id.org/legal-ontology-rag/ontology/source-provenance> ;
+    owl:imports <https://w3id.org/legal-ontology-rag/ontology/occurrence-context>,
+        <https://w3id.org/legal-ontology-rag/ontology/source-provenance> ;
     dcterms:title "Vietnamese Road Traffic Legal Ontology"@en,
         "Bản thể pháp luật giao thông đường bộ Việt Nam"@vi ;
-    dcterms:description "Draft root ontology importing the source and provenance module formalized in the current increment."@en ;
+    dcterms:description "Draft root ontology importing the source/provenance and occurrence-context modules formalized in the repository."@en ;
     dcterms:issued "2026-08-18"^^xsd:date ;
     dcterms:source "docs/ontology_construction_plan.md" .

@@ -114,7 +114,7 @@ module_policy:
     version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0
     namespace: https://w3id.org/legal-ontology-rag/ontology#
     planned_imports: [MOD-SOURCE, MOD-OCCURRENCE, MOD-TEMPORAL, MOD-NORMATIVE, MOD-CONSEQUENCE]
-    active_imports: [MOD-SOURCE]
+    active_imports: [MOD-SOURCE, MOD-OCCURRENCE]
   modules:
     - id: MOD-SOURCE
       formalization_status: active
@@ -125,7 +125,7 @@ module_policy:
       imports: []
       external_term_namespaces: [prov]
     - id: MOD-OCCURRENCE
-      formalization_status: planned
+      formalization_status: active
       file: ontology/modules/occurrence_context.ttl
       ontology_iri: https://w3id.org/legal-ontology-rag/ontology/occurrence-context
       version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/occurrence-context

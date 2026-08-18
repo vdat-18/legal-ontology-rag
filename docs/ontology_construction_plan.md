@@ -1191,6 +1191,7 @@ ontology/
 - [x] Define the OWL profile, namespaces, and module import policy in `ontology/formalization_policy.yaml`.
 - [x] Formalize the source/provenance module and add the root ontology plus local XML catalog.
 - [x] Add source/provenance SHACL shapes, positive and boundary RDF fixtures, and executable source/evidence CQ queries.
+- [x] Formalize the occurrence-context module and activate its root import and local catalog mappings.
 - [ ] Formalize one cohesive pilot module at a time.
 - [ ] Add SHACL shapes and executable CQ queries after the corresponding module exists.
 

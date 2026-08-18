@@ -1,0 +1,234 @@
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix loroc: <https://w3id.org/legal-ontology-rag/ontology/occurrence-context#> .
+@prefix lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix time: <http://www.w3.org/2006/time#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://w3id.org/legal-ontology-rag/ontology/occurrence-context> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/legal-ontology-rag/ontology/0.1.0/occurrence-context> ;
+    owl:versionInfo "0.1.0" ;
+    owl:imports <https://w3id.org/legal-ontology-rag/ontology/source-provenance> ;
+    dcterms:title "Occurrence Context Module"@en,
+        "Mô-đun ngữ cảnh hành vi"@vi ;
+    dcterms:description "Conduct occurrences, legal subjects, contextual roles, vehicles, and controlled concepts used as competency-question inputs."@en ;
+    dcterms:issued "2026-08-18"^^xsd:date ;
+    dcterms:source "docs/ontology_construction_plan.md" .
+
+loroc:RegulatedConduct a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Regulated conduct"@en,
+        "Hành vi được điều chỉnh"@vi ;
+    rdfs:comment "A controlled concept describing an action, omission, or behavior addressed by a legal rule."@en ;
+    lorsp:requirementReference "SCOPE-002", "GRAN-008" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-COMPARISON-001" ;
+    lorsp:glossaryReference "TERM-CONDUCT-001" ;
+    lorsp:modelingDecisionReference "MD-CONDUCT-001" .
+
+loroc:ConductOccurrence a owl:Class ;
+    rdfs:label "Conduct occurrence"@en,
+        "Sự kiện hành vi"@vi ;
+    rdfs:comment "A concrete occurrence of conduct involving contextual participants, vehicles, and time."@en ;
+    lorsp:requirementReference "PURP-002", "SCOPE-002", "SCOPE-003" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-TEMPORAL-001", "CQ-NEGATIVE-001" ;
+    lorsp:glossaryReference "TERM-CONDUCT-002" ;
+    lorsp:modelingDecisionReference "MD-CONDUCT-001" .
+
+loroc:LegalSubject a owl:Class ;
+    rdfs:label "Legal subject"@en,
+        "Chủ thể pháp lý"@vi ;
+    rdfs:comment "A natural person or organization capable of bearing a relevant legal position."@en ;
+    lorsp:requirementReference "SCOPE-003", "GRAN-002" ;
+    lorsp:competencyQuestionReference "CQ-APPLICABILITY-001" ;
+    lorsp:glossaryReference "TERM-SUBJECT-001" ;
+    lorsp:modelingDecisionReference "MD-SUBJECT-001" .
+
+loroc:SubjectKind a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Subject kind"@en,
+        "Loại chủ thể"@vi ;
+    rdfs:comment "A controlled classification of a legal subject, distinct from contextual legal roles."@en ;
+    lorsp:requirementReference "SCOPE-003", "GRAN-002" ;
+    lorsp:competencyQuestionReference "CQ-APPLICABILITY-001", "CQ-COMPARISON-001" ;
+    lorsp:glossaryReference "TERM-SUBJECT-005" ;
+    lorsp:modelingDecisionReference "MD-SUBJECT-001" .
+
+loroc:LegalSubjectRole a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Legal subject role"@en,
+        "Vai trò chủ thể pháp lý"@vi ;
+    rdfs:comment "A controlled concept for a context-dependent capacity such as driver, owner, or custodian."@en ;
+    lorsp:requirementReference "SCOPE-003", "GRAN-002" ;
+    lorsp:competencyQuestionReference "CQ-APPLICABILITY-001", "CQ-POINTS-001", "CQ-REMEDY-001" ;
+    lorsp:glossaryReference "TERM-SUBJECT-002" ;
+    lorsp:modelingDecisionReference "MD-SUBJECT-001" .
+
+loroc:RoleAssignment a owl:Class ;
+    rdfs:label "Role assignment"@en,
+        "Sự gán vai trò"@vi ;
+    rdfs:comment "A contextual relation entity stating that a legal subject plays a role in one conduct occurrence."@en ;
+    lorsp:requirementReference "PURP-002", "SCOPE-003", "GRAN-002" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-APPLICABILITY-001", "CQ-NEGATIVE-001" ;
+    lorsp:glossaryReference "TERM-SUBJECT-006" ;
+    lorsp:modelingDecisionReference "MD-SUBJECT-001" .
+
+loroc:VehicleCategory a owl:Class ;
+    rdfs:subClassOf skos:Concept ;
+    rdfs:label "Vehicle category"@en,
+        "Loại phương tiện"@vi ;
+    rdfs:comment "A controlled concept for a legally relevant vehicle category affecting applicability or consequence."@en ;
+    lorsp:requirementReference "SCOPE-003", "GRAN-003", "GRAN-008" ;
+    lorsp:competencyQuestionReference "CQ-APPLICABILITY-001", "CQ-COMPARISON-001", "CQ-NEGATIVE-001" ;
+    lorsp:glossaryReference "TERM-VEHICLE-001" ;
+    lorsp:modelingDecisionReference "MD-VEHICLE-001" .
+
+loroc:Vehicle a owl:Class ;
+    rdfs:label "Vehicle"@en,
+        "Phương tiện cụ thể"@vi ;
+    rdfs:comment "A concrete vehicle participating in a conduct occurrence and classified by vehicle-category concepts."@en ;
+    lorsp:requirementReference "SCOPE-003", "GRAN-003" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-APPLICABILITY-001" ;
+    lorsp:glossaryReference "TERM-VEHICLE-002" ;
+    lorsp:modelingDecisionReference "MD-VEHICLE-001" .
+
+loroc:conductScheme a skos:ConceptScheme,
+        owl:NamedIndividual ;
+    skos:prefLabel "Regulated conduct scheme"@en,
+        "Hệ khái niệm hành vi được điều chỉnh"@vi ;
+    lorsp:requirementReference "SCOPE-002", "GRAN-008" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-COMPARISON-001" ;
+    lorsp:glossaryReference "TERM-CONDUCT-001" ;
+    lorsp:modelingDecisionReference "MD-CONDUCT-001" .
+
+loroc:subjectKindScheme a skos:ConceptScheme,
+        owl:NamedIndividual ;
+    skos:prefLabel "Subject kind scheme"@en,
+        "Hệ khái niệm loại chủ thể"@vi ;
+    skos:hasTopConcept loroc:naturalPerson,
+        loroc:organization ;
+    lorsp:requirementReference "SCOPE-003", "GRAN-002" ;
+    lorsp:competencyQuestionReference "CQ-APPLICABILITY-001", "CQ-COMPARISON-001" ;
+    lorsp:glossaryReference "TERM-SUBJECT-005" ;
+    lorsp:modelingDecisionReference "MD-SUBJECT-001" .
+
+loroc:subjectRoleScheme a skos:ConceptScheme,
+        owl:NamedIndividual ;
+    skos:prefLabel "Legal subject role scheme"@en,
+        "Hệ khái niệm vai trò chủ thể pháp lý"@vi ;
+    lorsp:requirementReference "SCOPE-003", "GRAN-002" ;
+    lorsp:competencyQuestionReference "CQ-APPLICABILITY-001", "CQ-POINTS-001", "CQ-REMEDY-001" ;
+    lorsp:glossaryReference "TERM-SUBJECT-002" ;
+    lorsp:modelingDecisionReference "MD-SUBJECT-001" .
+
+loroc:vehicleCategoryScheme a skos:ConceptScheme,
+        owl:NamedIndividual ;
+    skos:prefLabel "Vehicle category scheme"@en,
+        "Hệ khái niệm loại phương tiện"@vi ;
+    lorsp:requirementReference "SCOPE-003", "GRAN-003" ;
+    lorsp:competencyQuestionReference "CQ-APPLICABILITY-001", "CQ-COMPARISON-001" ;
+    lorsp:glossaryReference "TERM-VEHICLE-001" ;
+    lorsp:modelingDecisionReference "MD-VEHICLE-001" .
+
+loroc:naturalPerson a loroc:SubjectKind,
+        owl:NamedIndividual ;
+    skos:inScheme loroc:subjectKindScheme ;
+    skos:topConceptOf loroc:subjectKindScheme ;
+    skos:prefLabel "Natural person"@en,
+        "Cá nhân"@vi ;
+    lorsp:requirementReference "SCOPE-003", "GRAN-002" ;
+    lorsp:competencyQuestionReference "CQ-APPLICABILITY-001", "CQ-COMPARISON-001" ;
+    lorsp:glossaryReference "TERM-SUBJECT-003" ;
+    lorsp:modelingDecisionReference "MD-SUBJECT-001" .
+
+loroc:organization a loroc:SubjectKind,
+        owl:NamedIndividual ;
+    skos:inScheme loroc:subjectKindScheme ;
+    skos:topConceptOf loroc:subjectKindScheme ;
+    skos:prefLabel "Organization"@en,
+        "Tổ chức"@vi ;
+    lorsp:requirementReference "SCOPE-003", "GRAN-002" ;
+    lorsp:competencyQuestionReference "CQ-APPLICABILITY-001", "CQ-COMPARISON-001" ;
+    lorsp:glossaryReference "TERM-SUBJECT-004" ;
+    lorsp:modelingDecisionReference "MD-SUBJECT-001" .
+
+loroc:hasSubjectKind a owl:ObjectProperty ;
+    rdfs:domain loroc:LegalSubject ;
+    rdfs:range loroc:SubjectKind ;
+    rdfs:label "has subject kind"@en ;
+    rdfs:comment "Classifies a concrete legal subject with a controlled subject-kind concept."@en ;
+    lorsp:requirementReference "SCOPE-003", "GRAN-002" ;
+    lorsp:competencyQuestionReference "CQ-APPLICABILITY-001", "CQ-COMPARISON-001" ;
+    lorsp:glossaryReference "TERM-SUBJECT-005" ;
+    lorsp:modelingDecisionReference "MD-SUBJECT-001" .
+
+loroc:rolePlayer a owl:ObjectProperty ;
+    rdfs:domain loroc:RoleAssignment ;
+    rdfs:range loroc:LegalSubject ;
+    rdfs:label "role player"@en ;
+    rdfs:comment "Identifies the legal subject that bears a contextual role assignment."@en ;
+    lorsp:requirementReference "SCOPE-003", "GRAN-002" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-APPLICABILITY-001" ;
+    lorsp:glossaryReference "TERM-SUBJECT-001", "TERM-SUBJECT-006" ;
+    lorsp:modelingDecisionReference "MD-SUBJECT-001" .
+
+loroc:playsRole a owl:ObjectProperty ;
+    rdfs:domain loroc:RoleAssignment ;
+    rdfs:range loroc:LegalSubjectRole ;
+    rdfs:label "plays role"@en ;
+    rdfs:comment "Identifies the controlled role concept assigned to a legal subject in context."@en ;
+    lorsp:requirementReference "SCOPE-003", "GRAN-002" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-APPLICABILITY-001", "CQ-POINTS-001" ;
+    lorsp:glossaryReference "TERM-SUBJECT-002", "TERM-SUBJECT-006" ;
+    lorsp:modelingDecisionReference "MD-SUBJECT-001" .
+
+loroc:inOccurrence a owl:ObjectProperty ;
+    rdfs:domain loroc:RoleAssignment ;
+    rdfs:range loroc:ConductOccurrence ;
+    rdfs:label "in occurrence"@en ;
+    rdfs:comment "Scopes a role assignment to one concrete conduct occurrence."@en ;
+    lorsp:requirementReference "PURP-002", "SCOPE-002", "SCOPE-003" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-NEGATIVE-001" ;
+    lorsp:glossaryReference "TERM-SUBJECT-006", "TERM-CONDUCT-002" ;
+    lorsp:modelingDecisionReference "MD-SUBJECT-001", "MD-CONDUCT-001" .
+
+loroc:hasConductConcept a owl:ObjectProperty ;
+    rdfs:domain loroc:ConductOccurrence ;
+    rdfs:range loroc:RegulatedConduct ;
+    rdfs:label "has conduct concept"@en ;
+    rdfs:comment "Classifies a concrete conduct occurrence with a controlled regulated-conduct concept."@en ;
+    lorsp:requirementReference "SCOPE-002", "GRAN-008" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-COMPARISON-001" ;
+    lorsp:glossaryReference "TERM-CONDUCT-001", "TERM-CONDUCT-002" ;
+    lorsp:modelingDecisionReference "MD-CONDUCT-001" .
+
+loroc:involvesVehicle a owl:ObjectProperty ;
+    rdfs:domain loroc:ConductOccurrence ;
+    rdfs:range loroc:Vehicle ;
+    rdfs:label "involves vehicle"@en ;
+    rdfs:comment "Links a conduct occurrence to a concrete participating vehicle."@en ;
+    lorsp:requirementReference "PURP-002", "SCOPE-003", "GRAN-003" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-NEGATIVE-001" ;
+    lorsp:glossaryReference "TERM-CONDUCT-002", "TERM-VEHICLE-002" ;
+    lorsp:modelingDecisionReference "MD-CONDUCT-001", "MD-VEHICLE-001" .
+
+loroc:hasVehicleCategory a owl:ObjectProperty ;
+    rdfs:domain loroc:Vehicle ;
+    rdfs:range loroc:VehicleCategory ;
+    rdfs:label "has vehicle category"@en ;
+    rdfs:comment "Classifies a concrete vehicle with one or more legally evidenced vehicle-category concepts."@en ;
+    lorsp:requirementReference "SCOPE-003", "GRAN-003", "GRAN-008" ;
+    lorsp:competencyQuestionReference "CQ-APPLICABILITY-001", "CQ-COMPARISON-001", "CQ-NEGATIVE-001" ;
+    lorsp:glossaryReference "TERM-VEHICLE-001", "TERM-VEHICLE-002" ;
+    lorsp:modelingDecisionReference "MD-VEHICLE-001" .
+
+loroc:occursAt a owl:ObjectProperty ;
+    rdfs:domain loroc:ConductOccurrence ;
+    rdfs:range time:Instant ;
+    rdfs:label "occurs at"@en ;
+    rdfs:comment "Links a concrete conduct occurrence to its occurrence-time instant."@en ;
+    lorsp:requirementReference "PURP-001", "PURP-002", "SCOPE-006", "GRAN-007" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-TEMPORAL-001", "CQ-NEGATIVE-001" ;
+    lorsp:glossaryReference "TERM-CONDUCT-002", "TERM-TIME-001" ;
+    lorsp:modelingDecisionReference "MD-CONDUCT-001", "MD-TIME-001" .

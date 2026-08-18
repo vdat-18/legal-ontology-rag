@@ -17,6 +17,14 @@
     uri="modules/source_provenance.ttl"
   />
   <uri
+    name="https://w3id.org/legal-ontology-rag/ontology/occurrence-context"
+    uri="modules/occurrence_context.ttl"
+  />
+  <uri
+    name="https://w3id.org/legal-ontology-rag/ontology/0.1.0/occurrence-context"
+    uri="modules/occurrence_context.ttl"
+  />
+  <uri
     name="https://w3id.org/legal-ontology-rag/shapes"
     uri="shapes/legal_ontology.shacl.ttl"
   />
