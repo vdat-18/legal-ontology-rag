@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -97,6 +98,7 @@ def test_cli_writes_reviewable_records_progress_and_validated_graph(
     records_path = tmp_path / "population.jsonl"
     progress_path = tmp_path / "progress.jsonl"
     graph_path = tmp_path / "population.ttl"
+    preflight_path = tmp_path / "preflight.json"
     write_chunks(chunks_path, (legal_chunk,))
     write_chunk_screening(
         screening_path,
@@ -121,13 +123,20 @@ def test_cli_writes_reviewable_records_progress_and_validated_graph(
             str(records_path),
             str(progress_path),
             str(graph_path),
+            "--preflight-report-path",
+            str(preflight_path),
         ],
     )
 
     ontology_population_cli.main()
+    monkeypatch.delenv("LLM_BASE_URL")
+    monkeypatch.delenv("LLM_API_KEY")
+    monkeypatch.delenv("LLM_MODEL")
+    monkeypatch.delenv("LLM_TIMEOUT_SECONDS")
     ontology_population_cli.main()
 
     assert len(read_population_records(records_path)) == 1
     assert [record.chunk_id for record in read_population_progress(progress_path)] == [legal_chunk.chunk_id]
     assert len(Graph().parse(graph_path, format="turtle")) > 0
+    assert json.loads(preflight_path.read_text(encoding="utf-8"))["overall_status"] == "ready"
     assert _CliPopulationClient.calls == 1

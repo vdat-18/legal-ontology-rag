@@ -37,3 +37,4 @@ def test_population_console_script_is_published() -> None:
         project = tomllib.load(file)["project"]
 
     assert project["scripts"]["legal-populate-ontology"] == "legal_rag.ontology_population_cli:main"
+    assert project["scripts"]["legal-check-ontology-population"] == "legal_rag.ontology_population_preflight_cli:main"

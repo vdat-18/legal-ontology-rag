@@ -133,6 +133,15 @@ Inside the full CRAG pipeline, web search is used only for `INCORRECT` and `AMBI
 Populate the ontology from screened legal-document chunks before any GraphRAG indexing:
 
 ```powershell
+uv run --extra dev legal-check-ontology-population `
+  <chunks.jsonl> <screening.jsonl> <metadata.jsonl> ontology/population_contract.yaml `
+  <preflight-report.json> --target-limit 10
+```
+
+This offline preflight fingerprints the inputs, validates their structural consistency, and records the exact pilot
+targets without reconsidering LLM screening decisions.
+
+```powershell
 uv run --extra dev legal-populate-ontology `
   data/chunks/document.jsonl `
   data/benchmark_synthesis/screening/document.jsonl `
@@ -140,10 +149,13 @@ uv run --extra dev legal-populate-ontology `
   ontology/population_contract.yaml `
   data/ontology/population/document.jsonl `
   data/ontology/progress/document.jsonl `
-  data/ontology/graphs/document.ttl
+  data/ontology/graphs/document.ttl `
+  --target-limit 10 `
+  --preflight-report-path data/ontology/preflight/document.run.json
 ```
 
-The command persists reviewable typed records and writes the Turtle graph only after SHACL conformance. See
+Omit `--target-limit` for the full document. The command repeats preflight before loading provider settings, persists
+reviewable typed records, and writes the Turtle graph only after SHACL conformance. See
 `docs/ontology_population_pipeline.md` for extraction boundaries, evidence requirements, resume behavior, and semantic
 limitations.
 

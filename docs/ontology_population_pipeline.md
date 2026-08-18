@@ -79,7 +79,29 @@ Outputs:
 `valid_to` remains absent when unknown. If no reviewed beginning is available, SHACL rejects the graph instead of code
 inventing a date.
 
-## Command
+## Real-Data Preflight
+
+Run the structural preflight before configuring or spending any LLM calls:
+
+```powershell
+uv run --extra dev legal-check-ontology-population `
+  data/processed/groundtruth/168_2024_ND-CP_619502.chunks.jsonl `
+  data/processed/groundtruth/168_2024_ND-CP_619502.chunk_screening.jsonl `
+  data/processed/groundtruth/168_2024_ND-CP_619502.document_metadata.jsonl `
+  ontology/population_contract.yaml `
+  data/ontology/preflight/168_2024_ND-CP_619502.json `
+  --target-limit 10
+```
+
+The command does not call an LLM. It verifies unique chunk identity, one root document, exact screening coverage,
+persisted previous/next links, target availability, and document metadata. The report fingerprints every input, records
+the deterministic target IDs, estimates LLM batches, and emits a stable `pilot_run_id`. It does not reconsider the
+semantic screening verdict or make any legal classification.
+
+A missing document-level `valid_from` is a warning rather than an invented date. Population remains possible only when
+each extracted rule supplies its own source-specific validity; otherwise final SHACL validation rejects the graph.
+
+## Population Command
 
 ```powershell
 uv run --extra dev legal-populate-ontology `
@@ -89,13 +111,19 @@ uv run --extra dev legal-populate-ontology `
   ontology/population_contract.yaml `
   data/ontology/population/document.jsonl `
   data/ontology/progress/document.jsonl `
-  data/ontology/graphs/document.ttl
+  data/ontology/graphs/document.ttl `
+  --target-limit 10 `
+  --preflight-report-path data/ontology/preflight/document.run.json
 ```
 
 Required provider environment variables are `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, and `LLM_TIMEOUT_SECONDS`.
 
-The command writes each successful batch before marking its target chunks complete. A rerun skips completed targets,
-including valid zero-rule results, then rematerializes and revalidates the graph from all persisted records.
+Omit `--target-limit` for a full-document run. Target selection follows persisted chunk order and uses no lexical or
+semantic scoring. The command runs the same preflight before loading provider settings, writes each successful batch
+before marking its target chunks complete, and skips completed targets on rerun, including valid zero-rule results. It
+rejects duplicate checkpoints and any persisted record or progress row outside the current target selection, then
+rematerializes and revalidates the graph from all persisted records. Use separate output paths when starting a smaller
+pilot after a larger run.
 
 ## Failure Boundaries
 
@@ -110,9 +138,9 @@ screening only proposes which chunks reach the downstream typed LLM extraction b
 
 ## Tests
 
-`tests/ontology_population/` covers contract loading, typed extraction, exact evidence rejection, deterministic identity,
-all four consequence types, condition trees, JSONL round trips, SHACL rejection, and the complete CLI pipeline with an
-offline fake typed client.
+`tests/ontology_population/` covers contract loading, structural preflight, deterministic pilot selection, typed
+extraction, exact evidence rejection, deterministic identity, all four consequence types, condition trees, JSONL round
+trips, SHACL rejection, and the complete CLI pipeline with an offline fake typed client.
 
 ## Cross-Chunk Rule Assembly
 
