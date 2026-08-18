@@ -9,7 +9,8 @@ on 2026-08-17. Independent legal-professional certification is not asserted.
 The current increment contains machine-readable requirements, competency questions, glossary terms, modeling decisions,
 formalization policy, the source/provenance OWL module, its SHACL shapes, executable source/evidence CQ projections,
 the occurrence-context, temporal-change, normative-rule, and legal-consequence OWL modules, plus pilot fixtures.
-Retrieval, GraphRAG, Graphiti, and ontology population remain outside this increment.
+Retrieval, GraphRAG, and Graphiti remain outside this increment. Source-grounded pilot population is implemented as a
+separate downstream pipeline so construction artifacts remain independent from extracted instance data.
 
 `formalization_policy.yaml` selects OWL 2 DL and defines proposed canonical namespaces and an acyclic local import graph.
 Publishing under the proposed `w3id.org` namespace remains blocked until redirect registration and licensing are complete.
@@ -45,3 +46,22 @@ Automated ontology QA lives in `tests/ontology/`, backed by reusable loaders and
 `src/legal_rag/ontology_validation/`. It checks Turtle parsing, policy and import consistency, catalog resolution,
 modeling guardrails, SHACL fixtures, all mandatory CQ projections, and traceability. See
 `ontology/reports/v0.1_qa_report.md` for the validated scope, semantic limitations, and open public-release gates.
+
+`population_contract.yaml` defines the versioned chunk-to-instance boundary. The corresponding pipeline creates
+reviewable typed records, deterministic RDF instances, exact evidence links, and writes Turtle only after SHACL
+conformance. It does not populate concrete occurrences or infer cross-document legal changes and concept equivalence.
+See `docs/ontology_population_pipeline.md` for the workflow and command.
+
+`assembly_contract.yaml` defines the next within-document canonicalization boundary. It uses bounded structural windows
+only to prepare typed LLM inputs, requires a legal reviewer to accept or reject every proposed cross-chunk assembly, and
+rejects overlapping accepted members. Candidate generation and finalization are offline; only proposal generation calls
+the model. Canonical population JSONL and Turtle are written after review completion and full-graph SHACL conformance.
+Cross-document legal changes are handled only by the subsequent reviewed change-resolution boundary; exception redirects
+and concept equivalence remain deferred.
+
+`change_resolution_contract.yaml` implements the reviewed cross-document `LegalChange` boundary after per-document
+assembly. An explicit ordered corpus manifest drives exhaustive bounded candidate windows without lexical matching or
+semantic scoring. A typed LLM may only propose changes supported by exact later-document evidence; a human reviewer owns
+acceptance. Accepted changes update canonical validity identities and materialize amendment, replacement, or
+repeal/supersession events before full multi-document SHACL validation. Transitional applicability, exception redirects,
+and concept equivalence remain deferred.

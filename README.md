@@ -128,6 +128,56 @@ Invoke-RestMethod `
 
 Inside the full CRAG pipeline, web search is used only for `INCORRECT` and `AMBIGUOUS` retrieval actions. A `CORRECT` retrieval intentionally keeps `web_search_count` at `0`.
 
+## Ontology Population
+
+Populate the ontology from screened legal-document chunks before any GraphRAG indexing:
+
+```powershell
+uv run --extra dev legal-populate-ontology `
+  data/chunks/document.jsonl `
+  data/benchmark_synthesis/screening/document.jsonl `
+  data/benchmark_synthesis/metadata/document.jsonl `
+  ontology/population_contract.yaml `
+  data/ontology/population/document.jsonl `
+  data/ontology/progress/document.jsonl `
+  data/ontology/graphs/document.ttl
+```
+
+The command persists reviewable typed records and writes the Turtle graph only after SHACL conformance. See
+`docs/ontology_population_pipeline.md` for extraction boundaries, evidence requirements, resume behavior, and semantic
+limitations.
+
+After chunk-local population, assemble rule components that span nearby chunks with the reviewed three-command flow:
+
+```powershell
+uv run --extra dev legal-build-assembly-candidates <chunks.jsonl> <population.jsonl> `
+  ontology/assembly_contract.yaml <candidates.json>
+uv run --extra dev legal-propose-rule-assemblies <chunks.jsonl> <metadata.jsonl> <population.jsonl> `
+  <candidates.json> ontology/assembly_contract.yaml <proposals.jsonl> <progress.jsonl> <reviews.jsonl>
+uv run --extra dev legal-finalize-rule-assemblies <chunks.jsonl> <metadata.jsonl> <population.jsonl> `
+  <proposals.jsonl> <reviews.jsonl> ontology/population_contract.yaml ontology/assembly_contract.yaml `
+  <canonical.jsonl> <canonical.ttl>
+```
+
+Only `legal-propose-rule-assemblies` calls the LLM. Every proposal must be explicitly accepted or rejected by a human
+reviewer before the offline finalizer can write SHACL-validated canonical outputs.
+
+After every document has canonical within-document rules, resolve explicit cross-document legal changes:
+
+```powershell
+uv run --extra dev legal-build-change-candidates <corpus_manifest.json> `
+  ontology/change_resolution_contract.yaml <candidates.json>
+uv run --extra dev legal-propose-legal-changes <corpus_manifest.json> <candidates.json> `
+  ontology/change_resolution_contract.yaml <proposals.jsonl> <progress.jsonl> <reviews.jsonl>
+uv run --extra dev legal-finalize-legal-changes <corpus_manifest.json> <proposals.jsonl> <reviews.jsonl> `
+  ontology/population_contract.yaml ontology/change_resolution_contract.yaml `
+  <canonical_population.jsonl> <legal_change_events.jsonl> <canonical_graph.ttl>
+```
+
+Only the proposal command calls the LLM. Candidate generation is exhaustive and bounded rather than similarity-based;
+human acceptance owns change type, effective date, and rule-version linkage. See
+`docs/ontology_population_pipeline.md` for the manifest schema and review workflow.
+
 ## Operations
 
 - Health: Neo4j exposes its browser health endpoint on port 7474; Milvus exposes health and Prometheus metrics on port 9091. Container logs use bounded rotation.
