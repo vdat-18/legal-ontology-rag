@@ -102,6 +102,9 @@ prefixes:
   - prefix: eli
     namespace: http://data.europa.eu/eli/ontology#
     use: Candidate alignment targets only; not imported or asserted equivalent in V0.1.
+  - prefix: lorsh
+    namespace: https://w3id.org/legal-ontology-rag/shapes#
+    use: SHACL node and property shapes kept outside the OWL import graph.
 
 module_policy:
   root_ontology:

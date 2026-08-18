@@ -1,0 +1,131 @@
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix lorsh: <https://w3id.org/legal-ontology-rag/shapes#> .
+@prefix lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://w3id.org/legal-ontology-rag/shapes> a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/legal-ontology-rag/shapes/0.1.0> ;
+    owl:versionInfo "0.1.0" ;
+    dcterms:title "Vietnamese Road Traffic Legal Ontology SHACL Shapes"@en ;
+    dcterms:description "Closed-world data-quality constraints maintained separately from the OWL ontology."@en ;
+    dcterms:issued "2026-08-18"^^xsd:date ;
+    dcterms:source "docs/ontology_construction_plan.md" .
+
+lorsh:LegalResourceShape a sh:NodeShape ;
+    sh:targetClass lorsp:LegalResource ;
+    sh:property [
+        sh:path lorsp:hasExpression ;
+        sh:minCount 1 ;
+        sh:class lorsp:LegalExpression ;
+        sh:message "A legal resource must have at least one legal expression."@en
+    ] ;
+    lorsp:requirementReference "SCOPE-001", "SCOPE-006" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-TEMPORAL-002" ;
+    lorsp:modelingDecisionReference "MD-DOC-001" .
+
+lorsh:LegalExpressionShape a sh:NodeShape ;
+    sh:targetClass lorsp:LegalExpression ;
+    sh:property [
+        sh:path lorsp:representedBy ;
+        sh:minCount 1 ;
+        sh:class lorsp:SourceFile ;
+        sh:message "A legal expression must be represented by at least one source file."@en
+    ], [
+        sh:path lorsp:containsProvision ;
+        sh:minCount 1 ;
+        sh:class lorsp:LegalProvision ;
+        sh:message "A legal expression must contain at least one structural provision."@en
+    ] ;
+    lorsp:requirementReference "SCOPE-001", "SCOPE-007" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001" ;
+    lorsp:modelingDecisionReference "MD-DOC-001", "MD-PROV-002" .
+
+lorsh:LegalProvisionShape a sh:NodeShape ;
+    sh:targetClass lorsp:LegalProvision ;
+    sh:property [
+        sh:path lorsp:structuralPath ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "A legal provision must have one reviewed structural path."@en
+    ], [
+        sh:path [ sh:inversePath lorsp:containsProvision ] ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class lorsp:LegalExpression ;
+        sh:message "A legal provision must belong to exactly one legal expression in an approved data graph."@en
+    ] ;
+    lorsp:requirementReference "SCOPE-001", "SCOPE-007", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:modelingDecisionReference "MD-DOC-001", "MD-PROV-002" .
+
+lorsh:ProvisionCitationShape a sh:NodeShape ;
+    sh:targetClass lorsp:ProvisionCitation ;
+    sh:property [
+        sh:path lorsp:citationText ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype rdf:langString ;
+        sh:message "A provision citation must preserve one language-tagged source wording."@en
+    ], [
+        sh:path lorsp:refersToProvision ;
+        sh:minCount 1 ;
+        sh:class lorsp:LegalProvision ;
+        sh:message "An approved provision citation must resolve to at least one legal provision."@en
+    ] ;
+    lorsp:requirementReference "SCOPE-001", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EXCEPTION-001" ;
+    lorsp:modelingDecisionReference "MD-REF-001" .
+
+lorsh:SourceChunkShape a sh:NodeShape ;
+    sh:targetClass lorsp:SourceChunk ;
+    sh:property [
+        sh:path lorsp:derivedFromFile ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class lorsp:SourceFile ;
+        sh:message "A source chunk must identify exactly one source file."@en
+    ] ;
+    lorsp:requirementReference "SCOPE-001", "SCOPE-007" ;
+    lorsp:competencyQuestionReference "CQ-EVIDENCE-001" ;
+    lorsp:modelingDecisionReference "MD-PROV-001" .
+
+lorsh:EvidenceSpanShape a sh:NodeShape ;
+    sh:targetClass lorsp:EvidenceSpan ;
+    sh:property [
+        sh:path lorsp:exactText ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype rdf:langString ;
+        sh:message "An evidence span must preserve one exact language-tagged quotation."@en
+    ], [
+        sh:path [ sh:inversePath lorsp:containsSpan ] ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class lorsp:SourceChunk ;
+        sh:message "An evidence span must be located in exactly one source chunk."@en
+    ] ;
+    lorsp:requirementReference "PURP-003", "SCOPE-007", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-EVIDENCE-001" ;
+    lorsp:modelingDecisionReference "MD-PROV-001" .
+
+lorsh:SupportedAssertionShape a sh:NodeShape ;
+    sh:targetClass lorsp:SupportedAssertion ;
+    sh:property [
+        sh:path lorsp:groundedIn ;
+        sh:minCount 1 ;
+        sh:class lorsp:LegalProvision ;
+        sh:message "A supported assertion must be grounded in at least one legal provision."@en
+    ], [
+        sh:path lorsp:supportedBy ;
+        sh:minCount 1 ;
+        sh:class lorsp:EvidenceSpan ;
+        sh:message "A supported assertion must have at least one exact evidence span."@en
+    ] ;
+    lorsp:requirementReference "PURP-003", "SCOPE-007" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EVIDENCE-001" ;
+    lorsp:modelingDecisionReference "MD-PROV-001" .

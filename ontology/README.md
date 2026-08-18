@@ -7,11 +7,15 @@ Current status: draft formalization. The project owner accepted pilot legal-revi
 on 2026-08-17. Independent legal-professional certification is not asserted.
 
 The current increment contains machine-readable requirements, competency questions, glossary terms, modeling decisions,
-formalization policy, the source/provenance OWL module, and pilot fixtures. Remaining OWL modules, SHACL, retrieval,
-GraphRAG, Graphiti, and ontology population remain outside this increment.
+formalization policy, the source/provenance OWL module, its SHACL shapes, executable source/evidence CQ projections,
+and pilot fixtures. Remaining OWL modules, retrieval, GraphRAG, Graphiti, and ontology population remain outside this
+increment.
 
 `formalization_policy.yaml` selects OWL 2 DL and defines proposed canonical namespaces and an acyclic local import graph.
 Publishing under the proposed `w3id.org` namespace remains blocked until redirect registration and licensing are complete.
 
 `legal_ontology.ttl` currently imports only modules already formalized in the repository. `catalog-v001.xml` resolves
 their canonical and version IRIs to local files without network access.
+
+The SHACL graph validates approved source/provenance record completeness without closing arbitrary properties or adding
+OWL cardinality axioms. `CQ-ASSEMBLY-001` remains deferred until the normative-rule module defines rule components.

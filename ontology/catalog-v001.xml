@@ -16,4 +16,12 @@
     name="https://w3id.org/legal-ontology-rag/ontology/0.1.0/source-provenance"
     uri="modules/source_provenance.ttl"
   />
+  <uri
+    name="https://w3id.org/legal-ontology-rag/shapes"
+    uri="shapes/legal_ontology.shacl.ttl"
+  />
+  <uri
+    name="https://w3id.org/legal-ontology-rag/shapes/0.1.0"
+    uri="shapes/legal_ontology.shacl.ttl"
+  />
 </catalog>

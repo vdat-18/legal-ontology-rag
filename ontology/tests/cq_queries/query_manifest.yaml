@@ -1,0 +1,19 @@
+schema_version: "0.1.0"
+artifact_id: source-provenance-cq-query-manifest
+artifact_version: "0.1.0"
+status: draft_formalization
+fixture: ontology/tests/fixtures/source_provenance_valid.ttl
+queries:
+  - cq_id: CQ-SOURCE-001
+    file: ontology/tests/cq_queries/cq_source_001.rq
+    execution_status: executable_source_provenance_projection
+    expected_minimum_rows: 1
+    expected_columns: [assertion, provision, provisionPath, expression, resource]
+  - cq_id: CQ-EVIDENCE-001
+    file: ontology/tests/cq_queries/cq_evidence_001.rq
+    execution_status: executable_source_provenance_projection
+    expected_minimum_rows: 1
+    expected_columns: [assertion, evidenceSpan, exactText, sourceChunk, sourceFile, provision]
+deferred_queries:
+  - cq_id: CQ-ASSEMBLY-001
+    reason: Requires PenaltyRule and RuleComponent declarations from MOD-NORMATIVE.

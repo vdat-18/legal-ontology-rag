@@ -1,0 +1,16 @@
+@prefix ex: <https://w3id.org/legal-ontology-rag/test/source-provenance-boundary#> .
+@prefix lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#> .
+
+ex:expression a lorsp:LegalExpression ;
+    lorsp:representedBy ex:file ;
+    lorsp:containsProvision ex:provision .
+
+ex:file a lorsp:SourceFile .
+
+ex:provision a lorsp:LegalProvision ;
+    lorsp:structuralPath "NĐ 168 Article 14(8)(b)" .
+
+ex:orphanSpan a lorsp:EvidenceSpan .
+
+ex:unsupportedAssertion a lorsp:SupportedAssertion ;
+    lorsp:groundedIn ex:provision .

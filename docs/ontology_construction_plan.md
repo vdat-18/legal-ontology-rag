@@ -1190,6 +1190,7 @@ ontology/
 - [x] Create `ontology/decisions/modeling_decisions.yaml` with rationale, CQ traceability, and pending reviews.
 - [x] Define the OWL profile, namespaces, and module import policy in `ontology/formalization_policy.yaml`.
 - [x] Formalize the source/provenance module and add the root ontology plus local XML catalog.
+- [x] Add source/provenance SHACL shapes, positive and boundary RDF fixtures, and executable source/evidence CQ queries.
 - [ ] Formalize one cohesive pilot module at a time.
 - [ ] Add SHACL shapes and executable CQ queries after the corresponding module exists.
 

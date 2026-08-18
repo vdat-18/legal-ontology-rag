@@ -1,0 +1,32 @@
+@prefix ex: <https://w3id.org/legal-ontology-rag/test/source-provenance#> .
+@prefix lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#> .
+
+ex:issuer a lorsp:IssuingBody .
+
+ex:resource a lorsp:LegalResource ;
+    lorsp:issuedBy ex:issuer ;
+    lorsp:hasExpression ex:expression .
+
+ex:expression a lorsp:LegalExpression ;
+    lorsp:representedBy ex:file ;
+    lorsp:containsProvision ex:provision .
+
+ex:file a lorsp:SourceFile .
+
+ex:provision a lorsp:LegalProvision ;
+    lorsp:structuralPath "NĐ 168 Article 14(8)(b)" .
+
+ex:chunk a lorsp:SourceChunk ;
+    lorsp:derivedFromFile ex:file ;
+    lorsp:containsSpan ex:span .
+
+ex:span a lorsp:EvidenceSpan ;
+    lorsp:exactText "Bị trừ điểm giấy phép lái xe 06 điểm."@vi .
+
+ex:assertion a lorsp:SupportedAssertion ;
+    lorsp:groundedIn ex:provision ;
+    lorsp:supportedBy ex:span .
+
+ex:citation a lorsp:ProvisionCitation ;
+    lorsp:citationText "điểm b khoản 8 Điều 14"@vi ;
+    lorsp:refersToProvision ex:provision .
