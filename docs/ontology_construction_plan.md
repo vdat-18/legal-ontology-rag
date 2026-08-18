@@ -1253,8 +1253,8 @@ An element with no requirement, CQ, reused source, or documented modeling ration
 - [ ] Pilot pre-glossary is approved and unresolved terms are documented.
 - [ ] Source/provenance, normative-rule, legal-consequence, and temporal-change conceptual modules are approved.
 - [ ] Formal modules use stable namespaces and version metadata.
-- [ ] Every `Must` CQ has positive and boundary fixtures and passes its formal query.
-- [ ] No unintended logical inconsistency or unsatisfiable class remains.
+- [x] Every `Must` CQ has positive and boundary fixtures and passes its formal query.
+- [x] No unintended logical inconsistency or unsatisfiable class remains.
 - [ ] No unexplained critical ontology pitfall remains.
 - [ ] Every formal element has traceability and domain-review evidence.
 

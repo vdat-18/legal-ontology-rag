@@ -1,0 +1,42 @@
+schema_version: "0.1.0"
+artifact_id: road-traffic-ontology-semantic-qa-contract
+artifact_version: "0.1.0"
+status: pilot_internal_validation
+tool:
+  container_engine: docker
+  image: obolibrary/robot:v1.9.10
+  command: robot
+  network: none
+  memory: 2g
+  cpus: "2"
+  timeout_seconds: 300
+input:
+  ontology: ontology/legal_ontology.ttl
+  catalog: ontology/catalog-v001.xml
+profile_check:
+  profile: DL
+reasoning:
+  reasoner: HermiT
+  equivalent_classes_allowed: asserted-only
+  axiom_generators: SubClass EquivalentClass
+  fail_on_unsatisfiable_classes: true
+  fail_on_unexpected_equivalences: true
+quality_report:
+  format: TSV
+  fail_on: ERROR
+traceability:
+  require_resolved_references: true
+  require_local_term_traceability: true
+  require_named_shape_traceability: true
+  require_mandatory_cq_coverage: true
+output:
+  report_schema_version: "0.1.0"
+  profile_report_file: owl_profile.txt
+  reasoned_ontology_file: reasoned_ontology.ttl
+  quality_report_file: robot_quality.tsv
+semantic_boundaries:
+  - ROBOT validates the complete local import closure through the versioned XML catalog without network access.
+  - HermiT checks logical consistency and materializes class hierarchy and equivalence inferences for audit.
+  - Any inferred equivalence between distinct local named classes is a release failure unless later approved explicitly.
+  - Traceability is checked structurally against versioned registries; it does not replace legal-domain review.
+  - A passing report establishes internal semantic QA only, not legal certification or public-release approval.

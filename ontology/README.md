@@ -47,6 +47,14 @@ Automated ontology QA lives in `tests/ontology/`, backed by reusable loaders and
 modeling guardrails, SHACL fixtures, all mandatory CQ projections, and traceability. See
 `ontology/reports/v0.1_qa_report.md` for the validated scope, semantic limitations, and open public-release gates.
 
+`semantic_qa_contract.yaml` adds the semantic release-hardening boundary. It pins ROBOT `v1.9.10` and HermiT in a
+network-isolated bounded Docker invocation, validates the OWL 2 DL import closure through the local XML catalog,
+materializes reasoning output, audits unsatisfiable classes and unintended inferred equivalences, runs ROBOT quality
+rules, and repeats traceability plus mandatory-CQ coverage in one machine-readable report. Minimal declarations for
+referenced PROV-O, SKOS, OWL-Time, and Dublin Core entities live in the foundational source module so the import closure
+is OWL 2 DL without importing external ontology bundles. The current semantic checks pass except ROBOT's intentional
+`missing_ontology_license` release error.
+
 `population_contract.yaml` defines the versioned chunk-to-instance boundary. The corresponding pipeline creates
 reviewable typed records, deterministic RDF instances, exact evidence links, and writes Turtle only after SHACL
 conformance. It does not populate concrete occurrences or infer cross-document legal changes and concept equivalence.

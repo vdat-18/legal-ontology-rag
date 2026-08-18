@@ -162,6 +162,8 @@ module_policy:
     - A module must declare every direct local dependency whose terms appear in its axioms; do not rely on accidental transitive imports.
     - Canonical ontology IRIs are used in `owl:imports`; development tools resolve them to repository files through an XML catalog.
     - External standards are referenced by reviewed term IRIs without `owl:imports` in V0.1.
+    - Minimal entity declarations for referenced external terms live in MOD-SOURCE so every module import closure is
+      OWL 2 DL; these declarations do not copy or import external ontology semantics.
     - Adding an external `owl:imports` statement requires semantic, license, version, dependency-size, and CQ-impact review.
   local_resolution:
     mechanism: XML catalog
@@ -206,6 +208,7 @@ validation_policy:
     - Parse every module and the root ontology as Turtle.
     - Confirm OWL 2 DL conformance after each module increment.
     - Run a DL reasoner for consistency and unintended unsatisfiable classes.
+    - Run the pinned ROBOT and HermiT workflow defined by ontology/semantic_qa_contract.yaml without network access.
     - Verify that ontology IRIs, version IRIs, and imports match this policy.
   shacl:
     - Keep SHACL in ontology/shapes/legal_ontology.shacl.ttl and outside the OWL import graph.

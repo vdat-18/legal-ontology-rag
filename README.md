@@ -210,6 +210,21 @@ Candidate generation exhaustively pairs concepts only within the same kind and m
 proposal command calls the LLM. Accepted `SameConcept` decisions remap rules to a shared canonical identity; reviewed
 broader, narrower, and related decisions become SKOS relations without becoming OWL subclass or equivalence axioms.
 
+Run the ontology semantic release gates with pinned ROBOT and HermiT tooling:
+
+```powershell
+uv run --extra dev legal-validate-ontology-semantics `
+  ontology/semantic_qa_contract.yaml `
+  data/ontology/qa/artifacts `
+  data/ontology/qa/semantic_qa_report.json
+```
+
+This command uses the pinned `obolibrary/robot:v1.9.10` Docker image with networking disabled. It validates the complete
+OWL 2 DL import closure, runs HermiT, audits unsatisfiable classes and unintended inferred equivalences, executes the
+ROBOT quality report, and records traceability/CQ coverage. The report is written before the command fails an open gate.
+The current ontology passes profile, reasoning, inference, and traceability checks; public release remains blocked by
+the intentionally unresolved ontology license and independent legal review.
+
 ## Operations
 
 - Health: Neo4j exposes its browser health endpoint on port 7474; Milvus exposes health and Prometheus metrics on port 9091. Container logs use bounded rotation.
@@ -238,5 +253,7 @@ Regenerate the local BAML client after changing or pulling files under `baml_src
 .venv\Scripts\ruff.exe format --check .
 .venv\Scripts\ruff.exe check .
 .venv\Scripts\python.exe -m pytest -q
+uv run --extra dev legal-validate-ontology-semantics ontology/semantic_qa_contract.yaml `
+  data/ontology/qa/artifacts data/ontology/qa/semantic_qa_report.json
 docker compose config --quiet
 ```

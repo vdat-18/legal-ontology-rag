@@ -4,6 +4,8 @@
 @prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix time: <http://www.w3.org/2006/time#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 <https://w3id.org/legal-ontology-rag/ontology/source-provenance> a owl:Ontology ;
@@ -14,6 +16,40 @@
     dcterms:description "Document identity, legal expressions, structural provisions, source carriers, chunks, exact evidence, and assertion-level provenance."@en ;
     dcterms:issued "2026-08-18"^^xsd:date ;
     dcterms:source "docs/ontology_construction_plan.md" .
+
+dcterms:description a owl:AnnotationProperty .
+
+dcterms:issued a owl:AnnotationProperty .
+
+dcterms:source a owl:AnnotationProperty .
+
+dcterms:title a owl:AnnotationProperty .
+
+prov:Agent a owl:Class .
+
+prov:Entity a owl:Class .
+
+prov:wasDerivedFrom a owl:ObjectProperty .
+
+skos:Concept a owl:Class .
+
+skos:ConceptScheme a owl:Class .
+
+skos:definition a owl:AnnotationProperty .
+
+skos:hasTopConcept a owl:ObjectProperty .
+
+skos:inScheme a owl:ObjectProperty .
+
+skos:notation a owl:AnnotationProperty .
+
+skos:prefLabel a owl:AnnotationProperty .
+
+skos:topConceptOf a owl:ObjectProperty .
+
+time:Instant a owl:Class .
+
+time:Interval a owl:Class .
 
 lorsp:requirementReference a owl:AnnotationProperty ;
     rdfs:label "requirement reference"@en ;

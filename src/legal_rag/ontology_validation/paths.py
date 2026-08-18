@@ -56,3 +56,8 @@ class OntologyPaths:
     def modeling_decisions(self) -> Path:
         """Return the modeling-decision registry path."""
         return self.ontology_dir / "decisions" / "modeling_decisions.yaml"
+
+    @property
+    def semantic_qa_contract(self) -> Path:
+        """Return the ontology semantic-QA contract path."""
+        return self.ontology_dir / "semantic_qa_contract.yaml"
