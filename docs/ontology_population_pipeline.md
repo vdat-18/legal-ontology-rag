@@ -339,3 +339,116 @@ SHACL. Transitional applicability and exception redirection remain deferred.
 `tests/ontology_change/` covers manifest boundaries, exhaustive candidate bounds, typed proposals, exact-evidence
 rejection, zero-result checkpoints, review gates, validity reidentification, amendment/repeal structures, persistence,
 temporal CQ projection, SHACL, resume behavior, and the complete workflow without a real LLM call.
+
+## Legal Exception And Provision Citation Resolution
+
+Run this phase after cross-document canonical validity has been finalized. It identifies source-evidenced exceptions to
+general rule versions, preserves grouped citation wording, resolves cited provisions through canonical target rules, and
+creates version-specific redirects.
+
+```text
+canonical multi-document rules + source chunks
+  -> exhaustive bounded source/general/target windows
+  -> typed LLM exception and grouped-citation proposals
+  -> mandatory human review
+  -> merged canonical exception records
+  -> LegalException + ProvisionCitation + redirectsTo RDF
+  -> complete SHACL and CQ-EXCEPTION-001 validation
+```
+
+The versioned boundary is `ontology/exception_resolution_contract.yaml`; the typed model contract is
+`baml_src/ontology_exception_resolution.baml`. The ontology relation `lornr:hasProvisionCitation` preserves the link
+between an exception and each grouped `lorsp:ProvisionCitation`, while `lornr:citesExcludedProvision` remains the direct
+CQ projection to resolved provisions.
+
+### 1. Build candidates offline
+
+Use the same ordered corpus manifest as legal-change resolution and the flattened canonical population produced after
+reviewed validity changes:
+
+```powershell
+uv run --extra dev legal-build-exception-candidates `
+  data/ontology/change/corpus_manifest.json `
+  data/ontology/change/canonical_population.jsonl `
+  ontology/exception_resolution_contract.yaml `
+  data/ontology/exception/candidates.json
+```
+
+Candidate generation partitions source chunks, same-document possible general rules, and all corpus target rule versions
+into bounded exhaustive windows. It performs no regex, exception-keyword classification, lexical matching, target
+scoring, or rule selection. The configured total-window limit bounds the workload.
+
+### 2. Run the LLM proposal step
+
+This is the only exception command that calls an LLM. Configure the provider environment, regenerate BAML after prompt
+changes, and run:
+
+```powershell
+.venv\Scripts\baml-cli.exe generate
+
+uv run --extra dev legal-propose-legal-exceptions `
+  data/ontology/change/corpus_manifest.json `
+  data/ontology/change/canonical_population.jsonl `
+  data/ontology/exception/candidates.json `
+  ontology/exception_resolution_contract.yaml `
+  data/ontology/exception/proposals.jsonl `
+  data/ontology/exception/progress.jsonl `
+  data/ontology/exception/reviews.jsonl
+```
+
+Every proposal must identify one general canonical rule, the exception provision path, exact exception evidence, and at
+least one grouped exact citation. Each citation resolves only to version-specific target population IDs supplied in the
+window. Similar wording, locator shape, conduct labels, chronology, or a token such as `trừ` are insufficient.
+
+Completed windows, including valid zero-proposal results, are checkpointed. Proposal fragments for the same exception
+may come from different target batches and are merged only after each fragment is independently accepted.
+
+### 3. Review every proposal manually
+
+For each row, verify the general rule, complete exception scope, exact evidence, citation grouping, every cited target
+provision, and each redirected rule version. Then set `accepted` or `rejected` with reviewer attribution:
+
+```json
+{
+  "schema_version": "0.1.0",
+  "proposal_id": "...",
+  "decision": "accepted",
+  "reviewer": "reviewer-name",
+  "reviewed_on": "2026-08-18",
+  "note": "Confirmed general rule, exception scope, grouped locator, provisions, and target versions."
+}
+```
+
+Do not accept a partial fragment unless it is legally correct as part of the final merged exception. Human review owns
+exception classification, locator grouping, provision resolution, and redirect selection.
+
+### 4. Finalize offline
+
+```powershell
+uv run --extra dev legal-finalize-legal-exceptions `
+  data/ontology/change/corpus_manifest.json `
+  data/ontology/change/canonical_population.jsonl `
+  data/ontology/change/legal_change_events.jsonl `
+  data/ontology/exception/proposals.jsonl `
+  data/ontology/exception/reviews.jsonl `
+  ontology/population_contract.yaml `
+  ontology/exception_resolution_contract.yaml `
+  data/ontology/exception/legal_exceptions.jsonl `
+  data/ontology/exception/canonical_graph.ttl
+```
+
+Finalization merges accepted fragments with the same general rule, source provision, and exact exception evidence. It
+deduplicates target versions without collapsing different citation wordings. The RDF graph contains bidirectional
+`hasException`/`exceptionTo`, grouped `ProvisionCitation` objects, direct cited-provision projections, version-specific
+`redirectsTo`, source provision, and exact evidence.
+
+Outputs are written only after full SHACL conformance. Missing, pending, unattributed, unknown, or duplicate reviews
+block finalization. Rejected proposals produce no exception semantics.
+
+V0.1 resolves citations only through provisions belonging to canonical populated target rules. A citation whose target
+provision has not yet been populated must remain unresolved; the LLM must not invent a target path. Legal priority and
+occurrence-level exception applicability remain deferred.
+
+`tests/ontology_exception/` covers contract and command packaging, exhaustive bounds, typed source/target membership,
+exact exception and citation binding, zero-result resume, fragment merging, review gates, grouped citation RDF, SHACL,
+CQ projection, persistence, and the complete three-command workflow without a real LLM call.

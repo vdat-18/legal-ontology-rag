@@ -228,6 +228,16 @@ lornr:citesExcludedProvision a owl:ObjectProperty ;
     lorsp:glossaryReference "TERM-EXCEPTION-001", "TERM-PROVISION-001" ;
     lorsp:modelingDecisionReference "MD-EXCEPTION-001", "MD-REF-001", "MD-PROV-002" .
 
+lornr:hasProvisionCitation a owl:ObjectProperty ;
+    rdfs:domain lornr:LegalException ;
+    rdfs:range lorsp:ProvisionCitation ;
+    rdfs:label "has provision citation"@en ;
+    rdfs:comment "Links an evidenced legal exception to a grouped citation object that preserves source wording and resolves to one or more excluded provisions."@en ;
+    lorsp:requirementReference "PURP-002", "PURP-003", "SCOPE-001", "SCOPE-004", "GRAN-004", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-EXCEPTION-001", "CQ-SOURCE-001" ;
+    lorsp:glossaryReference "TERM-EXCEPTION-001", "TERM-CITATION-001" ;
+    lorsp:modelingDecisionReference "MD-EXCEPTION-001", "MD-REF-001" .
+
 lornr:redirectsTo a owl:ObjectProperty ;
     rdfs:domain lornr:LegalException ;
     rdfs:range lornr:PenaltyRule ;

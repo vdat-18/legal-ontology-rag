@@ -61,7 +61,7 @@ queries:
     fixture: ontology/tests/fixtures/normative_rule_valid.ttl
     execution_status: executable_exception_projection
     expected_rows: 1
-    expected_columns: [generalRule, legalException, citedExcludedProvision, redirectedRule, evidenceSpan]
+    expected_columns: [generalRule, legalException, provisionCitation, citationText, citedExcludedProvision, redirectedRule, evidenceSpan]
   - cq_id: CQ-ASSEMBLY-001
     file: ontology/tests/cq_queries/cq_assembly_001.rq
     fixture: ontology/tests/fixtures/normative_rule_valid.ttl

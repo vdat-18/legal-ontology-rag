@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
@@ -32,6 +32,27 @@ class ChangeCorpus:
     """One explicitly ordered corpus used for cross-document resolution."""
 
     documents: tuple[ChangeCorpusDocument, ...]
+
+
+def replace_change_corpus_records(
+    corpus: ChangeCorpus,
+    records: tuple[OntologyPopulationRecord, ...],
+) -> ChangeCorpus:
+    """Replace manifest records with one canonical multi-document population set."""
+    documents_by_number = {document.metadata.document_number: document for document in corpus.documents}
+    if not {record.document_number for record in records} <= set(documents_by_number):
+        msg = "Canonical population records must belong to a manifest document"
+        raise ValueError(msg)
+    records_by_document = {
+        document_number: tuple(record for record in records if record.document_number == document_number)
+        for document_number in documents_by_number
+    }
+    return ChangeCorpus(
+        documents=tuple(
+            replace(document, records=records_by_document[document.metadata.document_number])
+            for document in corpus.documents
+        )
+    )
 
 
 def read_change_corpus_manifest(path: Path) -> ChangeCorpus:

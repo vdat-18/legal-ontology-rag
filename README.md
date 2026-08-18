@@ -178,6 +178,21 @@ Only the proposal command calls the LLM. Candidate generation is exhaustive and 
 human acceptance owns change type, effective date, and rule-version linkage. See
 `docs/ontology_population_pipeline.md` for the manifest schema and review workflow.
 
+Resolve legal exceptions and grouped provision citations after canonical rule validity is available:
+
+```powershell
+uv run --extra dev legal-build-exception-candidates <corpus_manifest.json> <canonical_population.jsonl> `
+  ontology/exception_resolution_contract.yaml <candidates.json>
+uv run --extra dev legal-propose-legal-exceptions <corpus_manifest.json> <canonical_population.jsonl> `
+  <candidates.json> ontology/exception_resolution_contract.yaml <proposals.jsonl> <progress.jsonl> <reviews.jsonl>
+uv run --extra dev legal-finalize-legal-exceptions <corpus_manifest.json> <canonical_population.jsonl> `
+  <legal_change_events.jsonl> <proposals.jsonl> <reviews.jsonl> ontology/population_contract.yaml `
+  ontology/exception_resolution_contract.yaml <legal_exceptions.jsonl> <canonical_graph.ttl>
+```
+
+Only proposal generation calls the LLM. Human review owns exception scope, grouped citation resolution, and
+version-specific redirect targets; finalization writes outputs only after SHACL conformance.
+
 ## Operations
 
 - Health: Neo4j exposes its browser health endpoint on port 7474; Milvus exposes health and Prometheus metrics on port 9091. Container logs use bounded rotation.

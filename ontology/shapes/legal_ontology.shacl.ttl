@@ -561,6 +561,10 @@ lorsh:LegalExceptionShape a sh:NodeShape ;
         sh:class lorsp:LegalProvision ;
         sh:message "Every excluded citation target must be a resolved legal provision."@en
     ], [
+        sh:path lornr:hasProvisionCitation ;
+        sh:class lorsp:ProvisionCitation ;
+        sh:message "Every grouped exception citation must be a resolved provision-citation object."@en
+    ], [
         sh:path lornr:redirectsTo ;
         sh:class lornr:PenaltyRule ;
         sh:message "Every exception redirect must target a verified penalty-rule version."@en

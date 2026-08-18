@@ -63,5 +63,13 @@ and concept equivalence remain deferred.
 assembly. An explicit ordered corpus manifest drives exhaustive bounded candidate windows without lexical matching or
 semantic scoring. A typed LLM may only propose changes supported by exact later-document evidence; a human reviewer owns
 acceptance. Accepted changes update canonical validity identities and materialize amendment, replacement, or
-repeal/supersession events before full multi-document SHACL validation. Transitional applicability, exception redirects,
-and concept equivalence remain deferred.
+repeal/supersession events before full multi-document SHACL validation. Exception redirects are handled only by the
+subsequent reviewed exception-resolution boundary; transitional applicability and concept equivalence remain deferred.
+
+`exception_resolution_contract.yaml` implements the next reviewed boundary. It uses exhaustive bounded source/general/
+target windows without keyword classification or similarity scoring. Typed proposals preserve exact exception evidence
+and grouped citation wording, while humans approve the general rule, cited provisions, and version-specific redirects.
+The formal model adds `hasProvisionCitation` so one exception can retain locator grouping separately from direct
+`citesExcludedProvision` and `redirectsTo` projections. Finalization validates the complete graph against SHACL and
+`CQ-EXCEPTION-001`. Legal priority evaluation, unpopulated provision targets, occurrence applicability, and concept
+equivalence remain deferred.

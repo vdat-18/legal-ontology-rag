@@ -183,9 +183,14 @@ ex:inTrafficCondition a lornr:AtomicCondition ;
 ex:legalException a lornr:LegalException ;
     lornr:exceptionTo ex:generalRule ;
     lornr:citesExcludedProvision ex:redirectedRuleProvision ;
+    lornr:hasProvisionCitation ex:exceptionCitation ;
     lornr:redirectsTo ex:redirectedRule ;
     lorsp:groundedIn ex:exceptionProvision ;
     lorsp:supportedBy ex:exceptionSpan .
+
+ex:exceptionCitation a lorsp:ProvisionCitation ;
+    lorsp:citationText "Điều 3"@vi ;
+    lorsp:refersToProvision ex:redirectedRuleProvision .
 
 ex:redirectedRule a lornr:PenaltyRule ;
     lornr:hasConductSpecification ex:redirectedConductSpecification ;

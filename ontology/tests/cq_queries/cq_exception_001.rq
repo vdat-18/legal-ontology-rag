@@ -1,13 +1,18 @@
 PREFIX lornr: <https://w3id.org/legal-ontology-rag/ontology/normative-rule#>
 PREFIX lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#>
 
-SELECT DISTINCT ?generalRule ?legalException ?citedExcludedProvision ?redirectedRule ?evidenceSpan
+SELECT DISTINCT ?generalRule ?legalException ?provisionCitation ?citationText ?citedExcludedProvision ?redirectedRule ?evidenceSpan
 WHERE {
   ?generalRule lornr:hasException ?legalException .
   ?legalException a lornr:LegalException ;
     lornr:exceptionTo ?generalRule ;
     lorsp:supportedBy ?evidenceSpan .
   OPTIONAL { ?legalException lornr:citesExcludedProvision ?citedExcludedProvision }
+  OPTIONAL {
+    ?legalException lornr:hasProvisionCitation ?provisionCitation .
+    ?provisionCitation lorsp:citationText ?citationText ;
+      lorsp:refersToProvision ?citedExcludedProvision .
+  }
   OPTIONAL { ?legalException lornr:redirectsTo ?redirectedRule }
 }
-ORDER BY ?generalRule ?legalException ?citedExcludedProvision ?redirectedRule
+ORDER BY ?generalRule ?legalException ?provisionCitation ?citedExcludedProvision ?redirectedRule
