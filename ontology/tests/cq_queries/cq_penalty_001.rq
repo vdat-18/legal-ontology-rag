@@ -1,0 +1,14 @@
+PREFIX lorlc: <https://w3id.org/legal-ontology-rag/ontology/legal-consequence#>
+PREFIX lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#>
+
+SELECT DISTINCT ?penaltyRule ?monetaryPenalty ?minimumAmount ?maximumAmount ?currency ?sourceProvision
+WHERE {
+  ?penaltyRule lorlc:imposesConsequence ?monetaryPenalty .
+  ?monetaryPenalty a lorlc:MonetaryPenalty ;
+    lorlc:hasAmountRange ?amountRange ;
+    lorsp:groundedIn ?sourceProvision .
+  ?amountRange lorlc:minimumAmount ?minimumAmount ;
+    lorlc:maximumAmount ?maximumAmount ;
+    lorlc:currency ?currency .
+}
+ORDER BY ?penaltyRule ?monetaryPenalty

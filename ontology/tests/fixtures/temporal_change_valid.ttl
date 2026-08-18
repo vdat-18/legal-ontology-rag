@@ -1,5 +1,7 @@
 @prefix ex: <https://w3id.org/legal-ontology-rag/test/temporal-change#> .
+@prefix lorlc: <https://w3id.org/legal-ontology-rag/ontology/legal-consequence#> .
 @prefix loroc: <https://w3id.org/legal-ontology-rag/ontology/occurrence-context#> .
+@prefix lornr: <https://w3id.org/legal-ontology-rag/ontology/normative-rule#> .
 @prefix lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#> .
 @prefix lortc: <https://w3id.org/legal-ontology-rag/ontology/temporal-change#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
@@ -42,11 +44,13 @@ ex:amendingProvision a lorsp:LegalProvision ;
 
 ex:earlierChunk a lorsp:SourceChunk ;
     lorsp:derivedFromFile ex:earlierFile ;
-    lorsp:containsSpan ex:earlierSpan .
+    lorsp:containsSpan ex:earlierSpan,
+        ex:earlierConsequenceSpan .
 
 ex:laterChunk a lorsp:SourceChunk ;
     lorsp:derivedFromFile ex:laterFile ;
-    lorsp:containsSpan ex:laterSpan .
+    lorsp:containsSpan ex:laterSpan,
+        ex:laterConsequenceSpan .
 
 ex:amendingChunk a lorsp:SourceChunk ;
     lorsp:derivedFromFile ex:amendingFile ;
@@ -58,18 +62,66 @@ ex:earlierSpan a lorsp:EvidenceSpan ;
 ex:laterSpan a lorsp:EvidenceSpan ;
     lorsp:exactText "Nội dung quy tắc sau khi được sửa đổi."@vi .
 
+ex:earlierConsequenceSpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Hình thức xử phạt bổ sung của phiên bản trước."@vi .
+
+ex:laterConsequenceSpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Hình thức xử phạt bổ sung của phiên bản sau."@vi .
+
 ex:amendingSpan a lorsp:EvidenceSpan ;
     lorsp:exactText "Sửa đổi điểm b khoản 8 Điều 13."@vi .
 
-ex:earlierRuleVersion a lorsp:SupportedAssertion ;
+ex:earlierRuleVersion a lornr:PenaltyRule,
+        lorsp:SupportedAssertion ;
+    lornr:hasConductSpecification ex:earlierConductSpecification ;
+    lornr:hasApplicability ex:earlierApplicabilityProfile ;
+    lorlc:imposesConsequence ex:earlierAdditionalSanction ;
     lorsp:groundedIn ex:earlierProvision ;
     lorsp:supportedBy ex:earlierSpan ;
     lortc:validDuring ex:earlierInterval .
 
-ex:laterRuleVersion a lorsp:SupportedAssertion ;
+ex:laterRuleVersion a lornr:PenaltyRule,
+        lorsp:SupportedAssertion ;
+    lornr:hasConductSpecification ex:laterConductSpecification ;
+    lornr:hasApplicability ex:laterApplicabilityProfile ;
+    lorlc:imposesConsequence ex:laterAdditionalSanction ;
     lorsp:groundedIn ex:laterProvision ;
     lorsp:supportedBy ex:laterSpan ;
     lortc:validDuring ex:laterInterval .
+
+ex:earlierConductSpecification a lornr:ConductSpecification ;
+    lornr:usesConductConcept ex:noPlateConduct ;
+    lorsp:groundedIn ex:earlierProvision ;
+    lorsp:supportedBy ex:earlierSpan .
+
+ex:laterConductSpecification a lornr:ConductSpecification ;
+    lornr:usesConductConcept ex:noPlateConduct ;
+    lorsp:groundedIn ex:laterProvision ;
+    lorsp:supportedBy ex:laterSpan .
+
+ex:earlierApplicabilityProfile a lornr:ApplicabilityProfile ;
+    lornr:requiresRole ex:driverRole ;
+    lorsp:groundedIn ex:earlierProvision ;
+    lorsp:supportedBy ex:earlierSpan .
+
+ex:laterApplicabilityProfile a lornr:ApplicabilityProfile ;
+    lornr:requiresRole ex:driverRole ;
+    lorsp:groundedIn ex:laterProvision ;
+    lorsp:supportedBy ex:laterSpan .
+
+ex:earlierAdditionalSanction a lorlc:AdditionalSanction ;
+    lorlc:affectsTarget ex:earlierTarget ;
+    lorsp:groundedIn ex:earlierProvision ;
+    lorsp:supportedBy ex:earlierConsequenceSpan .
+
+ex:laterAdditionalSanction a lorlc:AdditionalSanction ;
+    lorlc:affectsTarget ex:laterTarget ;
+    lorsp:groundedIn ex:laterProvision ;
+    lorsp:supportedBy ex:laterConsequenceSpan .
+
+ex:earlierTarget a lorlc:ConsequenceTarget .
+
+ex:laterTarget a lorlc:ConsequenceTarget .
 
 ex:earlierInterval a lortc:ValidityInterval ;
     time:hasBeginning ex:earlierBeginning ;

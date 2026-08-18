@@ -1,0 +1,30 @@
+PREFIX lorlc: <https://w3id.org/legal-ontology-rag/ontology/legal-consequence#>
+PREFIX lornr: <https://w3id.org/legal-ontology-rag/ontology/normative-rule#>
+
+# Structural comparison only; it does not score similarity or decide legal equivalence.
+SELECT DISTINCT ?leftRule ?rightRule ?sharedConduct ?leftSubjectKind ?rightSubjectKind
+    ?leftConsequenceType ?rightConsequenceType
+WHERE {
+  ?leftRule lornr:hasConductSpecification/lornr:usesConductConcept ?sharedConduct ;
+    lornr:hasApplicability/lornr:requiresSubjectKind ?leftSubjectKind ;
+    lorlc:imposesConsequence ?leftConsequence .
+  ?rightRule lornr:hasConductSpecification/lornr:usesConductConcept ?sharedConduct ;
+    lornr:hasApplicability/lornr:requiresSubjectKind ?rightSubjectKind ;
+    lorlc:imposesConsequence ?rightConsequence .
+  ?leftConsequence a ?leftConsequenceType .
+  ?rightConsequence a ?rightConsequenceType .
+  VALUES ?leftConsequenceType {
+    lorlc:MonetaryPenalty
+    lorlc:PointDeduction
+    lorlc:AdditionalSanction
+    lorlc:RemedialMeasure
+  }
+  VALUES ?rightConsequenceType {
+    lorlc:MonetaryPenalty
+    lorlc:PointDeduction
+    lorlc:AdditionalSanction
+    lorlc:RemedialMeasure
+  }
+  FILTER (STR(?leftRule) < STR(?rightRule))
+}
+ORDER BY ?leftRule ?rightRule ?leftConsequenceType ?rightConsequenceType

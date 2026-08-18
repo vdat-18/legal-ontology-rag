@@ -1,4 +1,5 @@
 PREFIX loroc: <https://w3id.org/legal-ontology-rag/ontology/occurrence-context#>
+PREFIX lornr: <https://w3id.org/legal-ontology-rag/ontology/normative-rule#>
 PREFIX lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#>
 PREFIX lortc: <https://w3id.org/legal-ontology-rag/ontology/temporal-change#>
 PREFIX time: <http://www.w3.org/2006/time#>
@@ -7,7 +8,8 @@ PREFIX time: <http://www.w3.org/2006/time#>
 SELECT DISTINCT ?occurrence ?occurrenceTime ?ruleVersion ?validFrom ?validTo ?sourceProvision
 WHERE {
   ?occurrence loroc:occursAt/time:inXSDDateTime ?occurrenceTime .
-  ?ruleVersion lortc:validDuring ?interval ;
+  ?ruleVersion a lornr:PenaltyRule ;
+    lortc:validDuring ?interval ;
     lorsp:groundedIn ?sourceProvision .
   ?interval time:hasBeginning/time:inXSDDateTime ?validFrom .
   OPTIONAL { ?interval time:hasEnd/time:inXSDDateTime ?validTo }

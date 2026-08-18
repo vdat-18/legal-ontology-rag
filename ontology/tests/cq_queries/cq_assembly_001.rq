@@ -1,0 +1,19 @@
+PREFIX lorlc: <https://w3id.org/legal-ontology-rag/ontology/legal-consequence#>
+PREFIX lornr: <https://w3id.org/legal-ontology-rag/ontology/normative-rule#>
+PREFIX lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#>
+
+SELECT DISTINCT ?penaltyRule ?componentRelation ?ruleComponent ?provision ?evidenceSpan ?exactText
+WHERE {
+  ?penaltyRule a lornr:PenaltyRule ;
+    ?componentRelation ?ruleComponent .
+  VALUES ?componentRelation {
+    lornr:hasConductSpecification
+    lornr:hasApplicability
+    lornr:hasException
+    lorlc:imposesConsequence
+  }
+  ?ruleComponent lorsp:groundedIn ?provision ;
+    lorsp:supportedBy ?evidenceSpan .
+  ?evidenceSpan lorsp:exactText ?exactText .
+}
+ORDER BY ?penaltyRule ?componentRelation ?ruleComponent ?provision ?evidenceSpan

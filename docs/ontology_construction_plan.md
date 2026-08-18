@@ -1195,8 +1195,13 @@ ontology/
 - [x] Add occurrence-context SHACL shapes, positive and boundary RDF fixtures, and context projection queries.
 - [x] Formalize the temporal-change module and activate its root import and local catalog mappings.
 - [x] Add temporal-change SHACL shapes, positive and boundary RDF fixtures, and temporal CQ projections.
-- [ ] Formalize one cohesive pilot module at a time.
-- [ ] Add SHACL shapes and executable CQ queries after the corresponding module exists.
+- [x] Formalize the normative-rule module and activate its root import and local catalog mappings.
+- [x] Add normative-rule SHACL shapes, positive and boundary RDF fixtures, and normative CQ projections.
+- [x] Formalize the legal-consequence module and activate its root import and local catalog mappings.
+- [x] Add legal-consequence SHACL shapes, boundary fixtures, and consequence/comparison CQ projections.
+- [x] Run integrated regression across all five modules, nine SHACL cases, and all 16 mandatory CQ projections.
+- [x] Formalize one cohesive pilot module at a time.
+- [x] Add SHACL shapes and executable CQ queries after the corresponding module exists.
 
 Validation must cover CQ satisfaction, logical consistency, unintended unsatisfiable classes, ontology pitfalls,
 domain review, minimality, traceability, and regression. Separate OWL semantic axioms from SHACL data-quality

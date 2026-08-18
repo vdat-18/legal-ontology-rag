@@ -1,0 +1,22 @@
+@prefix ex: <https://w3id.org/legal-ontology-rag/test/normative-rule-boundary#> .
+@prefix loroc: <https://w3id.org/legal-ontology-rag/ontology/occurrence-context#> .
+@prefix lornr: <https://w3id.org/legal-ontology-rag/ontology/normative-rule#> .
+
+ex:incompleteRule a lornr:PenaltyRule .
+
+ex:unclassifiedConductSpecification a lornr:ConductSpecification .
+
+ex:ambiguousApplicability a lornr:ApplicabilityProfile ;
+    lornr:requiresSubjectKind loroc:naturalPerson,
+        loroc:organization .
+
+ex:singleOperandAllOf a lornr:AllOf ;
+    lornr:hasOperand ex:atomicCondition .
+
+ex:atomicCondition a lornr:AtomicCondition .
+
+ex:cyclicAllOf a lornr:AllOf ;
+    lornr:hasOperand ex:cyclicAllOf,
+        ex:atomicCondition .
+
+ex:unsupportedException a lornr:LegalException .

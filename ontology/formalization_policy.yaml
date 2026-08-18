@@ -114,7 +114,7 @@ module_policy:
     version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0
     namespace: https://w3id.org/legal-ontology-rag/ontology#
     planned_imports: [MOD-SOURCE, MOD-OCCURRENCE, MOD-TEMPORAL, MOD-NORMATIVE, MOD-CONSEQUENCE]
-    active_imports: [MOD-SOURCE, MOD-OCCURRENCE, MOD-TEMPORAL]
+    active_imports: [MOD-SOURCE, MOD-OCCURRENCE, MOD-TEMPORAL, MOD-NORMATIVE, MOD-CONSEQUENCE]
   modules:
     - id: MOD-SOURCE
       formalization_status: active
@@ -141,7 +141,7 @@ module_policy:
       imports: [MOD-SOURCE]
       external_term_namespaces: [time, skos]
     - id: MOD-NORMATIVE
-      formalization_status: planned
+      formalization_status: active
       file: ontology/modules/normative_rule.ttl
       ontology_iri: https://w3id.org/legal-ontology-rag/ontology/normative-rule
       version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/normative-rule
@@ -149,7 +149,7 @@ module_policy:
       imports: [MOD-SOURCE, MOD-OCCURRENCE, MOD-TEMPORAL]
       external_term_namespaces: [skos]
     - id: MOD-CONSEQUENCE
-      formalization_status: planned
+      formalization_status: active
       file: ontology/modules/legal_consequence.ttl
       ontology_iri: https://w3id.org/legal-ontology-rag/ontology/legal-consequence
       version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/legal-consequence

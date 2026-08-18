@@ -1,5 +1,7 @@
 @prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix loroc: <https://w3id.org/legal-ontology-rag/ontology/occurrence-context#> .
+@prefix lorlc: <https://w3id.org/legal-ontology-rag/ontology/legal-consequence#> .
+@prefix lornr: <https://w3id.org/legal-ontology-rag/ontology/normative-rule#> .
 @prefix lorsh: <https://w3id.org/legal-ontology-rag/shapes#> .
 @prefix lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#> .
 @prefix lortc: <https://w3id.org/legal-ontology-rag/ontology/temporal-change#> .
@@ -12,8 +14,8 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 <https://w3id.org/legal-ontology-rag/shapes> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/legal-ontology-rag/shapes/0.3.0> ;
-    owl:versionInfo "0.3.0" ;
+    owl:versionIRI <https://w3id.org/legal-ontology-rag/shapes/0.5.0> ;
+    owl:versionInfo "0.5.0" ;
     dcterms:title "Vietnamese Road Traffic Legal Ontology SHACL Shapes"@en ;
     dcterms:description "Closed-world data-quality constraints maintained separately from the OWL ontology."@en ;
     dcterms:issued "2026-08-18"^^xsd:date ;
@@ -392,3 +394,325 @@ lorsh:LegalChangeShape a sh:NodeShape ;
     lorsp:requirementReference "PURP-001", "PURP-003", "USE-004", "SCOPE-006", "SCOPE-007", "GRAN-007" ;
     lorsp:competencyQuestionReference "CQ-TEMPORAL-001", "CQ-TEMPORAL-002" ;
     lorsp:modelingDecisionReference "MD-TIME-001", "MD-CHANGE-001", "MD-RULE-001" .
+
+lorsh:PenaltyRuleShape a sh:NodeShape ;
+    sh:targetClass lornr:PenaltyRule ;
+    sh:property [
+        sh:path lornr:hasConductSpecification ;
+        sh:minCount 1 ;
+        sh:class lornr:ConductSpecification ;
+        sh:message "A penalty rule must have at least one evidenced conduct specification."@en
+    ], [
+        sh:path lornr:hasApplicability ;
+        sh:minCount 1 ;
+        sh:class lornr:ApplicabilityProfile ;
+        sh:message "A penalty rule must have at least one applicability profile."@en
+    ], [
+        sh:path lorlc:imposesConsequence ;
+        sh:minCount 1 ;
+        sh:class lorlc:LegalConsequence ;
+        sh:message "A penalty rule must impose at least one independently evidenced legal consequence."@en
+    ], [
+        sh:path lortc:validDuring ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class lortc:ValidityInterval ;
+        sh:message "A penalty-rule version must have exactly one verified validity interval."@en
+    ], [
+        sh:path lorsp:groundedIn ;
+        sh:minCount 1 ;
+        sh:class lorsp:LegalProvision ;
+        sh:message "A penalty rule must be grounded in at least one authoritative provision."@en
+    ] ;
+    lorsp:requirementReference "PURP-001", "PURP-002", "PURP-003", "USE-001", "USE-002", "SCOPE-002", "SCOPE-003", "SCOPE-004", "SCOPE-006", "SCOPE-007", "GRAN-001", "GRAN-007" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-SOURCE-001", "CQ-TEMPORAL-001", "CQ-ASSEMBLY-001" ;
+    lorsp:modelingDecisionReference "MD-RULE-001", "MD-RULE-002", "MD-PROV-001", "MD-TIME-001" .
+
+lorsh:RuleComponentShape a sh:NodeShape ;
+    sh:targetClass lornr:RuleComponent ;
+    sh:property [
+        sh:path lorsp:groundedIn ;
+        sh:minCount 1 ;
+        sh:class lorsp:LegalProvision ;
+        sh:message "A material rule component must be grounded in at least one authoritative provision."@en
+    ], [
+        sh:path lorsp:supportedBy ;
+        sh:minCount 1 ;
+        sh:class lorsp:EvidenceSpan ;
+        sh:message "A material rule component must have at least one exact evidence span."@en
+    ] ;
+    lorsp:requirementReference "PURP-003", "SCOPE-007", "GRAN-004", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EVIDENCE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:modelingDecisionReference "MD-RULE-002", "MD-PROV-001", "MD-PROV-002" .
+
+lorsh:ConductSpecificationShape a sh:NodeShape ;
+    sh:targetClass lornr:ConductSpecification ;
+    sh:property [
+        sh:path lornr:usesConductConcept ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class loroc:RegulatedConduct ;
+        sh:message "A conduct specification must use exactly one reviewed regulated-conduct concept."@en
+    ] ;
+    lorsp:requirementReference "PURP-002", "SCOPE-002", "GRAN-001", "GRAN-008" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-COMPARISON-001", "CQ-ASSEMBLY-001" ;
+    lorsp:modelingDecisionReference "MD-RULE-002", "MD-CONDUCT-001" .
+
+lorsh:ApplicabilityProfileShape a sh:NodeShape ;
+    sh:targetClass lornr:ApplicabilityProfile ;
+    sh:property [
+        sh:path lornr:requiresSubjectKind ;
+        sh:maxCount 1 ;
+        sh:class loroc:SubjectKind ;
+        sh:message "An applicability profile may require at most one controlled subject kind."@en
+    ], [
+        sh:path lornr:requiresRole ;
+        sh:class loroc:LegalSubjectRole ;
+        sh:message "Every required role must be a controlled legal-subject-role concept."@en
+    ], [
+        sh:path lornr:requiresVehicleCategory ;
+        sh:class loroc:VehicleCategory ;
+        sh:message "Every required vehicle category must be a controlled vehicle-category concept."@en
+    ], [
+        sh:path lornr:hasConditionExpression ;
+        sh:maxCount 1 ;
+        sh:class lornr:ConditionExpression ;
+        sh:message "An applicability profile may have at most one root condition expression."@en
+    ] ;
+    lorsp:requirementReference "PURP-002", "SCOPE-003", "SCOPE-004", "GRAN-002", "GRAN-003", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-APPLICABILITY-001", "CQ-CONDITION-001", "CQ-NEGATIVE-001" ;
+    lorsp:modelingDecisionReference "MD-SUBJECT-001", "MD-VEHICLE-001", "MD-COND-001" .
+
+lorsh:ConditionExpressionShape a sh:NodeShape ;
+    sh:targetClass lornr:ConditionExpression ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "A condition-expression tree must not contain an operand cycle."@en ;
+        sh:select """
+            PREFIX lornr: <https://w3id.org/legal-ontology-rag/ontology/normative-rule#>
+            SELECT $this
+            WHERE {
+                $this lornr:hasOperand+ $this .
+            }
+        """
+    ] ;
+    lorsp:requirementReference "PURP-002", "SCOPE-004", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-CONDITION-001", "CQ-NEGATIVE-001" ;
+    lorsp:modelingDecisionReference "MD-COND-001" .
+
+lorsh:AtomicConditionShape a sh:NodeShape ;
+    sh:targetClass lornr:AtomicCondition ;
+    sh:property [
+        sh:path lornr:hasOperand ;
+        sh:maxCount 0 ;
+        sh:message "An atomic condition must not have condition-expression operands."@en
+    ] ;
+    lorsp:requirementReference "PURP-002", "SCOPE-004", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-CONDITION-001" ;
+    lorsp:modelingDecisionReference "MD-COND-001" .
+
+lorsh:AllOfShape a sh:NodeShape ;
+    sh:targetClass lornr:AllOf ;
+    sh:property [
+        sh:path lornr:hasOperand ;
+        sh:minCount 2 ;
+        sh:class lornr:ConditionExpression ;
+        sh:message "An AllOf expression must have at least two condition-expression operands."@en
+    ] ;
+    lorsp:requirementReference "PURP-002", "SCOPE-004", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-CONDITION-001", "CQ-NEGATIVE-001" ;
+    lorsp:modelingDecisionReference "MD-COND-001" .
+
+lorsh:AnyOfShape a sh:NodeShape ;
+    sh:targetClass lornr:AnyOf ;
+    sh:property [
+        sh:path lornr:hasOperand ;
+        sh:minCount 2 ;
+        sh:class lornr:ConditionExpression ;
+        sh:message "An AnyOf expression must have at least two condition-expression operands."@en
+    ] ;
+    lorsp:requirementReference "PURP-002", "SCOPE-004", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-CONDITION-001", "CQ-NEGATIVE-001" ;
+    lorsp:modelingDecisionReference "MD-COND-001" .
+
+lorsh:NotShape a sh:NodeShape ;
+    sh:targetClass lornr:Not ;
+    sh:property [
+        sh:path lornr:hasOperand ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class lornr:ConditionExpression ;
+        sh:message "A Not expression must have exactly one condition-expression operand."@en
+    ] ;
+    lorsp:requirementReference "PURP-002", "SCOPE-004", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-CONDITION-001", "CQ-NEGATIVE-001", "CQ-EXCEPTION-001" ;
+    lorsp:modelingDecisionReference "MD-COND-001", "MD-EXCEPTION-001" .
+
+lorsh:LegalExceptionShape a sh:NodeShape ;
+    sh:targetClass lornr:LegalException ;
+    sh:property [
+        sh:path lornr:exceptionTo ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class lornr:PenaltyRule ;
+        sh:message "A legal exception must identify exactly one general penalty-rule version."@en
+    ], [
+        sh:path lornr:citesExcludedProvision ;
+        sh:class lorsp:LegalProvision ;
+        sh:message "Every excluded citation target must be a resolved legal provision."@en
+    ], [
+        sh:path lornr:redirectsTo ;
+        sh:class lornr:PenaltyRule ;
+        sh:message "Every exception redirect must target a verified penalty-rule version."@en
+    ] ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "The general penalty rule must link back to its legal exception."@en ;
+        sh:select """
+            PREFIX lornr: <https://w3id.org/legal-ontology-rag/ontology/normative-rule#>
+            SELECT $this ?generalRule
+            WHERE {
+                $this lornr:exceptionTo ?generalRule .
+                FILTER NOT EXISTS { ?generalRule lornr:hasException $this }
+            }
+        """
+    ] ;
+    lorsp:requirementReference "PURP-002", "PURP-003", "SCOPE-004", "SCOPE-006", "SCOPE-007", "GRAN-004", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-EXCEPTION-001", "CQ-EVIDENCE-001", "CQ-TEMPORAL-001", "CQ-ASSEMBLY-001" ;
+    lorsp:modelingDecisionReference "MD-EXCEPTION-001", "MD-REF-001", "MD-PROV-001" .
+
+lorsh:LegalConsequenceShape a sh:NodeShape ;
+    sh:targetClass lorlc:LegalConsequence ;
+    sh:or (
+        [ sh:class lorlc:MonetaryPenalty ]
+        [ sh:class lorlc:PointDeduction ]
+        [ sh:class lorlc:AdditionalSanction ]
+        [ sh:class lorlc:RemedialMeasure ]
+    ) ;
+    sh:property [
+        sh:path [ sh:inversePath lorlc:imposesConsequence ] ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class lornr:PenaltyRule ;
+        sh:message "An approved legal consequence must belong to exactly one penalty rule."@en
+    ], [
+        sh:path lorlc:affectsTarget ;
+        sh:class lorlc:ConsequenceTarget ;
+        sh:message "Every affected object must be represented as a consequence target."@en
+    ] ;
+    sh:message "An approved legal consequence must have one source-supported V0.1 consequence subtype."@en ;
+    lorsp:requirementReference "PURP-003", "USE-002", "SCOPE-005", "SCOPE-007", "GRAN-001", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-CONSEQUENCE-001", "CQ-SOURCE-001", "CQ-EVIDENCE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002", "MD-PROV-001" .
+
+lorsh:MonetaryPenaltyShape a sh:NodeShape ;
+    sh:targetClass lorlc:MonetaryPenalty ;
+    sh:property [
+        sh:path lorlc:hasAmountRange ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class lorlc:MonetaryAmountRange ;
+        sh:message "A monetary penalty must have exactly one normalized monetary amount range."@en
+    ] ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-PENALTY-001", "CQ-CONSEQUENCE-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002" .
+
+lorsh:MonetaryAmountRangeShape a sh:NodeShape ;
+    sh:targetClass lorlc:MonetaryAmountRange ;
+    sh:property [
+        sh:path lorlc:minimumAmount ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:decimal ;
+        sh:message "A monetary range must have exactly one normalized decimal lower bound."@en
+    ], [
+        sh:path lorlc:maximumAmount ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:decimal ;
+        sh:message "A monetary range must have exactly one normalized decimal upper bound."@en
+    ], [
+        sh:path lorlc:currency ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class lorlc:Currency ;
+        sh:message "A monetary range must identify exactly one controlled currency."@en
+    ] ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "The maximum monetary amount must not be lower than the minimum amount."@en ;
+        sh:select """
+            PREFIX lorlc: <https://w3id.org/legal-ontology-rag/ontology/legal-consequence#>
+            SELECT $this ?minimum ?maximum
+            WHERE {
+                $this lorlc:minimumAmount ?minimum ;
+                    lorlc:maximumAmount ?maximum .
+                FILTER (?maximum < ?minimum)
+            }
+        """
+    ] ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
+
+lorsh:CurrencyShape a sh:NodeShape ;
+    sh:targetClass lorlc:Currency ;
+    sh:property [
+        sh:path skos:inScheme ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:hasValue lorlc:currencyScheme ;
+        sh:message "A currency concept must belong to the controlled currency scheme."@en
+    ] ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
+
+lorsh:PointDeductionShape a sh:NodeShape ;
+    sh:targetClass lorlc:PointDeduction ;
+    sh:property [
+        sh:path lorlc:pointValue ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:minExclusive 0 ;
+        sh:message "A point deduction must have exactly one positive integer point value."@en
+    ], [
+        sh:path lorlc:affectsTarget ;
+        sh:minCount 1 ;
+        sh:class lorlc:ConsequenceTarget ;
+        sh:message "A point deduction must identify at least one affected driver-license target."@en
+    ] ;
+    lorsp:requirementReference "PURP-002", "USE-002", "SCOPE-003", "SCOPE-005", "GRAN-002", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-POINTS-001", "CQ-CONSEQUENCE-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002" .
+
+lorsh:AdditionalSanctionShape a sh:NodeShape ;
+    sh:targetClass lorlc:AdditionalSanction ;
+    sh:property [
+        sh:path lorlc:affectsTarget ;
+        sh:minCount 1 ;
+        sh:class lorlc:ConsequenceTarget ;
+        sh:message "An additional sanction must identify at least one affected target in approved pilot data."@en
+    ] ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-ADDITIONAL-001", "CQ-CONSEQUENCE-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002" .
+
+lorsh:RemedialMeasureShape a sh:NodeShape ;
+    sh:targetClass lorlc:RemedialMeasure ;
+    sh:property [
+        sh:path lorlc:affectsTarget ;
+        sh:minCount 1 ;
+        sh:class lorlc:ConsequenceTarget ;
+        sh:message "A remedial measure must identify at least one affected target in approved pilot data."@en
+    ], [
+        sh:path lorlc:mustBePerformedBy ;
+        sh:minCount 1 ;
+        sh:class loroc:LegalSubjectRole ;
+        sh:message "A remedial measure must identify at least one responsible legal-subject role."@en
+    ] ;
+    lorsp:requirementReference "PURP-002", "USE-002", "SCOPE-003", "SCOPE-004", "SCOPE-005", "GRAN-002", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-REMEDY-001", "CQ-CONSEQUENCE-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002", "MD-SUBJECT-001" .

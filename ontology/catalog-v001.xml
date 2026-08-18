@@ -33,11 +33,27 @@
     uri="modules/temporal_change.ttl"
   />
   <uri
+    name="https://w3id.org/legal-ontology-rag/ontology/normative-rule"
+    uri="modules/normative_rule.ttl"
+  />
+  <uri
+    name="https://w3id.org/legal-ontology-rag/ontology/0.1.0/normative-rule"
+    uri="modules/normative_rule.ttl"
+  />
+  <uri
+    name="https://w3id.org/legal-ontology-rag/ontology/legal-consequence"
+    uri="modules/legal_consequence.ttl"
+  />
+  <uri
+    name="https://w3id.org/legal-ontology-rag/ontology/0.1.0/legal-consequence"
+    uri="modules/legal_consequence.ttl"
+  />
+  <uri
     name="https://w3id.org/legal-ontology-rag/shapes"
     uri="shapes/legal_ontology.shacl.ttl"
   />
   <uri
-    name="https://w3id.org/legal-ontology-rag/shapes/0.3.0"
+    name="https://w3id.org/legal-ontology-rag/shapes/0.5.0"
     uri="shapes/legal_ontology.shacl.ttl"
   />
 </catalog>
