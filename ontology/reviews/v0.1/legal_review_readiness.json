@@ -1,8 +1,8 @@
 {
-  "accepted_count": 0,
-  "artifact_id": "legal-ontology-rag-independent-legal-review",
+  "accepted_count": 11,
+  "artifact_id": "legal-ontology-rag-internal-legal-review",
   "artifact_version": "0.1.0",
-  "checked_at": "2026-08-18T13:12:43.057632+00:00",
+  "checked_at": "2026-08-18T14:23:59.661154+00:00",
   "checks": [
     {
       "check_id": "decision-inventory",
@@ -36,7 +36,8 @@
     }
   ],
   "overall_status": "passed",
-  "review_status": "pending",
+  "project_owner_acceptance": "approved",
+  "review_status": "approved",
   "schema_version": "0.1.0",
   "total_count": 11
 }

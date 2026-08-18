@@ -3,8 +3,9 @@
 This directory contains versioned ontology-engineering artifacts derived from
 `docs/ontology_construction_plan.md`.
 
-Current status: draft formalization. The project owner accepted pilot legal-review items `LR-001` through `LR-007`
-on 2026-08-17. Independent legal-professional certification is not asserted.
+Current status: internally frozen V0.1. The project owner accepted `LR-001` through `LR-007`, all ten external-reuse
+decisions, and the 11 AI-assisted internal `ILR-*` recommendations. Independent legal-professional certification is not
+asserted.
 
 The current increment contains machine-readable requirements, competency questions, glossary terms, modeling decisions,
 formalization policy, the source/provenance OWL module, its SHACL shapes, executable source/evidence CQ projections,
@@ -13,7 +14,7 @@ Retrieval, GraphRAG, and Graphiti remain outside this increment. Source-grounded
 separate downstream pipeline so construction artifacts remain independent from extracted instance data.
 
 `formalization_policy.yaml` selects OWL 2 DL and defines proposed canonical namespaces and an acyclic local import graph.
-Publishing under the proposed `w3id.org` namespace remains blocked until redirect registration and licensing are complete.
+Publishing under the proposed `w3id.org` namespace remains optional and separate from the internal V0.1 freeze.
 
 `legal_ontology.ttl` currently imports only modules already formalized in the repository. `catalog-v001.xml` resolves
 their canonical and version IRIs to local files without network access.
@@ -63,18 +64,18 @@ without `owl:imports`; ELI remains candidate-only; TLKB, LKIF-Core, Akoma Ntoso,
 pattern remain references or local pattern adaptations. The local review command passes all six structural gates, and
 the project owner accepted `REUSE-DCTERMS-001` through `REUSE-ODP-001` on 2026-08-18.
 
-`legal_review_contract.yaml` and `legal_review_decisions.yaml` define the independent legal-review boundary before the
-V0.1 freeze. Eleven review items cover all open modeling-decision legal topics and every glossary term, with explicit
-questions, evidence files, affected IDs, and acceptance criteria. The generated packet and readiness report live under
-`reviews/v0.1/`. Packet structure passes, but every `ILR-*` decision and the reviewer identity remain pending; no
-independent legal approval is asserted.
+`legal_review_contract.yaml` and `legal_review_decisions.yaml` define the AI-assisted internal legal-review boundary
+before the V0.1 freeze. Eleven review items cover all open modeling-decision legal topics and every glossary term, with
+explicit questions, evidence files, affected IDs, acceptance criteria, and Codex rationale. The generated packet and
+readiness report live under `reviews/v0.1/`. All 11 internal recommendations and project-owner acceptance are recorded;
+no licensed or independent legal-professional certification is asserted.
 
 `release_contract.yaml` defines the immutable V0.1 distribution boundary. The release command checks the bound semantic
 report, ontology identity, license, the live external-reuse registry, legal-review packet completeness, explicit human
 approvals, and the declared file
 inventory. A successful run creates a metadata-normalized ZIP with an internal `MANIFEST.json` plus a separate SHA-256
-checksum. The current contract remains intentionally blocked while namespace resolution and independent legal review
-are pending; no release archive should exist before those decisions are recorded.
+checksum. The internal freeze contract is fully approved and excludes namespace-publication assets. W3ID deployment can
+be performed later without changing the frozen ontology semantics.
 
 `namespace_publication.yaml` defines the canonical namespace deployment and W3ID registration boundary. The publication
 command validates all ontology/version IRIs against Turtle and the XML catalog, creates HTML plus byte-identical Turtle

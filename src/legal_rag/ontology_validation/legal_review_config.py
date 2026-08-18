@@ -1,4 +1,4 @@
-"""Typed configuration for independent ontology legal review."""
+"""Typed configuration for AI-assisted internal ontology legal review."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ LEGAL_REVIEW_REPORT_SCHEMA_VERSION = "0.1.0"
 
 @dataclass(frozen=True, slots=True)
 class LegalReviewItem:
-    """One bounded question for the independent legal reviewer."""
+    """One bounded question for the internal legal-domain review."""
 
     review_id: str
     title: str
@@ -37,7 +37,7 @@ class LegalReviewDecision:
 
 @dataclass(frozen=True, slots=True)
 class LegalReviewer:
-    """Identity and qualifications recorded by the independent reviewer."""
+    """Identity and role recorded by the internal reviewer."""
 
     name: str | None
     qualifications: str | None
@@ -59,6 +59,9 @@ class LegalReviewSettings:
     decision_contract_id: str
     decision_contract_version: str
     decision_status: str
+    project_owner_status: str
+    project_owner_accepted_on: str | None
+    project_owner_evidence: str | None
     reviewer: LegalReviewer
     decisions: tuple[LegalReviewDecision, ...]
 
@@ -74,6 +77,7 @@ class LegalReviewSettings:
             msg = f"Unsupported legal-review decisions: {decisions['schema_version']}"
             raise ValueError(msg)
         reviewer = decisions["reviewer"]
+        project_owner = decisions["project_owner_acceptance"]
         return cls(
             artifact_id=contract["artifact_id"],
             artifact_version=contract["artifact_version"],
@@ -96,6 +100,9 @@ class LegalReviewSettings:
             decision_contract_id=decisions["contract_id"],
             decision_contract_version=decisions["contract_version"],
             decision_status=decisions["status"],
+            project_owner_status=project_owner["status"],
+            project_owner_accepted_on=project_owner["accepted_on"],
+            project_owner_evidence=project_owner["evidence"],
             reviewer=LegalReviewer(
                 name=reviewer["name"],
                 qualifications=reviewer["qualifications"],

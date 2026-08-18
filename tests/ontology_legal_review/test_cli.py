@@ -1,4 +1,4 @@
-"""End-to-end test for independent legal-review packet preparation."""
+"""End-to-end test for AI-assisted internal legal review."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def test_cli_persists_packet_and_failed_report_before_raising(
         sys,
         "argv",
         [
-            "legal-prepare-ontology-legal-review",
+            "legal-review-ontology-internally",
             str(contract_path),
             str(project_root / "ontology" / "legal_review_decisions.yaml"),
             str(packet_path),
@@ -42,5 +42,6 @@ def test_cli_persists_packet_and_failed_report_before_raising(
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["overall_status"] == "failed"
     assert report["review_status"] == "pending"
+    assert report["project_owner_acceptance"] == "approved"
     assert packet_path.is_file()
     assert any("unknown-affected-id:TERM-UNKNOWN-001" in check["issues"] for check in report["checks"])

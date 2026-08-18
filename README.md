@@ -224,20 +224,20 @@ references or patterns. The command rejects unregistered semantic IRIs, candidat
 foundational declarations, and external OWL imports. Technical checks pass, and project-owner acceptance of all ten
 reviewed decisions was recorded on 2026-08-18.
 
-Prepare the independent legal-review packet locally with:
+Run the AI-assisted internal legal review locally with:
 
 ```powershell
-uv run --extra dev legal-prepare-ontology-legal-review `
+uv run --extra dev legal-review-ontology-internally `
   ontology/legal_review_contract.yaml `
   ontology/legal_review_decisions.yaml `
   ontology/reviews/v0.1/legal_review_packet.md `
   ontology/reviews/v0.1/legal_review_readiness.json
 ```
 
-The packet contains 11 bounded legal questions covering every open modeling topic and every V0.1 glossary term. The
-command verifies registry traceability, evidence files, question coverage, and attributable human decision records. A
-pending packet is structurally valid; only an independent qualified reviewer may fill the reviewer record and change
-the `ILR-*` decisions. LLM output may help summarize evidence but cannot approve an item.
+The packet contains 11 bounded legal questions covering every open modeling topic and every V0.1 glossary term. Codex
+records evidence-backed internal recommendations, while the command verifies traceability, evidence files, coverage,
+and attributable review records. This is AI-assisted project analysis, not licensed legal advice or independent
+professional certification. Project-owner acceptance remains the final V0.1 freeze gate.
 
 Run the ontology semantic release gates with pinned ROBOT and HermiT tooling:
 
@@ -253,8 +253,8 @@ OWL 2 DL import closure, runs HermiT, audits unsatisfiable classes and unintende
 ROBOT quality report, and records traceability/CQ coverage. The report is written before the command fails an open gate.
 The report also binds its result to a SHA-256 digest of the complete semantic input closure, so a report becomes stale
 when an ontology module, SHACL graph, CQ query, fixture, registry, catalog, policy, or semantic contract changes.
-The current ontology passes every semantic gate, including ROBOT's ontology-license rule. Public release remains
-blocked by namespace resolution and independent legal review; external-reuse review is approved.
+The frozen V0.1 ontology passes every semantic gate, including ROBOT's ontology-license rule. The internal archive does
+not require namespace deployment; public W3ID publication remains an optional later workflow.
 
 After every semantic gate passes, build the immutable V0.1 distribution with:
 
@@ -267,13 +267,12 @@ uv run --extra dev legal-package-ontology-release `
 ```
 
 The release command verifies the semantic-input digest, ontology/version IRIs, license metadata and file, the complete
-external-reuse registry, independent legal-review packet structure, explicit human approvals, and the complete source
-inventory. It
-always writes a readiness report
-before failing an open gate. Once all gates pass, it emits a reproducible ZIP containing a machine-readable manifest and
+external-reuse registry, internal legal-review packet structure, explicit project-owner approvals, and the complete
+source inventory. It always writes a release report. Once all gates pass, it emits a reproducible ZIP containing a
+machine-readable manifest and
 a separate `.sha256` checksum. Runtime data, populated instances, retrieval indexes, and GraphRAG artifacts are excluded.
 
-Build the proposed canonical namespace publication before requesting W3ID registration:
+Optionally build the proposed canonical namespace publication before requesting W3ID registration:
 
 ```powershell
 uv run --extra dev legal-build-ontology-publication `

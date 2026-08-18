@@ -1,1 +1,1 @@
-"""Independent ontology legal-review tests."""
+"""AI-assisted internal ontology legal-review tests."""

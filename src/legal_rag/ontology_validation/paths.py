@@ -79,10 +79,10 @@ class OntologyPaths:
 
     @property
     def legal_review_contract(self) -> Path:
-        """Return the independent legal-review contract path."""
+        """Return the internal legal-review contract path."""
         return self.ontology_dir / "legal_review_contract.yaml"
 
     @property
     def legal_review_decisions(self) -> Path:
-        """Return the independent legal-review decisions path."""
+        """Return the internal legal-review decisions path."""
         return self.ontology_dir / "legal_review_decisions.yaml"

@@ -121,7 +121,7 @@ def write_releasable_project(path: Path, source_project_root: Path) -> tuple[Ont
             "namespace_resolution": {"status": "approved", "evidence": "review:NS-001"},
             "ontology_license": {"status": "approved", "evidence": "review:LIC-001"},
             "external_reuse_review": {"status": "approved", "evidence": "review:REUSE-001"},
-            "independent_legal_review": {"status": "approved", "evidence": "review:LEGAL-001"},
+            "project_owner_model_review": {"status": "approved", "evidence": "review:LEGAL-001"},
         },
         "required_reuse_decisions": ["REUSE-DCTERMS-001"],
         "inputs": {

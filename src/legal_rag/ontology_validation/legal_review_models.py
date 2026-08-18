@@ -1,4 +1,4 @@
-"""Typed readiness report for independent ontology legal review."""
+"""Typed readiness report for AI-assisted internal ontology legal review."""
 
 from __future__ import annotations
 
@@ -24,13 +24,14 @@ class LegalReviewCheckResult:
 
 @dataclass(frozen=True, slots=True)
 class LegalReviewReadinessReport:
-    """Structural packet readiness and independent human-review progress."""
+    """Structural packet readiness and internal review progress."""
 
     checked_at: datetime
     artifact_id: str
     artifact_version: str
     overall_status: Literal["passed", "failed"]
     review_status: Literal["pending", "approved", "rejected", "changes_requested"]
+    project_owner_acceptance: str
     accepted_count: int
     total_count: int
     checks: tuple[LegalReviewCheckResult, ...]
@@ -44,6 +45,7 @@ class LegalReviewReadinessReport:
             "artifact_version": self.artifact_version,
             "overall_status": self.overall_status,
             "review_status": self.review_status,
+            "project_owner_acceptance": self.project_owner_acceptance,
             "accepted_count": self.accepted_count,
             "total_count": self.total_count,
             "checks": [check.to_dict() for check in self.checks],

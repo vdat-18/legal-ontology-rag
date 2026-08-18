@@ -1,12 +1,12 @@
 schema_version: "0.1.0"
 artifact_id: road-traffic-ontology-formalization-policy
 artifact_version: "0.1.0"
-status: draft_formalization
+status: v0.1_frozen
 source_plan: docs/ontology_construction_plan.md
 review:
-  ontology_engineering_status: drafted
-  stakeholder_approval: pending
-  namespace_resolution: pending
+  ontology_engineering_status: approved_v0.1
+  stakeholder_approval: user-confirmed:2026-08-18:ILR-001-through-ILR-011
+  namespace_resolution: deferred_not_required_for_internal_freeze
   ontology_license: approved_cc_by_4_0
 profile:
   ontology_language: OWL 2
@@ -225,7 +225,7 @@ validation_policy:
     - Validate term-level external reuse against ontology/external_reuse_registry.yaml.
   release:
     - Apply ontology/release_contract.yaml only after semantic QA passes for the exact packaged input closure.
-    - Require explicit namespace, ontology-license, external-reuse, and independent legal-review approvals.
+    - Require explicit namespace, ontology-license, external-reuse, internal legal-review, and project-owner approvals.
     - Emit a reproducible archive, internal file manifest, external checksum, and durable readiness report.
   namespace_publication:
     - Generate the deployment site from ontology/namespace_publication.yaml without duplicating editable ontology sources.

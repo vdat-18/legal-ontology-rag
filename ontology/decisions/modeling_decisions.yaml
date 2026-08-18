@@ -1,13 +1,15 @@
 schema_version: "0.1.0"
 artifact_id: road-traffic-ontology-modeling-decisions
 artifact_version: "0.1.0"
-status: draft_formalization
+status: v0.1_frozen
 source_plan: docs/ontology_construction_plan.md
 approval:
   project_owner_status: accepted
   accepted_items: [LR-001, LR-002, LR-003, LR-004, LR-005, LR-006, LR-007]
   accepted_on: "2026-08-17"
   independent_legal_professional_review: not_asserted
+  ai_assisted_internal_legal_review: approved
+  project_owner_v0.1_acceptance: user-confirmed:2026-08-18:ILR-001-through-ILR-011
 modeling_decisions:
   - id: MD-RULE-001
     version: "0.1.0"
@@ -20,8 +22,9 @@ modeling_decisions:
     cq_ids: [CQ-RULE-001, CQ-TEMPORAL-001, CQ-TEMPORAL-002]
     pilot_evidence: >-
       Explicit NĐ 168 to NĐ 238 amendment; rejected NĐ 168/NĐ 336 identity assumption.
-    stakeholder_approval: accepted_for_draft_formalization
-    pending_review: [legal_identity]
+    stakeholder_approval: accepted_for_v0.1
+    pending_review: []
+    resolved_review: [legal_identity]
 
   - id: MD-RULE-002
     version: "0.1.0"
@@ -30,7 +33,7 @@ modeling_decisions:
     review_status: ontology_reviewed
     cq_ids: [CQ-RULE-001, CQ-ASSEMBLY-001]
     pilot_evidence: No-plate rule requires separately sourced applicability and consequences.
-    stakeholder_approval: accepted_for_draft_formalization
+    stakeholder_approval: accepted_for_v0.1
     pending_review: []
 
   - id: MD-CONDUCT-001
@@ -43,8 +46,9 @@ modeling_decisions:
     cq_ids: [CQ-RULE-001, CQ-COMPARISON-001]
     pilot_evidence: >-
       Similar right-side-passing wording must not collapse rule specifications or concrete occurrences.
-    stakeholder_approval: accepted_for_draft_formalization
-    pending_review: [conduct_normalization]
+    stakeholder_approval: accepted_for_v0.1
+    pending_review: []
+    resolved_review: [conduct_normalization]
 
   - id: MD-SUBJECT-001
     version: "0.1.0"
@@ -58,8 +62,9 @@ modeling_decisions:
     cq_ids: [CQ-APPLICABILITY-001, CQ-POINTS-001, CQ-NEGATIVE-001]
     pilot_evidence: >-
       Driver, owner, and vehicle operator are roles; individual and organization are subject kinds.
-    stakeholder_approval: accepted_for_draft_formalization
-    pending_review: [legal_taxonomy]
+    stakeholder_approval: accepted_for_v0.1
+    pending_review: []
+    resolved_review: [legal_taxonomy]
 
   - id: MD-VEHICLE-001
     version: "0.1.0"
@@ -71,8 +76,9 @@ modeling_decisions:
     cq_ids: [CQ-APPLICABILITY-001, CQ-COMPARISON-001, CQ-NEGATIVE-001]
     pilot_evidence: >-
       Motorcycle and primitive-vehicle rules share conduct wording but differ by vehicle category.
-    stakeholder_approval: accepted_for_draft_formalization
-    pending_review: [vehicle_taxonomy]
+    stakeholder_approval: accepted_for_v0.1
+    pending_review: []
+    resolved_review: [vehicle_taxonomy]
 
   - id: MD-COND-001
     version: "0.1.0"
@@ -84,8 +90,9 @@ modeling_decisions:
     cq_ids: [CQ-CONDITION-001, CQ-POINTS-001]
     pilot_evidence: >-
       Article 12 point deduction adds a vehicle-operator condition outside the monetary clause.
-    stakeholder_approval: accepted_for_draft_formalization
-    pending_review: [legal_expression_grouping]
+    stakeholder_approval: accepted_for_v0.1
+    pending_review: []
+    resolved_review: [legal_expression_grouping]
 
   - id: MD-EXCEPTION-001
     version: "0.1.0"
@@ -99,8 +106,9 @@ modeling_decisions:
     cq_ids: [CQ-EXCEPTION-001]
     pilot_evidence: >-
       Article 6(1)(a) has one evidenced exception statement with 30 cited locators and 32 targets.
-    stakeholder_approval: accepted_for_draft_formalization
-    pending_review: [legal_priority]
+    stakeholder_approval: accepted_for_v0.1
+    pending_review: []
+    resolved_review: [legal_priority]
 
   - id: MD-REF-001
     version: "0.1.0"
@@ -113,7 +121,7 @@ modeling_decisions:
     cq_ids: [CQ-EXCEPTION-001, CQ-TEMPORAL-001, CQ-TEMPORAL-002]
     pilot_evidence: >-
       Three cited Article 6 targets receive later versions while the exception wording remains unchanged.
-    stakeholder_approval: accepted_for_draft_formalization
+    stakeholder_approval: accepted_for_v0.1
     pending_review: []
 
   - id: MD-CONSEQUENCE-001
@@ -126,7 +134,7 @@ modeling_decisions:
     cq_ids: [CQ-PENALTY-001, CQ-CONSEQUENCE-001, CQ-POINTS-001, CQ-ADDITIONAL-001, CQ-REMEDY-001]
     pilot_evidence: >-
       No-plate and plate-compliance fixtures require distinct consequence kinds, values, and targets.
-    stakeholder_approval: accepted_for_draft_formalization
+    stakeholder_approval: accepted_for_v0.1
     pending_review: []
 
   - id: MD-CONSEQUENCE-002
@@ -138,8 +146,9 @@ modeling_decisions:
     review_status: ontology_reviewed
     cq_ids: [CQ-CONSEQUENCE-001, CQ-REMEDY-001]
     pilot_evidence: NĐ 118 attached form is insufficient to prove remedial-measure classification.
-    stakeholder_approval: accepted_for_draft_formalization
-    pending_review: [legal_classification]
+    stakeholder_approval: accepted_for_v0.1
+    pending_review: []
+    resolved_review: [legal_classification]
 
   - id: MD-PROV-001
     version: "0.1.0"
@@ -149,7 +158,7 @@ modeling_decisions:
     review_status: ontology_reviewed
     cq_ids: [CQ-SOURCE-001, CQ-EVIDENCE-001, CQ-ASSEMBLY-001]
     pilot_evidence: Money, points, confiscation, and remedies are supported by different clauses.
-    stakeholder_approval: accepted_for_draft_formalization
+    stakeholder_approval: accepted_for_v0.1
     pending_review: []
 
   - id: MD-PROV-002
@@ -162,7 +171,7 @@ modeling_decisions:
     cq_ids: [CQ-APPLICABILITY-001, CQ-SOURCE-001, CQ-ASSEMBLY-001]
     pilot_evidence: >-
       Article headings recover subject and vehicle scope omitted by several extracted provision paths.
-    stakeholder_approval: accepted_for_draft_formalization
+    stakeholder_approval: accepted_for_v0.1
     pending_review: []
 
   - id: MD-DOC-001
@@ -176,8 +185,9 @@ modeling_decisions:
     cq_ids: [CQ-SOURCE-001, CQ-TEMPORAL-002]
     pilot_evidence: >-
       Legal resource, expression, downloaded DOCX, and embedded attachment have different identities.
-    stakeholder_approval: accepted_for_draft_formalization
-    pending_review: [legal_expression_identity]
+    stakeholder_approval: accepted_for_v0.1
+    pending_review: []
+    resolved_review: [legal_expression_identity]
 
   - id: MD-DOC-002
     version: "0.1.0"
@@ -189,8 +199,9 @@ modeling_decisions:
     review_status: ontology_reviewed
     cq_ids: [CQ-EVIDENCE-001, CQ-REMEDY-001, CQ-SOURCE-001]
     pilot_evidence: Embedded form content must not become a normative provision through file containment alone.
-    stakeholder_approval: accepted_for_draft_formalization
-    pending_review: [legal_status]
+    stakeholder_approval: accepted_for_v0.1
+    pending_review: []
+    resolved_review: [legal_status]
 
   - id: MD-TIME-001
     version: "0.1.0"
@@ -203,8 +214,9 @@ modeling_decisions:
     cq_ids: [CQ-TEMPORAL-001, CQ-TEMPORAL-002]
     pilot_evidence: >-
       NĐ 168 and NĐ 238 effective dates are evidenced; nullable extraction fields are not legal conclusions.
-    stakeholder_approval: accepted_for_draft_formalization
-    pending_review: [legal_effective_date]
+    stakeholder_approval: accepted_for_v0.1
+    pending_review: []
+    resolved_review: [legal_effective_date]
 
   - id: MD-CHANGE-001
     version: "0.1.0"
@@ -216,5 +228,6 @@ modeling_decisions:
     cq_ids: [CQ-TEMPORAL-001, CQ-TEMPORAL-002]
     pilot_evidence: >-
       NĐ 238 provides an explicit amendment event; NĐ 336 similarity provides no such event.
-    stakeholder_approval: accepted_for_draft_formalization
-    pending_review: [legal_change_type]
+    stakeholder_approval: accepted_for_v0.1
+    pending_review: []
+    resolved_review: [legal_change_type]

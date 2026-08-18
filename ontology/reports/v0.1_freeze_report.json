@@ -1,0 +1,318 @@
+{
+  "archive_path": "dist\\ontology\\v0.1.0\\legal-ontology-rag-0.1.0.zip",
+  "archive_sha256": "e55d5f12ad6ff0505bceb83391582eed0930f9ac59a74dffd755fbef169769fe",
+  "artifact_id": "legal-ontology-rag-release",
+  "artifact_version": "0.1.0",
+  "checked_at": "2026-08-18T14:25:53.036162+00:00",
+  "files": [
+    {
+      "path": "ontology/LICENSE",
+      "sha256": "c7b421fae6257a5eab7156c77104b56ec4cd8ba8833d7a4a26b803ab6ca38472",
+      "size_bytes": 610
+    },
+    {
+      "path": "ontology/README.md",
+      "sha256": "4b83ad58c8019746a124ebd18a631b5d3eaa9edb6df25e2e12564634ff300139",
+      "size_bytes": 10790
+    },
+    {
+      "path": "ontology/catalog-v001.xml",
+      "sha256": "e341462f6098b7cd5412639f2fd76f8c0e08f79272cdc30e7860169d055b348c",
+      "size_bytes": 1824
+    },
+    {
+      "path": "ontology/decisions/modeling_decisions.yaml",
+      "sha256": "b48588b66518edc7004ced2f84a58d79f5269d1c362e847956e93490f00dc52b",
+      "size_bytes": 10850
+    },
+    {
+      "path": "ontology/external_reuse_registry.yaml",
+      "sha256": "a8a855e099b3721818b0a42e6c17a721b175cb2a1ff674c69fe67a80730ada83",
+      "size_bytes": 13398
+    },
+    {
+      "path": "ontology/formalization_policy.yaml",
+      "sha256": "4ba533f6b47da166e55d17ddadd734c8e4cc4d4e35b8a742129983dc9bd60c62",
+      "size_bytes": 12049
+    },
+    {
+      "path": "ontology/glossary/terms.yaml",
+      "sha256": "cf5ce9e97b362b4ef6ddeef1c20c01e7e55fc89325cc36017e1e78686d5073c4",
+      "size_bytes": 26536
+    },
+    {
+      "path": "ontology/legal_ontology.ttl",
+      "sha256": "5f61a8505a5a93ea88831a470b75059db7d0a454316f843ef98f8a306a503ae2",
+      "size_bytes": 1103
+    },
+    {
+      "path": "ontology/legal_review_contract.yaml",
+      "sha256": "1d87c64a132ce9037f559beaad17e55bb791a2773743e3689886f872d7fb3cca",
+      "size_bytes": 8350
+    },
+    {
+      "path": "ontology/legal_review_decisions.yaml",
+      "sha256": "f561606d927299ea370c59282acea522abb32ea69f582ad6383730a48bae3132",
+      "size_bytes": 4445
+    },
+    {
+      "path": "ontology/modules/legal_consequence.ttl",
+      "sha256": "40091f2cbe05b6a2fc24dce7cec3a937f54a9e21b9cb7ba8d4d0ee927beda3db",
+      "size_bytes": 11276
+    },
+    {
+      "path": "ontology/modules/normative_rule.ttl",
+      "sha256": "db08e7b87161347065147646df0d587dedc36cd6c5569014211e0923474bde23",
+      "size_bytes": 15547
+    },
+    {
+      "path": "ontology/modules/occurrence_context.ttl",
+      "sha256": "d5ae8b726301bcfde7b54c78ec29aa00d829daeced65d89e82a128b10bd609fd",
+      "size_bytes": 12087
+    },
+    {
+      "path": "ontology/modules/source_provenance.ttl",
+      "sha256": "e409325e81ad2a98b60cab8858b2e6b9a8970d8a8da422d6ca188a0a19586b6e",
+      "size_bytes": 13504
+    },
+    {
+      "path": "ontology/modules/temporal_change.ttl",
+      "sha256": "e70adacc2e1ad16c95edd4e9bca82f371225965d665c36f02878f57c8a66115d",
+      "size_bytes": 7847
+    },
+    {
+      "path": "ontology/release_contract.yaml",
+      "sha256": "4f000874a0d23ae7a24e3c45fff4dade6ed11367473df96b0805c0f863fc29d2",
+      "size_bytes": 4945
+    },
+    {
+      "path": "ontology/reports/external_reuse_review.json",
+      "sha256": "57cb4fd13603156936435578fe34eba7fb35a7c920c1391be4ddf19fa08158ae",
+      "size_bytes": 2006
+    },
+    {
+      "path": "ontology/reports/v0.1_qa_report.md",
+      "sha256": "11e8b78aad11201fc80a49c7983737557b88efbe809329662502391ba3b456d6",
+      "size_bytes": 10974
+    },
+    {
+      "path": "ontology/requirements/competency_questions.yaml",
+      "sha256": "a2d48defc1baab49b4dcce1e65cf3eb72333f7c28646b48b313b5b584453efd3",
+      "size_bytes": 10081
+    },
+    {
+      "path": "ontology/requirements/ontology_requirements.yaml",
+      "sha256": "9af70c855617fe0cfffc5ebdb48e4e70f4a1483ba9d5b51d26868d432f040dae",
+      "size_bytes": 6888
+    },
+    {
+      "path": "ontology/reviews/v0.1/legal_review_packet.md",
+      "sha256": "d2b1808e43ad8641dbce124950d8183733962bb309d5097645ee35068f1fedfe",
+      "size_bytes": 9289
+    },
+    {
+      "path": "ontology/reviews/v0.1/legal_review_readiness.json",
+      "sha256": "5b75f9178ffebe5f1554f8d3c250214dff046c1a058e911b09a8c0223104e59c",
+      "size_bytes": 934
+    },
+    {
+      "path": "ontology/semantic_qa_contract.yaml",
+      "sha256": "962c054245950c5f4c71503ea9b413f16ce1561ff346dfd911d730a1ed30b8ba",
+      "size_bytes": 1570
+    },
+    {
+      "path": "ontology/shapes/legal_ontology.shacl.ttl",
+      "sha256": "c6b4d9c8fe1bb5f029ea1408b7bf90e45c21a09caad80fa0f59a1183be334914",
+      "size_bytes": 31729
+    },
+    {
+      "path": "ontology/tests/cq_queries/cq_additional_001.rq",
+      "sha256": "2b1ec9f34009e057213fea1449e3fb3f801010d8a6abfee0e8d466c99709e708",
+      "size_bytes": 506
+    },
+    {
+      "path": "ontology/tests/cq_queries/cq_applicability_001.rq",
+      "sha256": "1d8211efec6c24076066bb5ec1a315a498f2a1cc4d06f4566252bcf75583e46c",
+      "size_bytes": 685
+    },
+    {
+      "path": "ontology/tests/cq_queries/cq_assembly_001.rq",
+      "sha256": "5433eaa4c5fbb094ff2fe1ef35cf2ccaf9ef11bb65ea7a3170a7e60f66540fb1",
+      "size_bytes": 782
+    },
+    {
+      "path": "ontology/tests/cq_queries/cq_comparison_001.rq",
+      "sha256": "c88d1289cb468517e1ccacd411e14f63122253ad4a178668dccd319705d53e94",
+      "size_bytes": 1293
+    },
+    {
+      "path": "ontology/tests/cq_queries/cq_condition_001.rq",
+      "sha256": "b83325b50095c9e26143e02bc282bc72347dee01514051da9715ea12c30b8cb8",
+      "size_bytes": 746
+    },
+    {
+      "path": "ontology/tests/cq_queries/cq_consequence_001.rq",
+      "sha256": "eea6157aaf92178ce3dfdfc3647313151a15f2506252749abf0c0c582a51ea8a",
+      "size_bytes": 764
+    },
+    {
+      "path": "ontology/tests/cq_queries/cq_evidence_001.rq",
+      "sha256": "3d719a6f57dbfb1e879f61154a9390b48d69ba94649afafa8c00337fc6a9efbe",
+      "size_bytes": 618
+    },
+    {
+      "path": "ontology/tests/cq_queries/cq_exception_001.rq",
+      "sha256": "c1bfb4b2479cae3b5e569312ff82235745377d75d71205e68a66d6439358bbf1",
+      "size_bytes": 915
+    },
+    {
+      "path": "ontology/tests/cq_queries/cq_negative_001_occurrence_context.rq",
+      "sha256": "47e62f9488b50cc09b00e6f354c87dad25b03d5c6bc92bcec061726ccf1bb9e5",
+      "size_bytes": 1204
+    },
+    {
+      "path": "ontology/tests/cq_queries/cq_penalty_001.rq",
+      "sha256": "660436f53610bce1db2e8f55b50d158773cf8427d80b6b3c0d707e6e64e5c3f8",
+      "size_bytes": 621
+    },
+    {
+      "path": "ontology/tests/cq_queries/cq_points_001.rq",
+      "sha256": "226c84992290e244f7d8aa7c64c3f3f8ade54e46ccbc47a4b763026ffc135621",
+      "size_bytes": 672
+    },
+    {
+      "path": "ontology/tests/cq_queries/cq_remedy_001.rq",
+      "sha256": "7af200156f0587750d71fc2f1febcb01cd8d2d8c0042d5f9d4de8b68ca027de4",
+      "size_bytes": 754
+    },
+    {
+      "path": "ontology/tests/cq_queries/cq_rule_001_normative_candidate.rq",
+      "sha256": "d8bf7227c0884b09d66b309bfe458f0977db22bcd3a3e9af2ddb31c754696d58",
+      "size_bytes": 1479
+    },
+    {
+      "path": "ontology/tests/cq_queries/cq_source_001.rq",
+      "sha256": "524e4d5b61b3a94f11d4e840fe4293a8c1a29198a75d371f3fccf02695764260",
+      "size_bytes": 609
+    },
+    {
+      "path": "ontology/tests/cq_queries/cq_temporal_001_validity_projection.rq",
+      "sha256": "c9291814d91fa654f9938dcb56c99ee30c4f65ad5344325017f01f4e81350340",
+      "size_bytes": 922
+    },
+    {
+      "path": "ontology/tests/cq_queries/cq_temporal_002_change_projection.rq",
+      "sha256": "a63370e6c2262e6bdd959843176bc31ab01a3ecc0981afee147a79cc06b00f01",
+      "size_bytes": 746
+    },
+    {
+      "path": "ontology/tests/cq_queries/query_manifest.yaml",
+      "sha256": "ef325169b02c7c2363ee9c7f7df45fca9b1cf6470db9a2410b5f9b335d66da4e",
+      "size_bytes": 6874
+    },
+    {
+      "path": "ontology/tests/fixtures/legal_consequence_boundary.ttl",
+      "sha256": "65a990624408d1ee76f43cf08b944733ca633a02f6ed8c3d4229ef7ce6a9a82e",
+      "size_bytes": 961
+    },
+    {
+      "path": "ontology/tests/fixtures/normative_rule_boundary.ttl",
+      "sha256": "8b7f61aafeb8ba4fc1876b40b92792ff474820c92f388ac5b63d2b9dee182182",
+      "size_bytes": 768
+    },
+    {
+      "path": "ontology/tests/fixtures/normative_rule_valid.ttl",
+      "sha256": "a408ba66558ca041aaa308aa373f613a0531c1fa900606102087277692e8f1d6",
+      "size_bytes": 9969
+    },
+    {
+      "path": "ontology/tests/fixtures/occurrence_context_boundary.ttl",
+      "sha256": "64113b606d1021aff8b732c2dbe3b73b39a480086c5fcb0be79b32081b594623",
+      "size_bytes": 948
+    },
+    {
+      "path": "ontology/tests/fixtures/occurrence_context_valid.ttl",
+      "sha256": "6cbb769e1f8e712572a26e312cf59b4614bee5c33d0dfb2362e61febd80a252d",
+      "size_bytes": 1373
+    },
+    {
+      "path": "ontology/tests/fixtures/pilot_cq_fixtures.yaml",
+      "sha256": "11c6d79ee6c67510f3ccc34122c247ad39eab4d9c9593ad3bbadcd3dc2b21c01",
+      "size_bytes": 13286
+    },
+    {
+      "path": "ontology/tests/fixtures/source_provenance_boundary.ttl",
+      "sha256": "0f15e03c7117f00f023a8b5e6aa32019efc7f9ded8c1e6a49780417a16dc1eed",
+      "size_bytes": 537
+    },
+    {
+      "path": "ontology/tests/fixtures/source_provenance_valid.ttl",
+      "sha256": "fa407bf8f200ef4faae8b1d8834675d4b677b7b27bb5f4f8e06ba5a7cd7aacaa",
+      "size_bytes": 1009
+    },
+    {
+      "path": "ontology/tests/fixtures/temporal_change_boundary.ttl",
+      "sha256": "07e82a402b22c9d38349818017f23aca8082d4f0fecf6f1656844c2d89344325",
+      "size_bytes": 1626
+    },
+    {
+      "path": "ontology/tests/fixtures/temporal_change_valid.ttl",
+      "sha256": "25b37f36baee1cdb8ecc956d0bf878bdef4e737e2705108a36ba9957d27cffd4",
+      "size_bytes": 6438
+    },
+    {
+      "path": "qa/semantic_qa_report.json",
+      "sha256": "3e414dcec80eceedb777a6e34ee8002af179f8ba1dc5427937220b2cbfe1c288",
+      "size_bytes": 1556
+    }
+  ],
+  "gates": [
+    {
+      "gate_id": "human-approvals",
+      "status": "passed",
+      "summary": "No issues found."
+    },
+    {
+      "gate_id": "semantic-qa",
+      "status": "passed",
+      "summary": "No issues found."
+    },
+    {
+      "gate_id": "ontology-identity",
+      "status": "passed",
+      "summary": "No issues found."
+    },
+    {
+      "gate_id": "ontology-license",
+      "status": "passed",
+      "summary": "No issues found."
+    },
+    {
+      "gate_id": "reuse-decision-inventory",
+      "status": "passed",
+      "summary": "No issues found."
+    },
+    {
+      "gate_id": "external-reuse-registry",
+      "status": "passed",
+      "summary": "No issues found."
+    },
+    {
+      "gate_id": "internal-legal-review-packet",
+      "status": "passed",
+      "summary": "No issues found."
+    },
+    {
+      "gate_id": "release-file-inventory",
+      "status": "passed",
+      "summary": "No issues found."
+    },
+    {
+      "gate_id": "immutable-output-paths",
+      "status": "passed",
+      "summary": "No issues found."
+    }
+  ],
+  "overall_status": "released",
+  "schema_version": "0.1.0"
+}

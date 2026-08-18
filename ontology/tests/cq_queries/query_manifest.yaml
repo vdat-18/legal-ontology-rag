@@ -1,7 +1,7 @@
 schema_version: "0.5.0"
 artifact_id: road-traffic-ontology-cq-query-manifest
 artifact_version: "0.5.0"
-status: draft_formalization
+status: v0.1_frozen
 queries:
   - cq_id: CQ-SOURCE-001
     file: ontology/tests/cq_queries/cq_source_001.rq

@@ -149,14 +149,14 @@ def _external_reuse_gate(project_root: Path, settings: OntologyReleaseSettings) 
 
 
 def _legal_review_packet_gate(project_root: Path, settings: OntologyReleaseSettings) -> ReleaseGateResult:
-    """Require complete independent-review questions, coverage, evidence, and decision records."""
+    """Require complete internal-review questions, coverage, evidence, and decision records."""
     review_settings = LegalReviewSettings.from_paths(
         settings.legal_review_contract_path,
         settings.legal_review_decisions_path,
         project_root,
     )
     issues = collect_legal_review_packet_issues(project_root, review_settings)
-    return _gate("independent-legal-review-packet", not issues, f"Legal review packet issues: {', '.join(issues)}")
+    return _gate("internal-legal-review-packet", not issues, f"Legal review packet issues: {', '.join(issues)}")
 
 
 def _inventory_gate(

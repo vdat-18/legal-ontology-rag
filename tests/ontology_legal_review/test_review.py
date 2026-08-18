@@ -1,4 +1,4 @@
-"""Tests for independent legal-review packet validation and rendering."""
+"""Tests for internal legal-review packet validation and rendering."""
 
 from __future__ import annotations
 
@@ -18,16 +18,17 @@ def _issues(project_root: Path, settings: LegalReviewSettings) -> set[str]:
     return {issue for check in report.checks for issue in check.issues}
 
 
-def test_current_packet_is_complete_but_independent_review_remains_pending(
+def test_current_internal_review_and_project_owner_acceptance_are_complete(
     project_root: Path,
     legal_review_settings: LegalReviewSettings,
 ) -> None:
-    """All questions and evidence are ready without claiming a professional legal decision."""
+    """Codex review covers every item and the project owner has accepted the V0.1 recommendations."""
     report = run_legal_review_readiness(project_root, legal_review_settings, CHECKED_AT)
 
     assert report.overall_status == "passed"
-    assert report.review_status == "pending"
-    assert report.accepted_count == 0
+    assert report.review_status == "approved"
+    assert report.project_owner_acceptance == "approved"
+    assert report.accepted_count == 11
     assert report.total_count == 11
     assert all(check.status == "passed" for check in report.checks)
 
@@ -70,7 +71,7 @@ def test_uncovered_modeling_topic_is_rejected(
     project_root: Path,
     legal_review_settings: LegalReviewSettings,
 ) -> None:
-    """Every legal topic left open by ontology engineering must reach the independent reviewer."""
+    """Every legal topic left open by ontology engineering must reach internal review."""
     first = replace(legal_review_settings.items[0], pending_topics=("legal_identity",))
     settings = replace(legal_review_settings, items=(first, *legal_review_settings.items[1:]))
 
@@ -81,13 +82,18 @@ def test_non_pending_decision_requires_reviewer_identity_and_evidence(
     project_root: Path,
     legal_review_settings: LegalReviewSettings,
 ) -> None:
-    """An accept label alone cannot become attributable independent legal approval."""
-    accepted = replace(legal_review_settings.decisions[0], decision="accept")
-    settings = replace(legal_review_settings, decisions=(accepted, *legal_review_settings.decisions[1:]))
+    """An accept label alone cannot become an attributable internal review decision."""
+    incomplete = replace(legal_review_settings.decisions[0], rationale=None, evidence_refs=())
+    reviewer = replace(legal_review_settings.reviewer, name=None)
+    settings = replace(
+        legal_review_settings,
+        reviewer=reviewer,
+        decisions=(incomplete, *legal_review_settings.decisions[1:]),
+    )
     issues = _issues(project_root, settings)
 
     assert "incomplete-review-decision:ILR-001" in issues
-    assert "incomplete-independent-reviewer-record" in issues
+    assert "incomplete-internal-reviewer-record" in issues
 
 
 def test_renderer_exposes_questions_evidence_and_pending_decisions(
@@ -99,5 +105,5 @@ def test_renderer_exposes_questions_evidence_and_pending_decisions(
 
     assert "### ILR-001 - Rule and legal-expression identity" in packet
     assert "### ILR-011 - V0.1 scope, competency questions, and legal limitations" in packet
-    assert "Current decision: `pending`" in packet
+    assert "Current decision: `accept`" in packet
     assert "ontology/modules/normative_rule.ttl" in packet

@@ -12,7 +12,7 @@
         <https://w3id.org/legal-ontology-rag/ontology/temporal-change> ;
     dcterms:title "Vietnamese Road Traffic Legal Ontology"@en,
         "Bản thể pháp luật giao thông đường bộ Việt Nam"@vi ;
-    dcterms:description "Draft root ontology importing all five V0.1 domain modules formalized in the repository."@en ;
+    dcterms:description "Frozen V0.1 root ontology importing all five reviewed domain modules."@en ;
     dcterms:issued "2026-08-18"^^xsd:date ;
     dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
     dcterms:source "docs/ontology_construction_plan.md" .

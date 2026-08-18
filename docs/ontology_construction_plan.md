@@ -1213,14 +1213,15 @@ ontology/
 - [x] Select CC BY 4.0 for the ontology and add both the license file and root `dcterms:license` metadata.
 - [x] Complete technical external-reuse review with exact term inventory, evidence, boundaries, and automated gates.
 - [x] Record project-owner acceptance of the external-reuse review.
-- [x] Create a versioned independent legal-review contract covering every open legal topic and glossary term.
-- [x] Generate a reviewer-ready packet, pending decision registry, readiness report, CLI, and release technical gate.
-- [ ] Obtain independent legal approval.
+- [x] Create a versioned AI-assisted internal legal-review contract covering every open legal topic and glossary term.
+- [x] Generate the review packet, decision registry, readiness report, CLI, and release technical gate.
+- [x] Complete Codex review and record evidence-backed `accept` recommendations for all 11 `ILR-*` items.
+- [x] Obtain project-owner acceptance of the internal review before freezing V0.1.
 - [ ] Register and verify the canonical namespace when public publication becomes necessary.
 - [x] Add a versioned namespace-publication contract, static site builder, manifest, and copy-ready W3ID PR bundle.
 - [x] Add a manual least-privilege Pages workflow and bounded live deployment/W3ID verifier.
 - [ ] Deploy and verify every publication target, submit the W3ID pull request, and record merge evidence.
-- [ ] Run semantic QA on the approved release inputs and package the immutable V0.1 distribution.
+- [x] Run semantic QA on the approved release inputs and package the immutable internal V0.1 distribution.
 - [x] Formalize one cohesive pilot module at a time.
 - [x] Add SHACL shapes and executable CQ queries after the corresponding module exists.
 

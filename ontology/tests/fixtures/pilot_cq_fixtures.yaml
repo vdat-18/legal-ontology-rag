@@ -1,12 +1,14 @@
 schema_version: "0.1.0"
 artifact_id: road-traffic-ontology-pilot-cq-fixtures
 artifact_version: "0.1.0"
-status: draft_formalization
+status: v0.1_frozen
 source_plan: docs/ontology_construction_plan.md
 approval:
   project_owner_status: accepted
   accepted_on: "2026-08-17"
   independent_legal_professional_review: not_asserted
+  ai_assisted_internal_legal_review: approved
+  project_owner_v0.1_acceptance: user-confirmed:2026-08-18:ILR-001-through-ILR-011
 fixtures:
   - id: FIX-NO-PLATE-RULE
     fixture_kind: positive

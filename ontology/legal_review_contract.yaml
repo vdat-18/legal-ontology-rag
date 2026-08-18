@@ -1,20 +1,21 @@
 schema_version: "0.1.0"
-artifact_id: legal-ontology-rag-independent-legal-review
+artifact_id: legal-ontology-rag-internal-legal-review
 artifact_version: "0.1.0"
-status: ready_for_independent_legal_review
-title: Independent Legal Review Packet for Road Traffic Legal Ontology V0.1
+status: project_owner_approved_for_v0.1_freeze
+title: AI-Assisted Internal Legal Review for Road Traffic Legal Ontology V0.1
 reviewer_requirements:
-  role: Independent Vietnamese legal-domain reviewer
+  role: Codex internal Vietnamese legal-domain and ontology reviewer
   qualifications:
-    - Demonstrated expertise in Vietnamese road-traffic administrative sanction law.
-    - Independent from the ontology modeling decisions under review.
-    - Able to verify conclusions against authoritative legal instruments and exact provisions.
+    - Review Vietnamese road-traffic administrative sanction semantics against repository evidence.
+    - Keep legal interpretation, ontology structure, and automated inference boundaries explicit.
+    - Do not represent this AI-assisted review as licensed legal-professional certification.
 review_policy:
   allowed_decisions: [accept, reject, change_requested, pending]
-  unanimous_acceptance_required: true
+  all_item_acceptance_required_for_recommendation: true
   llm_may_prepare_summary: true
-  llm_may_approve: false
-  project_owner_may_substitute_for_independent_reviewer: false
+  codex_may_record_internal_review_decisions: true
+  project_owner_final_acceptance_required: true
+  external_reviewer_required: false
 source_registries:
   requirements: ontology/requirements/ontology_requirements.yaml
   competency_questions: ontology/requirements/competency_questions.yaml

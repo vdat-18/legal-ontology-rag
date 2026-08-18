@@ -21,12 +21,12 @@ from .conftest import write_releasable_project
 CHECKED_AT = datetime(2026, 8, 18, 12, 0, tzinfo=UTC)
 
 
-def test_production_release_is_blocked_by_explicit_publication_gates(
+def test_production_contract_builds_internal_freeze_without_public_namespace(
     tmp_path: Path,
     project_root: Path,
     release_settings: OntologyReleaseSettings,
 ) -> None:
-    """No archive is emitted while non-license publication approvals remain unresolved."""
+    """Public namespace deployment is not required to create the approved internal V0.1 archive."""
     semantic_settings = SemanticQaSettings.from_path(release_settings.semantic_contract_path, project_root)
     report_path = tmp_path / "semantic-report.json"
     report_path.write_text(
@@ -44,15 +44,15 @@ def test_production_release_is_blocked_by_explicit_publication_gates(
     report = build_ontology_release(project_root, release_settings, report_path, tmp_path / "release", CHECKED_AT)
     gates = {item.gate_id: item for item in report.gates}
 
-    assert report.overall_status == "blocked"
-    assert gates["human-approvals"].status == "failed"
+    assert report.overall_status == "released"
+    assert gates["human-approvals"].status == "passed"
     assert gates["ontology-license"].status == "passed"
     assert gates["external-reuse-registry"].status == "passed"
-    assert gates["independent-legal-review-packet"].status == "passed"
+    assert gates["internal-legal-review-packet"].status == "passed"
     assert gates["release-file-inventory"].status == "passed"
     assert gates["semantic-qa"].status == "passed"
-    assert report.archive_path is None
-    assert not (tmp_path / "release").exists()
+    assert Path(report.archive_path or "").is_file()
+    assert (tmp_path / "release" / release_settings.checksum_file).is_file()
 
 
 def test_release_archive_is_reproducible_and_self_describing(
@@ -171,7 +171,7 @@ def test_incomplete_legal_review_packet_blocks_release(
     tmp_path: Path,
     project_root: Path,
 ) -> None:
-    """Human approval metadata cannot override an incomplete independent legal-review packet."""
+    """Human approval metadata cannot override an incomplete internal legal-review packet."""
     release_project = tmp_path / "project"
     settings, semantic_report_path = write_releasable_project(release_project, project_root)
     decisions_path = release_project / "ontology" / "legal_review_decisions.yaml"
@@ -194,7 +194,7 @@ def test_incomplete_legal_review_packet_blocks_release(
     gates = {item.gate_id: item for item in report.gates}
     assert report.overall_status == "blocked"
     assert gates["human-approvals"].status == "passed"
-    assert gates["independent-legal-review-packet"].status == "failed"
+    assert gates["internal-legal-review-packet"].status == "failed"
     assert report.archive_path is None
 
 

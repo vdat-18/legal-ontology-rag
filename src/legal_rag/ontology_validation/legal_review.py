@@ -1,4 +1,4 @@
-"""Validate and render the independent legal-review packet."""
+"""Validate and render the AI-assisted internal legal-review packet."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ def run_legal_review_readiness(
     settings: LegalReviewSettings,
     checked_at: datetime,
 ) -> LegalReviewReadinessReport:
-    """Validate packet completeness without granting independent legal approval."""
+    """Validate packet completeness without granting project-owner acceptance."""
     checks = (
         _decision_inventory_check(settings),
         _traceability_check(settings),
@@ -37,6 +37,7 @@ def run_legal_review_readiness(
         artifact_version=settings.artifact_version,
         overall_status=overall_status,
         review_status=review_status,
+        project_owner_acceptance=settings.project_owner_status,
         accepted_count=decisions.count("accept"),
         total_count=len(settings.items),
         checks=checks,
@@ -50,15 +51,15 @@ def collect_legal_review_packet_issues(project_root: Path, settings: LegalReview
 
 
 def render_legal_review_packet(project_root: Path, settings: LegalReviewSettings) -> str:
-    """Render a deterministic Markdown packet for the independent reviewer."""
+    """Render a deterministic Markdown packet for the internal reviewer."""
     decisions = {decision.review_id: decision for decision in settings.decisions}
     lines = [
         f"# {settings.title}",
         "",
         f"Artifact: `{settings.artifact_id}` version `{settings.artifact_version}`",
         "",
-        "This packet requests independent legal review. It does not authorize an LLM or the project owner to substitute",
-        "for the named legal-domain reviewer.",
+        "This packet records AI-assisted internal legal-domain review for a solo project. It is not licensed legal",
+        "advice or independent professional certification; project-owner acceptance remains explicit.",
         "",
         "## Reviewer Record",
         "",
@@ -66,6 +67,8 @@ def render_legal_review_packet(project_root: Path, settings: LegalReviewSettings
         f"- Qualifications: {settings.reviewer.qualifications or '[pending]'}",
         f"- Organization: {settings.reviewer.organization or '[pending]'}",
         f"- Reviewed on: {settings.reviewer.reviewed_on or '[pending]'}",
+        f"- Project-owner acceptance: {settings.project_owner_status}",
+        f"- Project-owner accepted on: {settings.project_owner_accepted_on or '[pending]'}",
         "",
         "## Review Items",
     ]
@@ -120,7 +123,11 @@ def _traceability_check(settings: LegalReviewSettings) -> LegalReviewCheckResult
 def _pending_topic_coverage_check(settings: LegalReviewSettings) -> LegalReviewCheckResult:
     """Require every modeling-decision legal topic to appear in the review contract."""
     decisions_document = load_yaml(settings.source_registry_paths[-1])
-    required = {topic for decision in decisions_document["modeling_decisions"] for topic in decision["pending_review"]}
+    required = {
+        topic
+        for decision in decisions_document["modeling_decisions"]
+        for topic in (*decision["pending_review"], *decision.get("resolved_review", []))
+    }
     covered = {topic for item in settings.items for topic in item.pending_topics}
     issues = [f"uncovered-pending-topic:{value}" for value in sorted(required - covered)]
     issues.extend(f"unknown-pending-topic:{value}" for value in sorted(covered - required))
@@ -128,7 +135,7 @@ def _pending_topic_coverage_check(settings: LegalReviewSettings) -> LegalReviewC
 
 
 def _glossary_coverage_check(project_root: Path, settings: LegalReviewSettings) -> LegalReviewCheckResult:
-    """Require the independent review packet to cover every V0.1 glossary term."""
+    """Require the internal review packet to cover every V0.1 glossary term."""
     glossary = load_yaml(project_root / "ontology" / "glossary" / "terms.yaml")
     required = {term["id"] for term in glossary["terms"]}
     covered = {value for item in settings.items for value in item.affected_ids if value.startswith("TERM-")}
@@ -165,15 +172,21 @@ def _human_record_check(settings: LegalReviewSettings) -> LegalReviewCheckResult
             settings.reviewer.reviewed_on,
         )
     ):
-        issues.append("incomplete-independent-reviewer-record")
+        issues.append("incomplete-internal-reviewer-record")
     expected_status = {
-        "pending": "pending_independent_legal_review",
+        "pending": "pending_internal_legal_review",
         "approved": "approved",
         "rejected": "rejected",
         "changes_requested": "changes_requested",
     }[_review_status(tuple(decision.decision for decision in settings.decisions))]
     if settings.decision_status != expected_status:
         issues.append(f"decision-status-mismatch:{settings.decision_status}:{expected_status}")
+    if expected_status == "approved" and settings.project_owner_status != "approved":
+        issues.append("missing-project-owner-acceptance")
+    if settings.project_owner_status == "approved" and not (
+        settings.project_owner_accepted_on and settings.project_owner_evidence
+    ):
+        issues.append("incomplete-project-owner-acceptance")
     return _check("human-review-record", issues)
 
 
