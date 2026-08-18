@@ -224,8 +224,8 @@ OWL 2 DL import closure, runs HermiT, audits unsatisfiable classes and unintende
 ROBOT quality report, and records traceability/CQ coverage. The report is written before the command fails an open gate.
 The report also binds its result to a SHA-256 digest of the complete semantic input closure, so a report becomes stale
 when an ontology module, SHACL graph, CQ query, fixture, registry, catalog, policy, or semantic contract changes.
-The current ontology passes profile, reasoning, inference, and traceability checks; public release remains blocked by
-the intentionally unresolved ontology license and independent legal review.
+The current ontology passes every semantic gate, including ROBOT's ontology-license rule. Public release remains
+blocked by namespace resolution, external-reuse review, and independent legal review.
 
 After every semantic gate passes, build the immutable V0.1 distribution with:
 
@@ -241,6 +241,23 @@ The release command verifies the semantic-input digest, ontology/version IRIs, l
 decision inventory, explicit human approvals, and the complete source inventory. It always writes a readiness report
 before failing an open gate. Once all gates pass, it emits a reproducible ZIP containing a machine-readable manifest and
 a separate `.sha256` checksum. Runtime data, populated instances, retrieval indexes, and GraphRAG artifacts are excluded.
+
+Build the proposed canonical namespace publication before requesting W3ID registration:
+
+```powershell
+uv run --extra dev legal-build-ontology-publication `
+  ontology/namespace_publication.yaml `
+  data/ontology/publication/site `
+  data/ontology/publication/report.json
+```
+
+This creates 14 canonical/versioned HTML and byte-identical Turtle endpoints plus a SHA-256 publication manifest. It
+also validates the copy-ready W3ID `.htaccess` and `README.md` bundle. The proposed GitHub Pages target must be deployed
+and externally verified before the W3ID pull request is submitted. See `docs/ontology_namespace_publication.md`.
+
+The manual `Deploy ontology publication` GitHub Actions workflow publishes the generated site with least-privilege Pages
+permissions and commit-pinned actions. After deployment, run the bounded live verifier in `deployment` mode; after the
+W3ID pull request is merged, run it again in `w3id` mode to verify all 28 content-negotiated requests and redirects.
 
 ## Operations
 
@@ -275,5 +292,9 @@ uv run --extra dev legal-validate-ontology-semantics ontology/semantic_qa_contra
 uv run --extra dev legal-package-ontology-release ontology/release_contract.yaml `
   data/ontology/qa/semantic_qa_report.json data/ontology/releases/v0.1.0 `
   data/ontology/releases/v0.1.0/release_report.json
+uv run --extra dev legal-build-ontology-publication ontology/namespace_publication.yaml `
+  data/ontology/publication/site data/ontology/publication/report.json
+uv run --extra dev legal-verify-ontology-publication ontology/namespace_publication.yaml `
+  deployment data/ontology/publication/deployment_verification.json
 docker compose config --quiet
 ```

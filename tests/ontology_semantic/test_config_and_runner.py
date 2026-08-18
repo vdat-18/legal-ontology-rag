@@ -39,6 +39,11 @@ def test_external_reference_terms_are_declared_in_the_foundational_import(projec
         RDF.type,
         OWL.AnnotationProperty,
     ) in graph
+    assert (
+        URIRef("http://purl.org/dc/terms/license"),
+        RDF.type,
+        OWL.AnnotationProperty,
+    ) in graph
 
 
 def test_docker_runner_uses_argument_vector_read_only_workspace_and_no_network(

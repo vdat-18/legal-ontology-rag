@@ -52,15 +52,27 @@ network-isolated bounded Docker invocation, validates the OWL 2 DL import closur
 materializes reasoning output, audits unsatisfiable classes and unintended inferred equivalences, runs ROBOT quality
 rules, and repeats traceability plus mandatory-CQ coverage in one machine-readable report. Minimal declarations for
 referenced PROV-O, SKOS, OWL-Time, and Dublin Core entities live in the foundational source module so the import closure
-is OWL 2 DL without importing external ontology bundles. The current semantic checks pass except ROBOT's intentional
-`missing_ontology_license` release error. Each report contains a digest of every semantic input so changed ontology,
-shape, CQ, fixture, registry, catalog, or policy files invalidate stale QA evidence.
+is OWL 2 DL without importing external ontology bundles. The ontology and its construction artifacts are licensed under
+CC BY 4.0 through `LICENSE` and root `dcterms:license` metadata. All current semantic checks pass. Each report contains a
+digest of every semantic input so changed ontology, shape, CQ, fixture, registry, catalog, or policy files invalidate
+stale QA evidence.
 
 `release_contract.yaml` defines the immutable V0.1 distribution boundary. The release command checks the bound semantic
 report, ontology identity, license, external-reuse decision inventory, explicit human approvals, and the declared file
 inventory. A successful run creates a metadata-normalized ZIP with an internal `MANIFEST.json` plus a separate SHA-256
-checksum. The current contract remains intentionally blocked while namespace resolution, licensing, external reuse, and
-independent legal review are pending; no release archive should exist before those decisions are recorded.
+checksum. The current contract remains intentionally blocked while namespace resolution, external reuse, and independent
+legal review are pending; no release archive should exist before those decisions are recorded.
+
+`namespace_publication.yaml` defines the canonical namespace deployment and W3ID registration boundary. The publication
+command validates all ontology/version IRIs against Turtle and the XML catalog, creates HTML plus byte-identical Turtle
+representations for 14 canonical/versioned endpoints, and emits a SHA-256 manifest. The copy-ready W3ID pull-request
+bundle lives under `publication/w3id/legal-ontology-rag/`. Namespace approval remains pending until the proposed hosting
+target is deployed, externally verified, and the W3ID pull request is merged. See
+`docs/ontology_namespace_publication.md`.
+
+The repository includes a manually triggered, least-privilege GitHub Pages workflow for the generated site and a live
+verification command. Verification performs bounded sequential requests and requires exact HTML/Turtle bytes, media
+types, redirect status, and `Location` targets; it does not retry or silently accept stale publication content.
 
 `population_contract.yaml` defines the versioned chunk-to-instance boundary. The corresponding pipeline creates
 reviewable typed records, deterministic RDF instances, exact evidence links, and writes Turtle only after SHACL

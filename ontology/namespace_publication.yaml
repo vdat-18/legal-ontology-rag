@@ -1,0 +1,78 @@
+schema_version: "0.1.0"
+artifact_id: legal-ontology-rag-namespace-publication
+artifact_version: "0.1.0"
+status: prepared_pending_deployment_and_w3id_merge
+namespace_root: https://w3id.org/legal-ontology-rag/
+publication_base_url: https://vdat-18.github.io/legal-ontology-rag/
+license_iri: https://creativecommons.org/licenses/by/4.0/
+maintainer:
+  github_username: vdat-18
+  project_repository: https://github.com/vdat-18/legal-ontology-rag
+w3id:
+  redirect_status: 303
+  bundle_directory: ontology/publication/w3id/legal-ontology-rag
+  readme_file: README.md
+  htaccess_file: .htaccess
+verification:
+  timeout_seconds: 15
+  max_response_bytes: 2000000
+  user_agent: legal-ontology-rag-publication-verifier/0.1.0
+output:
+  manifest_file: publication-manifest.json
+  report_schema_version: "0.1.0"
+resources:
+  - id: PUB-ROOT
+    label: Vietnamese Road Traffic Legal Ontology
+    ontology_iri: https://w3id.org/legal-ontology-rag/ontology
+    version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0
+    source_file: ontology/legal_ontology.ttl
+    canonical_path: ontology
+    version_path: ontology/0.1.0
+  - id: PUB-SOURCE
+    label: Source and Provenance Module
+    ontology_iri: https://w3id.org/legal-ontology-rag/ontology/source-provenance
+    version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/source-provenance
+    source_file: ontology/modules/source_provenance.ttl
+    canonical_path: ontology/source-provenance
+    version_path: ontology/0.1.0/source-provenance
+  - id: PUB-OCCURRENCE
+    label: Occurrence Context Module
+    ontology_iri: https://w3id.org/legal-ontology-rag/ontology/occurrence-context
+    version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/occurrence-context
+    source_file: ontology/modules/occurrence_context.ttl
+    canonical_path: ontology/occurrence-context
+    version_path: ontology/0.1.0/occurrence-context
+  - id: PUB-TEMPORAL
+    label: Temporal Change Module
+    ontology_iri: https://w3id.org/legal-ontology-rag/ontology/temporal-change
+    version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/temporal-change
+    source_file: ontology/modules/temporal_change.ttl
+    canonical_path: ontology/temporal-change
+    version_path: ontology/0.1.0/temporal-change
+  - id: PUB-NORMATIVE
+    label: Normative Rule Module
+    ontology_iri: https://w3id.org/legal-ontology-rag/ontology/normative-rule
+    version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/normative-rule
+    source_file: ontology/modules/normative_rule.ttl
+    canonical_path: ontology/normative-rule
+    version_path: ontology/0.1.0/normative-rule
+  - id: PUB-CONSEQUENCE
+    label: Legal Consequence Module
+    ontology_iri: https://w3id.org/legal-ontology-rag/ontology/legal-consequence
+    version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/legal-consequence
+    source_file: ontology/modules/legal_consequence.ttl
+    canonical_path: ontology/legal-consequence
+    version_path: ontology/0.1.0/legal-consequence
+  - id: PUB-SHAPES
+    label: Legal Ontology SHACL Shapes
+    ontology_iri: https://w3id.org/legal-ontology-rag/shapes
+    version_iri: https://w3id.org/legal-ontology-rag/shapes/0.5.0
+    source_file: ontology/shapes/legal_ontology.shacl.ttl
+    canonical_path: shapes
+    version_path: shapes/0.5.0
+publication_boundaries:
+  - Canonical paths may move to a later approved release; version paths remain immutable.
+  - HTML requests resolve to human-readable landing pages and Turtle requests resolve to exact source bytes.
+  - W3ID rules must not be submitted until every publication target is deployed and externally verified.
+  - Fragment identifiers are resolved by clients after the ontology document is retrieved.
+  - Namespace resolution approval requires the W3ID pull request to be merged; local readiness alone is insufficient.

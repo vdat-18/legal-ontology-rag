@@ -6,14 +6,14 @@ ontology:
   ontology_iri: https://w3id.org/legal-ontology-rag/ontology
   version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0
   root_file: ontology/legal_ontology.ttl
-  license_file: LICENSE
+  license_file: ontology/LICENSE
 approvals:
   namespace_resolution:
     status: pending
     evidence: null
   ontology_license:
-    status: pending
-    evidence: null
+    status: approved
+    evidence: user-confirmed:2026-08-18:CC-BY-4.0
   external_reuse_review:
     status: pending
     evidence: null
@@ -45,6 +45,9 @@ inputs:
     - ontology/formalization_policy.yaml
     - ontology/semantic_qa_contract.yaml
     - ontology/release_contract.yaml
+    - ontology/namespace_publication.yaml
+    - ontology/publication/w3id/legal-ontology-rag/.htaccess
+    - ontology/publication/w3id/legal-ontology-rag/README.md
     - ontology/requirements/competency_questions.yaml
     - ontology/requirements/ontology_requirements.yaml
     - ontology/glossary/terms.yaml
@@ -88,5 +91,6 @@ release_boundaries:
   - A release is created only from a passing semantic-QA report for the same ontology version.
   - Human namespace, license, external-reuse, and independent legal approvals remain explicit fail-closed gates.
   - The source inventory is explicit; runtime data, generated populations, and GraphRAG artifacts are excluded.
+  - The archive includes the reviewed namespace-publication contract and copy-ready W3ID pull-request bundle.
   - Archive entry ordering, timestamps, permissions, and JSON serialization are normalized for reproducible packaging.
   - The checksum authenticates the complete archive but does not provide a digital signature or legal certification.

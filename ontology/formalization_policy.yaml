@@ -7,7 +7,7 @@ review:
   ontology_engineering_status: drafted
   stakeholder_approval: pending
   namespace_resolution: pending
-  ontology_license: pending
+  ontology_license: approved_cc_by_4_0
 profile:
   ontology_language: OWL 2
   conformance_target: OWL 2 DL
@@ -41,7 +41,7 @@ namespace_policy:
     term_namespace: https://w3id.org/legal-ontology-rag/ontology#
     version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0
     preferred_prefix: lor
-    resolution_status: proposed_pending_w3id_registration
+    resolution_status: publication_bundle_ready_pending_deployment_and_w3id_merge
   versioning:
     scheme: semantic_versioning
     immutable_version_iris: true
@@ -50,7 +50,7 @@ namespace_policy:
   publication_gates:
     - Register and verify the w3id.org redirect before claiming that the canonical namespace is resolvable.
     - Publish human-readable and machine-readable namespace documentation at the redirect target.
-    - Select and record a repository and ontology license before public ontology distribution.
+    - Keep the ontology license explicit and separate from any future source-code repository license.
     - Verify every external mapping and attribution before release.
   prohibited_namespaces:
     - namespace: https://w3id.org/vn-traffic-law/ontology#
@@ -222,3 +222,7 @@ validation_policy:
     - Apply ontology/release_contract.yaml only after semantic QA passes for the exact packaged input closure.
     - Require explicit namespace, ontology-license, external-reuse, and independent legal-review approvals.
     - Emit a reproducible archive, internal file manifest, external checksum, and durable readiness report.
+  namespace_publication:
+    - Generate the deployment site from ontology/namespace_publication.yaml without duplicating editable ontology sources.
+    - Require exact XML catalog, ontology IRI, version IRI, license, endpoint, and W3ID bundle agreement.
+    - Keep namespace resolution pending until deployment targets are verified and the W3ID pull request is merged.

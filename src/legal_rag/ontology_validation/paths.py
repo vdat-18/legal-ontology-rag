@@ -66,3 +66,8 @@ class OntologyPaths:
     def release_contract(self) -> Path:
         """Return the ontology release contract path."""
         return self.ontology_dir / "release_contract.yaml"
+
+    @property
+    def namespace_publication_contract(self) -> Path:
+        """Return the ontology namespace-publication contract path."""
+        return self.ontology_dir / "namespace_publication.yaml"

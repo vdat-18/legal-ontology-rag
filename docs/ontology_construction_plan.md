@@ -1208,8 +1208,11 @@ ontology/
 - [x] Add pinned OWL 2 DL, HermiT, ROBOT quality, inference, traceability, and mandatory-CQ semantic gates.
 - [x] Bind semantic-QA evidence to the complete versioned semantic input closure with SHA-256.
 - [x] Add fail-closed V0.1 release packaging with explicit approvals, deterministic manifest, and archive checksum.
-- [ ] Select the ontology license and add both the license file and root `dcterms:license` metadata.
+- [x] Select CC BY 4.0 for the ontology and add both the license file and root `dcterms:license` metadata.
 - [ ] Register and verify the canonical namespace, review external reuse, and obtain independent legal approval.
+- [x] Add a versioned namespace-publication contract, static site builder, manifest, and copy-ready W3ID PR bundle.
+- [x] Add a manual least-privilege Pages workflow and bounded live deployment/W3ID verifier.
+- [ ] Deploy and verify every publication target, submit the W3ID pull request, and record merge evidence.
 - [ ] Run semantic QA on the approved release inputs and package the immutable V0.1 distribution.
 - [x] Formalize one cohesive pilot module at a time.
 - [x] Add SHACL shapes and executable CQ queries after the corresponding module exists.

@@ -24,7 +24,7 @@ def test_production_release_is_blocked_by_explicit_publication_gates(
     project_root: Path,
     release_settings: OntologyReleaseSettings,
 ) -> None:
-    """No archive is emitted while approvals and ontology licensing remain unresolved."""
+    """No archive is emitted while non-license publication approvals remain unresolved."""
     semantic_settings = SemanticQaSettings.from_path(release_settings.semantic_contract_path, project_root)
     report_path = tmp_path / "semantic-report.json"
     report_path.write_text(
@@ -44,8 +44,8 @@ def test_production_release_is_blocked_by_explicit_publication_gates(
 
     assert report.overall_status == "blocked"
     assert gates["human-approvals"].status == "failed"
-    assert gates["ontology-license"].status == "failed"
-    assert gates["release-file-inventory"].status == "failed"
+    assert gates["ontology-license"].status == "passed"
+    assert gates["release-file-inventory"].status == "passed"
     assert gates["semantic-qa"].status == "passed"
     assert report.archive_path is None
     assert not (tmp_path / "release").exists()

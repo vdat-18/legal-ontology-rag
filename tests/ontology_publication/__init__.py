@@ -1,0 +1,1 @@
+"""Ontology namespace-publication tests."""

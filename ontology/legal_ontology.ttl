@@ -14,4 +14,5 @@
         "Bản thể pháp luật giao thông đường bộ Việt Nam"@vi ;
     dcterms:description "Draft root ontology importing all five V0.1 domain modules formalized in the repository."@en ;
     dcterms:issued "2026-08-18"^^xsd:date ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
     dcterms:source "docs/ontology_construction_plan.md" .

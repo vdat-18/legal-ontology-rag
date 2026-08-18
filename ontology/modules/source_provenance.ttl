@@ -21,6 +21,8 @@ dcterms:description a owl:AnnotationProperty .
 
 dcterms:issued a owl:AnnotationProperty .
 
+dcterms:license a owl:AnnotationProperty .
+
 dcterms:source a owl:AnnotationProperty .
 
 dcterms:title a owl:AnnotationProperty .
