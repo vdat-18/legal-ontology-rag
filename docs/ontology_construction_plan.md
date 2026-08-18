@@ -1192,6 +1192,9 @@ ontology/
 - [x] Formalize the source/provenance module and add the root ontology plus local XML catalog.
 - [x] Add source/provenance SHACL shapes, positive and boundary RDF fixtures, and executable source/evidence CQ queries.
 - [x] Formalize the occurrence-context module and activate its root import and local catalog mappings.
+- [x] Add occurrence-context SHACL shapes, positive and boundary RDF fixtures, and context projection queries.
+- [x] Formalize the temporal-change module and activate its root import and local catalog mappings.
+- [x] Add temporal-change SHACL shapes, positive and boundary RDF fixtures, and temporal CQ projections.
 - [ ] Formalize one cohesive pilot module at a time.
 - [ ] Add SHACL shapes and executable CQ queries after the corresponding module exists.
 

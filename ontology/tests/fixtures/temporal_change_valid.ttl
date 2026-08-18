@@ -1,0 +1,122 @@
+@prefix ex: <https://w3id.org/legal-ontology-rag/test/temporal-change#> .
+@prefix loroc: <https://w3id.org/legal-ontology-rag/ontology/occurrence-context#> .
+@prefix lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#> .
+@prefix lortc: <https://w3id.org/legal-ontology-rag/ontology/temporal-change#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix time: <http://www.w3.org/2006/time#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:ruleResource a lorsp:LegalResource ;
+    lorsp:hasExpression ex:earlierExpression,
+        ex:laterExpression .
+
+ex:earlierExpression a lorsp:LegalExpression ;
+    lorsp:representedBy ex:earlierFile ;
+    lorsp:containsProvision ex:earlierProvision .
+
+ex:laterExpression a lorsp:LegalExpression ;
+    lorsp:representedBy ex:laterFile ;
+    lorsp:containsProvision ex:laterProvision .
+
+ex:amendingResource a lorsp:LegalResource ;
+    lorsp:hasExpression ex:amendingExpression .
+
+ex:amendingExpression a lorsp:LegalExpression ;
+    lorsp:representedBy ex:amendingFile ;
+    lorsp:containsProvision ex:amendingProvision .
+
+ex:earlierFile a lorsp:SourceFile .
+
+ex:laterFile a lorsp:SourceFile .
+
+ex:amendingFile a lorsp:SourceFile .
+
+ex:earlierProvision a lorsp:LegalProvision ;
+    lorsp:structuralPath "NĐ 168 Article 13(8)(b), original expression" .
+
+ex:laterProvision a lorsp:LegalProvision ;
+    lorsp:structuralPath "NĐ 168 Article 13(8)(b), amended expression" .
+
+ex:amendingProvision a lorsp:LegalProvision ;
+    lorsp:structuralPath "NĐ 238 Article 3" .
+
+ex:earlierChunk a lorsp:SourceChunk ;
+    lorsp:derivedFromFile ex:earlierFile ;
+    lorsp:containsSpan ex:earlierSpan .
+
+ex:laterChunk a lorsp:SourceChunk ;
+    lorsp:derivedFromFile ex:laterFile ;
+    lorsp:containsSpan ex:laterSpan .
+
+ex:amendingChunk a lorsp:SourceChunk ;
+    lorsp:derivedFromFile ex:amendingFile ;
+    lorsp:containsSpan ex:amendingSpan .
+
+ex:earlierSpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Nội dung quy tắc trước khi được sửa đổi."@vi .
+
+ex:laterSpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Nội dung quy tắc sau khi được sửa đổi."@vi .
+
+ex:amendingSpan a lorsp:EvidenceSpan ;
+    lorsp:exactText "Sửa đổi điểm b khoản 8 Điều 13."@vi .
+
+ex:earlierRuleVersion a lorsp:SupportedAssertion ;
+    lorsp:groundedIn ex:earlierProvision ;
+    lorsp:supportedBy ex:earlierSpan ;
+    lortc:validDuring ex:earlierInterval .
+
+ex:laterRuleVersion a lorsp:SupportedAssertion ;
+    lorsp:groundedIn ex:laterProvision ;
+    lorsp:supportedBy ex:laterSpan ;
+    lortc:validDuring ex:laterInterval .
+
+ex:earlierInterval a lortc:ValidityInterval ;
+    time:hasBeginning ex:earlierBeginning ;
+    time:hasEnd ex:earlierEnd .
+
+ex:laterInterval a lortc:ValidityInterval ;
+    time:hasBeginning ex:laterBeginning .
+
+ex:earlierBeginning a time:Instant ;
+    time:inXSDDateTime "2025-01-01T00:00:00Z"^^xsd:dateTime .
+
+ex:earlierEnd a time:Instant ;
+    time:inXSDDateTime "2026-08-15T00:00:00Z"^^xsd:dateTime .
+
+ex:laterBeginning a time:Instant ;
+    time:inXSDDateTime "2026-08-15T00:00:00Z"^^xsd:dateTime .
+
+ex:changeEffectiveInstant a time:Instant ;
+    time:inXSDDateTime "2026-08-15T00:00:00Z"^^xsd:dateTime .
+
+ex:occurrenceInstant a time:Instant ;
+    time:inXSDDateTime "2026-08-16T09:00:00Z"^^xsd:dateTime .
+
+ex:noPlateConduct a loroc:RegulatedConduct ;
+    skos:inScheme loroc:conductScheme ;
+    skos:prefLabel "Điều khiển xe không gắn biển số"@vi .
+
+ex:driverRole a loroc:LegalSubjectRole ;
+    skos:inScheme loroc:subjectRoleScheme ;
+    skos:prefLabel "Người điều khiển xe"@vi .
+
+ex:subject a loroc:LegalSubject ;
+    loroc:hasSubjectKind loroc:naturalPerson .
+
+ex:occurrence a loroc:ConductOccurrence ;
+    loroc:hasConductConcept ex:noPlateConduct ;
+    loroc:occursAt ex:occurrenceInstant .
+
+ex:roleAssignment a loroc:RoleAssignment ;
+    loroc:rolePlayer ex:subject ;
+    loroc:playsRole ex:driverRole ;
+    loroc:inOccurrence ex:occurrence .
+
+ex:explicitAmendment a lortc:LegalChange ;
+    lortc:changeType lortc:amendment ;
+    lortc:effectiveAt ex:changeEffectiveInstant ;
+    lortc:changesEarlierRule ex:earlierRuleVersion ;
+    lortc:producesLaterRule ex:laterRuleVersion ;
+    lorsp:groundedIn ex:amendingProvision ;
+    lorsp:supportedBy ex:amendingSpan .

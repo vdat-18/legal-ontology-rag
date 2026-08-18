@@ -1,0 +1,48 @@
+@prefix ex: <https://w3id.org/legal-ontology-rag/test/temporal-change-boundary#> .
+@prefix lortc: <https://w3id.org/legal-ontology-rag/ontology/temporal-change#> .
+@prefix time: <http://www.w3.org/2006/time#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:openEndedRuleVersion
+    lortc:validDuring ex:openEndedInterval .
+
+ex:openEndedInterval a lortc:ValidityInterval ;
+    time:hasBeginning ex:openBeginning .
+
+ex:openBeginning a time:Instant ;
+    time:inXSDDateTime "2025-01-01T00:00:00Z"^^xsd:dateTime .
+
+ex:reversedRuleVersion
+    lortc:validDuring ex:reversedInterval .
+
+ex:reversedInterval a lortc:ValidityInterval ;
+    time:hasBeginning ex:reversedBeginning ;
+    time:hasEnd ex:reversedEnd .
+
+ex:reversedBeginning a time:Instant ;
+    time:inXSDDateTime "2026-08-15T00:00:00Z"^^xsd:dateTime .
+
+ex:reversedEnd a time:Instant ;
+    time:inXSDDateTime "2025-01-01T00:00:00Z"^^xsd:dateTime .
+
+ex:earlierSimilarRuleVersion
+    lortc:validDuring ex:earlierSimilarInterval .
+
+ex:laterSimilarRuleVersion
+    lortc:validDuring ex:laterSimilarInterval .
+
+ex:earlierSimilarInterval a lortc:ValidityInterval ;
+    time:hasBeginning ex:earlierSimilarBeginning .
+
+ex:laterSimilarInterval a lortc:ValidityInterval ;
+    time:hasBeginning ex:laterSimilarBeginning .
+
+ex:earlierSimilarBeginning a time:Instant ;
+    time:inXSDDateTime "2025-01-01T00:00:00Z"^^xsd:dateTime .
+
+ex:laterSimilarBeginning a time:Instant ;
+    time:inXSDDateTime "2026-01-01T00:00:00Z"^^xsd:dateTime .
+
+ex:unsupportedChange a lortc:LegalChange ;
+    lortc:changeType lortc:amendment ;
+    lortc:changesEarlierRule ex:earlierSimilarRuleVersion .

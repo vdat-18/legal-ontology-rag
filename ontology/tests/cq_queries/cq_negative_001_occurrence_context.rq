@@ -1,0 +1,42 @@
+PREFIX loroc: <https://w3id.org/legal-ontology-rag/ontology/occurrence-context#>
+
+# Structural context-gap projection. Candidate-rule comparison is added with the normative-rule module.
+SELECT DISTINCT ?occurrence ?missingDimension
+WHERE {
+  ?occurrence a loroc:ConductOccurrence .
+  {
+    FILTER NOT EXISTS { ?occurrence loroc:hasConductConcept ?conduct }
+    BIND("conduct_concept" AS ?missingDimension)
+  }
+  UNION
+  {
+    FILTER NOT EXISTS {
+      ?roleAssignment loroc:inOccurrence ?occurrence ;
+        loroc:playsRole ?role .
+    }
+    BIND("subject_role" AS ?missingDimension)
+  }
+  UNION
+  {
+    FILTER NOT EXISTS {
+      ?roleAssignment loroc:inOccurrence ?occurrence ;
+        loroc:rolePlayer ?subject .
+      ?subject loroc:hasSubjectKind ?subjectKind .
+    }
+    BIND("subject_kind" AS ?missingDimension)
+  }
+  UNION
+  {
+    FILTER NOT EXISTS {
+      ?occurrence loroc:involvesVehicle ?vehicle .
+      ?vehicle loroc:hasVehicleCategory ?vehicleCategory .
+    }
+    BIND("vehicle_category" AS ?missingDimension)
+  }
+  UNION
+  {
+    FILTER NOT EXISTS { ?occurrence loroc:occursAt ?occurrenceTime }
+    BIND("occurrence_time" AS ?missingDimension)
+  }
+}
+ORDER BY ?occurrence ?missingDimension

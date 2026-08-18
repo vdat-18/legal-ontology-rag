@@ -1,0 +1,15 @@
+PREFIX loroc: <https://w3id.org/legal-ontology-rag/ontology/occurrence-context#>
+PREFIX lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#>
+PREFIX lortc: <https://w3id.org/legal-ontology-rag/ontology/temporal-change#>
+PREFIX time: <http://www.w3.org/2006/time#>
+
+# Temporal projection only. Normative applicability determines applicable and excluded rule versions later.
+SELECT DISTINCT ?occurrence ?occurrenceTime ?ruleVersion ?validFrom ?validTo ?sourceProvision
+WHERE {
+  ?occurrence loroc:occursAt/time:inXSDDateTime ?occurrenceTime .
+  ?ruleVersion lortc:validDuring ?interval ;
+    lorsp:groundedIn ?sourceProvision .
+  ?interval time:hasBeginning/time:inXSDDateTime ?validFrom .
+  OPTIONAL { ?interval time:hasEnd/time:inXSDDateTime ?validTo }
+}
+ORDER BY ?occurrence ?validFrom ?ruleVersion

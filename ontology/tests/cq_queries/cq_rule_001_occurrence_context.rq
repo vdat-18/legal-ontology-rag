@@ -1,0 +1,19 @@
+PREFIX loroc: <https://w3id.org/legal-ontology-rag/ontology/occurrence-context#>
+
+# Occurrence-input projection. Rule matching is added after normative and temporal modules exist.
+SELECT DISTINCT ?occurrence ?conduct ?subject ?subjectKind ?role ?vehicle ?vehicleCategory ?occurrenceTime
+WHERE {
+  ?occurrence a loroc:ConductOccurrence ;
+    loroc:hasConductConcept ?conduct ;
+    loroc:occursAt ?occurrenceTime .
+  ?roleAssignment a loroc:RoleAssignment ;
+    loroc:inOccurrence ?occurrence ;
+    loroc:rolePlayer ?subject ;
+    loroc:playsRole ?role .
+  ?subject loroc:hasSubjectKind ?subjectKind .
+  OPTIONAL {
+    ?occurrence loroc:involvesVehicle ?vehicle .
+    ?vehicle loroc:hasVehicleCategory ?vehicleCategory .
+  }
+}
+ORDER BY ?occurrence ?subject ?role ?vehicleCategory
