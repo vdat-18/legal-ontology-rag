@@ -34,7 +34,7 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
 EXTRACTION_PROGRESS_SCHEMA_VERSION = "1.0.0"
-FACT_EXTRACTION_PROMPT_VERSION = "1.7.0"
+FACT_EXTRACTION_PROMPT_VERSION = "1.8.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,17 +146,15 @@ def build_extracted_fact(
     raw: BamlLegalFact,
     source_chunk_id: str,
     metadata: DocumentMetadataRecord,
-    chunk_text_by_id: Mapping[str, str],
+    window_chunks_by_id: Mapping[str, None],
 ) -> LegalFact:
-    """Bind evidence and assign identity to one LLM-produced fact."""
-    evidence = tuple(
-        EvidenceReference(chunk_id=entry.chunk_id, quoted_span=entry.quoted_span) for entry in raw.evidence
-    )
+    """Attach chunk-level evidence and assign identity to one LLM-produced fact."""
+    evidence = tuple(EvidenceReference(chunk_id=entry.chunk_id) for entry in raw.evidence)
     if not evidence:
-        msg = "A legal fact must cite at least one evidence span"
+        msg = "A legal fact must cite at least one evidence chunk"
         raise ValueError(msg)
     for reference in evidence:
-        chunk_text_by_id[reference.chunk_id]
+        window_chunks_by_id[reference.chunk_id]
     return build_legal_fact(
         conduct=raw.conduct,
         subject=raw.subject,
@@ -187,14 +185,12 @@ def _extract_batch_facts(
         msg = "Fact extraction response must contain exactly one result for every requested target"
         raise ValueError(msg)
     results_by_target = {result.target_chunk_id: result for result in results}
-    chunk_text_by_target = {
-        item.target_chunk_id: {entry.chunk_id: entry.text for entry in item.window} for item in items
-    }
+    window_chunks_by_target = {item.target_chunk_id: {entry.chunk_id: None for entry in item.window} for item in items}
     return tuple(
         (
             target_chunk_id,
             tuple(
-                build_extracted_fact(raw_fact, target_chunk_id, metadata, chunk_text_by_target[target_chunk_id])
+                build_extracted_fact(raw_fact, target_chunk_id, metadata, window_chunks_by_target[target_chunk_id])
                 for raw_fact in results_by_target[target_chunk_id].facts
             ),
         )

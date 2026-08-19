@@ -53,7 +53,7 @@ def _fact(
         valid_to=None,
         document_number=document_number,
         provision_path=provision_path,
-        evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span=""),),
+        evidence=(EvidenceReference(chunk_id="chunk-1"),),
     )
 
 
@@ -655,10 +655,10 @@ def test_baml_evidence_relation_client_returns_none_when_unrelated(monkeypatch: 
     assert relations == [None]
 
 
-def test_baml_evidence_relation_client_sends_conditions_and_exact_evidence(
+def test_baml_evidence_relation_client_sends_conditions_and_evidence_chunk_ids(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Relation confirmation sends applicability conditions and exact quoted evidence to BAML."""
+    """Relation confirmation sends applicability conditions and source chunk ids to BAML."""
     captured_items: list[object] = []
     request = object()
 
@@ -669,12 +669,12 @@ def test_baml_evidence_relation_client_sends_conditions_and_exact_evidence(
     fact_a = replace(
         _fact("fact-a"),
         conditions=("Khi chuyển hướng tại nơi đường giao nhau",),
-        evidence=(EvidenceReference(chunk_id="chunk-a", quoted_span="Trích nguyên văn fact A"),),
+        evidence=(EvidenceReference(chunk_id="chunk-a"),),
     )
     fact_b = replace(
         _fact("fact-b"),
         conditions=("Trừ trường hợp xe ưu tiên",),
-        evidence=(EvidenceReference(chunk_id="chunk-b", quoted_span="Trích nguyên văn fact B"),),
+        evidence=(EvidenceReference(chunk_id="chunk-b"),),
     )
     monkeypatch.setattr(evidence_graph.b.request, "ConfirmEvidenceRelationBatch", _capture_request)
     monkeypatch.setattr(
@@ -696,11 +696,9 @@ def test_baml_evidence_relation_client_sends_conditions_and_exact_evidence(
     assert len(captured_items) == 1
     item = captured_items[0]
     assert item.fact_a.conditions == ["Khi chuyển hướng tại nơi đường giao nhau"]
-    assert item.fact_a.evidence[0].chunk_id == "chunk-a"
-    assert item.fact_a.evidence[0].quoted_span == "Trích nguyên văn fact A"
+    assert item.fact_a.evidence_chunk_ids == ["chunk-a"]
     assert item.fact_b.conditions == ["Trừ trường hợp xe ưu tiên"]
-    assert item.fact_b.evidence[0].chunk_id == "chunk-b"
-    assert item.fact_b.evidence[0].quoted_span == "Trích nguyên văn fact B"
+    assert item.fact_b.evidence_chunk_ids == ["chunk-b"]
 
 
 def test_build_relation_is_deterministic_for_identical_inputs() -> None:

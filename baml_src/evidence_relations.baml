@@ -22,12 +22,7 @@ class LegalFactSummary {
   valid_to string?
   document_number string
   provision_path string
-  evidence RelationEvidence[]
-}
-
-class RelationEvidence {
-  chunk_id string
-  quoted_span string
+  evidence_chunk_ids string[]
 }
 
 class ConfirmedRelation {

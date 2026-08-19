@@ -10,24 +10,31 @@ from pathlib import Path
 import pytest
 
 from legal_rag.baml_client.types import (
+    ChunkWindowEntry,
     ChunkWindowRole,
     FactExtractionBatchItem,
+    OntologyBoundRuleEntry,
     OntologyConsequenceEntry,
     OntologyConsequenceKind,
     OntologyCurrency,
     OntologyEvidenceEntry,
     OntologyPopulationBatchResult,
+    OntologyPopulationBindingBatchResult,
     OntologyRuleEntry,
     OntologySubjectKind,
+    OntologyTargetConductBatchResult,
+    OntologyTargetConductEntry,
 )
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
 from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError, LlmTaskExhaustedError
 from legal_rag.chunker.models import Chunk
 from legal_rag.ontology_population.config import PopulationSettings
 from legal_rag.ontology_population.extraction import (
+    build_population_binding_items,
     build_population_reading_window,
     build_population_record,
     extract_population_from_document,
+    finalize_population_binding_results,
 )
 from legal_rag.ontology_population.models import OntologyPopulationRecord
 
@@ -289,6 +296,76 @@ def test_population_window_uses_local_context_for_structural_variants(legal_chun
     assert all(entry.role != ChunkWindowRole.ArticleContext for entry in window)
 
 
+def test_population_binding_inventory_requires_target_only_evidence(legal_chunk: Chunk) -> None:
+    """A conduct inventory cannot cite context that the inventory stage never receives."""
+    item, inventory, _ = _target_inventory_fixture(legal_chunk)
+    inventory.conducts[0].evidence = [OntologyEvidenceEntry(chunk_id="context", quoted_span=legal_chunk.text)]
+
+    with pytest.raises(KeyError, match="context"):
+        build_population_binding_items((item,), (inventory,))
+
+
+def test_population_binding_rejects_conduct_outside_locked_inventory(legal_chunk: Chunk) -> None:
+    """The consequence stage cannot create a context-only conduct."""
+    item, inventory, evidence = _target_inventory_fixture(legal_chunk)
+    binding_item = build_population_binding_items((item,), (inventory,))[0]
+    result = OntologyPopulationBindingBatchResult(
+        target_chunk_id=legal_chunk.chunk_id,
+        rules=[
+            OntologyBoundRuleEntry(
+                target_conduct_id="conduct_from_context",
+                rule=_rule_with_consequence(_money_consequence(evidence), evidence),
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="locked Target conduct"):
+        finalize_population_binding_results((binding_item,), (result,))
+
+
+@pytest.mark.parametrize(
+    ("conduct_label", "provision_path", "message"),
+    [
+        ("Hành vi bị đổi tên", "Điều kiểm tra", "cannot rename"),
+        ("Hành vi được kiểm tra", "Điều khác", "cannot change"),
+    ],
+)
+def test_population_binding_preserves_locked_conduct_identity(
+    conduct_label: str,
+    provision_path: str,
+    message: str,
+    legal_chunk: Chunk,
+) -> None:
+    """The consequence stage cannot reinterpret the Target label or locator."""
+    item, inventory, evidence = _target_inventory_fixture(legal_chunk)
+    binding_item = build_population_binding_items((item,), (inventory,))[0]
+    rule = _rule_with_consequence(_money_consequence(evidence), evidence)
+    rule.conduct_label_vi = conduct_label
+    rule.provision_path = provision_path
+    result = OntologyPopulationBindingBatchResult(
+        target_chunk_id=legal_chunk.chunk_id,
+        rules=[OntologyBoundRuleEntry(target_conduct_id="conduct_1", rule=rule)],
+    )
+
+    with pytest.raises(ValueError, match=message):
+        finalize_population_binding_results((binding_item,), (result,))
+
+
+def test_population_binding_returns_existing_population_result(legal_chunk: Chunk) -> None:
+    """Two-stage extraction keeps the downstream population result API unchanged."""
+    item, inventory, evidence = _target_inventory_fixture(legal_chunk)
+    binding_item = build_population_binding_items((item,), (inventory,))[0]
+    rule = _rule_with_consequence(_money_consequence(evidence), evidence)
+    result = OntologyPopulationBindingBatchResult(
+        target_chunk_id=legal_chunk.chunk_id,
+        rules=[OntologyBoundRuleEntry(target_conduct_id="conduct_1", rule=rule)],
+    )
+
+    finalized = finalize_population_binding_results((binding_item,), (result,))
+
+    assert finalized == (OntologyPopulationBatchResult(target_chunk_id=legal_chunk.chunk_id, rules=[rule]),)
+
+
 def test_population_record_requires_target_conduct_evidence(
     legal_chunk: Chunk,
     document_metadata: DocumentMetadataRecord,
@@ -504,5 +581,53 @@ def _rule_with_consequence(
         valid_from=None,
         valid_to=None,
         provision_path="Điều kiểm tra",
+        evidence=[evidence],
+    )
+
+
+def _target_inventory_fixture(
+    legal_chunk: Chunk,
+) -> tuple[FactExtractionBatchItem, OntologyTargetConductBatchResult, OntologyEvidenceEntry]:
+    """Build one locked Target conduct and its isolated extraction input."""
+    evidence = OntologyEvidenceEntry(chunk_id=legal_chunk.chunk_id, quoted_span=legal_chunk.text)
+    item = FactExtractionBatchItem(
+        target_chunk_id=legal_chunk.chunk_id,
+        window=[
+            ChunkWindowEntry(
+                chunk_id=legal_chunk.chunk_id,
+                role=ChunkWindowRole.Target,
+                context_text=legal_chunk.context_text,
+                text=legal_chunk.text,
+            )
+        ],
+    )
+    inventory = OntologyTargetConductBatchResult(
+        target_chunk_id=legal_chunk.chunk_id,
+        conducts=[
+            OntologyTargetConductEntry(
+                conduct_id="conduct_1",
+                conduct_label_vi="Hành vi được kiểm tra",
+                provision_path="Điều kiểm tra",
+                evidence=[evidence],
+            )
+        ],
+    )
+    return item, inventory, evidence
+
+
+def _money_consequence(evidence: OntologyEvidenceEntry) -> OntologyConsequenceEntry:
+    """Build one complete monetary consequence for binding tests."""
+    return OntologyConsequenceEntry(
+        consequence_id="money",
+        kind=OntologyConsequenceKind.MonetaryPenalty,
+        minimum_amount="1",
+        maximum_amount="2",
+        currency=OntologyCurrency.VND,
+        point_value=None,
+        consequence_label_vi=None,
+        minimum_duration_months=None,
+        maximum_duration_months=None,
+        target_label_vi=None,
+        responsible_role_label_vi=None,
         evidence=[evidence],
     )

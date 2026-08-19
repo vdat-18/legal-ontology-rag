@@ -196,8 +196,7 @@ keyword matching hoặc các luật suy diễn thủ công.
   "provision_path": "Điều 6 khoản 9 điểm b",
   "evidence": [
     {
-      "chunk_id": "...",
-      "quoted_span": "..."
+      "chunk_id": "..."
     }
   ]
 }
@@ -208,9 +207,9 @@ Nguyên tắc:
 - Một fact chỉ chứa nội dung có bằng chứng trực tiếp.
 - Không sử dụng kiến thức sẵn có của model làm căn cứ.
 - Nếu một fact cần nhiều chunk thì phải lưu tất cả chunk cần thiết.
-- Mỗi `evidence` phải kèm `chunk_id` thuộc reading window. `quoted_span` là
-  nội dung hỗ trợ do model trả về và không bị kiểm tra cứng về nội dung hoặc
-  đối chiếu từng ký tự với `text` của chunk.
+- Mỗi `evidence` chỉ cần `chunk_id` thuộc reading window. Pipeline đánh giá
+  retrieval ở mức chunk nên không yêu cầu model tạo hoặc sao chép một
+  `quoted_span` bên trong chunk.
 - `chunk_id` phục vụ retrieval evaluation, lấy trực tiếp từ trích dẫn của LLM,
   không tra cứu lại `unit_ids`/`source_refs` từ chunk gốc.
 
@@ -554,14 +553,14 @@ tiếng Việt, đáp án tham chiếu, các claim bắt buộc và căn cứ c�
       "claim": "Mức phạt tiền áp dụng",
       "fact_id": "fact_1",
       "evidence": [
-        { "chunk_id": "chunk_1", "quoted_span": "..." }
+        { "chunk_id": "chunk_1" }
       ]
     },
     {
       "claim": "Số điểm giấy phép lái xe bị trừ",
       "fact_id": "fact_1",
       "evidence": [
-        { "chunk_id": "chunk_2", "quoted_span": "..." }
+        { "chunk_id": "chunk_2" }
       ]
     }
   ]
@@ -602,15 +601,14 @@ vòng critique riêng nào.
 
 Bản đầu mục này mô tả một cổng tất định (không dùng LLM, không dùng người):
 với mỗi phần tử `evidence` của mỗi claim, đối chiếu `chunk_id` có nằm trong
-evidence set thật của fact không, và `quoted_span` có khớp `text` của chunk
-theo Levenshtein partial ratio ngưỡng tối thiểu `0.85` không — loại cơ học
+evidence set thật của fact không và so khớp một span trích dẫn — loại cơ học
 candidate nào sai.
 
 **Đã bỏ theo quyết định "tin tưởng hoàn toàn LLM"** (xem "Nguyên tắc kiến
-trúc" ở đầu tài liệu). Không còn bước nào đối chiếu trích dẫn của candidate
-với evidence set thật của fact; nếu LLM bịa `chunk_id` hoặc trích sai
-`quoted_span`, dữ liệu đó vẫn được ghi thẳng vào ground truth. `grounding_score`
-không còn được tính, vì đây chính là cổng duy nhất tính điểm đó.
+trúc" ở đầu tài liệu). Candidate không bị loại bằng một quality gate. Code
+chỉ chiếu `chunk_id` LLM trả về lên evidence set thật của fact khi dựng
+`required_claims`; `expected_chunk_ids` vẫn lấy từ scenario đã chốt.
+`grounding_score` không còn được tính.
 
 ## 8. Sinh multi-turn candidates — ngoài phạm vi hiện tại
 
@@ -844,7 +842,7 @@ scenario_id
 interaction_type         (= single_turn)
 bundle_kind
 bridge
-required_claims          (claim, fact_id, evidence[chunk_id, quoted_span])
+required_claims          (claim, fact_id, evidence[chunk_id])
 answer_fields            (chép cơ học từ fact, so khớp tất định)
 reasoning_vi
 evolutions
@@ -978,8 +976,8 @@ Các mục 1 tới 8 không cần retriever và nên hoàn thành trước.
    `LegalFact`/`EvidenceReference`/`EvidenceRelation`/`EvidenceBundle`/
    `Scenario`; `GroundTruthCandidate`, `Conversation`, `ConversationTurn`
    còn lại cho Phase 3.
-3. Implement lọc chất lượng chunk và legal-fact extraction kèm `quoted_span`.
-   ✅ **Đã xong.**
+3. Implement lọc chất lượng chunk và legal-fact extraction với provenance ở
+   mức `chunk_id`. ✅ **Đã xong.**
 4. Implement ràng buộc căn cứ tất định. ✅ **Đã xong**, ở mức candidate (mục
    7, Phase 3) — `binding_gate.check_binding`. Không còn cổng span-match ở
    mức fact: fact ledger đã bỏ (xem "Nguyên tắc kiến trúc" ở đầu tài liệu).
@@ -1111,9 +1109,9 @@ Module trong `benchmark_synthesis/`:
   `previous_chunk_id` và `next_chunk_id` đã được chunker lưu. Screening nhận
   structural context tách riêng khỏi source text. Sau đó code gọi BAML trích fact rồi gán `fact_id` và
   `fact_content_sha256` qua `sha256_json`. Nội dung pháp lý vẫn lấy từ typed
-  LLM output. `chunk_id` phải thuộc reading window, còn `quoted_span` được giữ
-  theo output của model và chỉ cần thể hiện đúng intent của căn cứ, không bị
-  đối chiếu substring từng ký tự với source text. Không gán thêm
+  LLM output. `chunk_id` phải thuộc reading window và là toàn bộ provenance
+  cần lưu cho retrieval ground truth; pipeline không yêu cầu span trích dẫn.
+  Không gán thêm
   `unit_ids`/`source_refs` vì hai field này không thuộc `EvidenceReference`.
 - `writer.py` — đọc/ghi JSONL nguyên tử cho `chunk_screening.jsonl` và
   `legal_facts.jsonl`, dùng lại `io_utils.write_jsonl_atomic`.
@@ -1130,7 +1128,7 @@ BAML trong `baml_src/`:
   `ChunkWindowEntry`, `EvidenceEntry`, `LegalFact` khớp JSON ở mục 2, function
   `ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[]`, kèm persona
   và few-shot examples. Window phân biệt `Preceding`, `Target`, `Following`
-  và `ArticleContext`.
+  theo ba role `Preceding`, `Target`, `Following`.
 
 CLI tách thành các artifact riêng, nối nhau qua file — theo đúng cách các phase
 sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.jsonl`
@@ -1359,10 +1357,8 @@ chừng, không gọi lại LLM cho cặp đã xác nhận "không liên quan").
 
 - `candidate_generation.py` — `generate_candidate_batch` gọi BAML sinh tối đa
   `candidate_generation.batch_size` candidate từ các `Scenario` (Phase 2) +
-  evidence đã chốt trong một request; mỗi claim chỉ tham chiếu
-  `chunk_id`, còn `quoted_span` luôn được code tự lấy lại từ evidence thật
-  của fact — không tin bản LLM tự chép lại, cùng kỷ luật với
-  `fact_extraction.build_legal_fact` ở Phase 1; `answer_fields` chép trực
+  evidence đã chốt trong một request; mỗi claim chỉ tham chiếu `chunk_id` và
+  code chỉ giữ các id thuộc evidence thật của fact. `answer_fields` chép trực
   tiếp từ `LegalFact`, không đi qua LLM. `evolve_candidate_batch` áp từng
   phép evolution cho cả batch, giữ nguyên claims/evidence/answer_fields.
 - `candidate_pipeline.py` chia các task chưa hoàn thành thành batch 5, chạy

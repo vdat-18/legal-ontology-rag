@@ -48,7 +48,7 @@ def _fact(
         valid_to=valid_to,
         document_number="168/2024/NĐ-CP",
         provision_path="Điều 6",
-        evidence=(EvidenceReference(chunk_id=f"chunk-{fact_id}", quoted_span=""),),
+        evidence=(EvidenceReference(chunk_id=f"chunk-{fact_id}"),),
     )
 
 

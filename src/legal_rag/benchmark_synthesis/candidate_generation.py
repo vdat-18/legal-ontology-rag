@@ -29,7 +29,7 @@ from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
-CANDIDATE_SCHEMA_VERSION = "1.1.0"
+CANDIDATE_SCHEMA_VERSION = "1.2.0"
 CANDIDATE_GENERATION_PROMPT_VERSION = "1.3.0"
 
 _EVOLUTION_OPERATION_BY_ID: dict[str, EvolutionOperation] = {
@@ -41,14 +41,13 @@ _EVOLUTION_OPERATION_BY_ID: dict[str, EvolutionOperation] = {
 
 @dataclass(frozen=True, slots=True)
 class ClaimEvidence:
-    """One quoted span backing a required claim, copied from real fact evidence."""
+    """One source chunk backing a required claim."""
 
     chunk_id: str
-    quoted_span: str
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable claim-evidence record."""
-        return {"chunk_id": self.chunk_id, "quoted_span": self.quoted_span}
+        return {"chunk_id": self.chunk_id}
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,17 +167,9 @@ def build_fact_context(fact: LegalFact) -> FactContext:
 
 
 def _claim_evidence(fact: LegalFact, referenced_chunk_ids: Sequence[str]) -> tuple[ClaimEvidence, ...]:
-    """Return the fact's own evidence entries matching the LLM-referenced chunk_ids.
-
-    quoted_span always comes from the fact's real evidence, never from the
-    LLM's copy of it, so a claim can never carry a fabricated quote.
-    """
+    """Return the fact's own evidence chunks matching the LLM-referenced chunk_ids."""
     referenced = set(referenced_chunk_ids)
-    return tuple(
-        ClaimEvidence(chunk_id=entry.chunk_id, quoted_span=entry.quoted_span)
-        for entry in fact.evidence
-        if entry.chunk_id in referenced
-    )
+    return tuple(ClaimEvidence(chunk_id=entry.chunk_id) for entry in fact.evidence if entry.chunk_id in referenced)
 
 
 class CandidateGenerationClient(Protocol):

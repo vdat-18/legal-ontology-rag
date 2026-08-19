@@ -70,7 +70,7 @@ class OntologyRuleEntry {
   conduct_label_vi string @description(#"
     Một hành vi được điều chỉnh có thể đối chiếu độc lập. Không gộp nhiều
     hành vi thay thế trong cùng điểm thành một nhãn bao quát. Chỉ giữ nội
-    dung tích cực cấu thành hành vi và qualifier nội tại; ngoại lệ giới hạn
+    dung cấu thành hành vi và qualifier nội tại; ngoại lệ giới hạn
     phạm vi áp dụng phải nằm trong condition tree, không chỉ nằm trong nhãn.
   "#)
   subject_kind OntologySubjectKind?
@@ -100,37 +100,114 @@ class OntologyPopulationBatchResult {
   rules OntologyRuleEntry[]
 }
 
-function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> OntologyPopulationBatchResult[] {
+class OntologyTargetConductInput {
+  target_chunk_id string
+  structural_context string @description(#"Metadata cấu trúc của Target; không phải quoted evidence."#)
+  target_text string
+}
+
+class OntologyTargetConductEntry {
+  conduct_id string @description(#"ID cục bộ duy nhất trong Target."#)
+  conduct_label_vi string @description(#"
+    Một conduct nguyên tử được nêu cụ thể trong Target, giữ đúng phủ định và
+    qualifier tiếng Việt chi phối nó.
+  "#)
+  provision_path string @description(#"Đường dẫn đầy đủ tên cấp tiếng Việt của conduct."#)
+  evidence OntologyEvidenceEntry[] @description(#"Exact evidence chỉ từ Target."#)
+}
+
+class OntologyTargetConductBatchResult {
+  target_chunk_id string
+  conducts OntologyTargetConductEntry[]
+}
+
+class OntologyPopulationBindingItem {
+  target_chunk_id string
+  window ChunkWindowEntry[]
+  target_conducts OntologyTargetConductEntry[]
+}
+
+class OntologyBoundRuleEntry {
+  target_conduct_id string @description(#"Phải trùng conduct_id được cung cấp trong target_conducts."#)
+  rule OntologyRuleEntry
+}
+
+class OntologyPopulationBindingBatchResult {
+  target_chunk_id string
+  rules OntologyBoundRuleEntry[]
+}
+
+function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) -> OntologyTargetConductBatchResult[] {
+  client OpenAICompatibleProvider
+  prompt #"
+    {{ _.role("user") }}
+
+    Lập inventory conduct cho ontology pháp luật giao thông đường bộ Việt Nam.
+    Đây là danh sách đóng dùng ở pha gắn hậu quả pháp lý sau đó.
+
+    - Chỉ đọc Target text và structural context của chính item. Không dùng kiến
+      thức ngoài, không suy ra nội dung của điều khoản được dẫn chiếu.
+    - Chỉ tạo conduct khi Target trực tiếp mô tả hành vi hoặc nghĩa vụ cụ thể.
+      Cụm chỉ nói "hành vi quy định tại" một provision khác không phải conduct,
+      kể cả khi Target nêu hậu quả áp dụng cho provision đó.
+    - Đọc Target đến hết và xử lý mọi heading Khoản/Điểm xuất hiện trong chunk.
+    - Mỗi entry là một hành vi có thể độc lập cấu thành vi phạm. Tách lựa chọn
+      hành vi độc lập; giữ cùng entry danh sách đối tượng, phương tiện, cách diễn
+      đạt tương đương hoặc các thành phần phải kết hợp mới có nghĩa.
+    - Giữ đúng phạm vi ngữ pháp tiếng Việt. Khi một từ phủ định hoặc qualifier
+      chi phối nhiều động từ/lựa chọn, lặp lại ý nghĩa đó trong từng label sau
+      khi tách; không biến hành động tuân thủ thành hành vi vi phạm.
+    - `d` và `đ` là hai ký hiệu Điểm khác nhau. Không bỏ dấu hoặc đổi ký hiệu.
+    - provision_path bắt buộc dùng tên cấp tiếng Việt, dạng `Chương <id> > Mục
+      <id> > Điều <id> > Khoản <id> > Điểm <id>` và bỏ cấp không tồn tại.
+    - Mỗi evidence phải có chunk_id bằng target_chunk_id và quoted_span liên
+      tục, khớp chính xác Target text. Evidence phải trực tiếp chứa wording tạo
+      conduct; một dẫn chiếu chung không đủ làm conduct evidence.
+    - Trả đúng một result cho mỗi target_chunk_id; conducts rỗng nếu Target chỉ
+      chứa consequence catalog, dẫn chiếu, thủ tục hoặc quy định chung.
+
+    {% for item in items %}
+    === target_chunk_id={{ item.target_chunk_id }} ===
+    Structural context (không dùng làm quoted evidence):
+    {{ item.structural_context }}
+    Target text:
+    {{ item.target_text }}
+    === end target_chunk_id={{ item.target_chunk_id }} ===
+    {% endfor %}
+
+    {{ ctx.output_format }}
+  "#
+}
+
+function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> OntologyPopulationBindingBatchResult[] {
   client OpenAICompatibleProvider
   prompt #"
     {{ _.role("user") }}
 
     Mục tiêu
-    Xây dựng instance ontology từ văn bản pháp luật giao thông đường bộ Việt
-    Nam. Chỉ trích xuất PenaltyRule gắn conduct cụ thể với hậu quả pháp lý;
-    không kết luận cho vụ việc thực tế.
+    Gắn hậu quả pháp lý vào inventory conduct đã được khóa cho từng Target để
+    xây dựng PenaltyRule. Không kết luận cho vụ việc thực tế.
 
     Quy trình nội bộ
-    1. Đọc Target theo thứ tự đến hết, chia theo từng heading Khoản/Điểm và kiểm
-       kê mọi conduct, lựa chọn hành vi, qualifier và ngoại lệ. Không dừng khi
-       gặp heading mới trong cùng Target.
-    2. Với mỗi conduct, xác định provision_path và heading hậu quả chính đang
-       chi phối, kể cả heading mở ở Preceding.
+    1. Dùng target_conducts làm danh sách đóng. Không thêm, bỏ, đổi label hoặc
+       đổi provision_path; mỗi output rule phải trỏ tới đúng target_conduct_id.
+    2. Với mỗi conduct, xác định heading hậu quả chính đang chi phối, kể cả
+       heading mở ở Preceding.
     3. Đọc toàn reading window, lập bản đồ mọi hậu quả trực tiếp hoặc dẫn chiếu
        tới provision đó và giữ riêng điều kiện của từng hậu quả.
-    4. Tách conduct nguyên tử và rule variant; sao chép đúng applicability,
+    4. Tạo rule variant và sao chép đúng locked conduct, applicability,
        consequence, condition, exception và evidence dùng chung.
-    5. Audit coverage theo từng heading trong Target: mỗi conduct cụ thể phải có
-       rule hoặc được xác nhận không đủ điều kiện tạo rule; mọi heading chính,
-       dẫn chiếu, điều kiện và ngoại lệ đã đúng phạm vi; các hậu quả loại trừ
-       nhau không cùng variant. Không xuất dữ liệu kiểm kê hoặc audit.
+    5. Audit từng target_conduct_id: tạo đủ variant nếu có consequence, hoặc bỏ
+       nếu reading window chưa đủ consequence; mọi heading, dẫn chiếu, điều kiện
+       và ngoại lệ phải đúng phạm vi. Không xuất dữ liệu audit.
 
     Nguồn và evidence
     - Chỉ dùng reading window; không dùng kiến thức ngoài hoặc đoán phần thiếu.
       Không trộn dữ liệu giữa các target window.
-    - Target chứa conduct cần tạo rule. Preceding/Following hoàn chỉnh ngữ cảnh
+    - target_conducts chứa toàn bộ conduct được phép. Preceding/Following hoàn chỉnh ngữ cảnh
       liền kề; ArticleContext hoàn chỉnh heading, scope và dẫn chiếu trong cùng
-      Điều. Context không được biến conduct chỉ xuất hiện ngoài Target thành rule.
+      Điều. Context chỉ cung cấp applicability, condition hoặc consequence,
+      không được tạo conduct mới.
     - Structural context chỉ xác định ancestry, subject/role, vehicle và
       provision_path. Nếu có nhiều VARIANT, đối chiếu Source text và thứ tự cấu
       trúc để giữ đúng ranh giới. Không dùng structural context làm quoted_span.
@@ -139,7 +216,8 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
     - Dấu và ký hiệu tiếng Việt là một phần của định danh pháp lý. Giữ nguyên
       chính tả source: `d` và `đ` là hai Điểm khác nhau; không bỏ dấu, đổi chữ
       hoặc ghép các ký hiệu gần nhau khi xác định Điều/Khoản/Điểm.
-    - Mọi conduct phải có evidence trong Target. Subject, role, vehicle, path,
+    - Sao chép nguyên văn conduct_label_vi, provision_path và Target evidence từ
+      target_conducts vào rule. Subject, role, vehicle,
       ngày hiệu lực và giá trị consequence phải được source hoặc structural
       context cho phép ở trên xác định; không tự đồng nhất vai trò hay concept
       chỉ vì câu chữ tương tự. valid_to null chỉ có nghĩa là chưa biết.
@@ -149,9 +227,8 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
       provenance và ít nhất một consequence. Quy định chung, định nghĩa, nguyên
       tắc, thẩm quyền, thủ tục, hồ sơ, tạm giữ/thu hồi, danh mục consequence và
       nghĩa vụ của người thi hành công vụ không tự tạo PenaltyRule.
-    - Target thuần consequence hoặc dẫn chiếu trả rules rỗng; consequence đó chỉ
-      gắn vào rule của conduct provision tương ứng. Không dùng mô tả vi phạm
-      chung làm conduct.
+    - Nếu target_conducts rỗng thì trả rules rỗng. Không mở rộng một dẫn chiếu
+      chung thành các conduct lấy từ context.
     - Với Target bắt đầu giữa danh sách, lần ngược theo thứ tự tới heading hậu
       quả chính gần nhất còn mở và gắn nó cho mọi conduct thuộc phạm vi.
       Preceding/Following là bắt buộc khi trực tiếp hoàn chỉnh rule.
@@ -161,6 +238,9 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
       khớp chính xác provision của rule; không suy từ vị trí gần, thứ tự chữ cái
       hoặc ký hiệu tương tự. Khi phạm vi chồng lấn, chọn clause trực tiếp và cụ
       thể nhất, không lấy consequence của provision khác.
+    - Trước khi giữ một consequence, kiểm tra chính clause evidence của nó sau
+      khi giải nén có chứa exact provision_path của locked conduct. Clause chỉ
+      chứa cùng Khoản nhưng liệt kê Điểm khác không hỗ trợ consequence đó.
     - Giữ mọi consequence được window hỗ trợ. PointDeduction,
       AdditionalSanction và RemedialMeasure không thay thế hậu quả chính. Các
       consequence không định lượng chỉ cùng tồn tại khi source quy định cộng dồn.
@@ -178,17 +258,11 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
       responsible_role_label_vi; không suy ra từ biểu mẫu hoặc phụ lục.
 
     Atomicity, conditions và output
-    - Mỗi rule chứa đúng một conduct có thể đối chiếu độc lập. Tách các hành vi
-      thay thế nếu từng hành vi riêng đã đủ cấu thành; không dùng nhãn bao quát.
-      Giữ cùng conduct các qualifier, danh sách đối tượng/phương tiện, cách diễn
-      đạt tương đương hoặc thành phần phải kết hợp mới có nghĩa. Quyết định theo
-      ngữ nghĩa, không theo dấu câu hay từ khóa.
-    - Khi từ phủ định hoặc qualifier tiếng Việt chi phối nhiều động từ/lựa chọn,
-      giữ phạm vi chi phối đó trong từng conduct sau khi tách. Không được bỏ một
-      lựa chọn chỉ vì từ phủ định hoặc chủ ngữ không được lặp lại trước nó.
+    - Inventory đã quyết định atomicity. Mỗi rule dùng nguyên một locked conduct;
+      không gộp, tách hoặc diễn giải lại label ở pha này.
     - Phân biệt qualifier cấu thành conduct với ngoại lệ giới hạn applicability
-      theo ý nghĩa và phạm vi quy phạm. conduct_label_vi chỉ mô tả hành vi tích
-      cực cùng qualifier nội tại; ngoại lệ applicability nằm trong condition tree.
+      theo ý nghĩa và phạm vi quy phạm. conduct_label_vi giữ nguyên wording cấu
+      thành cùng qualifier nội tại; ngoại lệ applicability nằm trong condition tree.
     - Giữ nguyên logic AND/OR/NOT. Biểu diễn ngoại lệ applicability bằng Atomic
       có exact evidence và Not trỏ tới Atomic; kết hợp AllOf/AnyOf khi cần.
       condition_id là cục bộ, operand_ids chỉ trỏ trong rule và không tạo chu trình.
@@ -201,12 +275,20 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
       source, giữ nguyên dấu của ký hiệu và không kèm tiêu đề.
     - Không tạo ConductOccurrence, LegalChange, liên kết sửa đổi/thay thế,
       equivalence hoặc cross-document identity.
-    - Trả đúng một result cho mỗi target_chunk_id. Chỉ trả rules rỗng sau khi
-      audit toàn Target xác nhận không conduct nào đủ applicability và consequence
-      trực tiếp hoặc dẫn chiếu trong reading window.
+    - Trả đúng một result cho mỗi target_chunk_id. Mỗi target_conduct_id có thể
+      có nhiều rule variant nhưng không được trỏ tới conduct ngoài inventory.
 
     {% for item in items %}
     === target_chunk_id={{ item.target_chunk_id }} ===
+    Locked target conducts:
+    {% for conduct in item.target_conducts %}
+    [{{ conduct.conduct_id }}]
+    conduct_label_vi={{ conduct.conduct_label_vi }}
+    provision_path={{ conduct.provision_path }}
+    {% for evidence in conduct.evidence %}
+    target_evidence chunk_id={{ evidence.chunk_id }}: {{ evidence.quoted_span }}
+    {% endfor %}
+    {% endfor %}
     {% for entry in item.window %}
     [{{ entry.role }}] chunk_id={{ entry.chunk_id }}
     {% if entry.context_text %}

@@ -8,22 +8,22 @@ from typing import Any
 
 from legal_rag.parser.hashing import sha256_json
 
-LEGAL_FACT_SCHEMA_VERSION = "1.2.0"
+LEGAL_FACT_SCHEMA_VERSION = "1.3.0"
 
 
 @dataclass(frozen=True, slots=True)
 class EvidenceReference:
-    """One supporting span tying a legal fact to its source chunk."""
+    """One source chunk supporting a legal fact."""
 
     chunk_id: str
-    quoted_span: str
+    quoted_span: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable evidence record."""
-        return {
-            "chunk_id": self.chunk_id,
-            "quoted_span": self.quoted_span,
-        }
+        record = {"chunk_id": self.chunk_id}
+        if self.quoted_span is not None:
+            record["quoted_span"] = self.quoted_span
+        return record
 
 
 @dataclass(frozen=True, slots=True)

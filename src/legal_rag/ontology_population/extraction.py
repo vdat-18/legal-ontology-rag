@@ -18,6 +18,10 @@ from legal_rag.baml_client.types import (
     ChunkWindowRole,
     FactExtractionBatchItem,
     OntologyPopulationBatchResult,
+    OntologyPopulationBindingBatchResult,
+    OntologyPopulationBindingItem,
+    OntologyTargetConductBatchResult,
+    OntologyTargetConductInput,
 )
 from legal_rag.baml_client.types import OntologyEvidenceEntry as BamlEvidence
 from legal_rag.baml_client.types import OntologyRuleEntry as BamlRule
@@ -43,7 +47,7 @@ from legal_rag.ontology_population.models import (
 )
 from legal_rag.settings import Settings
 
-ONTOLOGY_POPULATION_PROMPT_VERSION = "0.12.0"
+ONTOLOGY_POPULATION_PROMPT_VERSION = "0.13.0"
 
 
 class OntologyPopulationClient(Protocol):
@@ -71,12 +75,114 @@ class BamlOntologyPopulationClient:
         self._max_response_bytes = population_settings.max_response_bytes
 
     def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
-        """Run one bounded BAML call over population windows."""
-        request = b.request.ExtractOntologyPopulationBatch(
-            list(items), baml_options={"client_registry": self._registry}
+        """Inventory target conducts before binding consequences from context."""
+        target_inputs = tuple(_target_conduct_input(item) for item in items)
+        inventory_request = b.request.ExtractOntologyTargetConductBatch(
+            list(target_inputs), baml_options={"client_registry": self._registry}
         )
-        raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        return b.parse.ExtractOntologyPopulationBatch(raw_output, baml_options={"client_registry": self._registry})
+        inventory_output = execute_baml_request(inventory_request, self._timeout_seconds, self._max_response_bytes)
+        inventories = b.parse.ExtractOntologyTargetConductBatch(
+            inventory_output, baml_options={"client_registry": self._registry}
+        )
+        binding_items = build_population_binding_items(items, inventories)
+        if not any(item.target_conducts for item in binding_items):
+            return tuple(
+                OntologyPopulationBatchResult(target_chunk_id=item.target_chunk_id, rules=[]) for item in binding_items
+            )
+        binding_request = b.request.BindOntologyPopulationBatch(
+            list(binding_items), baml_options={"client_registry": self._registry}
+        )
+        binding_output = execute_baml_request(binding_request, self._timeout_seconds, self._max_response_bytes)
+        binding_results = b.parse.BindOntologyPopulationBatch(
+            binding_output, baml_options={"client_registry": self._registry}
+        )
+        return finalize_population_binding_results(binding_items, binding_results)
+
+
+def _target_conduct_input(item: FactExtractionBatchItem) -> OntologyTargetConductInput:
+    """Build the isolated Target-only input for conduct inventory."""
+    target_entries = [entry for entry in item.window if entry.role == ChunkWindowRole.Target]
+    if len(target_entries) != 1:
+        msg = "Population reading window must contain exactly one Target entry"
+        raise ValueError(msg)
+    target = target_entries[0]
+    return OntologyTargetConductInput(
+        target_chunk_id=item.target_chunk_id,
+        structural_context=target.context_text,
+        target_text=target.text,
+    )
+
+
+def build_population_binding_items(
+    items: Sequence[FactExtractionBatchItem],
+    inventories: Sequence[OntologyTargetConductBatchResult],
+) -> tuple[OntologyPopulationBindingItem, ...]:
+    """Validate Target-only inventories and attach them to full reading windows."""
+    requested_ids = [item.target_chunk_id for item in items]
+    inventory_ids = [result.target_chunk_id for result in inventories]
+    if len(inventory_ids) != len(set(inventory_ids)) or set(inventory_ids) != set(requested_ids):
+        msg = "Target conduct inventory must contain exactly one result per target chunk"
+        raise ValueError(msg)
+    inventories_by_target = {result.target_chunk_id: result for result in inventories}
+    binding_items = []
+    for item in items:
+        inventory = inventories_by_target[item.target_chunk_id]
+        conduct_ids = [conduct.conduct_id for conduct in inventory.conducts]
+        if len(conduct_ids) != len(set(conduct_ids)):
+            msg = "Target conduct IDs must be unique within each target chunk"
+            raise ValueError(msg)
+        target_text = _target_conduct_input(item).target_text
+        for conduct in inventory.conducts:
+            if not conduct.evidence:
+                msg = "Every target conduct must cite exact Target evidence"
+                raise ValueError(msg)
+            bind_population_evidence(conduct.evidence, {item.target_chunk_id: target_text})
+        binding_items.append(
+            OntologyPopulationBindingItem(
+                target_chunk_id=item.target_chunk_id,
+                window=list(item.window),
+                target_conducts=list(inventory.conducts),
+            )
+        )
+    return tuple(binding_items)
+
+
+def finalize_population_binding_results(
+    items: Sequence[OntologyPopulationBindingItem],
+    results: Sequence[OntologyPopulationBindingBatchResult],
+) -> tuple[OntologyPopulationBatchResult, ...]:
+    """Reject rules that diverge from the locked Target conduct inventory."""
+    requested_ids = [item.target_chunk_id for item in items]
+    result_ids = [result.target_chunk_id for result in results]
+    if len(result_ids) != len(set(result_ids)) or set(result_ids) != set(requested_ids):
+        msg = "Population binding response must contain exactly one result per target chunk"
+        raise ValueError(msg)
+    items_by_target = {item.target_chunk_id: item for item in items}
+    results_by_target = {result.target_chunk_id: result for result in results}
+    finalized = []
+    for target_id in requested_ids:
+        item = items_by_target[target_id]
+        conducts_by_id = {conduct.conduct_id: conduct for conduct in item.target_conducts}
+        rules = []
+        for bound in results_by_target[target_id].rules:
+            conduct = conducts_by_id.get(bound.target_conduct_id)
+            if conduct is None:
+                msg = "Population rule must reference a locked Target conduct"
+                raise ValueError(msg)
+            if bound.rule.conduct_label_vi != conduct.conduct_label_vi:
+                msg = "Population rule cannot rename its locked Target conduct"
+                raise ValueError(msg)
+            if bound.rule.provision_path != conduct.provision_path:
+                msg = "Population rule cannot change its locked Target provision path"
+                raise ValueError(msg)
+            inventory_evidence = {(entry.chunk_id, entry.quoted_span) for entry in conduct.evidence}
+            rule_evidence = {(entry.chunk_id, entry.quoted_span) for entry in bound.rule.evidence}
+            if not inventory_evidence.issubset(rule_evidence):
+                msg = "Population rule must retain its locked Target conduct evidence"
+                raise ValueError(msg)
+            rules.append(bound.rule)
+        finalized.append(OntologyPopulationBatchResult(target_chunk_id=target_id, rules=rules))
+    return tuple(finalized)
 
 
 def extract_population_from_document(

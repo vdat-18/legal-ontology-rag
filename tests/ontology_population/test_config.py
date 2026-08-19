@@ -47,6 +47,11 @@ def test_population_contract_requires_atomic_target_conducts_and_canonical_paths
 
     assert policy["conduct_granularity"] == "atomic_independently_matchable"
     assert policy["requires_target_conduct_evidence"] is True
+    assert policy["conduct_inventory"] == {
+        "source": "target_only",
+        "closed_during_consequence_binding": True,
+        "preserves_label_path_and_evidence": True,
+    }
     assert policy["target_coverage"] == {
         "exhaustive_specific_conducts": True,
         "internal_llm_audit": True,
@@ -79,10 +84,10 @@ def test_population_contract_requires_atomic_target_conducts_and_canonical_paths
 
 
 def test_population_contract_versions_complete_rule_assembly_policy() -> None:
-    """V0.12 preserves Vietnamese legal locators during rule assembly."""
+    """V0.13 inventories Target conducts before binding consequences."""
     contract = load_yaml(CONTRACT_PATH)
 
-    assert contract["artifact_version"] == "0.12.0"
+    assert contract["artifact_version"] == "0.13.0"
     assert any("applicability exception" in boundary for boundary in contract["semantic_boundaries"])
 
 
@@ -90,10 +95,11 @@ def test_population_prompt_audits_conditional_variants_and_local_exceptions() ->
     """The typed prompt protects the reviewed population regression boundaries."""
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
 
-    assert "Với mỗi conduct, xác định provision_path" in prompt
+    assert "Với mỗi conduct, xác định heading" in prompt
     assert "ArticleContext" in prompt
     assert "Chỉ bind khi tuple" in prompt
-    assert "Audit coverage" in prompt
+    assert "cùng Khoản nhưng liệt kê Điểm khác" in prompt
+    assert "Audit từng target_conduct_id" in prompt
     assert "thuộc phạm vi" in prompt
     assert "variant riêng" in prompt
     assert "quả chính gần nhất còn mở" in prompt
@@ -106,12 +112,16 @@ def test_population_prompt_preserves_vietnamese_legal_structure() -> None:
     """Vietnamese locators and coordinated conduct remain source-faithful."""
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
 
-    assert "Không dừng khi" in prompt
+    assert "danh sách đóng" in prompt
     assert "`d` và `đ` là hai Điểm khác nhau" in prompt
     assert "tuple đầy đủ (Điều, Khoản, Điểm)" in prompt
     assert "khớp chính xác provision của rule" in prompt
-    assert "từ phủ định hoặc chủ ngữ không được lặp lại" in prompt
+    assert "lặp lại ý nghĩa đó trong từng label" in prompt
     assert "không được chỉ ghi chuỗi ID" in prompt
+    assert "không biến hành động tuân thủ thành hành vi vi phạm" in prompt
+    assert "Không mở rộng một dẫn chiếu" in prompt
+    assert "function ExtractOntologyTargetConductBatch" in prompt
+    assert "function BindOntologyPopulationBatch" in prompt
 
 
 def test_population_console_script_is_published() -> None:

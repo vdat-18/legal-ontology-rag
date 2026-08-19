@@ -2,20 +2,18 @@ enum ChunkWindowRole {
   Preceding
   Target
   Following
-  ArticleContext
 }
 
 class ChunkWindowEntry {
   chunk_id string
   role ChunkWindowRole @description(#"
     Target là chunk chính đang được đọc để trích fact. Preceding và Following
-    là chunk liền trước và liền sau theo thứ tự văn bản. ArticleContext là
-    chunk khác trong cùng Điều, chỉ dùng khi quy tắc hoặc hậu quả nằm xa.
+    là chunk liền trước và liền sau theo thứ tự văn bản.
   "#)
   context_text string @description(#"
     Ngữ cảnh cấu trúc do parser lấy từ metadata tài liệu. Có thể dùng để hiểu
-    Chương, Mục, Điều và phạm vi áp dụng, nhưng không phải source text để trích
-    evidence.quoted_span.
+    Chương, Mục, Điều và phạm vi áp dụng, nhưng không phải source text để làm
+    căn cứ cho fact.
   "#)
   text string
 }
@@ -27,10 +25,6 @@ class FactExtractionBatchItem {
 
 class EvidenceEntry {
   chunk_id string @description(#"Phải trùng với một chunk_id trong window."#)
-  quoted_span string @description(#"
-    Đoạn căn cứ từ chunk tương ứng. Ưu tiên trích nguyên văn; có thể chuẩn hóa
-    nhẹ cách xuống dòng hoặc diễn đạt nếu vẫn giữ đúng nội dung pháp lý.
-  "#)
 }
 
 class LegalFact {
@@ -70,16 +64,15 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     - Chỉ điền trường có căn cứ trực tiếp trong window; không dùng kiến thức
       bên ngoài, không suy đoán. Không đủ căn cứ cho fact hoàn chỉnh thì bỏ fact.
     - Mọi nội dung của fact phải được phủ bởi evidence từ đúng chunk_id trong
-      window. quoted_span cần thể hiện đúng căn cứ pháp lý; không bắt buộc
-      khớp từng ký tự với Source text.
+      window. Chỉ tham chiếu chunk thực sự làm căn cứ cho fact.
     - Structural context chỉ dùng để hiểu cấu trúc và provision_path, không
-      được dùng làm quoted evidence. Với nhiều VARIANT, đối chiếu Source text
+      được dùng làm evidence. Với nhiều VARIANT, đối chiếu Source text
       và thứ tự window để không trộn quy định qua ranh giới Điều.
     - Xử lý từng window độc lập. Trả đúng một kết quả cho mỗi target_chunk_id,
       giữ nguyên id; facts=[] là hợp lệ.
 
     Tự kiểm tra trước khi trả lời: conduct có evidence trong Target; subject,
-    conditions và mọi chế tài đúng với conduct; evidence đủ và đúng intent.
+    conditions và mọi chế tài đúng với conduct; các chunk evidence đủ và đúng intent.
 
     Ví dụ ngắn:
     - Target nêu "không chấp hành hiệu lệnh của đèn tín hiệu" và window nêu
@@ -93,7 +86,7 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     {% for entry in item.window %}
     [{{ entry.role }}] chunk_id={{ entry.chunk_id }}
     {% if entry.context_text %}
-    Structural context (không dùng làm quoted evidence):
+    Structural context (không dùng làm evidence):
     {{ entry.context_text }}
     {% endif %}
     Source text:

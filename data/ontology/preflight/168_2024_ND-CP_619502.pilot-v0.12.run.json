@@ -1,0 +1,87 @@
+{
+  "accepted_chunk_count": 160,
+  "artifacts": [
+    {
+      "artifact_type": "chunks",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\168_2024_ND-CP_619502.chunks.jsonl",
+      "sha256": "25a857bfa00b2d3afac356687f9d1f9e15beef19c5db6300cd2f584822e6c3ea",
+      "size_bytes": 1106556
+    },
+    {
+      "artifact_type": "screening",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\168_2024_ND-CP_619502.chunk_screening.jsonl",
+      "sha256": "24974d2b376fcdbb42a1e6fdf48c58c89ee90d8d59a1cec9da52174908de8ec3",
+      "size_bytes": 49850
+    },
+    {
+      "artifact_type": "metadata",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\168_2024_ND-CP_619502.document_metadata.jsonl",
+      "sha256": "154de7d38d86b9199f24326d19223bd38e99d4011b08d69a4f05905035c71c3a",
+      "size_bytes": 105
+    },
+    {
+      "artifact_type": "population_contract",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\ontology\\population_contract.yaml",
+      "sha256": "7c30ece0ebc15be7c44d45b0914c823387e7e8e02d0ec17a2cf3e531e85b9277",
+      "size_bytes": 5026
+    },
+    {
+      "artifact_type": "target_selection",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\ontology\\pilots\\168_2024_ND-CP_penalty_rules_v0.2.json",
+      "sha256": "818973fedccbb236a7b17789cb1e04b173331ed2cdf3b96a64fd6c9977684a51",
+      "size_bytes": 813
+    }
+  ],
+  "checked_at": "2026-08-19T15:03:05.343010+00:00",
+  "checks": [
+    {
+      "check_id": "PF-CHUNKS-001",
+      "status": "passed",
+      "summary": "Loaded 166 unique chunks."
+    },
+    {
+      "check_id": "PF-DOCUMENT-001",
+      "status": "passed",
+      "summary": "Chunks belong to one root legal document."
+    },
+    {
+      "check_id": "PF-ADJACENCY-001",
+      "status": "passed",
+      "summary": "Neighbor links are consistent across 1 scopes."
+    },
+    {
+      "check_id": "PF-SCREENING-001",
+      "status": "passed",
+      "summary": "Screening covers all 166 chunks exactly once."
+    },
+    {
+      "check_id": "PF-TARGETS-001",
+      "status": "passed",
+      "summary": "Selected 10 of 160 accepted chunks for this run."
+    },
+    {
+      "check_id": "PF-METADATA-001",
+      "status": "passed",
+      "summary": "Document metadata has a reviewed baseline from 2025-01-01."
+    }
+  ],
+  "chunk_count": 166,
+  "document_number": "168/2024/NĐ-CP",
+  "estimated_llm_batches": 10,
+  "overall_status": "ready",
+  "pilot_run_id": "b47194ac9ba717c7a16dd29fc1101eb3be2fe1e7880c64742e099eb082f914e5",
+  "schema_version": "0.1.0",
+  "screening_count": 166,
+  "selected_target_ids": [
+    "790bf21447f7ece4daec4ec0586b04a1b6d025373be7da30e3bc2219d9bb4a4d",
+    "2513761b022fbb1b49a58ea4ef699b7641b8bb51d9f2a64b36b47bad968ad2b7",
+    "6d4e34c2c9327289fdeaff5ed439c61e5d95c34d47de4eae7d661498e1f58f86",
+    "368ebb2f7afb74221d262706e9b31a408f0dbc30bca80b2217b68c751145b0f7",
+    "c6b8c9891fca196614e5bd5a3c8d03c3b41a40d1e0839db8ded8347ca439214b",
+    "0ef2602b355b525fc0376b65ca7ddc17f00f58343fc90eace735bb9fd1f78ad0",
+    "ce4826dad68bf4f6fec6885668becd5d922bb0c9b311236e3f43bff7afb64a6a",
+    "e11ab2629a4d0765c77082ad2952ddebd0fbde64b77b86a358562f9f138102ca",
+    "c1524de34f739dcccfae9eead0747403ceb12ba7077832695d0d2068d30a483f",
+    "158da2dec64a419e9f3e06800da7927b9fbbe5eb11b3b076b3dc5ad35c710c53"
+  ]
+}

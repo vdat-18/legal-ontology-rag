@@ -113,7 +113,7 @@ def read_legal_facts(input_path: Path) -> tuple[LegalFact, ...]:
                     document_number=payload["document_number"],
                     provision_path=payload["provision_path"],
                     evidence=tuple(
-                        EvidenceReference(chunk_id=entry["chunk_id"], quoted_span=entry["quoted_span"])
+                        EvidenceReference(chunk_id=entry["chunk_id"], quoted_span=entry.get("quoted_span"))
                         for entry in payload["evidence"]
                     ),
                     source_chunk_id=payload["source_chunk_id"],
@@ -303,10 +303,7 @@ def _parse_candidate_draft(payload: dict[str, object]) -> CandidateDraft:
                 claim=claim["claim"],
                 fact_id=claim["fact_id"],
                 requested_chunk_ids=tuple(claim["requested_chunk_ids"]),
-                evidence=tuple(
-                    ClaimEvidence(chunk_id=entry["chunk_id"], quoted_span=entry["quoted_span"])
-                    for entry in claim["evidence"]
-                ),
+                evidence=tuple(ClaimEvidence(chunk_id=entry["chunk_id"]) for entry in claim["evidence"]),
             )
             for claim in payload["required_claims"]
         ),

@@ -23,12 +23,7 @@ def _fact(**overrides: object) -> LegalFact:
         "valid_to": None,
         "document_number": "168/2024/NĐ-CP",
         "provision_path": "Điều 6 khoản 9 điểm b",
-        "evidence": (
-            EvidenceReference(
-                chunk_id="chunk-1",
-                quoted_span="phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng",
-            ),
-        ),
+        "evidence": (EvidenceReference(chunk_id="chunk-1"),),
     }
     defaults.update(overrides)
     return LegalFact(**defaults)
@@ -42,12 +37,7 @@ def test_legal_fact_to_dict_serializes_stable_output_schema() -> None:
     assert record["valid_from"] == "2025-01-01"
     assert record["valid_to"] is None
     assert record["conditions"] == []
-    assert record["evidence"] == [
-        {
-            "chunk_id": "chunk-1",
-            "quoted_span": "phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng",
-        }
-    ]
+    assert record["evidence"] == [{"chunk_id": "chunk-1"}]
 
 
 def test_legal_fact_to_dict_serializes_missing_penalty_fields_as_null() -> None:

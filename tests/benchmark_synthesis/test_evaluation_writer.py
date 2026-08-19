@@ -59,12 +59,7 @@ def _fact() -> LegalFact:
         valid_to=None,
         document_number="168/2024/NĐ-CP",
         provision_path="Điều 6",
-        evidence=(
-            EvidenceReference(
-                chunk_id="chunk-1",
-                quoted_span="Phạt tiền từ 4.000.000 đồng.",
-            ),
-        ),
+        evidence=(EvidenceReference(chunk_id="chunk-1"),),
     )
 
 
@@ -215,7 +210,7 @@ def _candidate_draft() -> CandidateDraft:
             RequiredClaim(
                 claim="Mức phạt tiền áp dụng",
                 fact_id="fact-1",
-                evidence=(ClaimEvidence(chunk_id="chunk-1", quoted_span="Phạt tiền 4.000.000 đồng."),),
+                evidence=(ClaimEvidence(chunk_id="chunk-1"),),
             ),
         ),
         answer_fields=(

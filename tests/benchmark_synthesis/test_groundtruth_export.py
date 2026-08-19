@@ -27,7 +27,7 @@ def _candidate() -> CandidateDraft:
                 claim="Mức phạt tiền",
                 fact_id="fact-1",
                 requested_chunk_ids=("chunk-1",),
-                evidence=(ClaimEvidence(chunk_id="chunk-1", quoted_span="Phạt tiền từ 4 đến 6 triệu đồng."),),
+                evidence=(ClaimEvidence(chunk_id="chunk-1"),),
             ),
         ),
         answer_fields=(

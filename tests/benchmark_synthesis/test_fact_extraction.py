@@ -156,7 +156,7 @@ def _baml_fact(**overrides: object) -> BamlLegalFact:
         "valid_from": None,
         "valid_to": None,
         "provision_path": "Điều 6 khoản 9 điểm b",
-        "evidence": [BamlEvidenceEntry(chunk_id="chunk-1", quoted_span="phạt tiền từ 4.000.000 đồng")],
+        "evidence": [BamlEvidenceEntry(chunk_id="chunk-1")],
     }
     defaults.update(overrides)
     return BamlLegalFact(**defaults)
@@ -172,12 +172,11 @@ def _build_extracted(raw: BamlLegalFact | None = None, **metadata_overrides: obj
     )
 
 
-def test_build_extracted_fact_keeps_exact_llm_cited_evidence() -> None:
-    """An already exact cited span remains unchanged."""
+def test_build_extracted_fact_keeps_llm_cited_evidence_chunk() -> None:
+    """The persisted fact keeps the source chunk selected by the LLM."""
     fact = _build_extracted()
 
     assert fact.evidence[0].chunk_id == "chunk-1"
-    assert fact.evidence[0].quoted_span == "phạt tiền từ 4.000.000 đồng"
     assert fact.source_chunk_id == "chunk-1"
 
 
@@ -220,35 +219,9 @@ def test_build_extracted_fact_identity_separates_documents_sharing_a_provision_p
     assert first.fact_id != second.fact_id
 
 
-def test_build_extracted_fact_keeps_semantic_evidence_without_exact_rebinding() -> None:
-    """Semantic evidence is trusted without splitting or exact source-text matching."""
-    raw = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="chunk-1", quoted_span="Quy định chung.\n\nĐiểm b áp dụng.")])
-
-    fact = build_extracted_fact(
-        raw,
-        "chunk-1",
-        _metadata(),
-        {"chunk-1": "Quy định chung.\n\nĐiểm a áp dụng.\n\nĐiểm b áp dụng."},
-    )
-
-    assert tuple(reference.quoted_span for reference in fact.evidence) == ("Quy định chung.\n\nĐiểm b áp dụng.",)
-
-
-def test_build_extracted_fact_accepts_semantically_worded_evidence() -> None:
-    """Evidence may preserve legal intent without matching source text character for character."""
-    fact = build_extracted_fact(
-        _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="chunk-1", quoted_span="Mức phạt từ 4 đến 6 triệu đồng")]),
-        "chunk-1",
-        _metadata(),
-        {"chunk-1": "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."},
-    )
-
-    assert fact.evidence[0].quoted_span == "Mức phạt từ 4 đến 6 triệu đồng"
-
-
 def test_build_extracted_fact_rejects_empty_evidence() -> None:
     """A model result without evidence cannot become a persisted fact."""
-    with pytest.raises(ValueError, match="at least one evidence span"):
+    with pytest.raises(ValueError, match="at least one evidence chunk"):
         build_extracted_fact(_baml_fact(evidence=[]), "chunk-1", _metadata(), {"chunk-1": "Nội dung."})
 
 
@@ -274,10 +247,8 @@ class _FakeExtractionClient:
 def test_extract_facts_from_document_collects_every_fact_per_target() -> None:
     """Every fact the client returns for a target chunk is collected."""
     target = _chunk("target", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
-    fact_one = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target", quoted_span="Phạt tiền")])
-    fact_two = _baml_fact(
-        conduct="Hành vi khác", evidence=[BamlEvidenceEntry(chunk_id="target", quoted_span="Phạt tiền")]
-    )
+    fact_one = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target")])
+    fact_two = _baml_fact(conduct="Hành vi khác", evidence=[BamlEvidenceEntry(chunk_id="target")])
     client = _FakeExtractionClient({"target": (fact_one, fact_two)})
 
     facts = extract_facts_from_document(
@@ -335,7 +306,7 @@ def test_extract_facts_from_document_runs_batches_concurrently_and_preserves_fac
                     facts=[
                         _baml_fact(
                             conduct=f"Hành vi {item.target_chunk_id}",
-                            evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id, quoted_span="Phạt tiền")],
+                            evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id)],
                         )
                     ],
                 )
@@ -362,7 +333,7 @@ def test_extract_facts_from_document_runs_batches_concurrently_and_preserves_fac
 def test_extract_facts_from_document_retries_a_failing_batch_then_succeeds() -> None:
     """A batch whose extraction call raises is retried, and a later success produces its facts."""
     target = _chunk("target", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
-    fact = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target", quoted_span="Phạt tiền")])
+    fact = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target")])
     attempts = 0
 
     class _FlakyClient:
@@ -395,7 +366,7 @@ def test_extract_facts_from_document_leaves_failed_batch_incomplete_and_continue
     """An exhausted batch stays incomplete while a later batch is still persisted."""
     failing = tuple(_chunk(f"chunk-fail-{index}", "Nội dung gây lỗi mạng.") for index in range(5))
     ok = _chunk("chunk-ok", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.")
-    fact = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="chunk-ok", quoted_span="Phạt tiền")])
+    fact = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="chunk-ok")])
 
     class _FailsForFirstBatchClient:
         def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[FactExtractionBatchResult]:
@@ -426,7 +397,7 @@ def test_extract_facts_from_document_orders_batch_results_by_requested_target() 
     """Out-of-order model results are normalized before persistence."""
     target_one = _chunk("target-1", "Phạt tiền 4.000.000 đồng.")
     target_two = _chunk("target-2", "Trừ 6 điểm giấy phép lái xe.")
-    fact_one = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target-1", quoted_span="Phạt")])
+    fact_one = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target-1")])
 
     class _ReverseClient:
         def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[FactExtractionBatchResult]:
@@ -539,7 +510,7 @@ def test_baml_fact_extraction_client_parses_typed_batch_result(monkeypatch: pyte
             '"monetary_penalty":"4.000.000 đồng","license_points_deducted":null,'
             '"additional_penalties":[],"remedial_measures":[],"valid_from":null,"valid_to":null,'
             '"provision_path":"Điều 6",'
-            '"evidence":[{"chunk_id":"c1","quoted_span":"4.000.000 đồng"}]}]}]'
+            '"evidence":[{"chunk_id":"c1"}]}]}]'
         ),
     )
     target = _chunk("c1", "Vượt đèn đỏ phạt 4.000.000 đồng.")

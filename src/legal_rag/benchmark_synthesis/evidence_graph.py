@@ -15,7 +15,7 @@ from baml_py.logging import set_log_level
 
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import ConfirmedRelation as BamlConfirmedRelation
-from legal_rag.baml_client.types import EvidenceRelationBatchItem, LegalFactSummary, RelationEvidence
+from legal_rag.baml_client.types import EvidenceRelationBatchItem, LegalFactSummary
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.benchmark_synthesis.config import EvidenceRetrievalSettings, SynthesisSettings
 from legal_rag.benchmark_synthesis.llm_execution import (
@@ -35,7 +35,7 @@ from legal_rag.settings import Settings
 EVIDENCE_RELATION_SCHEMA_VERSION = "1.1.0"
 EVIDENCE_BUNDLE_SCHEMA_VERSION = "1.0.0"
 EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.1.0"
-EVIDENCE_RELATION_PROMPT_VERSION = "1.3.0"
+EVIDENCE_RELATION_PROMPT_VERSION = "1.4.0"
 EVIDENCE_CANDIDATE_SELECTION_VERSION = "3.0.0"
 EVIDENCE_CANDIDATE_SET_SCHEMA_VERSION = "1.0.0"
 FACT_RETRIEVAL_TEXT_VERSION = "2.0.0"
@@ -497,9 +497,7 @@ def _summarize(fact: LegalFact) -> LegalFactSummary:
         valid_to=fact.valid_to.isoformat() if fact.valid_to else None,
         document_number=fact.document_number,
         provision_path=fact.provision_path,
-        evidence=[
-            RelationEvidence(chunk_id=evidence.chunk_id, quoted_span=evidence.quoted_span) for evidence in fact.evidence
-        ],
+        evidence_chunk_ids=[evidence.chunk_id for evidence in fact.evidence],
     )
 
 

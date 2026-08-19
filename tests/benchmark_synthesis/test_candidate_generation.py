@@ -43,8 +43,8 @@ def _fact(fact_id: str = "fact-1") -> LegalFact:
         document_number="168/2024/NĐ-CP",
         provision_path="Điều 6",
         evidence=(
-            EvidenceReference(chunk_id="chunk-1", quoted_span="Phạt tiền 4.000.000 đồng."),
-            EvidenceReference(chunk_id="chunk-2", quoted_span="Trừ 4 điểm."),
+            EvidenceReference(chunk_id="chunk-1"),
+            EvidenceReference(chunk_id="chunk-2"),
         ),
     )
 
@@ -90,8 +90,8 @@ class _FakeGenerationClient:
         raise NotImplementedError
 
 
-def test_generate_candidate_cross_references_real_evidence_not_llm_copy() -> None:
-    """quoted_span always comes from the fact's own evidence, never a value the LLM invents."""
+def test_generate_candidate_cross_references_real_evidence_chunks() -> None:
+    """Required claims retain only chunk ids present in the fact's evidence."""
     fact = _fact()
     generated = BamlGeneratedCandidate(
         query_vi="oto vuot den do bi phat bao nhieu",
@@ -110,7 +110,6 @@ def test_generate_candidate_cross_references_real_evidence_not_llm_copy() -> Non
     assert len(candidate.required_claims) == 1
     assert len(candidate.required_claims[0].evidence) == 1
     assert candidate.required_claims[0].evidence[0].chunk_id == "chunk-1"
-    assert candidate.required_claims[0].evidence[0].quoted_span == "Phạt tiền 4.000.000 đồng."
 
 
 def test_generate_candidate_drops_hallucinated_chunk_id() -> None:

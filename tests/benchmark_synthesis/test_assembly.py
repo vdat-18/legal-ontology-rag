@@ -72,7 +72,7 @@ def _fact() -> LegalFact:
         valid_to=None,
         document_number="168/2024/ND-CP",
         provision_path="Dieu 6",
-        evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span=_SPAN),),
+        evidence=(EvidenceReference(chunk_id="chunk-1"),),
         source_chunk_id="chunk-1",
     )
 
@@ -158,31 +158,16 @@ def test_assembly_rejects_missing_evidence_chunk(tmp_path: Path) -> None:
     """A fact cannot reference a chunk absent from the document artifact."""
     fact = replace(
         _fact(),
-        evidence=(EvidenceReference(chunk_id="chunk-missing", quoted_span=_SPAN),),
+        evidence=(EvidenceReference(chunk_id="chunk-missing"),),
     )
 
     with pytest.raises(GroundTruthValidationError, match="missing chunk_id"):
         _assemble(tmp_path, facts=(fact,))
 
 
-def test_assembly_accepts_semantic_evidence_span(tmp_path: Path) -> None:
-    """Assembly trusts a non-empty evidence span without exact source-text matching."""
-    fact = replace(
-        _fact(),
-        evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span="not present"),),
-    )
-
-    result = _assemble(tmp_path, facts=(fact,))
-
-    assert result.facts == (fact,)
-
-
-def test_assembly_accepts_empty_evidence_span(tmp_path: Path) -> None:
-    """Assembly does not impose a hard content gate on the model's supporting span."""
-    fact = replace(
-        _fact(),
-        evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span=""),),
-    )
+def test_assembly_accepts_chunk_level_evidence(tmp_path: Path) -> None:
+    """Assembly needs only a valid source chunk reference for each fact."""
+    fact = replace(_fact(), evidence=(EvidenceReference(chunk_id="chunk-1"),))
 
     result = _assemble(tmp_path, facts=(fact,))
 
