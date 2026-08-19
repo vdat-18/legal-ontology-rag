@@ -88,8 +88,9 @@ class OntologyRuleEntry {
   valid_from string? @description(#"YYYY-MM-DD, chỉ điền khi window nêu hiệu lực riêng cho rule."#)
   valid_to string? @description(#"YYYY-MM-DD, null nghĩa là chưa biết chứ không phải vô hạn."#)
   provision_path string @description(#"
-    Đường dẫn định danh theo thứ tự Chương > Mục > Điều > Khoản > Điểm, chỉ
-    gồm số hoặc ký hiệu của cấp, không gồm tiêu đề. Bỏ cấp không tồn tại.
+    Đường dẫn định danh phải ghi đầy đủ tên cấp tiếng Việt theo thứ tự Chương >
+    Mục > Điều > Khoản > Điểm. Mỗi cấp gồm tên cấp và số hoặc ký hiệu, không
+    gồm tiêu đề; bỏ cấp không tồn tại.
   "#)
   evidence OntologyEvidenceEntry[] @description(#"Bằng chứng chung cho conduct, applicability và rule."#)
 }
@@ -110,16 +111,19 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
     không kết luận cho vụ việc thực tế.
 
     Quy trình nội bộ
-    1. Kiểm kê toàn bộ Target: conduct, lựa chọn hành vi, qualifier và ngoại lệ.
+    1. Đọc Target theo thứ tự đến hết, chia theo từng heading Khoản/Điểm và kiểm
+       kê mọi conduct, lựa chọn hành vi, qualifier và ngoại lệ. Không dừng khi
+       gặp heading mới trong cùng Target.
     2. Với mỗi conduct, xác định provision_path và heading hậu quả chính đang
        chi phối, kể cả heading mở ở Preceding.
     3. Đọc toàn reading window, lập bản đồ mọi hậu quả trực tiếp hoặc dẫn chiếu
        tới provision đó và giữ riêng điều kiện của từng hậu quả.
     4. Tách conduct nguyên tử và rule variant; sao chép đúng applicability,
        consequence, condition, exception và evidence dùng chung.
-    5. Audit coverage: mọi conduct, heading chính, dẫn chiếu, điều kiện và ngoại
-       lệ đã được xử lý đúng phạm vi; các hậu quả loại trừ nhau không cùng variant.
-       Không xuất dữ liệu kiểm kê hoặc audit.
+    5. Audit coverage theo từng heading trong Target: mỗi conduct cụ thể phải có
+       rule hoặc được xác nhận không đủ điều kiện tạo rule; mọi heading chính,
+       dẫn chiếu, điều kiện và ngoại lệ đã đúng phạm vi; các hậu quả loại trừ
+       nhau không cùng variant. Không xuất dữ liệu kiểm kê hoặc audit.
 
     Nguồn và evidence
     - Chỉ dùng reading window; không dùng kiến thức ngoài hoặc đoán phần thiếu.
@@ -132,6 +136,9 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
       trúc để giữ đúng ranh giới. Không dùng structural context làm quoted_span.
     - Mỗi quoted_span phải liên tục và khớp chính xác từng ký tự trong Source
       text của chunk được dẫn; dùng nhiều evidence entry cho nhiều đoạn.
+    - Dấu và ký hiệu tiếng Việt là một phần của định danh pháp lý. Giữ nguyên
+      chính tả source: `d` và `đ` là hai Điểm khác nhau; không bỏ dấu, đổi chữ
+      hoặc ghép các ký hiệu gần nhau khi xác định Điều/Khoản/Điểm.
     - Mọi conduct phải có evidence trong Target. Subject, role, vehicle, path,
       ngày hiệu lực và giá trị consequence phải được source hoặc structural
       context cho phép ở trên xác định; không tự đồng nhất vai trò hay concept
@@ -148,10 +155,12 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
     - Với Target bắt đầu giữa danh sách, lần ngược theo thứ tự tới heading hậu
       quả chính gần nhất còn mở và gắn nó cho mọi conduct thuộc phạm vi.
       Preceding/Following là bắt buộc khi trực tiếp hoàn chỉnh rule.
-    - Đọc toàn bộ các danh mục consequence trong ArticleContext. Giải nén danh
-      sách dẫn chiếu theo phạm vi ngữ pháp dùng chung và kiểm tra từng provision.
-      Dùng provision_path đầy đủ của rule để bind; khi phạm vi chồng lấn, chọn
-      clause trực tiếp và cụ thể nhất, không lấy consequence của provision khác.
+    - Đọc toàn bộ các danh mục consequence trong ArticleContext. Giải nén mỗi
+      dẫn chiếu thành tuple đầy đủ (Điều, Khoản, Điểm), kế thừa đúng cấp dùng
+      chung và kiểm tra từng tuple bằng ký hiệu nguyên văn. Chỉ bind khi tuple
+      khớp chính xác provision của rule; không suy từ vị trí gần, thứ tự chữ cái
+      hoặc ký hiệu tương tự. Khi phạm vi chồng lấn, chọn clause trực tiếp và cụ
+      thể nhất, không lấy consequence của provision khác.
     - Giữ mọi consequence được window hỗ trợ. PointDeduction,
       AdditionalSanction và RemedialMeasure không thay thế hậu quả chính. Các
       consequence không định lượng chỉ cùng tồn tại khi source quy định cộng dồn.
@@ -174,6 +183,9 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
       Giữ cùng conduct các qualifier, danh sách đối tượng/phương tiện, cách diễn
       đạt tương đương hoặc thành phần phải kết hợp mới có nghĩa. Quyết định theo
       ngữ nghĩa, không theo dấu câu hay từ khóa.
+    - Khi từ phủ định hoặc qualifier tiếng Việt chi phối nhiều động từ/lựa chọn,
+      giữ phạm vi chi phối đó trong từng conduct sau khi tách. Không được bỏ một
+      lựa chọn chỉ vì từ phủ định hoặc chủ ngữ không được lặp lại trước nó.
     - Phân biệt qualifier cấu thành conduct với ngoại lệ giới hạn applicability
       theo ý nghĩa và phạm vi quy phạm. conduct_label_vi chỉ mô tả hành vi tích
       cực cùng qualifier nội tại; ngoại lệ applicability nằm trong condition tree.
@@ -184,8 +196,9 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
       bộ chỉ gắn phần tử thuộc phạm vi; tách rule nếu các hành vi, đối tượng hoặc
       địa điểm có scope ngoại lệ khác nhau. Phần loại trừ chỉ thu hẹp đối tượng
       cấu thành conduct vẫn là qualifier, không tự động là applicability exception.
-    - provision_path theo thứ tự Chương > Mục > Điều > Khoản > Điểm, separator
-      ` > `, không kèm tiêu đề và bỏ cấp không có trong source.
+    - provision_path bắt buộc dùng dạng `Chương <id> > Mục <id> > Điều <id> >
+      Khoản <id> > Điểm <id>`, không được chỉ ghi chuỗi ID. Bỏ cấp không có trong
+      source, giữ nguyên dấu của ký hiệu và không kèm tiêu đề.
     - Không tạo ConductOccurrence, LegalChange, liên kết sửa đổi/thay thế,
       equivalence hoặc cross-document identity.
     - Trả đúng một result cho mỗi target_chunk_id. Chỉ trả rules rỗng sau khi

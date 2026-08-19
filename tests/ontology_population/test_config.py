@@ -79,10 +79,10 @@ def test_population_contract_requires_atomic_target_conducts_and_canonical_paths
 
 
 def test_population_contract_versions_complete_rule_assembly_policy() -> None:
-    """V0.11 versions the concise population prompt."""
+    """V0.12 preserves Vietnamese legal locators during rule assembly."""
     contract = load_yaml(CONTRACT_PATH)
 
-    assert contract["artifact_version"] == "0.11.0"
+    assert contract["artifact_version"] == "0.12.0"
     assert any("applicability exception" in boundary for boundary in contract["semantic_boundaries"])
 
 
@@ -92,7 +92,7 @@ def test_population_prompt_audits_conditional_variants_and_local_exceptions() ->
 
     assert "Với mỗi conduct, xác định provision_path" in prompt
     assert "ArticleContext" in prompt
-    assert "Dùng provision_path đầy đủ của rule để bind" in prompt
+    assert "Chỉ bind khi tuple" in prompt
     assert "Audit coverage" in prompt
     assert "thuộc phạm vi" in prompt
     assert "variant riêng" in prompt
@@ -100,6 +100,18 @@ def test_population_prompt_audits_conditional_variants_and_local_exceptions() ->
     assert "tối đa một MonetaryPenalty" in prompt
     assert "không thay thế" in prompt
     assert "Đọc toàn bộ các danh mục consequence" in prompt
+
+
+def test_population_prompt_preserves_vietnamese_legal_structure() -> None:
+    """Vietnamese locators and coordinated conduct remain source-faithful."""
+    prompt = PROMPT_PATH.read_text(encoding="utf-8")
+
+    assert "Không dừng khi" in prompt
+    assert "`d` và `đ` là hai Điểm khác nhau" in prompt
+    assert "tuple đầy đủ (Điều, Khoản, Điểm)" in prompt
+    assert "khớp chính xác provision của rule" in prompt
+    assert "từ phủ định hoặc chủ ngữ không được lặp lại" in prompt
+    assert "không được chỉ ghi chuỗi ID" in prompt
 
 
 def test_population_console_script_is_published() -> None:
