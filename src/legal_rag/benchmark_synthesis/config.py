@@ -8,7 +8,7 @@ from math import isfinite
 from pathlib import Path
 from typing import Any
 
-SYNTHESIS_CONFIG_SCHEMA_VERSION = "1.7.0"
+SYNTHESIS_CONFIG_SCHEMA_VERSION = "1.8.0"
 _MAX_LLM_TEMPERATURE = 2.0
 
 
@@ -33,53 +33,31 @@ class LlmStageSettings:
 class EvidenceRetrievalSettings:
     """Hybrid candidate-retrieval settings for evidence relation confirmation."""
 
+    retrieval_pool_size: int
     max_candidates_per_fact: int
-    min_similarity: float
-    pool_multiplier: int
     rrf_k: int
     bm25_k1: float
     bm25_b: float
     bm25_delta: float
-    dense_weight: float
-    lexical_core_weight: float
-    lexical_conditions_weight: float
-    lexical_consequences_weight: float
-    lexical_authority_weight: float
 
     def __post_init__(self) -> None:
         """Reject invalid ranking parameters before candidate preparation."""
         for name, value in {
+            "retrieval_pool_size": self.retrieval_pool_size,
             "max_candidates_per_fact": self.max_candidates_per_fact,
-            "pool_multiplier": self.pool_multiplier,
             "rrf_k": self.rrf_k,
         }.items():
             if value < 1:
                 msg = f"{name} must be positive, got {value}"
                 raise ValueError(msg)
-        if not isfinite(self.min_similarity) or not 0 <= self.min_similarity <= 1:
-            msg = f"min_similarity must be between 0 and 1, got {self.min_similarity}"
-            raise ValueError(msg)
         if not isfinite(self.bm25_k1) or self.bm25_k1 <= 0:
             msg = f"bm25_k1 must be positive, got {self.bm25_k1}"
             raise ValueError(msg)
         if not isfinite(self.bm25_b) or not 0 <= self.bm25_b <= 1:
             msg = f"bm25_b must be between 0 and 1, got {self.bm25_b}"
             raise ValueError(msg)
-        non_negative_values = {
-            "bm25_delta": self.bm25_delta,
-            "dense_weight": self.dense_weight,
-            "lexical_core_weight": self.lexical_core_weight,
-            "lexical_conditions_weight": self.lexical_conditions_weight,
-            "lexical_consequences_weight": self.lexical_consequences_weight,
-            "lexical_authority_weight": self.lexical_authority_weight,
-        }
-        for name, value in non_negative_values.items():
-            if not isfinite(value) or value < 0:
-                msg = f"{name} must not be negative, got {value}"
-                raise ValueError(msg)
-        ranking_weights = {name: value for name, value in non_negative_values.items() if name != "bm25_delta"}
-        if not any(value > 0 for value in ranking_weights.values()):
-            msg = "At least one evidence-retrieval ranking weight must be positive"
+        if not isfinite(self.bm25_delta) or self.bm25_delta < 0:
+            msg = f"bm25_delta must not be negative, got {self.bm25_delta}"
             raise ValueError(msg)
 
 
@@ -227,18 +205,11 @@ def _stage_settings(config: dict[str, Any]) -> LlmStageSettings:
 def _evidence_retrieval_settings(config: dict[str, Any]) -> EvidenceRetrievalSettings:
     """Build typed hybrid-retrieval settings from versioned config."""
     bm25 = config["bm25"]
-    weights = config["weights"]
     return EvidenceRetrievalSettings(
+        retrieval_pool_size=config["retrieval_pool_size"],
         max_candidates_per_fact=config["max_candidates_per_fact"],
-        min_similarity=config["min_similarity"],
-        pool_multiplier=config["pool_multiplier"],
         rrf_k=config["rrf_k"],
         bm25_k1=bm25["k1"],
         bm25_b=bm25["b"],
         bm25_delta=bm25["delta"],
-        dense_weight=weights["dense"],
-        lexical_core_weight=weights["core"],
-        lexical_conditions_weight=weights["conditions"],
-        lexical_consequences_weight=weights["consequences"],
-        lexical_authority_weight=weights["authority"],
     )

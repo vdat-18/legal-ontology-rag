@@ -33,10 +33,13 @@ class OntologyConditionEntry {
   kind OntologyConditionKind
   text_vi string @description(#"Nội dung điều kiện ngắn gọn bằng tiếng Việt."#)
   operand_ids string[] @description(#"
-    ID của các condition con. Atomic phải rỗng; AllOf/AnyOf có ít nhất hai;
+    ID của các condition con. Atomic phải rỗng; AllOf/AnyOf có ít nhất một;
     Not có đúng một.
   "#)
-  evidence OntologyEvidenceEntry[]
+  evidence OntologyEvidenceEntry[] @description(#"
+    Atomic phải có evidence trực tiếp. AllOf, AnyOf và Not có thể để rỗng khi
+    evidence đã nằm đầy đủ ở các operand bên dưới.
+  "#)
 }
 
 class OntologyConsequenceEntry {
@@ -264,8 +267,10 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
       theo ý nghĩa và phạm vi quy phạm. conduct_label_vi giữ nguyên wording cấu
       thành cùng qualifier nội tại; ngoại lệ applicability nằm trong condition tree.
     - Giữ nguyên logic AND/OR/NOT. Biểu diễn ngoại lệ applicability bằng Atomic
-      có exact evidence và Not trỏ tới Atomic; kết hợp AllOf/AnyOf khi cần.
-      condition_id là cục bộ, operand_ids chỉ trỏ trong rule và không tạo chu trình.
+      có source evidence và Not trỏ tới Atomic. AllOf/AnyOf có ít nhất một
+      operand; Not có đúng một. Logical operator có thể để evidence rỗng khi
+      evidence đã nằm đầy đủ ở operands. condition_id là cục bộ, operand_ids chỉ
+      trỏ trong rule và không tạo chu trình.
     - Lặp đầy đủ cây ngoại lệ chung cho mọi atomic rule bị chi phối. Ngoại lệ cục
       bộ chỉ gắn phần tử thuộc phạm vi; tách rule nếu các hành vi, đối tượng hoặc
       địa điểm có scope ngoại lệ khác nhau. Phần loại trừ chỉ thu hẹp đối tượng

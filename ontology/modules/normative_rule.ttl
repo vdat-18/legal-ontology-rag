@@ -32,7 +32,7 @@ lornr:RuleComponent a owl:Class ;
     rdfs:subClassOf lorsp:SupportedAssertion ;
     rdfs:label "Rule component"@en,
         "Thành phần quy tắc"@vi ;
-    rdfs:comment "A material part of a penalty rule whose authoritative provision and exact evidence can be evaluated independently."@en ;
+    rdfs:comment "A material part of a penalty rule whose authoritative provision and direct or operand-level evidence can be evaluated independently."@en ;
     lorsp:requirementReference "PURP-003", "SCOPE-007", "GRAN-004", "GRAN-006" ;
     lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EVIDENCE-001", "CQ-ASSEMBLY-001" ;
     lorsp:glossaryReference "TERM-RULE-003" ;
@@ -62,7 +62,7 @@ lornr:ConditionExpression a owl:Class ;
     rdfs:subClassOf lornr:RuleComponent ;
     rdfs:label "Condition expression"@en,
         "Biểu thức điều kiện"@vi ;
-    rdfs:comment "An evidenced expression preserving the source structure of applicability conditions without executable rule semantics."@en ;
+    rdfs:comment "An expression preserving source applicability logic; atomic leaves carry direct evidence while logical operators connect evidenced operands."@en ;
     lorsp:requirementReference "PURP-002", "PURP-003", "SCOPE-004", "SCOPE-007", "GRAN-004" ;
     lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-CONDITION-001", "CQ-NEGATIVE-001", "CQ-EVIDENCE-001" ;
     lorsp:glossaryReference "TERM-COND-002" ;
@@ -82,7 +82,7 @@ lornr:AllOf a owl:Class ;
     rdfs:subClassOf lornr:ConditionExpression ;
     rdfs:label "All of"@en,
         "Tất cả điều kiện"@vi ;
-    rdfs:comment "A source-evidenced conjunction whose operands are condition expressions; operand cardinality is validated in SHACL."@en ;
+    rdfs:comment "A conjunction over evidenced condition expressions; operand cardinality is validated in SHACL."@en ;
     lorsp:requirementReference "PURP-002", "SCOPE-004", "GRAN-004" ;
     lorsp:competencyQuestionReference "CQ-CONDITION-001", "CQ-NEGATIVE-001" ;
     lorsp:glossaryReference "TERM-COND-002" ;
@@ -92,7 +92,7 @@ lornr:AnyOf a owl:Class ;
     rdfs:subClassOf lornr:ConditionExpression ;
     rdfs:label "Any of"@en,
         "Bất kỳ điều kiện nào"@vi ;
-    rdfs:comment "A source-evidenced disjunction whose operands are condition expressions; operand cardinality is validated in SHACL."@en ;
+    rdfs:comment "A disjunction over evidenced condition expressions; operand cardinality is validated in SHACL."@en ;
     lorsp:requirementReference "PURP-002", "SCOPE-004", "GRAN-004" ;
     lorsp:competencyQuestionReference "CQ-CONDITION-001", "CQ-NEGATIVE-001" ;
     lorsp:glossaryReference "TERM-COND-002" ;
@@ -102,7 +102,7 @@ lornr:Not a owl:Class ;
     rdfs:subClassOf lornr:ConditionExpression ;
     rdfs:label "Not"@en,
         "Phủ định điều kiện"@vi ;
-    rdfs:comment "A source-evidenced negation within a condition tree, distinct from a legal exception targeting a rule."@en ;
+    rdfs:comment "A negation over one evidenced condition expression, distinct from a legal exception targeting a rule."@en ;
     lorsp:requirementReference "PURP-002", "SCOPE-004", "GRAN-004" ;
     lorsp:competencyQuestionReference "CQ-CONDITION-001", "CQ-NEGATIVE-001", "CQ-EXCEPTION-001" ;
     lorsp:glossaryReference "TERM-COND-002", "TERM-EXCEPTION-001" ;

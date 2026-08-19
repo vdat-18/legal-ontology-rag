@@ -36,9 +36,9 @@ EVIDENCE_RELATION_SCHEMA_VERSION = "1.1.0"
 EVIDENCE_BUNDLE_SCHEMA_VERSION = "1.0.0"
 EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.1.0"
 EVIDENCE_RELATION_PROMPT_VERSION = "1.5.0"
-EVIDENCE_CANDIDATE_SELECTION_VERSION = "3.0.0"
+EVIDENCE_CANDIDATE_SELECTION_VERSION = "4.0.0"
 EVIDENCE_CANDIDATE_SET_SCHEMA_VERSION = "1.0.0"
-FACT_RETRIEVAL_TEXT_VERSION = "3.0.0"
+FACT_RETRIEVAL_TEXT_VERSION = "4.0.0"
 
 RelationType = Literal[
     "conduct_to_penalty",
@@ -52,10 +52,6 @@ RelationType = Literal[
 ]
 
 BundleKind = Literal["single_hop", "synthesis", "multi_hop", "temporal"]
-LexicalField = Literal["core", "conditions", "consequences", "authority"]
-
-_LEXICAL_FIELDS: tuple[LexicalField, ...] = ("core", "conditions", "consequences", "authority")
-_AUTHORITY_LABELS = {"điều": "article", "khoản": "clause", "điểm": "point"}
 
 _RELATION_TYPE_BY_BAML_ENUM: dict[str, RelationType] = {
     "ConductToPenalty": "conduct_to_penalty",
@@ -149,48 +145,9 @@ class EvidenceCandidateSet:
         }
 
 
-@dataclass(frozen=True, slots=True)
-class _FactRetrievalTexts:
-    """Canonical dense and field-aware lexical representations of one fact."""
-
-    embedding: str
-    core: str
-    conditions: str
-    consequences: str
-    authority: str
-
-
-def _join_fact_parts(parts: Sequence[str | None]) -> str:
-    """Join non-empty fact fields with sentence boundaries."""
-    normalized = [part.strip().rstrip(".") for part in parts if part and part.strip()]
-    return ". ".join(normalized) + ("." if normalized else "")
-
-
-def _fact_retrieval_texts(fact: LegalFact) -> _FactRetrievalTexts:
-    """Return complete dense text and isolated lexical fields for one fact."""
-    core = _join_fact_parts((fact.statement, fact.conduct, fact.subject))
-    conditions = _join_fact_parts(fact.conditions)
-    consequences = _join_fact_parts(
-        (
-            fact.monetary_penalty,
-            fact.license_points_deducted,
-            *fact.additional_penalties,
-            *fact.remedial_measures,
-        )
-    )
-    authority = _join_fact_parts((fact.document_number, fact.provision_path))
-    return _FactRetrievalTexts(
-        embedding=_join_fact_parts((core, conditions, consequences, authority)),
-        core=core,
-        conditions=conditions,
-        consequences=consequences,
-        authority=authority,
-    )
-
-
 def _fact_embedding_text(fact: LegalFact) -> str:
-    """Return the complete canonical fact representation for dense retrieval."""
-    return _fact_retrieval_texts(fact).embedding
+    """Return the legal statement used by both retrieval legs."""
+    return fact.statement
 
 
 def _lexical_units(text: str) -> list[str]:
@@ -219,61 +176,13 @@ def _vietnamese_legal_tokens(text: str, segmented_tokens: Sequence[str]) -> list
     return [*syllable_tokens, *word_tokens, *bigram_tokens]
 
 
-def _authority_atomic_tokens(fact: LegalFact) -> list[str]:
-    """Return exact document and canonical legal-citation tokens for authority retrieval."""
-    document_units = _lexical_units(normalize("NFC", fact.document_number).casefold())
-    provision_units = _lexical_units(normalize("NFC", fact.provision_path).casefold())
-    tokens = [f"a:document:{'_'.join(document_units)}", f"a:provision:{'_'.join(provision_units)}"]
-
-    components: dict[str, str] = {}
-    for index, unit in enumerate(provision_units[:-1]):
-        label = _AUTHORITY_LABELS.get(unit)
-        if label is not None:
-            components[label] = provision_units[index + 1]
-    for label, value in components.items():
-        tokens.append(f"a:{label}:{value}")
-    canonical = [f"{label}_{components[label]}" for label in ("article", "clause", "point") if label in components]
-    if canonical:
-        tokens.append(f"a:citation:{'|'.join(canonical)}")
-    return tokens
-
-
-def _lexical_corpora(
-    facts: Sequence[LegalFact],
-    retrieval_texts: Sequence[_FactRetrievalTexts],
-    word_segmenter: VietnameseWordSegmenter,
-) -> dict[LexicalField, list[list[str]]]:
-    """Segment every lexical field in one batch and build one BM25 corpus per field."""
-    texts = [getattr(representation, field) for field in _LEXICAL_FIELDS for representation in retrieval_texts]
+def _lexical_corpus(texts: Sequence[str], word_segmenter: VietnameseWordSegmenter) -> list[list[str]]:
+    """Build the Vietnamese BM25 corpus from complete legal statements."""
     segmented = word_segmenter.segment(texts)
     if len(segmented) != len(texts):
-        msg = f"Word segmenter returned {len(segmented)} outputs for {len(texts)} lexical fields"
+        msg = f"Word segmenter returned {len(segmented)} outputs for {len(texts)} statements"
         raise ValueError(msg)
-
-    corpora: dict[LexicalField, list[list[str]]] = {}
-    field_size = len(facts)
-    for field_index, field in enumerate(_LEXICAL_FIELDS):
-        offset = field_index * field_size
-        corpus = [
-            _vietnamese_legal_tokens(getattr(representation, field), segmented[offset + fact_index])
-            for fact_index, representation in enumerate(retrieval_texts)
-        ]
-        if field == "authority":
-            for fact, tokens in zip(facts, corpus, strict=True):
-                tokens.extend(_authority_atomic_tokens(fact))
-        corpora[field] = corpus
-    return corpora
-
-
-def _retrieval_weights(settings: EvidenceRetrievalSettings) -> dict[str, float]:
-    """Return configured ranking weights by dense or lexical leg name."""
-    return {
-        "dense": settings.dense_weight,
-        "core": settings.lexical_core_weight,
-        "conditions": settings.lexical_conditions_weight,
-        "consequences": settings.lexical_consequences_weight,
-        "authority": settings.lexical_authority_weight,
-    }
+    return [_vietnamese_legal_tokens(text, tokens) for text, tokens in zip(texts, segmented, strict=True)]
 
 
 class _FactEncoder(Protocol):
@@ -286,6 +195,15 @@ class _FactEncoder(Protocol):
 def _top_indices(scored: Sequence[tuple[int, float]], fact_ids: Sequence[str], limit: int) -> list[int]:
     """Return indices ordered by descending score then fact ID, capped at limit."""
     return [index for index, _ in sorted(scored, key=lambda item: (-item[1], fact_ids[item[0]]))[:limit]]
+
+
+def _reciprocal_rank_fusion(rankings: Sequence[Sequence[int]], rrf_k: int) -> dict[int, float]:
+    """Fuse equally weighted rankings with standard reciprocal rank fusion."""
+    fused: dict[int, float] = {}
+    for ranking in rankings:
+        for rank, item_index in enumerate(ranking, start=1):
+            fused[item_index] = fused.get(item_index, 0.0) + 1.0 / (rrf_k + rank)
+    return fused
 
 
 def build_evidence_candidate_run_id(
@@ -351,79 +269,44 @@ def find_candidate_fact_pairs(
     word_segmenter: VietnameseWordSegmenter,
     settings: EvidenceRetrievalSettings,
 ) -> tuple[tuple[str, str], ...]:
-    """Return candidate fact pairs from dense and field-aware lexical retrieval with weighted RRF.
-
-    Dense retrieval uses every fact field. Independent lexical legs prevent
-    repeated subjects or provision boilerplate from dominating conduct,
-    condition, consequence, and authority matches. The downstream LLM remains
-    the only relation decision-maker.
-    """
+    """Return candidate fact pairs from statement-only dense and BM25L retrieval with RRF."""
     if len(facts) < 2:
         return ()
 
     # Keep the optional implementation detail local so importing the CLI remains lightweight.
     from rank_bm25 import BM25L
 
-    retrieval_texts = [_fact_retrieval_texts(fact) for fact in facts]
-    fact_texts = [representation.embedding for representation in retrieval_texts]
+    fact_texts = [_fact_embedding_text(fact) for fact in facts]
     vectors = encoder.encode(fact_texts)
-    corpora = _lexical_corpora(facts, retrieval_texts, word_segmenter)
+    lexical_corpus = _lexical_corpus(fact_texts, word_segmenter)
     fact_ids = [fact.fact_id for fact in facts]
-    bm25_by_field = {
-        field: BM25L(
-            corpus,
-            k1=settings.bm25_k1,
-            b=settings.bm25_b,
-            delta=settings.bm25_delta,
-        )
-        for field, corpus in corpora.items()
-        if any(corpus)
-    }
-    weights = _retrieval_weights(settings)
-    pool_size = settings.max_candidates_per_fact * settings.pool_multiplier
+    bm25 = BM25L(
+        lexical_corpus,
+        k1=settings.bm25_k1,
+        b=settings.bm25_b,
+        delta=settings.bm25_delta,
+    )
 
     pairs: set[tuple[str, str]] = set()
     for index, fact in enumerate(facts):
-        rankings: list[tuple[list[int], float]] = []
-        if weights["dense"] > 0:
-            dense_scores = np.dot(vectors, vectors[index])
-            rankings.append(
-                (
-                    _top_indices(
-                        [
-                            (other, float(dense_scores[other]))
-                            for other in range(len(facts))
-                            if other != index and float(dense_scores[other]) >= settings.min_similarity
-                        ],
-                        fact_ids,
-                        pool_size,
-                    ),
-                    weights["dense"],
-                )
-            )
-        for field in _LEXICAL_FIELDS:
-            if weights[field] <= 0 or field not in bm25_by_field or not corpora[field][index]:
-                continue
-            lexical_scores = bm25_by_field[field].get_scores(corpora[field][index])
-            rankings.append(
-                (
-                    _top_indices(
-                        [
-                            (other, float(lexical_scores[other]))
-                            for other in range(len(facts))
-                            if other != index and float(lexical_scores[other]) > 0.0
-                        ],
-                        fact_ids,
-                        pool_size,
-                    ),
-                    weights[field],
-                )
-            )
+        dense_scores = np.dot(vectors, vectors[index])
+        dense_ranking = _top_indices(
+            [(other, float(dense_scores[other])) for other in range(len(facts)) if other != index],
+            fact_ids,
+            settings.retrieval_pool_size,
+        )
+        lexical_scores = bm25.get_scores(lexical_corpus[index])
+        lexical_ranking = _top_indices(
+            [
+                (other, float(lexical_scores[other]))
+                for other in range(len(facts))
+                if other != index and float(lexical_scores[other]) > 0.0
+            ],
+            fact_ids,
+            settings.retrieval_pool_size,
+        )
 
-        fused: dict[int, float] = {}
-        for ranking, weight in rankings:
-            for rank, other_index in enumerate(ranking, start=1):
-                fused[other_index] = fused.get(other_index, 0.0) + weight / (settings.rrf_k + rank)
+        fused = _reciprocal_rank_fusion((dense_ranking, lexical_ranking), settings.rrf_k)
 
         best = sorted(fused, key=lambda other_index: (-fused[other_index], fact_ids[other_index]))
         for other_index in best[: settings.max_candidates_per_fact]:

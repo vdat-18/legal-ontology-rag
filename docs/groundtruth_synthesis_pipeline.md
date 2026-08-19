@@ -356,25 +356,19 @@ băm từ fact content, embedding profile, cấu hình đề cử/xác nhận, e
 model và prompt version. CLI từ chối resume nếu fingerprint không khớp để
 không trộn kết quả cũ với một lần chạy mới.
 
-Candidate retrieval dùng dense embedding OpenAI-compatible theo batch và bốn
-BM25 index tiếng Việt độc lập. Dense leg mặc định gọi
-`deepinfra/BAAI/bge-m3` qua endpoint riêng trong `SYNTHESIS_EMBEDDING_*`, với
-representation gồm toàn bộ statement, conduct, subject, conditions, consequences,
-document number và provision path. Bốn lexical leg lần lượt index `core`
-(statement + conduct + subject), `conditions`, `consequences` (mức phạt, trừ điểm, hình
-phạt bổ sung, biện pháp khắc phục) và `authority` (văn bản + đường dẫn điều
-khoản). Tách field ngăn subject hoặc boilerplate điều khoản lấn át tín hiệu
-ngoại lệ, chế tài và thẩm quyền.
+Candidate retrieval chỉ dùng `LegalFact.statement`, vì Step 3 bắt buộc field này
+là một mệnh đề pháp lý đầy đủ và độc lập. Dense embedding và BM25L chạy song
+song trên cùng statement. Dense leg mặc định gọi `deepinfra/BAAI/bge-m3` qua
+endpoint riêng trong `SYNTHESIS_EMBEDDING_*`; lexical leg dùng VnCoreNLP 1.2,
+giữ token âm tiết có dấu, từ ghép và bigram, không bỏ stopword pháp lý như
+`không`, `chưa`, `trừ`.
 
-Mỗi lexical leg chuẩn hóa Unicode NFC, giữ token âm tiết có dấu, thêm từ ghép
-do VnCoreNLP 1.2 phân đoạn và bigram từ ghép; không bỏ stopword pháp lý như
-`không`, `chưa`, `trừ`. Authority leg còn thêm token cấu trúc ổn định cho số
-hiệu văn bản, điều, khoản, điểm và citation đầy đủ. Dense cùng bốn lexical
-ranking được hợp nhất bằng weighted RRF; trọng số, BM25L `k1`/`b`/`delta`,
-pool size và top-k đều nằm trong synthesis config versioned. Không bật
-accent-folding hoặc character n-gram mặc định: fact ledger đã chuẩn hóa tiếng
-Việt, còn hai nhánh này chủ yếu tăng match trên token phổ biến, số candidate
-và chi phí xác nhận LLM mà không thêm tín hiệu pháp lý rõ ràng.
+Mỗi leg lấy top 30, sau đó standard RRF cộng `1 / (rrf_k + rank)` với đóng góp
+ngang nhau và lấy top 10 candidate cho mỗi fact. Không cộng trực tiếp cosine
+với BM25 score và không dùng retrieval weight hoặc similarity threshold.
+BM25L `k1`/`b`/`delta`, pool size, RRF `k` và candidate top-k đều nằm trong
+synthesis config versioned. Full `LegalFact` chỉ được đưa vào LLM ở bước xác
+nhận quan hệ; retrieval không tự đưa ra quyết định ngữ nghĩa.
 
 VnCoreNLP chạy toàn bộ fact text trong một JVM batch, không khởi động Java cho
 từng fact. Runtime cần Java 8+ và ba artifact từ release VnCoreNLP `v1.2`:
@@ -1246,19 +1240,16 @@ trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
 
 - `evidence_graph.py` — `find_candidate_fact_pairs` tìm cặp fact ứng viên trong
   toàn bộ fact đã trích xuất (không giới hạn cùng văn bản, vì multi-hop cần
-  đúng cặp khác văn bản) bằng **hybrid retrieval + weighted RRF**: một nhánh
-  dense trên representation đầy đủ của fact (`SynthesisEmbeddingEncoder` gọi
-  BGE-M3 remote theo batch, ngưỡng `min_similarity`) và bốn nhánh BM25 riêng
-  cho core, conditions, consequences và authority. Lexical token gồm âm tiết
-  có dấu, từ ghép VnCoreNLP 1.2, bigram và token citation cấu trúc ở authority;
-  mỗi nhánh chỉ đưa score dương vào pool trước khi weighted reciprocal rank
-  fusion lấy top-k. Lý do cần nhánh lexical: một điều
+  đúng cặp khác văn bản) bằng **statement-only hybrid retrieval + standard
+  RRF**. Dense BGE-M3 và BM25L tiếng Việt cùng index `statement`, mỗi leg lấy
+  top 30 rồi RRF không trọng số lấy top 10 cho mỗi fact. Lexical token gồm âm
+  tiết có dấu, từ ghép VnCoreNLP 1.2 và bigram. Lý do cần nhánh lexical: một điều
   khoản sửa đổi **chép lại
   gần nguyên văn** điều khoản gốc — `336/2025` và `168/2024` trùng nhau 47
   `provision_path` — nên quan hệ `amended_by` biểu hiện thành trùng lặp từ
   vựng, thứ mà dense embedding làm nhòe thành "đều nói về phạt giao thông".
-  Mỗi nhánh lọc theo thang điểm của riêng nó trước khi hợp nhất, vì điểm RRF
-  sau hợp nhất không có ý nghĩa tuyệt đối để đặt ngưỡng.
+  RRF chỉ dùng thứ hạng nên không phải chuẩn hóa hoặc cộng trực tiếp hai thang
+  điểm cosine và BM25 khác nhau.
 
   **Vì sao hybrid search không rơi vào mục "Heuristics" của `AGENTS.md`.**
   Quy tắc "không regex/keyword matching/handcrafted score" nhắm vào việc dùng

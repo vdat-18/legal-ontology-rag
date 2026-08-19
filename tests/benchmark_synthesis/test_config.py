@@ -38,15 +38,12 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.evidence_relation_max_concurrency == 10
     assert settings.candidate_generation_batch_size == 5
     assert settings.candidate_generation_max_concurrency == 10
-    assert settings.evidence_retrieval.max_candidates_per_fact == 5
-    assert settings.evidence_retrieval.min_similarity == 0.5
-    assert settings.evidence_retrieval.pool_multiplier == 3
+    assert settings.evidence_retrieval.retrieval_pool_size == 30
+    assert settings.evidence_retrieval.max_candidates_per_fact == 10
     assert settings.evidence_retrieval.rrf_k == 60
     assert settings.evidence_retrieval.bm25_k1 == 1.2
     assert settings.evidence_retrieval.bm25_b == 0.4
     assert settings.evidence_retrieval.bm25_delta == 0.5
-    assert settings.evidence_retrieval.dense_weight == 1.0
-    assert settings.evidence_retrieval.lexical_authority_weight == 1.1
     assert settings.evidence_relation.max_output_tokens == 4096
     assert settings.candidate_generation.max_output_tokens == 8192
     assert settings.candidate_critique.max_output_tokens == 2048

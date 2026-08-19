@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.7.0",
+  "schema_version": "1.8.0",
   "embedding_profile": "bge_m3",
   "embedding": {
     "batch_size": 64,
@@ -44,21 +44,13 @@
       "batch_size": 10,
       "max_concurrency": 10,
       "retrieval": {
-        "max_candidates_per_fact": 5,
-        "min_similarity": 0.5,
-        "pool_multiplier": 3,
+        "retrieval_pool_size": 30,
+        "max_candidates_per_fact": 10,
         "rrf_k": 60,
         "bm25": {
           "k1": 1.2,
           "b": 0.4,
           "delta": 0.5
-        },
-        "weights": {
-          "dense": 1.0,
-          "core": 1.0,
-          "conditions": 0.75,
-          "consequences": 0.75,
-          "authority": 1.1
         }
       },
       "max_output_tokens": 4096,
