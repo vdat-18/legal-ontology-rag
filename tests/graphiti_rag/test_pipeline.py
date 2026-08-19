@@ -14,6 +14,14 @@ from legal_rag.graphiti_rag.retriever import FactSource, RetrievedFact
 from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
 
 
+class _FakeFollowUpClient:
+    """Return fixed follow-up questions without contacting a provider."""
+
+    def suggest(self, _question: str, _answer: str) -> list[str]:
+        """Return one deterministic suggestion."""
+        return ["Xe máy thì sao?"]
+
+
 class _FakeGraphiti:
     """Record whether the pipeline releases its graph connection."""
 
@@ -30,10 +38,12 @@ class _FakeRewriteClient:
 
     def __init__(self) -> None:
         self.calls: list[str] = []
+        self.histories: list[list[object]] = []
 
-    async def rewrite(self, query: str) -> str:
-        """Return a deterministic rewritten query."""
+    async def rewrite(self, query: str, history: Sequence[object] = ()) -> str:
+        """Return a deterministic rewritten query, recording the history it was given."""
         self.calls.append(query)
+        self.histories.append(list(history))
         return "formal legal query"
 
 
@@ -98,8 +108,8 @@ def _build_pipeline(
         RetrievedFact("Lower ranked fact.", (FactSource("chunk-2", "doc-2.docx"),)),
     ]
 
-    async def fake_search(*args: object) -> list[RetrievedFact]:
-        search_calls.append(args)
+    async def fake_search(*args: object, **kwargs: object) -> list[RetrievedFact]:
+        search_calls.append((*args, kwargs))
         return facts
 
     monkeypatch.setattr(pipeline_module, "load_configured_embedding_profile", lambda _profile: object())
@@ -107,6 +117,7 @@ def _build_pipeline(
     monkeypatch.setattr(pipeline_module, "BamlQueryRewriteClient", lambda *_args: rewrite_client)
     monkeypatch.setattr(pipeline_module, "BamlGenerationClient", lambda *_args: generation_client)
     monkeypatch.setattr(pipeline_module, "BamlDocumentCitationClient", lambda *_args: citation_client)
+    monkeypatch.setattr(pipeline_module, "BamlFollowUpClient", lambda *_args: _FakeFollowUpClient())
     monkeypatch.setattr(pipeline_module, "search_facts", fake_search)
     settings, neo4j_settings, graphiti_settings = _settings()
     pipeline = GraphitiRAGPipeline(
@@ -137,7 +148,12 @@ def test_pipeline_skips_citation_coverage_when_corpus_is_unknown_and_does_not_lo
         logger.remove(sink_id)
 
     assert rewrite_client.calls == [sensitive_query]
-    assert search_calls[0][1:] == ("formal legal query", "group-1", 30)
+    assert search_calls[0][1:] == (
+        "formal legal query",
+        "group-1",
+        30,
+        {"expand_around_top_fact": True, "rerank_with_cross_encoder": False},
+    )
     assert generation_client.calls[0][0] == sensitive_query
     assert len(generation_client.calls[0][1]) == 1
     assert result.unindexed_citations == ()

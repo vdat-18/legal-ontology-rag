@@ -1,0 +1,43 @@
+/** Response shapes returned by the Graphiti knowledge-graph API. */
+
+/** One supporting episode's provenance: the chunk and document a fact came from. */
+export interface FactSource {
+  chunk_id: string;
+  source_name: string;
+}
+
+/** One graph fact together with every chunk that supports it. */
+export interface RetrievedFact {
+  fact: string;
+  sources: FactSource[];
+}
+
+/** One answer plus the graph facts it was grounded in. */
+export interface QueryResponse {
+  query: string;
+  rewritten_query: string;
+  answer: string;
+  sources: RetrievedFact[];
+  unindexed_citations: string[];
+  suggestions: string[];
+}
+
+/**
+ * One turn in the transcript.
+ *
+ * A pending turn has neither `response` nor `restoredAnswer`. A turn restored after a reload
+ * carries `restoredAnswer` instead of a full `response`, because the server keeps what was said
+ * but not the facts each answer was grounded in — so its reasoning trace cannot be shown again.
+ */
+export interface Turn {
+  question: string;
+  response?: QueryResponse;
+  restoredAnswer?: string;
+  error?: string;
+}
+
+/** One stored exchange returned when a session's transcript is restored. */
+export interface HistoryTurn {
+  question: string;
+  answer: string;
+}

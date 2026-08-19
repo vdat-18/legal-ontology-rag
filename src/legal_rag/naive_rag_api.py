@@ -23,7 +23,7 @@ class QueryRequest(BaseModel):
 
     query: str = Field(min_length=1)
     top_k: int | None = Field(default=None)
-    search_mode: Literal['keyword', 'semantic', 'hybrid'] | None = Field(default=None)
+    search_mode: Literal["keyword", "semantic", "hybrid"] | None = Field(default=None)
 
 
 class SourceChunk(BaseModel):

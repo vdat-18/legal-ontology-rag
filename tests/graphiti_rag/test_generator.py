@@ -67,3 +67,38 @@ def test_generate_answer_returns_empty_list_of_facts_unmodified() -> None:
 
     [(_, chunks)] = client.calls
     assert chunks == []
+
+
+def test_context_carries_the_source_passage_before_the_extracted_fact() -> None:
+    """Quoting a provision needs its wording, which the extracted fact has already dropped."""
+    client = _FakeGenerationClient()
+    fact = RetrievedFact(
+        fact="Phạt tiền từ 4.000.000 đến 6.000.000 đồng.",
+        sources=(
+            FactSource(
+                chunk_id="chunk-1",
+                source_name="168_2024_ND-CP.docx",
+                text="Điều 7. Xử phạt người điều khiển xe mô tô, xe gắn máy...",
+            ),
+        ),
+    )
+
+    generate_answer("Xe máy vượt đèn đỏ phạt bao nhiêu?", [fact], client)
+
+    [(_, chunks)] = client.calls
+    assert chunks[0].text.startswith("Điều 7. Xử phạt người điều khiển xe mô tô")
+    assert "[Trích xuất] Phạt tiền từ 4.000.000 đến 6.000.000 đồng." in chunks[0].text
+
+
+def test_context_falls_back_to_the_fact_when_no_passage_was_stored() -> None:
+    """An episode indexed without its content must still contribute its fact."""
+    client = _FakeGenerationClient()
+    fact = RetrievedFact(
+        fact="Phạt tiền từ 4.000.000 đến 6.000.000 đồng.",
+        sources=(FactSource(chunk_id="chunk-1", source_name="doc.docx"),),
+    )
+
+    generate_answer("q", [fact], client)
+
+    [(_, chunks)] = client.calls
+    assert chunks[0].text == "Phạt tiền từ 4.000.000 đến 6.000.000 đồng."

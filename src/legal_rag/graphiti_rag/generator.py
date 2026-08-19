@@ -16,8 +16,25 @@ def generate_answer(query: str, facts: Sequence[RetrievedFact], client: Generati
     chunk that reinforces the fact is cited rather than only the first.
     """
     contexts = [
-        BamlRetrievedChunkContext(chunk_id=source.chunk_id, text=fact.fact, source_name=source.source_name)
+        BamlRetrievedChunkContext(
+            chunk_id=source.chunk_id,
+            text=_context_text(fact.fact, source.text),
+            source_name=source.source_name,
+        )
         for fact in facts
         for source in fact.sources
     ]
     return client.generate(query, contexts)
+
+
+def _context_text(fact: str, passage: str) -> str:
+    """Combine the source passage with the fact extracted from it.
+
+    The passage comes first because quoting a provision needs its actual wording — the article
+    heading naming the vehicle, the clause numbering, the exceptions — all of which the extracted
+    fact has already dropped. The fact follows as the model's shortcut to what the passage
+    established, for passages long enough that the relevant sentence is easy to miss.
+    """
+    if not passage:
+        return fact
+    return f"{passage}\n\n[Trích xuất] {fact}"

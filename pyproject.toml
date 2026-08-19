@@ -81,12 +81,16 @@ legal-naive-rag-index = "legal_rag.naive_rag_index_cli:main"
 legal-naive-rag-query = "legal_rag.naive_rag_query_cli:main"
 legal-graphiti-index = "legal_rag.graphiti_index_cli:main"
 legal-graphiti-query = "legal_rag.graphiti_query_cli:main"
+legal-graphiti-api = "legal_rag.graphiti_rag.api.server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/legal_rag"]
 
 [tool.ruff]
 line-length = 120
+# Without this, first-party detection depends on the working directory, so import order can be
+# reported differently from a clean checkout than from an installed one.
+src = ["src", "."]
 extend-exclude = [".agents", "data", "src/legal_rag/baml_client"]
 
 [tool.ruff.lint]

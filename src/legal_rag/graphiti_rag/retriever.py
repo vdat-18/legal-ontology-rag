@@ -7,7 +7,9 @@ from dataclasses import dataclass
 
 from graphiti_core import Graphiti
 from graphiti_core.driver.driver import GraphDriver
+from graphiti_core.edges import EntityEdge
 from graphiti_core.nodes import EpisodicNode
+from graphiti_core.search.search_config_recipes import EDGE_HYBRID_SEARCH_CROSS_ENCODER
 from loguru import logger
 
 EpisodeLookup = Callable[[GraphDriver, list[str]], Awaitable[list[EpisodicNode]]]
@@ -43,6 +45,13 @@ class FactSource:
 
     chunk_id: str
     source_name: str
+    text: str = ""
+    """The source passage this fact was extracted from.
+
+    An extracted fact is a distilled claim and loses the wording around it — the article heading
+    that says which vehicle a penalty applies to, the clause numbering, the exceptions. Carrying
+    the passage lets an answer quote the provision instead of paraphrasing a paraphrase.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,12 +66,59 @@ class RetrievedFact:
     sources: tuple[FactSource, ...]
 
 
+async def _search_edges(
+    graphiti_client: Graphiti,
+    query: str,
+    group_id: str,
+    num_results: int,
+    *,
+    expand_around_top_fact: bool,
+    rerank_with_cross_encoder: bool,
+) -> list[EntityEdge]:
+    """Search the graph, ranking either by rank fusion or by a cross-encoder over the graph.
+
+    ``rerank_with_cross_encoder`` selects Graphiti's cross-encoder recipe, which also adds
+    breadth-first traversal to the candidate set, so relevance is judged by a model reading each
+    fact against the question rather than by fusing two lexical/vector rankings. It costs a
+    scoring call per candidate, which is why it is switchable and measured rather than assumed
+    better. The plain path fuses BM25 and vector ranks (RRF) and never consults the cross-encoder,
+    despite one being configured on the client.
+
+    Plain hybrid search ranks an edge only by how well its own text matches the query, so it uses
+    the graph as a store of independent facts. Graphiti reranks by graph distance when given a
+    center node, so a second pass centred on the best fact's source entity promotes facts that are
+    structurally adjacent to it — the penalty, remedy, and provision hanging off the same
+    violation — which plain text similarity would rank far lower. Results from the first pass keep
+    their order and the expansion is appended, so this can only add context, never displace the
+    best text match.
+    """
+    if rerank_with_cross_encoder:
+        config = EDGE_HYBRID_SEARCH_CROSS_ENCODER.model_copy(deep=True)
+        config.limit = num_results
+        results = await graphiti_client.search_(query, config, group_ids=[group_id])
+        return results.edges
+
+    edges = await graphiti_client.search(query, group_ids=[group_id], num_results=num_results)
+    if not expand_around_top_fact or not edges:
+        return edges
+
+    neighbourhood = await graphiti_client.search(
+        query, group_ids=[group_id], num_results=num_results, center_node_uuid=edges[0].source_node_uuid
+    )
+    seen = {edge.uuid for edge in edges}
+    expanded = [*edges, *(edge for edge in neighbourhood if edge.uuid not in seen)]
+    logger.debug("Graph expansion added {} facts around the top fact's entity", len(expanded) - len(edges))
+    return expanded
+
+
 async def search_facts(
     graphiti_client: Graphiti,
     query: str,
     group_id: str,
     num_results: int,
     *,
+    expand_around_top_fact: bool = True,
+    rerank_with_cross_encoder: bool = False,
     get_episodes_by_uuids: EpisodeLookup = EpisodicNode.get_by_uuids,
 ) -> list[RetrievedFact]:
     """Run Graphiti's hybrid search and return the relevance-ranked candidate facts with provenance.
@@ -74,7 +130,14 @@ async def search_facts(
     Raises:
         MissingProvenanceError: If an edge has no resolvable supporting episode at all.
     """
-    edges = await graphiti_client.search(query, group_ids=[group_id], num_results=num_results)
+    edges = await _search_edges(
+        graphiti_client,
+        query,
+        group_id,
+        num_results,
+        expand_around_top_fact=expand_around_top_fact,
+        rerank_with_cross_encoder=rerank_with_cross_encoder,
+    )
 
     episode_uuids = list({uuid for edge in edges for uuid in edge.episodes})
     episodes_by_uuid = {
@@ -87,7 +150,11 @@ async def search_facts(
         if missing_episode_uuids or not edge.episodes:
             raise MissingProvenanceError(edge.uuid, missing_episode_uuids)
         sources = tuple(
-            FactSource(chunk_id=episodes_by_uuid[uuid].name, source_name=episodes_by_uuid[uuid].source_description)
+            FactSource(
+                chunk_id=episodes_by_uuid[uuid].name,
+                source_name=episodes_by_uuid[uuid].source_description,
+                text=episodes_by_uuid[uuid].content or "",
+            )
             for uuid in edge.episodes
         )
         facts.append(RetrievedFact(fact=edge.fact, sources=sources))

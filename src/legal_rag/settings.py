@@ -15,12 +15,20 @@ _MAX_LLM_TEMPERATURE = 2.0
 
 @dataclass(frozen=True, slots=True)
 class Settings:
-    """LLM connection and bounded parser execution settings."""
+    """LLM connection and bounded parser execution settings.
+
+    ``llm_extra_request_body`` holds JSON merged into every chat-completion request, for provider
+    fields outside the OpenAI-compatible schema. It exists because DeepSeek's reasoning mode can
+    spend a whole completion on ``reasoning_content`` and return an empty ``content``, which no
+    caller can parse; ``{"thinking": {"type": "disabled"}}`` turns that off. It is configuration
+    rather than a model-name check, so a field one provider understands is never sent to another.
+    """
 
     llm_base_url: str
     llm_api_key: str = field(repr=False)
     llm_model: str
     llm_timeout_seconds: float
+    llm_extra_request_body: Mapping[str, object] = field(default_factory=dict)
     image_caption_max_concurrency: int = 4
     image_caption_max_output_tokens: int = 2048
     image_caption_max_context_characters: int = 4000
@@ -43,6 +51,7 @@ class Settings:
             llm_api_key=values["LLM_API_KEY"].strip(),
             llm_model=values["LLM_MODEL"].strip(),
             llm_timeout_seconds=float(values["LLM_TIMEOUT_SECONDS"]),
+            llm_extra_request_body=json.loads(values.get("LLM_EXTRA_REQUEST_BODY", "") or "{}"),
         )
 
 
@@ -225,8 +234,11 @@ class NaiveRagSettings:
     milvus_nprobe: int = 16
     milvus_insert_batch_size: int = 200
     milvus_flush_after_insert: bool = True
-    answer_max_output_tokens: int = 4096
-    answer_temperature: float = 0.3
+    # DeepSeek spends output tokens on reasoning before the answer, and one context is sent per
+    # supporting chunk, so a grounded answer over ten multi-source facts runs close to 3k tokens.
+    # Too small a budget truncates the response into an empty string that cannot be parsed.
+    answer_max_output_tokens: int = 16384
+    answer_temperature: float = 0.1
     max_response_bytes: int = 1_048_576
     search_mode: str = "semantic"
     hybrid_rrf_k: int = 60
@@ -310,7 +322,13 @@ _GRAPHITI_TUNABLES: dict[str, Callable[[str], int | float]] = {
     "query_rewrite_max_output_tokens": int,
     "effective_date_max_output_tokens": int,
     "citation_max_output_tokens": int,
+    "follow_up_max_output_tokens": int,
+    "follow_up_temperature": float,
     "extraction_temperature": float,
+    "expand_around_top_fact": _parse_boolean,
+    "rerank_with_cross_encoder": _parse_boolean,
+    "reranker_model_id": str.strip,
+    "reranker_model_revision": str.strip,
     "max_response_bytes": int,
 }
 
@@ -323,12 +341,24 @@ class GraphitiSettings:
     search_num_results: int = 30
     max_context_facts: int = 10
     effective_date_window_token_budget: int = 40_000
-    answer_max_output_tokens: int = 4096
+    # DeepSeek spends output tokens on reasoning before the answer, and one context is sent per
+    # supporting chunk, so a grounded answer over ten multi-source facts runs close to 3k tokens.
+    # Too small a budget truncates the response into an empty string that cannot be parsed.
+    answer_max_output_tokens: int = 16384
     answer_temperature: float = 0.3
-    query_rewrite_max_output_tokens: int = 2048
-    effective_date_max_output_tokens: int = 2048
-    citation_max_output_tokens: int = 2048
+    # A reasoning model spends most of a completion on reasoning_content before writing any
+    # answer, so these budgets cover the reasoning as well as the short output they ask for.
+    # Too small and the response is cut off mid-JSON, which cannot be parsed at all.
+    query_rewrite_max_output_tokens: int = 8192
+    effective_date_max_output_tokens: int = 8192
+    citation_max_output_tokens: int = 8192
+    follow_up_max_output_tokens: int = 8192
+    follow_up_temperature: float = 0.4
     extraction_temperature: float = 0.0
+    expand_around_top_fact: bool = True
+    rerank_with_cross_encoder: bool = False
+    reranker_model_id: str = "BAAI/bge-reranker-v2-m3"
+    reranker_model_revision: str = "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e"
     max_response_bytes: int = 1_048_576
 
     def __post_init__(self) -> None:

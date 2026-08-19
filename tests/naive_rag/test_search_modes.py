@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -30,13 +29,17 @@ def _make_retriever():
     encoder = MagicMock()
     encoder.encode_query.return_value = MagicMock(__getitem__=lambda s, i: MagicMock(tolist=lambda: [0.1] * 10))
     client = MagicMock()
-    client.search.return_value = [[
-        {"entity": {"chunk_id": f"s-{i}", "text": f"text {i}", "source_name": "doc.docx", "kind": "p"}, "distance": 0.9 - i * 0.1}
-        for i in range(3)
-    ]]
+    client.search.return_value = [
+        [
+            {
+                "entity": {"chunk_id": f"s-{i}", "text": f"text {i}", "source_name": "doc.docx", "kind": "p"},
+                "distance": 0.9 - i * 0.1,
+            }
+            for i in range(3)
+        ]
+    ]
     client.query.return_value = [
-        {"chunk_id": f"k-{i}", "text": f"keyword text {i}", "source_name": "doc.docx", "kind": "p"}
-        for i in range(5)
+        {"chunk_id": f"k-{i}", "text": f"keyword text {i}", "source_name": "doc.docx", "kind": "p"} for i in range(5)
     ]
     return Retriever(encoder, client, _fake_settings())
 
@@ -110,15 +113,19 @@ def test_pipeline_passes_search_mode():
 def test_api_rejects_invalid_search_mode():
     """API rejects search_mode values outside the allowed set."""
     import os
-    from unittest.mock import patch
 
     from fastapi.testclient import TestClient
 
     env = {
-        "LLM_BASE_URL": "http://localhost/v1", "LLM_API_KEY": "k", "LLM_MODEL": "m",
-        "LLM_TIMEOUT_SECONDS": "10", "EMBEDDING_PROFILE": "qwen3_0_6b",
-        "MILVUS_URI": "http://localhost:19530", "MILVUS_DATABASE": "legal_rag",
-        "REDIS_URL": "redis://localhost:6379/0", "RAG_API_KEY": "test-key",
+        "LLM_BASE_URL": "http://localhost/v1",
+        "LLM_API_KEY": "k",
+        "LLM_MODEL": "m",
+        "LLM_TIMEOUT_SECONDS": "10",
+        "EMBEDDING_PROFILE": "qwen3_0_6b",
+        "MILVUS_URI": "http://localhost:19530",
+        "MILVUS_DATABASE": "legal_rag",
+        "REDIS_URL": "redis://localhost:6379/0",
+        "RAG_API_KEY": "test-key",
     }
     for k, v in env.items():
         os.environ.setdefault(k, v)
@@ -133,6 +140,9 @@ def test_api_rejects_invalid_search_mode():
     ):
         mock_redis_mod.from_url.return_value = mock_redis
         from legal_rag.naive_rag_api import app
+
         with TestClient(app) as tc:
-            resp = tc.post("/query", json={"query": "test", "search_mode": "invalid"}, headers={"X-Api-Key": "test-key"})
+            resp = tc.post(
+                "/query", json={"query": "test", "search_mode": "invalid"}, headers={"X-Api-Key": "test-key"}
+            )
             assert resp.status_code == 422
