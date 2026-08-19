@@ -87,6 +87,9 @@ def population_record_from_dict(payload: dict[str, object]) -> OntologyPopulatio
                 target_label_vi=item["target_label_vi"],
                 responsible_role_label_vi=item["responsible_role_label_vi"],
                 evidence=_parse_evidence(item["evidence"]),
+                consequence_label_vi=item.get("consequence_label_vi"),
+                minimum_duration_months=item.get("minimum_duration_months"),
+                maximum_duration_months=item.get("maximum_duration_months"),
             )
             for item in payload["consequences"]
         ),

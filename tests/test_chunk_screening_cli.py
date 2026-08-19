@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -12,9 +13,15 @@ from legal_rag import chunk_screening_cli
 from legal_rag.baml_client.types import ChunkScreeningItem, ChunkScreeningResult
 from legal_rag.benchmark_synthesis import chunk_screening
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
+from legal_rag.benchmark_synthesis.config import SynthesisSettings
+from legal_rag.benchmark_synthesis.stage_cache import (
+    build_chunk_screening_fingerprint,
+    stage_cache_path,
+    write_stage_cache_fingerprint,
+)
 from legal_rag.benchmark_synthesis.writer import read_chunk_screening, write_chunk_screening
 from legal_rag.chunker.models import Chunk
-from legal_rag.chunker.writer import write_chunks
+from legal_rag.chunker.writer import read_chunks, write_chunks
 
 _SYNTHESIS_CONFIG_PATH = (
     Path(__file__).resolve().parent.parent / "data" / "config" / "groundtruth" / "synthesis_v1.json"
@@ -68,10 +75,24 @@ class _AlternatingScreeningClient:
         ]
 
 
-def _configure_cli(monkeypatch: pytest.MonkeyPatch, chunks_path: Path, screening_output_path: Path) -> None:
+def _configure_cli(
+    monkeypatch: pytest.MonkeyPatch,
+    chunks_path: Path,
+    screening_output_path: Path,
+    *,
+    synthesis_config_path: Path = _SYNTHESIS_CONFIG_PATH,
+) -> None:
     """Set deterministic CLI arguments, environment, and a fake LLM client."""
     from legal_rag.benchmark_synthesis import llm_execution
 
+    if screening_output_path.exists():
+        fingerprint = build_chunk_screening_fingerprint(
+            read_chunks(chunks_path),
+            SynthesisSettings.from_path(synthesis_config_path),
+            llm_base_url="http://localhost:20128/v1",
+            llm_model="provider/test-model",
+        )
+        write_stage_cache_fingerprint(stage_cache_path(screening_output_path), fingerprint)
     monkeypatch.setenv("LLM_BASE_URL", "http://localhost:20128/v1")
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     monkeypatch.setenv("LLM_MODEL", "provider/test-model")
@@ -86,9 +107,18 @@ def _configure_cli(monkeypatch: pytest.MonkeyPatch, chunks_path: Path, screening
             str(chunks_path),
             str(screening_output_path),
             "--synthesis-config",
-            str(_SYNTHESIS_CONFIG_PATH),
+            str(synthesis_config_path),
         ],
     )
+
+
+def _serial_screening_config(tmp_path: Path) -> Path:
+    """Write a test config that makes interruption ordering deterministic."""
+    payload = json.loads(_SYNTHESIS_CONFIG_PATH.read_text(encoding="utf-8"))
+    payload["stages"]["chunk_screening"]["max_concurrency"] = 1
+    output_path = tmp_path / "synthesis.serial-screening.json"
+    output_path.write_text(json.dumps(payload), encoding="utf-8")
+    return output_path
 
 
 def test_chunk_screening_cli_writes_one_verdict_per_chunk(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -111,6 +141,7 @@ def test_chunk_screening_cli_writes_one_verdict_per_chunk(monkeypatch: pytest.Mo
     assert records[0].has_penalty_content is True
     assert records[1].has_penalty_content is False
     assert records[1].reason == "Table of contents."
+    assert stage_cache_path(screening_path).exists()
 
 
 def test_chunk_screening_cli_resumes_by_skipping_already_screened_chunks(
@@ -221,7 +252,12 @@ def test_chunk_screening_cli_persists_progress_if_interrupted_mid_document(
                 for chunk in chunks
             ]
 
-    _configure_cli(monkeypatch, chunks_path, screening_path)
+    _configure_cli(
+        monkeypatch,
+        chunks_path,
+        screening_path,
+        synthesis_config_path=_serial_screening_config(tmp_path),
+    )
     monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _CrashesOnSecondBatchClient)
 
     with pytest.raises(SystemExit):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from datetime import date
 from pathlib import Path
@@ -14,10 +15,19 @@ from legal_rag.baml_client.types import FactExtractionBatchItem, FactExtractionB
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.benchmark_synthesis import fact_extraction
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
+from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
 from legal_rag.benchmark_synthesis.fact_extraction import ExtractionProgressRecord
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.stage_cache import (
+    build_chunk_screening_fingerprint,
+    build_document_metadata_fingerprint,
+    build_fact_extraction_fingerprint,
+    stage_cache_path,
+    write_stage_cache_fingerprint,
+)
 from legal_rag.benchmark_synthesis.writer import (
+    read_chunk_screening,
     read_extraction_progress,
     read_legal_facts,
     write_chunk_screening,
@@ -26,7 +36,7 @@ from legal_rag.benchmark_synthesis.writer import (
     write_legal_facts,
 )
 from legal_rag.chunker.models import Chunk
-from legal_rag.chunker.writer import write_chunks
+from legal_rag.chunker.writer import read_chunks, write_chunks
 
 _SYNTHESIS_CONFIG_PATH = (
     Path(__file__).resolve().parent.parent / "data" / "config" / "groundtruth" / "synthesis_v1.json"
@@ -126,6 +136,7 @@ def _configure_cli(
     facts_output_path: Path,
     *,
     metadata: DocumentMetadataRecord | None = None,
+    synthesis_config_path: Path = _SYNTHESIS_CONFIG_PATH,
 ) -> None:
     """Set deterministic CLI arguments, environment, document metadata, and fake LLM/embedding clients."""
     from legal_rag.benchmark_synthesis import llm_execution
@@ -135,6 +146,38 @@ def _configure_cli(
     if metadata is None:
         metadata = DocumentMetadataRecord(document_number="168/2024/NĐ-CP", valid_from=date(2025, 1, 1), valid_to=None)
     write_document_metadata(metadata_path, metadata)
+    chunks = read_chunks(chunks_path)
+    synthesis_settings = SynthesisSettings.from_path(synthesis_config_path)
+    screening_fingerprint = build_chunk_screening_fingerprint(
+        chunks,
+        synthesis_settings,
+        llm_base_url="http://localhost:20128/v1",
+        llm_model="provider/test-model",
+    )
+    metadata_fingerprint = build_document_metadata_fingerprint(
+        chunks,
+        synthesis_settings,
+        llm_base_url="http://localhost:20128/v1",
+        llm_model="provider/test-model",
+    )
+    write_stage_cache_fingerprint(stage_cache_path(screening_path), screening_fingerprint)
+    write_stage_cache_fingerprint(stage_cache_path(metadata_path), metadata_fingerprint)
+    if facts_output_path.exists() or progress_path.exists():
+        accepted_chunk_ids = {
+            record.chunk_id for record in read_chunk_screening(screening_path) if record.has_penalty_content
+        }
+        accepted_chunks = tuple(chunk for chunk in chunks if chunk.chunk_id in accepted_chunk_ids)
+        extraction_fingerprint = build_fact_extraction_fingerprint(
+            chunks,
+            tuple(chunk.chunk_id for chunk in accepted_chunks),
+            metadata,
+            synthesis_settings,
+            screening_run_id=screening_fingerprint.run_id,
+            metadata_run_id=metadata_fingerprint.run_id,
+            llm_base_url="http://localhost:20128/v1",
+            llm_model="provider/test-model",
+        )
+        write_stage_cache_fingerprint(stage_cache_path(facts_output_path), extraction_fingerprint)
     monkeypatch.setenv("LLM_BASE_URL", "http://localhost:20128/v1")
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     monkeypatch.setenv("LLM_MODEL", "provider/test-model")
@@ -152,9 +195,18 @@ def _configure_cli(
             str(facts_output_path),
             str(progress_path),
             "--synthesis-config",
-            str(_SYNTHESIS_CONFIG_PATH),
+            str(synthesis_config_path),
         ],
     )
+
+
+def _serial_fact_extraction_config(tmp_path: Path) -> Path:
+    """Write a test config that makes interruption ordering deterministic."""
+    payload = json.loads(_SYNTHESIS_CONFIG_PATH.read_text(encoding="utf-8"))
+    payload["stages"]["fact_extraction"]["max_concurrency"] = 1
+    output_path = tmp_path / "synthesis.serial-fact-extraction.json"
+    output_path.write_text(json.dumps(payload), encoding="utf-8")
+    return output_path
 
 
 def test_fact_extraction_cli_extracts_and_writes_facts(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -174,6 +226,7 @@ def test_fact_extraction_cli_extracts_and_writes_facts(monkeypatch: pytest.Monke
     facts = read_legal_facts(facts_path)
     assert len(facts) == 1
     assert facts[0].conduct == "Vượt đèn đỏ"
+    assert stage_cache_path(facts_path).exists()
 
 
 def test_fact_extraction_cli_stamps_document_metadata_onto_every_fact(
@@ -433,7 +486,13 @@ def test_fact_extraction_cli_persists_progress_if_interrupted_mid_document(
                 for item in items
             )
 
-    _configure_cli(monkeypatch, chunks_path, screening_path, facts_path)
+    _configure_cli(
+        monkeypatch,
+        chunks_path,
+        screening_path,
+        facts_path,
+        synthesis_config_path=_serial_fact_extraction_config(tmp_path),
+    )
     monkeypatch.setattr(fact_extraction, "BamlFactExtractionClient", _CrashesOnSecondBatchClient)
 
     with pytest.raises(SystemExit):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -114,6 +115,34 @@ def test_screen_chunks_supports_configured_batches_of_fifty() -> None:
     screen_chunks(chunks, _CountingClient(), batch_size=50, max_retries=2, retry_delay_seconds=0)
 
     assert calls == [50, 1]
+
+
+def test_screen_chunks_runs_batches_concurrently_and_preserves_output_order() -> None:
+    """Configured screening concurrency allows batches to overlap while final records stay ordered."""
+    chunks = [_chunk(f"chunk-{index}", f"Nội dung {index}.") for index in range(2)]
+    barrier = threading.Barrier(2)
+    calls: list[str] = []
+
+    class _ConcurrentClient:
+        def screen(self, batch: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            calls.append(batch[0].chunk_id)
+            barrier.wait(timeout=2)
+            return [
+                ChunkScreeningResult(chunk_id=item.chunk_id, has_penalty_content=True, reason="Contains penalty.")
+                for item in batch
+            ]
+
+    records = screen_chunks(
+        chunks,
+        _ConcurrentClient(),
+        batch_size=1,
+        max_concurrency=2,
+        max_retries=0,
+        retry_delay_seconds=0,
+    )
+
+    assert set(calls) == {"chunk-0", "chunk-1"}
+    assert [record.chunk_id for record in records] == ["chunk-0", "chunk-1"]
 
 
 def test_screen_chunks_calls_on_batch_screened_after_each_batch() -> None:

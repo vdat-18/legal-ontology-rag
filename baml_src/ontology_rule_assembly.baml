@@ -13,6 +13,9 @@ class AssemblyConsequenceSummary {
   maximum_amount string?
   currency OntologyCurrency?
   point_value int?
+  consequence_label_vi string?
+  minimum_duration_months int?
+  maximum_duration_months int?
   target_label_vi string?
   responsible_role_label_vi string?
   evidence OntologyEvidenceEntry[]

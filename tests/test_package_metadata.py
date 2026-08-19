@@ -37,6 +37,13 @@ def test_groundtruth_export_console_script_is_published() -> None:
     assert metadata["scripts"]["legal-export-groundtruth"] == "legal_rag.groundtruth_export_cli:main"
 
 
+def test_groundtruth_document_preparation_console_script_is_published() -> None:
+    """Concurrent synthesis document preparation is available as a console script."""
+    metadata = _project_metadata()
+
+    assert metadata["scripts"]["legal-prepare-groundtruth-document"] == "legal_rag.document_preparation_cli:main"
+
+
 def test_evaluation_extra_excludes_unused_dependencies() -> None:
     """The evaluation extra only declares dependencies used by project code."""
     metadata = _project_metadata()

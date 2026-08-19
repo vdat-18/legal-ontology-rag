@@ -64,6 +64,9 @@ class PopulationConsequence:
     target_label_vi: str | None
     responsible_role_label_vi: str | None
     evidence: tuple[PopulationEvidence, ...]
+    consequence_label_vi: str | None = None
+    minimum_duration_months: int | None = None
+    maximum_duration_months: int | None = None
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-serializable consequence record."""
@@ -76,6 +79,9 @@ class PopulationConsequence:
             "point_value": self.point_value,
             "target_label_vi": self.target_label_vi,
             "responsible_role_label_vi": self.responsible_role_label_vi,
+            "consequence_label_vi": self.consequence_label_vi,
+            "minimum_duration_months": self.minimum_duration_months,
+            "maximum_duration_months": self.maximum_duration_months,
             "evidence": [item.to_dict() for item in self.evidence],
         }
 

@@ -11,7 +11,7 @@ The versioned execution and semantic contract is `ontology/population_contract.y
 ```text
 chunk JSONL + screening + document metadata
   -> parser-derived Chương/Mục/Điều context
-  -> target plus two preceding and one following chunk
+  -> target plus bounded local and same-article context
   -> typed BAML extraction
   -> exact evidence binding
   -> reviewable population JSONL
@@ -64,13 +64,15 @@ The audit attaches every supported consequence to each affected atomic rule and 
 specific Target conducts have been considered. When exceptions have different local scopes within one listed point,
 the LLM separates the affected conducts so each record retains its own local exceptions plus any shared exception.
 
-Each population request contains the target chunk, at most two preceding chunks, and at most one following chunk in the
-same persisted scope. Every entry also carries `context_text` derived from full-paragraph OOXML structural bookmarks
-such as Chương, Mục, and Điều. This ancestry supplies headings that may be many chunks before the target. It is kept
-separate from source `text`: the LLM may use it for applicability and `provision_path`, but exact evidence binding never
-accepts a quote from structural context. Adjacent chunks remain bounded local context; the target remains the extraction
-anchor. When one existing chunk crosses an Article boundary, `context_text` retains each ordered ancestry as a separate
-`VARIANT`; the prompt requires matching those variants against the explicit heading transition in source text.
+Each population request contains the target chunk, bounded preceding/following chunks, and every chunk carrying the
+same parser-derived Article ancestry up to the configured article-context limit. Same-article chunks expose distant
+point-deduction and additional-sanction catalogs without asserting that they apply; the LLM must confirm an explicit
+reference to the rule's own provision. Every entry also carries `context_text` derived from full-paragraph OOXML
+structural bookmarks such as Chương, Mục, and Điều. This ancestry is kept separate from source `text`: the LLM may use
+it for applicability, context selection, and `provision_path`, but exact evidence binding never accepts a quote from
+structural context. The target remains the extraction anchor, and only Target conduct may create a rule. When one chunk
+crosses an Article boundary, `context_text` retains each ordered ancestry as a separate `VARIANT`; population falls back
+to bounded local context rather than mixing two Article scopes.
 
 Deterministic code owns:
 
@@ -170,6 +172,11 @@ Population creates `PenaltyRule` candidates only for specifically described proh
 source-grounded consequence. General sanction/remedy catalogs, multi-violation principles, enforcement authority,
 license handling, records, and other procedural duties return zero rules. A `RemedialMeasure` without a source-grounded
 responsible role fails before persistence rather than reaching final graph validation.
+
+Time-limited additional sanctions retain a source-grounded consequence label, affected target, and normalized lower
+and upper duration in months. Consequence references bind to the populated rule's own provision path; a sanction for a
+referenced base provision does not replace a different sanction explicitly governing an aggravated or otherwise more
+specific provision.
 
 ## Failure Boundaries
 

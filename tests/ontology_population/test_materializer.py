@@ -6,7 +6,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from rdflib import RDF, TIME
+from rdflib import RDF, TIME, XSD, Literal
 
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
 from legal_rag.chunker.models import Chunk
@@ -40,6 +40,9 @@ def test_materialized_rule_covers_all_components_and_conforms(
     assert len(tuple(graph.subjects(RDF.type, LORLC.AdditionalSanction))) == 1
     assert len(tuple(graph.subjects(RDF.type, LORLC.RemedialMeasure))) == 1
     assert len(tuple(graph.subjects(RDF.type, LORSP.EvidenceSpan))) == 5
+    sanction = next(graph.subjects(RDF.type, LORLC.AdditionalSanction))
+    assert (sanction, LORLC.minimumDurationMonths, Literal(10, datatype=XSD.integer)) in graph
+    assert (sanction, LORLC.maximumDurationMonths, Literal(12, datatype=XSD.integer)) in graph
     assert not tuple(graph.objects(predicate=TIME.hasEnd))
 
 
@@ -87,6 +90,24 @@ def test_incomplete_monetary_values_are_rejected_by_shacl(
     )
 
     with pytest.raises(ValueError, match="upper bound"):
+        validate_population_graph(graph, OntologyPaths(PROJECT_ROOT))
+
+
+def test_incomplete_additional_sanction_duration_is_rejected_by_shacl(
+    legal_chunk: Chunk,
+    document_metadata: DocumentMetadataRecord,
+    population_record: OntologyPopulationRecord,
+) -> None:
+    """A persisted additional-sanction duration must keep both source bounds."""
+    sanction = replace(population_record.consequences[2], maximum_duration_months=None)
+    graph = materialize_population_graph(
+        (legal_chunk,),
+        document_metadata,
+        (replace(population_record, consequences=(*population_record.consequences[:2], sanction)),),
+        INSTANCE_NAMESPACE,
+    )
+
+    with pytest.raises(ValueError, match="both month bounds"):
         validate_population_graph(graph, OntologyPaths(PROJECT_ROOT))
 
 

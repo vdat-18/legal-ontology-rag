@@ -118,7 +118,9 @@ def main() -> None:
         """Write batch facts before progress so an interrupted write can only cause a safe replay."""
         for _, target_facts in batch_results:
             facts_by_id.update({fact.fact_id: fact for fact in target_facts})
-        write_legal_facts(arguments.facts_output_path, tuple(sorted(facts_by_id.values(), key=lambda fact: fact.fact_id)))
+        write_legal_facts(
+            arguments.facts_output_path, tuple(sorted(facts_by_id.values(), key=lambda fact: fact.fact_id))
+        )
         processed_chunk_ids.update(chunk_id for chunk_id, _ in batch_results)
         write_extraction_progress(
             arguments.progress_output_path,

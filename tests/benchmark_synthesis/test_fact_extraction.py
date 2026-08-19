@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
@@ -308,6 +309,49 @@ def test_extract_facts_from_document_batches_five_targets_per_request() -> None:
     )
 
     assert client.batch_sizes == [5, 1]
+
+
+def test_extract_facts_from_document_runs_batches_concurrently_and_preserves_fact_order() -> None:
+    """Configured extraction concurrency allows batches to overlap while final facts stay target ordered."""
+    targets = (
+        _chunk("target-1", "Phạt tiền từ 4.000.000 đồng."),
+        _chunk("target-2", "Phạt tiền từ 6.000.000 đồng."),
+    )
+    barrier = threading.Barrier(2)
+    calls: list[str] = []
+
+    class _ConcurrentClient:
+        def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[FactExtractionBatchResult]:
+            calls.append(items[0].target_chunk_id)
+            barrier.wait(timeout=2)
+            return tuple(
+                FactExtractionBatchResult(
+                    target_chunk_id=item.target_chunk_id,
+                    facts=[
+                        _baml_fact(
+                            conduct=f"Hành vi {item.target_chunk_id}",
+                            evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id, quoted_span="Phạt tiền")],
+                        )
+                    ],
+                )
+                for item in items
+            )
+
+    facts = extract_facts_from_document(
+        targets,
+        targets,
+        _ConcurrentClient(),
+        _metadata(),
+        max_preceding_chunks=1,
+        max_following_chunks=1,
+        batch_size=1,
+        max_concurrency=2,
+        max_retries=0,
+        retry_delay_seconds=0,
+    )
+
+    assert set(calls) == {"target-1", "target-2"}
+    assert [fact.source_chunk_id for fact in facts] == ["target-1", "target-2"]
 
 
 def test_extract_facts_from_document_retries_a_failing_batch_then_succeeds() -> None:

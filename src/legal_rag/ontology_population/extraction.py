@@ -12,7 +12,12 @@ from typing import Protocol
 from baml_py.logging import set_log_level
 
 from legal_rag.baml_client.sync_client import b
-from legal_rag.baml_client.types import FactExtractionBatchItem, OntologyPopulationBatchResult
+from legal_rag.baml_client.types import (
+    ChunkWindowEntry,
+    ChunkWindowRole,
+    FactExtractionBatchItem,
+    OntologyPopulationBatchResult,
+)
 from legal_rag.baml_client.types import OntologyEvidenceEntry as BamlEvidence
 from legal_rag.baml_client.types import OntologyRuleEntry as BamlRule
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
@@ -32,7 +37,7 @@ from legal_rag.ontology_population.models import (
 )
 from legal_rag.settings import Settings
 
-ONTOLOGY_POPULATION_PROMPT_VERSION = "0.6.0"
+ONTOLOGY_POPULATION_PROMPT_VERSION = "0.9.0"
 
 
 class OntologyPopulationClient(Protocol):
@@ -86,11 +91,12 @@ def extract_population_from_document(
             FactExtractionBatchItem(
                 target_chunk_id=target.chunk_id,
                 window=list(
-                    build_reading_window(
+                    build_population_reading_window(
                         target,
                         chunks_by_id,
                         max_preceding_chunks=population_settings.max_preceding_chunks,
                         max_following_chunks=population_settings.max_following_chunks,
+                        max_article_context_chunks=population_settings.max_article_context_chunks,
                     )
                 ),
             )
@@ -142,12 +148,32 @@ def build_population_record(
     chunk_text_by_id: Mapping[str, str],
 ) -> OntologyPopulationRecord:
     """Convert one typed model result into a stable reviewable record."""
+    if not any(item.chunk_id == source_chunk_id for item in raw.evidence):
+        msg = "Population rule conduct must retain evidence from its target chunk"
+        raise ValueError(msg)
     if any(
         consequence.kind.value == "RemedialMeasure" and consequence.responsible_role_label_vi is None
         for consequence in raw.consequences
     ):
         msg = "RemedialMeasure requires a source-grounded responsible role"
         raise ValueError(msg)
+    if any(
+        consequence.kind.value in {"AdditionalSanction", "RemedialMeasure"} and consequence.consequence_label_vi is None
+        for consequence in raw.consequences
+    ):
+        msg = "AdditionalSanction and RemedialMeasure require a source-grounded consequence label"
+        raise ValueError(msg)
+    for consequence in raw.consequences:
+        durations = (consequence.minimum_duration_months, consequence.maximum_duration_months)
+        if consequence.kind.value != "AdditionalSanction" and any(value is not None for value in durations):
+            msg = "Only AdditionalSanction may define duration month bounds"
+            raise ValueError(msg)
+        if (durations[0] is None) != (durations[1] is None):
+            msg = "Consequence duration requires both lower and upper month bounds"
+            raise ValueError(msg)
+        if durations[0] is not None and (durations[0] < 1 or durations[1] < durations[0]):
+            msg = "Consequence duration month bounds must be positive and ordered"
+            raise ValueError(msg)
     evidence = bind_population_evidence(raw.evidence, chunk_text_by_id)
     conditions = tuple(
         PopulationCondition(
@@ -170,6 +196,9 @@ def build_population_record(
             target_label_vi=consequence.target_label_vi,
             responsible_role_label_vi=consequence.responsible_role_label_vi,
             evidence=bind_population_evidence(consequence.evidence, chunk_text_by_id),
+            consequence_label_vi=consequence.consequence_label_vi,
+            minimum_duration_months=consequence.minimum_duration_months,
+            maximum_duration_months=consequence.maximum_duration_months,
         )
         for consequence in raw.consequences
     )
@@ -217,7 +246,66 @@ def bind_population_evidence(
     return tuple(PopulationEvidence(chunk_id=item.chunk_id, exact_text=item.quoted_span) for item in bound)
 
 
+def build_population_reading_window(
+    target: Chunk,
+    chunks_by_id: Mapping[str, Chunk],
+    *,
+    max_preceding_chunks: int,
+    max_following_chunks: int,
+    max_article_context_chunks: int,
+) -> tuple[ChunkWindowEntry, ...]:
+    """Add bounded same-article context so distant consequence references remain visible."""
+    local_window = build_reading_window(
+        target,
+        chunks_by_id,
+        max_preceding_chunks=max_preceding_chunks,
+        max_following_chunks=max_following_chunks,
+    )
+    target_articles = _structural_articles(target.context_text)
+    if len(target_articles) != 1:
+        return local_window
+
+    article = target_articles[0]
+    article_chunks = tuple(
+        chunk
+        for chunk in sorted(chunks_by_id.values(), key=lambda item: item.chunk_index)
+        if chunk.scope_id == target.scope_id and article in _structural_articles(chunk.context_text)
+    )
+    if len(article_chunks) > max_article_context_chunks:
+        msg = (
+            f"Article context for target {target.chunk_id} has {len(article_chunks)} chunks, "
+            f"exceeding configured maximum {max_article_context_chunks}"
+        )
+        raise ValueError(msg)
+
+    entries = {entry.chunk_id: entry for entry in local_window}
+    for chunk in article_chunks:
+        entries.setdefault(
+            chunk.chunk_id,
+            ChunkWindowEntry(
+                chunk_id=chunk.chunk_id,
+                role=ChunkWindowRole.ArticleContext,
+                context_text=chunk.context_text,
+                text=chunk.text,
+            ),
+        )
+    article_chunk_ids = {chunk.chunk_id for chunk in article_chunks}
+    return tuple(entries[chunk.chunk_id] for chunk in article_chunks) + tuple(
+        entry for entry in local_window if entry.chunk_id not in article_chunk_ids
+    )
+
+
+def _structural_articles(context_text: str) -> tuple[str, ...]:
+    """Read article labels from the parser-owned structural-context serialization."""
+    return tuple(dict.fromkeys(line.strip() for line in context_text.splitlines() if line.strip().startswith("Điều ")))
+
+
 def _batch_task_key(items: Sequence[FactExtractionBatchItem]) -> str:
     """Return a deterministic retry key for one population batch."""
-    target_ids = "\0".join(item.target_chunk_id for item in items)
-    return f"ontology-population:{hashlib.sha256(target_ids.encode('utf-8')).hexdigest()}"
+    identity = "\0".join(
+        (
+            ONTOLOGY_POPULATION_PROMPT_VERSION,
+            *(f"{item.target_chunk_id}:{entry.role.value}:{entry.chunk_id}" for item in items for entry in item.window),
+        )
+    )
+    return f"ontology-population:{hashlib.sha256(identity.encode('utf-8')).hexdigest()}"

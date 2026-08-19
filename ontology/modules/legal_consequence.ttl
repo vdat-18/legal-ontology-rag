@@ -180,6 +180,24 @@ lorlc:pointValue a owl:DatatypeProperty ;
     lorsp:glossaryReference "TERM-POINTS-001" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002" .
 
+lorlc:minimumDurationMonths a owl:DatatypeProperty ;
+    rdfs:domain lorlc:AdditionalSanction ;
+    rdfs:range xsd:integer ;
+    rdfs:label "minimum duration in months"@en ;
+    rdfs:comment "Stores the evidenced lower month bound of a time-limited additional sanction."@en ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-ADDITIONAL-001", "CQ-CONSEQUENCE-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002", "MD-PROV-001" .
+
+lorlc:maximumDurationMonths a owl:DatatypeProperty ;
+    rdfs:domain lorlc:AdditionalSanction ;
+    rdfs:range xsd:integer ;
+    rdfs:label "maximum duration in months"@en ;
+    rdfs:comment "Stores the evidenced upper month bound of a time-limited additional sanction."@en ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-ADDITIONAL-001", "CQ-CONSEQUENCE-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002", "MD-PROV-001" .
+
 lorlc:affectsTarget a owl:ObjectProperty ;
     rdfs:domain lorlc:LegalConsequence ;
     rdfs:range lorlc:ConsequenceTarget ;

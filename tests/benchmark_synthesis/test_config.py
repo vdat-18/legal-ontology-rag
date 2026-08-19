@@ -25,10 +25,12 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.llm_max_retries == 2
     assert settings.llm_retry_delay_seconds == 120
     assert settings.chunk_screening_batch_size == 50
+    assert settings.chunk_screening_max_concurrency == 4
     assert settings.chunk_screening.max_output_tokens == 16_384
     assert settings.document_metadata_opening_chunk_count == 3
     assert settings.document_metadata_closing_chunk_count == 5
     assert settings.fact_extraction_batch_size == 1
+    assert settings.fact_extraction_max_concurrency == 4
     assert settings.fact_extraction_max_preceding_chunks == 1
     assert settings.fact_extraction_max_following_chunks == 1
     assert settings.fact_extraction.max_output_tokens == 32_768
@@ -75,6 +77,22 @@ def test_synthesis_settings_reject_non_positive_fact_extraction_batch_size() -> 
 
     with pytest.raises(ValueError, match="fact_extraction_batch_size must be positive"):
         replace(settings, fact_extraction_batch_size=0)
+
+
+def test_synthesis_settings_reject_non_positive_screening_max_concurrency() -> None:
+    """Chunk screening cannot start with a non-positive worker pool size."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+
+    with pytest.raises(ValueError, match="chunk_screening_max_concurrency must be positive"):
+        replace(settings, chunk_screening_max_concurrency=0)
+
+
+def test_synthesis_settings_reject_non_positive_fact_extraction_max_concurrency() -> None:
+    """Fact extraction cannot start with a non-positive worker pool size."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+
+    with pytest.raises(ValueError, match="fact_extraction_max_concurrency must be positive"):
+        replace(settings, fact_extraction_max_concurrency=0)
 
 
 def test_synthesis_settings_reject_non_positive_evidence_relation_max_concurrency() -> None:

@@ -218,6 +218,8 @@ def _materialize_consequences(
         )
         graph.add((consequence_iri, RDF.type, CONSEQUENCE_CLASSES[consequence.kind]))
         graph.add((rule, LORLC.imposesConsequence, consequence_iri))
+        if consequence.consequence_label_vi is not None:
+            graph.add((consequence_iri, RDFS.label, Literal(consequence.consequence_label_vi, lang="vi")))
         consequence_evidence = _materialize_evidence(graph, data, chunks_by_id, consequence.evidence)
         _add_component_evidence(graph, consequence_iri, provision, consequence_evidence)
         _materialize_consequence_values(graph, data, record, consequence_iri, consequence, roles)
@@ -259,6 +261,8 @@ def _materialize_consequence_values(
             graph.add((amount_range, LORLC.currency, LORLC.VND))
     elif consequence.kind == "PointDeduction" and consequence.point_value is not None:
         graph.add((consequence_iri, LORLC.pointValue, Literal(consequence.point_value, datatype=XSD.integer)))
+    elif consequence.kind == "AdditionalSanction":
+        _materialize_additional_sanction_duration(graph, consequence_iri, consequence)
 
     if consequence.target_label_vi is not None:
         target = _iri(
@@ -282,6 +286,30 @@ def _materialize_consequence_values(
                 LOROC.subjectRoleScheme,
             )
         graph.add((consequence_iri, LORLC.mustBePerformedBy, role))
+
+
+def _materialize_additional_sanction_duration(
+    graph: Graph,
+    consequence_iri: URIRef,
+    consequence: PopulationConsequence,
+) -> None:
+    """Materialize each evidenced duration bound so SHACL can detect incomplete pairs."""
+    if consequence.minimum_duration_months is not None:
+        graph.add(
+            (
+                consequence_iri,
+                LORLC.minimumDurationMonths,
+                Literal(consequence.minimum_duration_months, datatype=XSD.integer),
+            )
+        )
+    if consequence.maximum_duration_months is not None:
+        graph.add(
+            (
+                consequence_iri,
+                LORLC.maximumDurationMonths,
+                Literal(consequence.maximum_duration_months, datatype=XSD.integer),
+            )
+        )
 
 
 def _materialize_evidence(

@@ -23,7 +23,7 @@ dependencies = [
 
 [project.optional-dependencies]
 vietnamese = []
-evaluation = ["deepeval==4.1.1"]
+evaluation = ["rapidfuzz>=3.0", "sentence-transformers>=3.0"]
 api = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "redis>=5.0"]
 dev = [
     "pyshacl>=0.30,<0.31",
@@ -49,6 +49,7 @@ legal-evaluate = "legal_rag.evaluation.cli:main"
 legal-crag-api = "legal_rag.corrective_rag.api.server:main"
 legal-screen-chunks = "legal_rag.chunk_screening_cli:main"
 legal-resolve-document-metadata = "legal_rag.document_metadata_cli:main"
+legal-prepare-groundtruth-document = "legal_rag.document_preparation_cli:main"
 legal-extract-facts = "legal_rag.fact_extraction_cli:main"
 legal-backfill-extraction-progress = "legal_rag.extraction_progress_backfill_cli:main"
 legal-migrate-legal-facts = "legal_rag.legal_fact_migration_cli:main"

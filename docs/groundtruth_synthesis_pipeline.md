@@ -8,9 +8,19 @@ describe retry-then-skip behavior.
 - Every LLM work unit has bounded retry and a stable resume key: metadata,
   screening batch, extraction batch, relation pair, generation attempt, and
   evolution operation.
+- `legal-prepare-groundtruth-document` runs chunk screening and document
+  metadata resolution concurrently because the two stages read the same chunks
+  but do not depend on each other.
+- Chunk screening and fact extraction use bounded concurrency from
+  `stages.chunk_screening.max_concurrency` and
+  `stages.fact_extraction.max_concurrency`.
 - Successful units are written atomically after completion. An exhausted unit
   is never marked complete; the CLI exits non-zero after preserving prior
   successful checkpoints.
+- Document-stage resume artifacts are guarded by `<artifact>.run.json`
+  fingerprints. A CLI refuses to resume legacy artifacts without sidecars, or
+  artifacts produced from different chunks, config, prompt version, model, or
+  upstream stage run ids.
 - `legal-assemble-groundtruth` validates every selected document and produces
   corpus-level `legal_facts.jsonl` plus `run_manifest.json`. The evidence graph
   consumes this assembled fact file.
@@ -71,8 +81,11 @@ data/processed/groundtruth/
 |-- <document>.source.jsonl
 |-- <document>.chunks.jsonl
 |-- <document>.chunk_screening.jsonl
+|-- <document>.chunk_screening.run.json
 |-- <document>.document_metadata.jsonl
+|-- <document>.document_metadata.run.json
 |-- <document>.legal_facts.jsonl
+|-- <document>.legal_facts.run.json
 `-- <document>.extraction_progress.jsonl
 
 data/benchmark_synthesis/
@@ -1113,7 +1126,7 @@ BAML trong `baml_src/`:
   `ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[]`, kèm persona
   và few-shot examples. Window chỉ có vai trò `Target` và `Adjacent`.
 
-CLI tách thành hai bước riêng, nối nhau qua file — theo đúng cách các phase
+CLI tách thành các artifact riêng, nối nhau qua file — theo đúng cách các phase
 sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.jsonl`
 → `single_turn.jsonl`), không gọi ngầm trong cùng 1 process nữa:
 
@@ -1134,6 +1147,14 @@ sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.js
   của thân văn bản, ghi `document_metadata.jsonl` — một dòng duy nhất mang
   `document_number`, `valid_from`, `valid_to`. Nếu output đã tồn tại và hợp lệ,
   command coi work unit metadata đã hoàn thành và không gọi lại LLM.
+- `legal-prepare-groundtruth-document` (`document_preparation_cli.py`): chạy hai
+  command logic trên trong cùng một process và song song hóa chúng. Đây là cách
+  chạy mặc định nên dùng khi chuẩn bị artifact cho một văn bản mới; hai CLI
+  riêng vẫn hữu ích khi cần chạy lại hoặc debug từng artifact.
+- Mỗi artifact resume ở bước document preparation có sidecar fingerprint
+  `<artifact>.run.json`. Artifact cũ không có sidecar phải được sinh lại bằng
+  output path mới hoặc xóa có chủ đích trước khi chạy lại; pipeline không tự
+  đóng dấu lại artifact legacy vì như vậy có thể trộn cache sai.
 - `legal-extract-facts` (`fact_extraction_cli.py`): nhận đường dẫn chunk JSONL,
   `chunk_screening.jsonl` **và** `document_metadata.jsonl`, lọc lại chunk có
   `has_penalty_content=true`,

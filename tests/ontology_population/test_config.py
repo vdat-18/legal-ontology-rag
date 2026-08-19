@@ -21,6 +21,7 @@ def test_population_contract_loads_typed_execution_limits() -> None:
     assert settings.batch_size == 1
     assert settings.max_preceding_chunks == 2
     assert settings.max_following_chunks == 1
+    assert settings.max_article_context_chunks == 32
     assert settings.max_output_tokens == 32768
 
 
@@ -55,6 +56,8 @@ def test_population_contract_requires_atomic_target_conducts_and_canonical_paths
         "classification_owner": "llm",
         "include_preceding_structural_heading": True,
         "include_adjacent_explicit_references": True,
+        "include_same_article_explicit_references": True,
+        "bind_by_specific_provision": True,
         "attach_all_supported_consequences": True,
     }
     assert policy["applicability_exceptions"] == {
@@ -72,10 +75,10 @@ def test_population_contract_requires_atomic_target_conducts_and_canonical_paths
 
 
 def test_population_contract_versions_complete_rule_assembly_policy() -> None:
-    """V0.8 requires complete Target coverage and adjacent rule assembly."""
+    """V0.9 requires complete Target coverage and same-article consequence assembly."""
     contract = load_yaml(CONTRACT_PATH)
 
-    assert contract["artifact_version"] == "0.8.0"
+    assert contract["artifact_version"] == "0.9.0"
     assert any("applicability exception" in boundary for boundary in contract["semantic_boundaries"])
 
 
@@ -83,10 +86,11 @@ def test_population_prompt_audits_adjacent_consequences_and_local_exceptions() -
     """The typed prompt protects the real-data V0.7 regression boundaries."""
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
 
-    assert "heading mức phạt nằm trong Previous" in prompt
-    assert "dẫn chiếu rõ tới" in prompt
+    assert "provision_path riêng của rule" in prompt
+    assert "ArticleContext" in prompt
+    assert "provision của rule" in prompt
     assert "Tự kiểm tra coverage" in prompt
-    assert "tách thành các rules riêng theo phạm vi" in prompt
+    assert "đúng phạm vi" in prompt
 
 
 def test_population_console_script_is_published() -> None:

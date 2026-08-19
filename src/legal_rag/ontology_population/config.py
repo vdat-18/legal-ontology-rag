@@ -18,6 +18,7 @@ class PopulationSettings:
     batch_size: int
     max_preceding_chunks: int
     max_following_chunks: int
+    max_article_context_chunks: int
     max_output_tokens: int
     temperature: float
     max_retries: int
@@ -38,6 +39,7 @@ class PopulationSettings:
             batch_size=extraction["batch_size"],
             max_preceding_chunks=reading_window["max_preceding_chunks"],
             max_following_chunks=reading_window["max_following_chunks"],
+            max_article_context_chunks=reading_window["max_article_context_chunks"],
             max_output_tokens=extraction["max_output_tokens"],
             temperature=extraction["temperature"],
             max_retries=extraction["max_retries"],

@@ -24,7 +24,7 @@ from legal_rag.benchmark_synthesis.llm_execution import LlmTaskExhaustedError
 from legal_rag.chunker.models import Chunk
 from legal_rag.ontology_population.assembly_candidates import build_assembly_candidates
 from legal_rag.ontology_population.assembly_config import AssemblySettings
-from legal_rag.ontology_population.assembly_proposals import propose_assemblies
+from legal_rag.ontology_population.assembly_proposals import propose_assemblies, summarize_population_record
 from legal_rag.ontology_population.models import OntologyPopulationRecord
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -147,6 +147,30 @@ def test_proposal_preserves_complete_summaries_and_exact_evidence(
     ]
     assert client.inputs[0].records[0].consequences[0].minimum_amount == "4000000"
     assert client.inputs[0].records[1].consequences[0].point_value == 6
+
+
+def test_population_summary_preserves_additional_sanction_duration(
+    assembly_records: tuple[OntologyPopulationRecord, ...],
+) -> None:
+    """Assembly input retains the V0.9 sanction label and normalized duration."""
+    source = assembly_records[0]
+    consequence = replace(
+        source.consequences[0],
+        kind="AdditionalSanction",
+        minimum_amount=None,
+        maximum_amount=None,
+        currency_code=None,
+        consequence_label_vi="Tước quyền sử dụng",
+        minimum_duration_months=10,
+        maximum_duration_months=12,
+        target_label_vi="Giấy phép lái xe",
+    )
+
+    summary = summarize_population_record(replace(source, consequences=(consequence,)))
+
+    assert summary.consequences[0].consequence_label_vi == "Tước quyền sử dụng"
+    assert summary.consequences[0].minimum_duration_months == 10
+    assert summary.consequences[0].maximum_duration_months == 12
 
 
 @pytest.mark.parametrize("member_ids", [["population-money", "unknown"], ["population-money"]])

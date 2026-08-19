@@ -23,7 +23,7 @@ def legal_chunk() -> Chunk:
     text = (
         "Người điều khiển xe mô tô không gắn biển số bị phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng. "
         "Phương tiện thuộc diện phải gắn biển số và đang tham gia giao thông. "
-        "Bị trừ 06 điểm giấy phép lái xe. Bị tịch thu biển số. "
+        "Bị trừ 06 điểm giấy phép lái xe. Bị tước quyền sử dụng giấy phép lái xe từ 10 tháng đến 12 tháng. "
         "Buộc người điều khiển thực hiện đúng quy định về biển số."
     )
     return Chunk(
@@ -65,7 +65,7 @@ def population_record(legal_chunk: Chunk) -> OntologyPopulationRecord:
     rule_text = "Người điều khiển xe mô tô không gắn biển số bị phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."
     condition_text = "Phương tiện thuộc diện phải gắn biển số và đang tham gia giao thông."
     points_text = "Bị trừ 06 điểm giấy phép lái xe."
-    sanction_text = "Bị tịch thu biển số."
+    sanction_text = "Bị tước quyền sử dụng giấy phép lái xe từ 10 tháng đến 12 tháng."
     remedy_text = "Buộc người điều khiển thực hiện đúng quy định về biển số."
     return OntologyPopulationRecord(
         population_id="population-1",
@@ -128,9 +128,12 @@ def population_record(legal_chunk: Chunk) -> OntologyPopulationRecord:
                 maximum_amount=None,
                 currency_code=None,
                 point_value=None,
-                target_label_vi="Biển số",
+                target_label_vi="Giấy phép lái xe",
                 responsible_role_label_vi=None,
                 evidence=(PopulationEvidence(legal_chunk.chunk_id, sanction_text),),
+                consequence_label_vi="Tước quyền sử dụng",
+                minimum_duration_months=10,
+                maximum_duration_months=12,
             ),
             PopulationConsequence(
                 consequence_id="remedy",
@@ -142,6 +145,7 @@ def population_record(legal_chunk: Chunk) -> OntologyPopulationRecord:
                 target_label_vi="Biển số",
                 responsible_role_label_vi="Người điều khiển",
                 evidence=(PopulationEvidence(legal_chunk.chunk_id, remedy_text),),
+                consequence_label_vi="Buộc thực hiện đúng quy định về biển số",
             ),
         ),
         valid_from=date(2025, 1, 1),

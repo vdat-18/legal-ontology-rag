@@ -11,6 +11,7 @@ import pytest
 from legal_rag import document_metadata_cli
 from legal_rag.baml_client.types import DocumentMetadata as BamlDocumentMetadata
 from legal_rag.benchmark_synthesis import document_metadata
+from legal_rag.benchmark_synthesis.stage_cache import stage_cache_path
 from legal_rag.benchmark_synthesis.writer import read_document_metadata
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
@@ -94,3 +95,4 @@ def test_document_metadata_cli_resolves_and_writes_one_record(monkeypatch: pytes
     assert record.document_number == "168/2024/NĐ-CP"
     assert record.valid_from == date(2025, 1, 1)
     assert record.valid_to is None
+    assert stage_cache_path(metadata_path).exists()

@@ -1,6 +1,6 @@
 schema_version: "0.1.0"
 artifact_id: road-traffic-ontology-population-contract
-artifact_version: "0.8.0"
+artifact_version: "0.9.0"
 status: pilot_internal_validation
 ontology_version: "0.1.0"
 instance_namespace: https://w3id.org/legal-ontology-rag/data/
@@ -12,6 +12,7 @@ input:
   reading_window:
     max_preceding_chunks: 2
     max_following_chunks: 1
+    max_article_context_chunks: 32
     includes_structural_context: true
 output:
   record_schema_version: "0.1.0"
@@ -35,6 +36,8 @@ extraction_policy:
     classification_owner: llm
     include_preceding_structural_heading: true
     include_adjacent_explicit_references: true
+    include_same_article_explicit_references: true
+    bind_by_specific_provision: true
     attach_all_supported_consequences: true
   applicability_exceptions:
     classification_owner: llm
@@ -77,10 +80,13 @@ semantic_boundaries:
   - Each population record represents one independently matchable regulated conduct, not an aggregate label for alternative acts.
   - The LLM exhaustively audits every specific Target conduct before returning candidates or an empty result.
   - Consequences in adjacent chunks are mandatory when they directly head or explicitly reference a Target conduct's provision.
+  - Same-article context supplies distant consequence catalogs; the LLM attaches only consequences that explicitly govern the Target rule's own provision.
+  - A consequence for a referenced base provision never replaces a distinct consequence that explicitly governs the Target rule's more specific provision.
   - Every source-grounded applicability exception is represented in the condition tree and repeated for each affected atomic conduct.
   - Locally scoped exceptions remain attached only to the affected atomic conduct while shared exceptions are repeated across all affected records.
   - The LLM distinguishes applicability exceptions from intrinsic conduct or object qualifiers; deterministic code does not classify them from wording.
   - Every populated conduct must have exact evidence in the target chunk; adjacent chunks may only complete its context and consequence.
   - Provision paths use the canonical ordered level format without heading titles.
   - Missing validity end and missing consequence values remain unknown.
+  - Time-limited additional sanctions retain their source-grounded label and normalized lower and upper month bounds.
   - Candidate concepts are scoped to a populated rule until a separate semantic consolidation review approves reuse.

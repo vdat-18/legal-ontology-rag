@@ -721,6 +721,32 @@ lorsh:AdditionalSanctionShape a sh:NodeShape ;
         sh:minCount 1 ;
         sh:class lorlc:ConsequenceTarget ;
         sh:message "An additional sanction must identify at least one affected target in approved pilot data."@en
+    ], [
+        sh:path lorlc:minimumDurationMonths ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 1 ;
+        sh:lessThanOrEquals lorlc:maximumDurationMonths ;
+        sh:message "An additional-sanction lower duration must be a positive month value not above its upper bound."@en
+    ], [
+        sh:path lorlc:maximumDurationMonths ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 1 ;
+        sh:message "An additional-sanction upper duration must be a positive month value."@en
+    ] ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "An additional-sanction duration must provide both month bounds or neither."@en ;
+        sh:select """
+            PREFIX lorlc: <https://w3id.org/legal-ontology-rag/ontology/legal-consequence#>
+            SELECT $this
+            WHERE {
+                OPTIONAL { $this lorlc:minimumDurationMonths ?minimum . }
+                OPTIONAL { $this lorlc:maximumDurationMonths ?maximum . }
+                FILTER(BOUND(?minimum) != BOUND(?maximum))
+            }
+        """
     ] ;
     lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
     lorsp:competencyQuestionReference "CQ-ADDITIONAL-001", "CQ-CONSEQUENCE-001" ;
