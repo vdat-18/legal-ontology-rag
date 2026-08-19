@@ -8,7 +8,7 @@ from typing import Any
 
 from legal_rag.parser.hashing import sha256_json
 
-LEGAL_FACT_SCHEMA_VERSION = "1.3.0"
+LEGAL_FACT_SCHEMA_VERSION = "2.0.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,8 +32,9 @@ class LegalFact:
 
     fact_id: str
     fact_content_sha256: str
-    conduct: str
-    subject: str
+    statement: str
+    conduct: str | None
+    subject: str | None
     conditions: tuple[str, ...]
     monetary_penalty: str | None
     license_points_deducted: str | None
@@ -53,6 +54,7 @@ class LegalFact:
             "fact_id": self.fact_id,
             "fact_content_sha256": self.fact_content_sha256,
             "source_chunk_id": self.source_chunk_id,
+            "statement": self.statement,
             "conduct": self.conduct,
             "subject": self.subject,
             "conditions": list(self.conditions),
@@ -70,8 +72,9 @@ class LegalFact:
 
 def build_legal_fact(
     *,
-    conduct: str,
-    subject: str,
+    statement: str,
+    conduct: str | None,
+    subject: str | None,
     conditions: tuple[str, ...],
     monetary_penalty: str | None,
     license_points_deducted: str | None,
@@ -86,13 +89,14 @@ def build_legal_fact(
 ) -> LegalFact:
     """Assign content-derived identity to one legal fact from its final field values."""
     identity = {
-        "conduct": conduct,
-        "subject": subject,
+        "statement": statement,
         "document_number": document_number,
         "provision_path": provision_path,
     }
     content = {
         **identity,
+        "conduct": conduct,
+        "subject": subject,
         "conditions": list(conditions),
         "monetary_penalty": monetary_penalty,
         "license_points_deducted": license_points_deducted,
@@ -105,6 +109,7 @@ def build_legal_fact(
     return LegalFact(
         fact_id=sha256_json(identity),
         fact_content_sha256=sha256_json(content),
+        statement=statement,
         conduct=conduct,
         subject=subject,
         conditions=conditions,

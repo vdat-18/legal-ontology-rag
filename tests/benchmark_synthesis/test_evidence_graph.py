@@ -33,8 +33,9 @@ def _fact(
     fact_id: str,
     *,
     document_number: str = "168/2024/NĐ-CP",
-    conduct: str = "Vượt đèn đỏ",
-    subject: str = "Người điều khiển ô tô",
+    conduct: str | None = "Vượt đèn đỏ",
+    subject: str | None = "Người điều khiển ô tô",
+    statement: str | None = None,
     provision_path: str = "Điều 6",
     conditions: tuple[str, ...] = (),
 ) -> LegalFact:
@@ -42,6 +43,7 @@ def _fact(
     return LegalFact(
         fact_id=fact_id,
         fact_content_sha256=f"content-{fact_id}",
+        statement=statement or ". ".join(part for part in (conduct, subject) if part),
         conduct=conduct,
         subject=subject,
         conditions=conditions,
@@ -126,6 +128,21 @@ def test_fact_lexical_corpora_keep_fact_fields_isolated() -> None:
     assert "s:điều" not in corpora["core"][0]
     assert "s:điều" in corpora["authority"][0]
     assert "s:xử" not in corpora["authority"][0]
+
+
+def test_fact_retrieval_uses_statement_without_conduct_or_subject() -> None:
+    """General legal rules remain searchable through their mandatory statement."""
+    fact = _fact(
+        "fact-a",
+        statement="Quyết định xử phạt phải được gửi cho người vi phạm.",
+        conduct=None,
+        subject=None,
+    )
+
+    texts = evidence_graph._fact_retrieval_texts(fact)
+
+    assert "Quyết định xử phạt" in texts.core
+    assert "Quyết định xử phạt" in texts.embedding
 
 
 def test_authority_tokens_canonicalize_document_and_citation_structure() -> None:
@@ -695,6 +712,7 @@ def test_baml_evidence_relation_client_sends_conditions_and_evidence_chunk_ids(
     assert relations == [None]
     assert len(captured_items) == 1
     item = captured_items[0]
+    assert item.fact_a.statement == fact_a.statement
     assert item.fact_a.conditions == ["Khi chuyển hướng tại nơi đường giao nhau"]
     assert item.fact_a.evidence_chunk_ids == ["chunk-a"]
     assert item.fact_b.conditions == ["Trừ trường hợp xe ưu tiên"]

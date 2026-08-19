@@ -35,10 +35,10 @@ from legal_rag.settings import Settings
 EVIDENCE_RELATION_SCHEMA_VERSION = "1.1.0"
 EVIDENCE_BUNDLE_SCHEMA_VERSION = "1.0.0"
 EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.1.0"
-EVIDENCE_RELATION_PROMPT_VERSION = "1.4.0"
+EVIDENCE_RELATION_PROMPT_VERSION = "1.5.0"
 EVIDENCE_CANDIDATE_SELECTION_VERSION = "3.0.0"
 EVIDENCE_CANDIDATE_SET_SCHEMA_VERSION = "1.0.0"
-FACT_RETRIEVAL_TEXT_VERSION = "2.0.0"
+FACT_RETRIEVAL_TEXT_VERSION = "3.0.0"
 
 RelationType = Literal[
     "conduct_to_penalty",
@@ -168,7 +168,7 @@ def _join_fact_parts(parts: Sequence[str | None]) -> str:
 
 def _fact_retrieval_texts(fact: LegalFact) -> _FactRetrievalTexts:
     """Return complete dense text and isolated lexical fields for one fact."""
-    core = _join_fact_parts((fact.conduct, fact.subject))
+    core = _join_fact_parts((fact.statement, fact.conduct, fact.subject))
     conditions = _join_fact_parts(fact.conditions)
     consequences = _join_fact_parts(
         (
@@ -486,6 +486,7 @@ def _summarize(fact: LegalFact) -> LegalFactSummary:
     """Return the BAML-facing summary of a fact used for relation confirmation."""
     return LegalFactSummary(
         fact_id=fact.fact_id,
+        statement=fact.statement,
         conduct=fact.conduct,
         subject=fact.subject,
         conditions=list(fact.conditions),

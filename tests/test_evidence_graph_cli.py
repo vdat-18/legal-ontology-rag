@@ -34,6 +34,7 @@ def _fact(fact_id: str, conduct: str) -> LegalFact:
     return LegalFact(
         fact_id=fact_id,
         fact_content_sha256=f"content-{fact_id}",
+        statement=f"Người điều khiển ô tô {conduct.lower()} bị phạt tiền.",
         conduct=conduct,
         subject="Người điều khiển ô tô",
         conditions=(),

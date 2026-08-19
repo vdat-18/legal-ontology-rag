@@ -1,7 +1,8 @@
 class FactContext {
   fact_id string
-  conduct string
-  subject string
+  statement string
+  conduct string?
+  subject string?
   conditions string[]
   monetary_penalty string?
   license_points_deducted string?
@@ -112,7 +113,9 @@ function GenerateSingleTurnCandidateBatch(
 
     Fact pháp lý:
     {% for fact in item.facts %}
-    [{{ fact.fact_id }}] {{ fact.conduct }} — {{ fact.subject }}
+    [{{ fact.fact_id }}] {{ fact.statement }}
+    {% if fact.conduct %}Hành vi: {{ fact.conduct }}{% endif %}
+    {% if fact.subject %}Đối tượng: {{ fact.subject }}{% endif %}
     Điều khoản: {{ fact.provision_path }} ({{ fact.document_number }})
     Phạt tiền: {{ fact.monetary_penalty }}
     Trừ điểm: {{ fact.license_points_deducted }}

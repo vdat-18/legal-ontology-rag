@@ -1,17 +1,24 @@
 {
-  "schema_version": "2.0.0",
+  "schema_version": "2.1.0",
   "query_types": [
+    {
+      "id": "legal_rule",
+      "description_vi": "Nội dung và cách áp dụng của một quy định pháp lý",
+      "bundle_kinds": ["single_hop", "synthesis", "multi_hop", "temporal"],
+      "required_any_fields": ["statement"]
+    },
     {
       "id": "penalty_for_conduct",
       "description_vi": "Mức phạt của một hành vi",
       "bundle_kinds": ["single_hop", "synthesis", "multi_hop", "temporal"],
+      "required_all_fields": ["conduct"],
       "required_any_fields": ["monetary_penalty", "additional_penalties"]
     },
     {
       "id": "penalty_and_points",
       "description_vi": "Phạt tiền và trừ điểm hoặc tước giấy phép",
       "bundle_kinds": ["single_hop", "synthesis", "multi_hop", "temporal"],
-      "required_all_fields": ["monetary_penalty"],
+      "required_all_fields": ["conduct", "monetary_penalty"],
       "required_any_fields": ["license_points_deducted", "additional_penalties"]
     },
     {
@@ -23,7 +30,8 @@
     {
       "id": "subject_and_vehicle",
       "description_vi": "Đối tượng và loại phương tiện áp dụng",
-      "bundle_kinds": ["single_hop", "synthesis", "multi_hop", "temporal"]
+      "bundle_kinds": ["single_hop", "synthesis", "multi_hop", "temporal"],
+      "required_all_fields": ["subject"]
     },
     {
       "id": "comparison",
@@ -40,7 +48,8 @@
     {
       "id": "temporal_penalty",
       "description_vi": "Áp dụng quy định tại một thời điểm",
-      "bundle_kinds": ["temporal"]
+      "bundle_kinds": ["temporal"],
+      "required_any_fields": ["monetary_penalty", "license_points_deducted", "additional_penalties"]
     },
     {
       "id": "before_after_amendment",

@@ -30,7 +30,7 @@ from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
 CANDIDATE_SCHEMA_VERSION = "1.2.0"
-CANDIDATE_GENERATION_PROMPT_VERSION = "1.3.0"
+CANDIDATE_GENERATION_PROMPT_VERSION = "1.4.0"
 
 _EVOLUTION_OPERATION_BY_ID: dict[str, EvolutionOperation] = {
     "concretizing": EvolutionOperation.Concretizing,
@@ -151,6 +151,7 @@ def build_fact_context(fact: LegalFact) -> FactContext:
     """Return the BAML-facing view of one fact, exposing only its own evidence chunk_ids."""
     return FactContext(
         fact_id=fact.fact_id,
+        statement=fact.statement,
         conduct=fact.conduct,
         subject=fact.subject,
         conditions=list(fact.conditions),

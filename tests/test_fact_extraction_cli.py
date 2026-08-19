@@ -48,6 +48,7 @@ def _existing_fact(fact_id: str, source_chunk_id: str) -> LegalFact:
     return LegalFact(
         fact_id=fact_id,
         fact_content_sha256=f"content-{fact_id}",
+        statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền.",
         conduct="Vượt đèn đỏ",
         subject="Người điều khiển ô tô",
         conditions=(),
@@ -106,6 +107,7 @@ class _OneFactExtractionClient:
                 target_chunk_id=item.target_chunk_id,
                 facts=[
                     BamlLegalFact(
+                        statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền và trừ điểm.",
                         conduct="Vượt đèn đỏ",
                         subject="Người điều khiển ô tô",
                         conditions=[],
@@ -116,12 +118,7 @@ class _OneFactExtractionClient:
                         valid_from=None,
                         valid_to=None,
                         provision_path="Điều 6 khoản 9 điểm b",
-                        evidence=[
-                            BamlEvidenceEntry(
-                                chunk_id=item.target_chunk_id,
-                                quoted_span="Phạt tiền từ 4.000.000 đồng",
-                            )
-                        ],
+                        evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id)],
                     )
                 ],
             )
@@ -259,6 +256,7 @@ def test_fact_extraction_cli_rejects_conflicting_content_for_one_fact_id(
                     target_chunk_id=item.target_chunk_id,
                     facts=[
                         BamlLegalFact(
+                            statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền.",
                             conduct="Vượt đèn đỏ",
                             subject="Người điều khiển ô tô",
                             conditions=[],
@@ -269,7 +267,7 @@ def test_fact_extraction_cli_rejects_conflicting_content_for_one_fact_id(
                             valid_from=None,
                             valid_to=None,
                             provision_path="Điều 6 khoản 9 điểm b",
-                            evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id, quoted_span="Phạt tiền")],
+                            evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id)],
                         )
                     ],
                 )
@@ -396,6 +394,7 @@ def test_fact_extraction_cli_resumes_by_skipping_already_extracted_chunks(
                     target_chunk_id=item.target_chunk_id,
                     facts=[
                         BamlLegalFact(
+                            statement="Người điều khiển ô tô thực hiện hành vi bị trừ điểm giấy phép.",
                             conduct="Trừ điểm giấy phép",
                             subject="Người điều khiển ô tô",
                             conditions=[],
@@ -406,7 +405,7 @@ def test_fact_extraction_cli_resumes_by_skipping_already_extracted_chunks(
                             valid_from=None,
                             valid_to=None,
                             provision_path="Điều 6 khoản 10",
-                            evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id, quoted_span="Trừ 6 điểm")],
+                            evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id)],
                         )
                     ],
                 )
@@ -523,6 +522,7 @@ def test_fact_extraction_cli_persists_progress_if_interrupted_mid_document(
                     target_chunk_id=item.target_chunk_id,
                     facts=[
                         BamlLegalFact(
+                            statement=f"Người điều khiển thực hiện hành vi {item.target_chunk_id} bị phạt tiền.",
                             conduct=f"Hành vi {item.target_chunk_id}",
                             subject="Người điều khiển ô tô",
                             conditions=[],
@@ -533,7 +533,7 @@ def test_fact_extraction_cli_persists_progress_if_interrupted_mid_document(
                             valid_from=None,
                             valid_to=None,
                             provision_path="Điều 6",
-                            evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id, quoted_span="Phạt tiền")],
+                            evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id)],
                         )
                     ],
                 )

@@ -48,6 +48,7 @@ def _fact() -> LegalFact:
     return LegalFact(
         fact_id="fact-1",
         fact_content_sha256="content-1",
+        statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền.",
         conduct="Vượt đèn đỏ",
         subject="Người điều khiển ô tô",
         conditions=("Ban đêm",),

@@ -51,6 +51,7 @@ def test_rebinding_cli_splits_non_contiguous_quote_and_recomputes_content_hash(
     facts_path = tmp_path / "legal_facts.jsonl"
     chunks_path = tmp_path / "chunks.jsonl"
     fact = build_legal_fact(
+        statement="Đơn vị kinh doanh vận tải vi phạm điều kiện giấy phép bị thu hồi giấy phép.",
         conduct="Vi phạm điều kiện giấy phép",
         subject="Đơn vị kinh doanh vận tải",
         conditions=(),

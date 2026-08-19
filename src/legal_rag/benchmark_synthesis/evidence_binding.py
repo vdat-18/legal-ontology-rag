@@ -49,6 +49,7 @@ def rebuild_fact_with_bound_evidence(fact: LegalFact, chunk_text_by_id: Mapping[
     if evidence == fact.evidence:
         return fact
     return build_legal_fact(
+        statement=fact.statement,
         conduct=fact.conduct,
         subject=fact.subject,
         conditions=fact.conditions,

@@ -34,7 +34,7 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
 EXTRACTION_PROGRESS_SCHEMA_VERSION = "1.0.0"
-FACT_EXTRACTION_PROMPT_VERSION = "1.8.0"
+FACT_EXTRACTION_PROMPT_VERSION = "2.0.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,6 +156,7 @@ def build_extracted_fact(
     for reference in evidence:
         window_chunks_by_id[reference.chunk_id]
     return build_legal_fact(
+        statement=raw.statement,
         conduct=raw.conduct,
         subject=raw.subject,
         conditions=tuple(raw.conditions),

@@ -101,6 +101,7 @@ def read_legal_facts(input_path: Path) -> tuple[LegalFact, ...]:
                 LegalFact(
                     fact_id=payload["fact_id"],
                     fact_content_sha256=payload["fact_content_sha256"],
+                    statement=payload["statement"],
                     conduct=payload["conduct"],
                     subject=payload["subject"],
                     conditions=tuple(payload["conditions"]),

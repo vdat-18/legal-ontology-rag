@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
+from legal_rag.benchmark_synthesis import scenario_sampling
 from legal_rag.benchmark_synthesis.evidence_graph import EvidenceBundle
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import (
@@ -37,6 +39,7 @@ def _fact(
     return LegalFact(
         fact_id=fact_id,
         fact_content_sha256=content_sha256 or f"content-{fact_id}",
+        statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền.",
         conduct="Vượt đèn đỏ",
         subject="Người điều khiển ô tô",
         conditions=(),
@@ -105,6 +108,7 @@ def test_load_query_taxonomy_reads_repo_config() -> None:
     """The versioned query-taxonomy file in the repo loads without error."""
     taxonomy = load_query_taxonomy(_REPO_CONFIG_DIR / "query_taxonomy.json")
 
+    assert "legal_rule" in taxonomy.query_type_ids
     assert "penalty_for_conduct" in taxonomy.query_type_ids
     assert "out_of_scope" not in taxonomy.query_type_ids
 
@@ -142,7 +146,26 @@ def test_load_query_type_descriptions_reads_repo_config() -> None:
     """Every query_type_id in the repo config maps to a non-empty description."""
     descriptions = load_query_type_descriptions(_REPO_CONFIG_DIR / "query_taxonomy.json")
 
+    assert descriptions["legal_rule"] == "Nội dung và cách áp dụng của một quy định pháp lý"
     assert descriptions["penalty_for_conduct"] == "Mức phạt của một hành vi"
+
+
+def test_general_rule_is_not_misclassified_as_penalty_or_subject_query() -> None:
+    """A statement-only fact remains eligible without being forced into specialized query types."""
+    taxonomy = load_query_taxonomy(_REPO_CONFIG_DIR / "query_taxonomy.json")
+    fact = replace(
+        _fact("fact-general"),
+        statement="Quyết định xử phạt phải được gửi cho người vi phạm đúng hạn.",
+        conduct=None,
+        subject=None,
+        monetary_penalty=None,
+    )
+
+    eligible = scenario_sampling._eligible_query_types(_bundle("bundle-general", (fact.fact_id,)), (fact,), taxonomy)
+
+    assert "legal_rule" in eligible
+    assert "penalty_for_conduct" not in eligible
+    assert "subject_and_vehicle" not in eligible
 
 
 def test_load_persona_descriptions_reads_repo_config() -> None:

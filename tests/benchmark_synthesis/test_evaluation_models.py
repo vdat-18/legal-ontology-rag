@@ -12,6 +12,7 @@ def _fact(**overrides: object) -> LegalFact:
     defaults: dict[str, object] = {
         "fact_id": "fact-id",
         "fact_content_sha256": "content-hash",
+        "statement": "Người điều khiển ô tô vượt đèn đỏ bị phạt tiền và trừ điểm.",
         "conduct": "Không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
         "subject": "Người điều khiển ô tô",
         "conditions": (),
@@ -37,6 +38,7 @@ def test_legal_fact_to_dict_serializes_stable_output_schema() -> None:
     assert record["valid_from"] == "2025-01-01"
     assert record["valid_to"] is None
     assert record["conditions"] == []
+    assert record["statement"] == "Người điều khiển ô tô vượt đèn đỏ bị phạt tiền và trừ điểm."
     assert record["evidence"] == [{"chunk_id": "chunk-1"}]
 
 
@@ -46,3 +48,11 @@ def test_legal_fact_to_dict_serializes_missing_penalty_fields_as_null() -> None:
 
     assert record["monetary_penalty"] is None
     assert record["license_points_deducted"] is None
+
+
+def test_legal_fact_to_dict_serializes_absent_specialized_fields_as_null() -> None:
+    """A general legal statement does not need placeholder conduct or subject text."""
+    record = _fact(conduct=None, subject=None).to_dict()
+
+    assert record["conduct"] is None
+    assert record["subject"] is None

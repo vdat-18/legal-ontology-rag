@@ -61,6 +61,7 @@ def _fact() -> LegalFact:
     return LegalFact(
         fact_id="fact-1",
         fact_content_sha256="fact-content-hash",
+        statement="Nguoi dieu khien oto vuot den do bi phat tien.",
         conduct="Vuot den do",
         subject="Nguoi dieu khien oto",
         conditions=(),

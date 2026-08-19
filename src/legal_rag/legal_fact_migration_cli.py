@@ -37,6 +37,7 @@ def main() -> None:
             msg = f"Expected legal-fact schema {SOURCE_SCHEMA_VERSION}, got {payload['schema_version']}"
             raise ValueError(msg)
         return build_legal_fact(
+            statement=payload["conduct"],
             conduct=payload["conduct"],
             subject=payload["subject"],
             conditions=tuple(payload["conditions"]),

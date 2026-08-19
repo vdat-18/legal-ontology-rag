@@ -11,8 +11,9 @@ enum RelationType {
 
 class LegalFactSummary {
   fact_id string
-  conduct string
-  subject string
+  statement string
+  conduct string?
+  subject string?
   conditions string[]
   monetary_penalty string?
   license_points_deducted string?

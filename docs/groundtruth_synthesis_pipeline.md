@@ -183,6 +183,7 @@ keyword matching hoặc các luật suy diễn thủ công.
   "fact_id": "...",
   "fact_content_sha256": "...",
   "source_chunk_id": "...",
+  "statement": "Người điều khiển ô tô không chấp hành đèn tín hiệu bị xử phạt theo quy định này.",
   "conduct": "Không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
   "subject": "Người điều khiển ô tô",
   "conditions": [],
@@ -205,6 +206,9 @@ keyword matching hoặc các luật suy diễn thủ công.
 Nguyên tắc:
 
 - Một fact chỉ chứa nội dung có bằng chứng trực tiếp.
+- `statement` luôn chứa một mệnh đề pháp lý nguyên tử đầy đủ. `conduct`,
+  `subject` và các field chế tài là phần cấu trúc bổ sung, có thể null khi
+  không áp dụng; vì vậy thẩm quyền, thủ tục, ngoại lệ và nghĩa vụ vẫn có chỗ lưu.
 - Không sử dụng kiến thức sẵn có của model làm căn cứ.
 - Nếu một fact cần nhiều chunk thì phải lưu tất cả chunk cần thiết.
 - Mỗi `evidence` chỉ cần `chunk_id` thuộc reading window. Pipeline đánh giá
@@ -212,6 +216,9 @@ Nguyên tắc:
   `quoted_span` bên trong chunk.
 - `chunk_id` phục vụ retrieval evaluation, lấy trực tiếp từ trích dẫn của LLM,
   không tra cứu lại `unit_ids`/`source_refs` từ chunk gốc.
+- Query taxonomy có loại `legal_rule` dùng `statement` cho các fact tổng quát;
+  các loại câu hỏi mức phạt hoặc đối tượng chỉ được chọn khi field chuyên biệt
+  tương ứng thực sự có dữ liệu.
 
 ### Sàng lọc chunk trước khi trích xuất
 
@@ -280,15 +287,15 @@ vì việc tra cứu này thuần cơ học, không tốn thêm LLM call nào.
 
 ### Định danh fact tách khỏi nội dung fact
 
-`fact_id` là hash trên các trường **định danh**: `conduct`, `subject`,
+`fact_id` là hash trên các trường **định danh**: `statement`,
 `document_number`, `provision_path`. `fact_content_sha256` là hash trên **toàn
 bộ** nội dung fact — giữ lại để phát hiện nội dung fact đổi giữa các lần trích
 xuất, dù không còn gắn với trạng thái duyệt nào (xem "Nguyên tắc kiến trúc" ở
 đầu tài liệu).
 
 Cặp này lặp lại đúng kỷ luật mà chunker đang dùng cho `chunk_id` và
-`content_sha256`: trích xuất lại corpus không làm đổi `fact_id` khi cách diễn
-đạt thay đổi, vì `fact_id` chỉ phụ thuộc các trường định danh.
+`content_sha256`: thay đổi field chuyên biệt không làm đổi `fact_id` nếu mệnh
+đề pháp lý trung tâm, văn bản và điều khoản không đổi.
 
 Output dự kiến: `data/benchmark_synthesis/legal_facts.jsonl`.
 
@@ -341,8 +348,8 @@ có nó, câu multi-hop thường bị rút gọn thành single-hop vì một ch
 lời. Với quan hệ temporal, `bridge` chính là điều khoản bị sửa đổi.
 
 LLM phải trả rõ hướng `from_fact_id → to_fact_id` theo ngữ nghĩa của từng loại
-quan hệ. Prompt nhận cả `conditions` và các quoted span nguyên văn, không chỉ
-phần tóm tắt conduct/subject. Mỗi relation và progress record lưu `run_id` được
+quan hệ. Prompt nhận `statement`, các field chuyên biệt, `conditions` và
+evidence `chunk_id`. Mỗi relation và progress record lưu `run_id` được
 băm từ fact content, embedding profile, cấu hình đề cử/xác nhận, endpoint,
 model và prompt version. CLI từ chối resume nếu fingerprint không khớp để
 không trộn kết quả cũ với một lần chạy mới.
@@ -350,9 +357,9 @@ không trộn kết quả cũ với một lần chạy mới.
 Candidate retrieval dùng dense embedding OpenAI-compatible theo batch và bốn
 BM25 index tiếng Việt độc lập. Dense leg mặc định gọi
 `deepinfra/BAAI/bge-m3` qua endpoint riêng trong `SYNTHESIS_EMBEDDING_*`, với
-representation gồm toàn bộ conduct, subject, conditions, consequences,
+representation gồm toàn bộ statement, conduct, subject, conditions, consequences,
 document number và provision path. Bốn lexical leg lần lượt index `core`
-(conduct + subject), `conditions`, `consequences` (mức phạt, trừ điểm, hình
+(statement + conduct + subject), `conditions`, `consequences` (mức phạt, trừ điểm, hình
 phạt bổ sung, biện pháp khắc phục) và `authority` (văn bản + đường dẫn điều
 khoản). Tách field ngăn subject hoặc boilerplate điều khoản lấn át tín hiệu
 ngoại lệ, chế tài và thẩm quyền.
@@ -1109,7 +1116,9 @@ Module trong `benchmark_synthesis/`:
   `previous_chunk_id` và `next_chunk_id` đã được chunker lưu. Screening nhận
   structural context tách riêng khỏi source text. Sau đó code gọi BAML trích fact rồi gán `fact_id` và
   `fact_content_sha256` qua `sha256_json`. Nội dung pháp lý vẫn lấy từ typed
-  LLM output. `chunk_id` phải thuộc reading window và là toàn bộ provenance
+  LLM output; `statement` là mệnh đề bắt buộc, còn `conduct`/`subject` là
+  optional để schema không làm mất các quy định về thẩm quyền hay thủ tục.
+  `chunk_id` phải thuộc reading window và là toàn bộ provenance
   cần lưu cho retrieval ground truth; pipeline không yêu cầu span trích dẫn.
   Không gán thêm
   `unit_ids`/`source_refs` vì hai field này không thuộc `EvidenceReference`.

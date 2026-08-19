@@ -31,6 +31,7 @@ def _fact(fact_id: str = "fact-1") -> LegalFact:
     return LegalFact(
         fact_id=fact_id,
         fact_content_sha256=f"content-{fact_id}",
+        statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền và trừ điểm.",
         conduct="Vượt đèn đỏ",
         subject="Người điều khiển ô tô",
         conditions=(),
@@ -73,6 +74,18 @@ def test_build_fact_context_exposes_only_real_evidence_chunk_ids() -> None:
 
     assert context.evidence_chunk_ids == ["chunk-1", "chunk-2"]
     assert context.fact_id == "fact-1"
+    assert context.statement == _fact().statement
+
+
+def test_build_fact_context_accepts_general_rule_without_specialized_fields() -> None:
+    """Candidate generation receives the complete statement even when conduct and subject are absent."""
+    context = build_fact_context(
+        replace(_fact(), statement="Quyết định xử phạt phải được gửi đúng hạn.", conduct=None, subject=None)
+    )
+
+    assert context.statement == "Quyết định xử phạt phải được gửi đúng hạn."
+    assert context.conduct is None
+    assert context.subject is None
 
 
 class _FakeGenerationClient:
@@ -314,6 +327,7 @@ def test_baml_candidate_generation_client_parses_typed_result(monkeypatch: pytes
     )
     fact_context = FactContext(
         fact_id="fact-1",
+        statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền.",
         conduct="Vượt đèn đỏ",
         subject="Người điều khiển ô tô",
         conditions=[],

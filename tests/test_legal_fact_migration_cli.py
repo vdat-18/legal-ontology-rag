@@ -83,6 +83,7 @@ def test_migration_recomputes_identity_to_match_a_fresh_extraction(
     """A migrated fact carries exactly the identity a run with resolved metadata would have produced."""
     facts_path, metadata_path = _write_inputs(tmp_path, [_stored_fact()])
     expected = build_legal_fact(
+        statement="Không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
         conduct="Không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
         subject="Người điều khiển ô tô",
         conditions=(),

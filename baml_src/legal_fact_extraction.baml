@@ -28,8 +28,13 @@ class EvidenceEntry {
 }
 
 class LegalFact {
-  conduct string @description(#"Hành vi vi phạm, diễn đạt ngắn gọn bằng tiếng Việt."#)
-  subject string @description(#"Đối tượng hoặc loại phương tiện áp dụng."#)
+  statement string @description(#"
+    Một mệnh đề pháp lý nguyên tử, đầy đủ và tự hiểu được, bao quát toàn bộ
+    nội dung chính của fact bất kể đó là hành vi, chế tài, thẩm quyền, thủ tục,
+    ngoại lệ hoặc nghĩa vụ.
+  "#)
+  conduct string? @description(#"Hành vi vi phạm nếu fact có nêu; null nếu không áp dụng."#)
+  subject string? @description(#"Đối tượng hoặc loại phương tiện áp dụng nếu có; null nếu không nêu."#)
   conditions string[] @description(#"Điều kiện áp dụng bổ sung, nếu có. Mảng rỗng nếu không có."#)
   monetary_penalty string?
   license_points_deducted string?
@@ -51,16 +56,18 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
   prompt #"
     {{ _.role("user") }}
 
-    Bạn trích xuất các fact nguyên tử về xử phạt vi phạm giao thông đường bộ
+    Bạn trích xuất các fact pháp lý nguyên tử về xử lý vi phạm giao thông đường bộ
     từ từng reading window. Target là chunk cần trích xuất; Preceding và
     Following chỉ giúp hoàn chỉnh quy định bị chia chunk.
 
     Quy tắc bắt buộc:
-    - Chỉ tạo fact cho hành vi, nghĩa vụ hoặc quy tắc có căn cứ trực tiếp
-      trong Target. Context có thể bổ sung subject, conditions, chế tài và
-      provision_path, nhưng không được tạo fact chỉ xuất hiện ngoài Target.
-    - Mỗi fact biểu diễn một hành vi/quy tắc nguyên tử với đúng đối tượng và
-      điều kiện áp dụng. Tách riêng các hành vi hoặc đối tượng có chế tài khác nhau.
+    - Chỉ tạo fact cho quy định có căn cứ trực tiếp trong Target. Context có
+      thể hoàn chỉnh statement, subject, conditions, hậu quả và provision_path,
+      nhưng không được tạo fact chỉ xuất hiện ngoài Target.
+    - statement là một mệnh đề pháp lý nguyên tử, đầy đủ và tự hiểu được. Nó
+      phải giữ được nội dung kể cả khi quy định không phù hợp field chuyên biệt.
+    - Tách riêng các quy tắc, hành vi hoặc đối tượng có điều kiện hay hậu quả khác nhau.
+      Chỉ điền conduct và subject khi thật sự áp dụng; nếu không thì trả null.
     - Chỉ điền trường có căn cứ trực tiếp trong window; không dùng kiến thức
       bên ngoài, không suy đoán. Không đủ căn cứ cho fact hoàn chỉnh thì bỏ fact.
     - Mọi nội dung của fact phải được phủ bởi evidence từ đúng chunk_id trong
@@ -71,12 +78,15 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     - Xử lý từng window độc lập. Trả đúng một kết quả cho mỗi target_chunk_id,
       giữ nguyên id; facts=[] là hợp lệ.
 
-    Tự kiểm tra trước khi trả lời: conduct có evidence trong Target; subject,
-    conditions và mọi chế tài đúng với conduct; các chunk evidence đủ và đúng intent.
+    Tự kiểm tra trước khi trả lời: statement có căn cứ trong Target; các field
+    chuyên biệt nhất quán với statement; các chunk evidence đủ và đúng intent.
 
     Ví dụ ngắn:
     - Target nêu "không chấp hành hiệu lệnh của đèn tín hiệu" và window nêu
-      mức phạt tương ứng -> tạo một fact với cả evidence hành vi và mức phạt.
+      mức phạt tương ứng -> statement bao quát hành vi và mức phạt, đồng thời
+      điền các field conduct, subject và monetary_penalty phù hợp.
+    - Target quy định thẩm quyền xử phạt -> statement giữ trọn quy định;
+      conduct có thể null nếu không có hành vi cụ thể.
     - Target chỉ giải thích thuật ngữ, không nêu quy tắc xử phạt -> facts=[].
 
     Các reading window:
