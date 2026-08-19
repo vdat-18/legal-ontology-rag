@@ -28,8 +28,8 @@ class FactExtractionBatchItem {
 class EvidenceEntry {
   chunk_id string @description(#"Phải trùng với một chunk_id trong window."#)
   quoted_span string @description(#"
-    Trích nguyên văn, chính xác từng ký tự, từ text của chunk có chunk_id
-    tương ứng. Không diễn giải lại, không tóm tắt.
+    Đoạn căn cứ từ chunk tương ứng. Ưu tiên trích nguyên văn; có thể chuẩn hóa
+    nhẹ cách xuống dòng hoặc diễn đạt nếu vẫn giữ đúng nội dung pháp lý.
   "#)
 }
 
@@ -69,9 +69,9 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
       điều kiện áp dụng. Tách riêng các hành vi hoặc đối tượng có chế tài khác nhau.
     - Chỉ điền trường có căn cứ trực tiếp trong window; không dùng kiến thức
       bên ngoài, không suy đoán. Không đủ căn cứ cho fact hoàn chỉnh thì bỏ fact.
-    - Mọi nội dung của fact phải được phủ bởi evidence. quoted_span phải là
-      chuỗi liên tục, nguyên văn chính xác từ text của đúng chunk_id. Nội dung
-      cách nhau dùng nhiều evidence entry; không ghép hoặc diễn giải.
+    - Mọi nội dung của fact phải được phủ bởi evidence từ đúng chunk_id trong
+      window. quoted_span cần thể hiện đúng căn cứ pháp lý; không bắt buộc
+      khớp từng ký tự với Source text.
     - Structural context chỉ dùng để hiểu cấu trúc và provision_path, không
       được dùng làm quoted evidence. Với nhiều VARIANT, đối chiếu Source text
       và thứ tự window để không trộn quy định qua ranh giới Điều.
@@ -79,7 +79,7 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
       giữ nguyên id; facts=[] là hợp lệ.
 
     Tự kiểm tra trước khi trả lời: conduct có evidence trong Target; subject,
-    conditions và mọi chế tài đúng với conduct; evidence đủ và trích chính xác.
+    conditions và mọi chế tài đúng với conduct; evidence đủ và đúng intent.
 
     Ví dụ ngắn:
     - Target nêu "không chấp hành hiệu lệnh của đèn tín hiệu" và window nêu

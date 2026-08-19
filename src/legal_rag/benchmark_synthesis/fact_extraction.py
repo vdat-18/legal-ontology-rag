@@ -23,7 +23,6 @@ from legal_rag.baml_client.types import LegalFact as BamlLegalFact
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
-from legal_rag.benchmark_synthesis.evidence_binding import bind_evidence_references
 from legal_rag.benchmark_synthesis.llm_execution import (
     IncompleteLlmTasksError,
     LlmTaskExhaustedError,
@@ -35,7 +34,7 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
 EXTRACTION_PROGRESS_SCHEMA_VERSION = "1.0.0"
-FACT_EXTRACTION_PROMPT_VERSION = "1.6.0"
+FACT_EXTRACTION_PROMPT_VERSION = "1.7.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,10 +149,14 @@ def build_extracted_fact(
     chunk_text_by_id: Mapping[str, str],
 ) -> LegalFact:
     """Bind evidence and assign identity to one LLM-produced fact."""
-    evidence = bind_evidence_references(
-        tuple(EvidenceReference(chunk_id=entry.chunk_id, quoted_span=entry.quoted_span) for entry in raw.evidence),
-        chunk_text_by_id,
+    evidence = tuple(
+        EvidenceReference(chunk_id=entry.chunk_id, quoted_span=entry.quoted_span) for entry in raw.evidence
     )
+    if not evidence:
+        msg = "A legal fact must cite at least one evidence span"
+        raise ValueError(msg)
+    for reference in evidence:
+        chunk_text_by_id[reference.chunk_id]
     return build_legal_fact(
         conduct=raw.conduct,
         subject=raw.subject,

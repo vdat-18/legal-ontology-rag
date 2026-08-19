@@ -27,7 +27,7 @@
       "temperature": 0.0
     },
     "document_metadata": {
-      "opening_chunk_count": 3,
+      "opening_chunk_count": 5,
       "closing_chunk_count": 5,
       "max_output_tokens": 1024,
       "temperature": 0.0

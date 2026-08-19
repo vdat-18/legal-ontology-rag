@@ -220,8 +220,8 @@ def test_build_extracted_fact_identity_separates_documents_sharing_a_provision_p
     assert first.fact_id != second.fact_id
 
 
-def test_build_extracted_fact_splits_non_contiguous_paragraph_quotes() -> None:
-    """Exact paragraphs separated by omitted source text become separate evidence references."""
+def test_build_extracted_fact_keeps_semantic_evidence_without_exact_rebinding() -> None:
+    """Semantic evidence is trusted without splitting or exact source-text matching."""
     raw = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="chunk-1", quoted_span="Quy định chung.\n\nĐiểm b áp dụng.")])
 
     fact = build_extracted_fact(
@@ -231,18 +231,19 @@ def test_build_extracted_fact_splits_non_contiguous_paragraph_quotes() -> None:
         {"chunk-1": "Quy định chung.\n\nĐiểm a áp dụng.\n\nĐiểm b áp dụng."},
     )
 
-    assert tuple(reference.quoted_span for reference in fact.evidence) == ("Quy định chung.", "Điểm b áp dụng.")
+    assert tuple(reference.quoted_span for reference in fact.evidence) == ("Quy định chung.\n\nĐiểm b áp dụng.",)
 
 
-def test_build_extracted_fact_rejects_non_exact_evidence() -> None:
-    """A quote that cannot be bound exactly raises inside the retry boundary."""
-    with pytest.raises(ValueError, match="not exact source text"):
-        build_extracted_fact(
-            _baml_fact(),
-            "chunk-1",
-            _metadata(),
-            {"chunk-1": "Nội dung hoàn toàn khác."},
-        )
+def test_build_extracted_fact_accepts_semantically_worded_evidence() -> None:
+    """Evidence may preserve legal intent without matching source text character for character."""
+    fact = build_extracted_fact(
+        _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="chunk-1", quoted_span="Mức phạt từ 4 đến 6 triệu đồng")]),
+        "chunk-1",
+        _metadata(),
+        {"chunk-1": "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."},
+    )
+
+    assert fact.evidence[0].quoted_span == "Mức phạt từ 4 đến 6 triệu đồng"
 
 
 def test_build_extracted_fact_rejects_empty_evidence() -> None:

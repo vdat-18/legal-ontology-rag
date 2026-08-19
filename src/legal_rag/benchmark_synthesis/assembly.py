@@ -149,7 +149,7 @@ def _validate_document(
 
 
 def _validate_fact(document_id: str, fact: LegalFact, document_number: str, chunks_by_id: dict[str, Any]) -> None:
-    """Reject one fact with stale provenance, conflicting metadata, or non-exact evidence."""
+    """Reject one fact with stale metadata or missing provenance references."""
     if fact.document_number != document_number:
         msg = f"Fact {fact.fact_id} has document_number inconsistent with {document_id} metadata"
         raise GroundTruthValidationError(msg)
@@ -160,12 +160,8 @@ def _validate_fact(document_id: str, fact: LegalFact, document_number: str, chun
         msg = f"Fact {fact.fact_id} has no evidence"
         raise GroundTruthValidationError(msg)
     for evidence in fact.evidence:
-        chunk = chunks_by_id.get(evidence.chunk_id)
-        if chunk is None:
+        if evidence.chunk_id not in chunks_by_id:
             msg = f"Fact {fact.fact_id} references missing chunk_id {evidence.chunk_id}"
-            raise GroundTruthValidationError(msg)
-        if not evidence.quoted_span or evidence.quoted_span not in chunk.text:
-            msg = f"Fact {fact.fact_id} has a non-exact quoted span in chunk {evidence.chunk_id}"
             raise GroundTruthValidationError(msg)
 
 

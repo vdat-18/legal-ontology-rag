@@ -82,7 +82,11 @@ def resolve_document_metadata(
     retry_delay_seconds: float,
 ) -> DocumentMetadataRecord:
     """Resolve one document's metadata from the opening and closing chunks of its main body."""
-    body = [chunk.text for chunk in chunks if chunk.record_scope == "root"]
+    body_chunks = sorted(
+        (chunk for chunk in chunks if chunk.record_scope == "root"),
+        key=lambda chunk: (chunk.chunk_index, chunk.chunk_id),
+    )
+    body = [chunk.text for chunk in body_chunks]
     source_key = chunks[0].source_sha256 if chunks else "empty-document"
 
     def _resolve() -> DocumentMetadataRecord:

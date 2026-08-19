@@ -13,7 +13,7 @@ LEGAL_FACT_SCHEMA_VERSION = "1.2.0"
 
 @dataclass(frozen=True, slots=True)
 class EvidenceReference:
-    """One quoted span tying a legal fact to its exact chunk provenance."""
+    """One supporting span tying a legal fact to its source chunk."""
 
     chunk_id: str
     quoted_span: str

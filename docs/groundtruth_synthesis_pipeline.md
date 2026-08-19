@@ -24,10 +24,9 @@ describe retry-then-skip behavior.
 - `legal-assemble-groundtruth` validates every selected document and produces
   corpus-level `legal_facts.jsonl` plus `run_manifest.json`. The evidence graph
   consumes this assembled fact file.
-- Fact extraction binds every citation to exact contiguous chunk text before
-  persistence. A model citation joining paragraphs across omitted text is
-  represented as multiple evidence entries; any unbindable citation fails the
-  work unit and remains resumable.
+- Fact extraction requires every evidence reference to point to a chunk in the
+  reading window, but trusts the model's supporting span semantically instead
+  of requiring character-for-character source matching.
 - Candidate generation receives answerability, bundle kind, bridge, and hops,
   and trusts the generator's output directly. Gate 1 (deterministic binding
   check) and gate 2 (independent LLM verification) were both removed by
@@ -209,7 +208,9 @@ Nguyên tắc:
 - Một fact chỉ chứa nội dung có bằng chứng trực tiếp.
 - Không sử dụng kiến thức sẵn có của model làm căn cứ.
 - Nếu một fact cần nhiều chunk thì phải lưu tất cả chunk cần thiết.
-- Mỗi `evidence` phải kèm `quoted_span` trích nguyên văn từ `text` của chunk.
+- Mỗi `evidence` phải kèm `chunk_id` thuộc reading window. `quoted_span` là
+  nội dung hỗ trợ do model trả về và không bị kiểm tra cứng về nội dung hoặc
+  đối chiếu từng ký tự với `text` của chunk.
 - `chunk_id` phục vụ retrieval evaluation, lấy trực tiếp từ trích dẫn của LLM,
   không tra cứu lại `unit_ids`/`source_refs` từ chunk gốc.
 
@@ -250,8 +251,9 @@ trường rỗng, chuỗi kiểu "Nghị định này", hoặc số hiệu của
 văn bản đang đọc nhắc tới.
 
 Vì vậy hai trường này được giải một lần cho mỗi văn bản, bằng một LLM call
-riêng đọc các chunk đầu và cuối của **thân văn bản** (`record_scope == "root"`,
-để phần cuối không rơi vào phụ lục), rồi ghi ra artifact
+riêng đọc 5 chunk đầu và 5 chunk cuối của **thân văn bản**
+(`record_scope == "root"`). Các chunk được sắp theo `chunk_index` trước khi
+lấy mẫu để giữ đúng thứ tự tài liệu và tránh phần cuối rơi vào phụ lục, rồi ghi ra artifact
 `*.document_metadata.jsonl`. Bước trích fact đọc artifact này và dập giá trị vào
 mọi fact của văn bản bằng code — một giá trị duy nhất cho cả văn bản, không thể
 lệch nhau giữa các fact.
@@ -1109,11 +1111,9 @@ Module trong `benchmark_synthesis/`:
   `previous_chunk_id` và `next_chunk_id` đã được chunker lưu. Screening nhận
   structural context tách riêng khỏi source text. Sau đó code gọi BAML trích fact rồi gán `fact_id` và
   `fact_content_sha256` qua `sha256_json`. Nội dung pháp lý vẫn lấy từ typed
-  LLM output, nhưng provenance được ràng buộc tất định trước khi ghi:
-  `chunk_id` phải thuộc reading window và mỗi `quoted_span` phải là substring
-  liên tục, nguyên văn. Nếu model ghép các paragraph nhưng bỏ nội dung ở giữa,
-  code tách chúng thành nhiều evidence entry khi mọi paragraph đều xuất hiện
-  đúng thứ tự; trường hợp khác raise để work unit retry. Không gán thêm
+  LLM output. `chunk_id` phải thuộc reading window, còn `quoted_span` được giữ
+  theo output của model và chỉ cần thể hiện đúng intent của căn cứ, không bị
+  đối chiếu substring từng ký tự với source text. Không gán thêm
   `unit_ids`/`source_refs` vì hai field này không thuộc `EvidenceReference`.
 - `writer.py` — đọc/ghi JSONL nguyên tử cho `chunk_screening.jsonl` và
   `legal_facts.jsonl`, dùng lại `io_utils.write_jsonl_atomic`.
@@ -1149,8 +1149,9 @@ sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.js
   bị dừng đột ngột giữa chừng (không phải lỗi batch, mà là crash/kill hẳn
   tiến trình), các batch đã xong trước đó vẫn không mất.
 - `legal-resolve-document-metadata` (`document_metadata_cli.py`): nhận đường dẫn
-  chunk JSONL của một văn bản, gọi LLM **một lần** trên các chunk đầu và cuối
-  của thân văn bản, ghi `document_metadata.jsonl` — một dòng duy nhất mang
+  chunk JSONL của một văn bản, sắp root chunks theo `chunk_index`, gọi LLM
+  **một lần** trên 5 chunk đầu và 5 chunk cuối, rồi ghi
+  `document_metadata.jsonl` — một dòng duy nhất mang
   `document_number`, `valid_from`, `valid_to`. Nếu output đã tồn tại và hợp lệ,
   command coi work unit metadata đã hoàn thành và không gọi lại LLM.
 - `legal-prepare-groundtruth-document` (`document_preparation_cli.py`): chạy hai

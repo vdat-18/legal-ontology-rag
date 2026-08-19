@@ -22,14 +22,14 @@ from legal_rag.settings import Settings
 _SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
 
 
-def _chunk(chunk_id: str, text: str, *, record_scope: RecordScope = "root") -> Chunk:
+def _chunk(chunk_id: str, text: str, *, chunk_index: int = 0, record_scope: RecordScope = "root") -> Chunk:
     """Build one minimal chunk for document-metadata tests."""
     return Chunk(
         chunk_id=chunk_id,
         content_sha256="content-hash",
         chunker_config_sha256="config-hash",
         scope_id="scope-id",
-        chunk_index=0,
+        chunk_index=chunk_index,
         kind="paragraph_group",
         source_name="168_2024_ND-CP.docx",
         source_sha256="source-hash",
@@ -112,6 +112,24 @@ def test_resolve_document_metadata_reads_the_opening_and_closing_of_the_document
 
     assert client.opening_sections == ("Đoạn 0", "Đoạn 1")
     assert client.closing_sections == ("Đoạn 7", "Đoạn 8", "Đoạn 9")
+
+
+def test_resolve_document_metadata_orders_root_chunks_by_chunk_index() -> None:
+    """Opening and closing sections follow document order even when input chunks are shuffled."""
+    chunks = [_chunk(f"c{index}", f"Đoạn {index}", chunk_index=index) for index in range(10)]
+    client = _RecordingMetadataClient(_baml_metadata())
+
+    resolve_document_metadata(
+        [chunks[8], chunks[1], chunks[6], chunks[3], chunks[0], chunks[9], chunks[4], chunks[2], chunks[7], chunks[5]],
+        client,
+        opening_chunk_count=5,
+        closing_chunk_count=5,
+        max_retries=2,
+        retry_delay_seconds=0,
+    )
+
+    assert client.opening_sections == tuple(f"Đoạn {index}" for index in range(5))
+    assert client.closing_sections == tuple(f"Đoạn {index}" for index in range(5, 10))
 
 
 def test_resolve_document_metadata_ignores_attachment_chunks() -> None:

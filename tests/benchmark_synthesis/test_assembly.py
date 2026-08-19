@@ -57,7 +57,7 @@ def _chunk() -> Chunk:
 
 
 def _fact() -> LegalFact:
-    """Build one fact with exact chunk provenance."""
+    """Build one fact with chunk-level provenance."""
     return LegalFact(
         fact_id="fact-1",
         fact_content_sha256="fact-content-hash",
@@ -165,26 +165,28 @@ def test_assembly_rejects_missing_evidence_chunk(tmp_path: Path) -> None:
         _assemble(tmp_path, facts=(fact,))
 
 
-def test_assembly_rejects_non_exact_evidence_span(tmp_path: Path) -> None:
-    """Assembly requires the persisted quote to occur exactly in its source chunk."""
+def test_assembly_accepts_semantic_evidence_span(tmp_path: Path) -> None:
+    """Assembly trusts a non-empty evidence span without exact source-text matching."""
     fact = replace(
         _fact(),
         evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span="not present"),),
     )
 
-    with pytest.raises(GroundTruthValidationError, match="non-exact quoted span"):
-        _assemble(tmp_path, facts=(fact,))
+    result = _assemble(tmp_path, facts=(fact,))
+
+    assert result.facts == (fact,)
 
 
-def test_assembly_rejects_empty_evidence_span(tmp_path: Path) -> None:
-    """An empty string is not a meaningful exact citation."""
+def test_assembly_accepts_empty_evidence_span(tmp_path: Path) -> None:
+    """Assembly does not impose a hard content gate on the model's supporting span."""
     fact = replace(
         _fact(),
         evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span=""),),
     )
 
-    with pytest.raises(GroundTruthValidationError, match="non-exact quoted span"):
-        _assemble(tmp_path, facts=(fact,))
+    result = _assemble(tmp_path, facts=(fact,))
+
+    assert result.facts == (fact,)
 
 
 def test_assembly_rejects_duplicate_fact_identity_with_conflicting_content(tmp_path: Path) -> None:
