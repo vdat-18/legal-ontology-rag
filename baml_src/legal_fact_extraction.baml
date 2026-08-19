@@ -2,13 +2,15 @@ enum ChunkWindowRole {
   Preceding
   Target
   Following
+  ArticleContext
 }
 
 class ChunkWindowEntry {
   chunk_id string
   role ChunkWindowRole @description(#"
     Target là chunk chính đang được đọc để trích fact. Preceding và Following
-    là chunk liền trước và liền sau theo thứ tự văn bản.
+    là chunk liền trước và liền sau theo thứ tự văn bản. ArticleContext là
+    chunk bổ sung trong cùng Điều để hoàn chỉnh phạm vi và dẫn chiếu pháp lý.
   "#)
   context_text string @description(#"
     Ngữ cảnh cấu trúc do parser lấy từ metadata tài liệu. Có thể dùng để hiểu
