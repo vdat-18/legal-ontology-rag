@@ -27,7 +27,6 @@ from legal_rag.baml_client.types import OntologyEvidenceEntry as BamlEvidence
 from legal_rag.baml_client.types import OntologyRuleEntry as BamlRule
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
-from legal_rag.benchmark_synthesis.evidence_binding import bind_evidence_references
 from legal_rag.benchmark_synthesis.fact_extraction import build_reading_window
 from legal_rag.benchmark_synthesis.llm_execution import (
     IncompleteLlmTasksError,
@@ -35,7 +34,6 @@ from legal_rag.benchmark_synthesis.llm_execution import (
     LlmTaskFailure,
     execute_llm_task,
 )
-from legal_rag.benchmark_synthesis.models import EvidenceReference
 from legal_rag.chunker.models import Chunk
 from legal_rag.ontology_population.config import PopulationSettings
 from legal_rag.ontology_population.models import (
@@ -131,12 +129,13 @@ def build_population_binding_items(
         if len(conduct_ids) != len(set(conduct_ids)):
             msg = "Target conduct IDs must be unique within each target chunk"
             raise ValueError(msg)
-        target_text = _target_conduct_input(item).target_text
         for conduct in inventory.conducts:
             if not conduct.evidence:
-                msg = "Every target conduct must cite exact Target evidence"
+                msg = "Every target conduct must cite Target evidence"
                 raise ValueError(msg)
-            bind_population_evidence(conduct.evidence, {item.target_chunk_id: target_text})
+            if any(entry.chunk_id != item.target_chunk_id for entry in conduct.evidence):
+                msg = "Target conduct evidence must reference its target chunk"
+                raise ValueError(msg)
         binding_items.append(
             OntologyPopulationBindingItem(
                 target_chunk_id=item.target_chunk_id,
@@ -175,8 +174,8 @@ def finalize_population_binding_results(
             if bound.rule.provision_path != conduct.provision_path:
                 msg = "Population rule cannot change its locked Target provision path"
                 raise ValueError(msg)
-            inventory_evidence = {(entry.chunk_id, entry.quoted_span) for entry in conduct.evidence}
-            rule_evidence = {(entry.chunk_id, entry.quoted_span) for entry in bound.rule.evidence}
+            inventory_evidence = {entry.chunk_id for entry in conduct.evidence}
+            rule_evidence = {entry.chunk_id for entry in bound.rule.evidence}
             if not inventory_evidence.issubset(rule_evidence):
                 msg = "Population rule must retain its locked Target conduct evidence"
                 raise ValueError(msg)
@@ -261,7 +260,7 @@ def _extract_batch_records(
     items: Sequence[FactExtractionBatchItem],
     metadata: DocumentMetadataRecord,
 ) -> tuple[tuple[str, tuple[OntologyPopulationRecord, ...]], ...]:
-    """Extract one batch and bind every assertion to exact source evidence."""
+    """Extract one batch and preserve the model-selected source evidence."""
     results = client.extract_batch(items)
     requested_ids = [item.target_chunk_id for item in items]
     result_ids = [result.target_chunk_id for result in results]
@@ -383,12 +382,8 @@ def build_population_record(
 def bind_population_evidence(
     entries: Sequence[BamlEvidence], chunk_text_by_id: Mapping[str, str]
 ) -> tuple[PopulationEvidence, ...]:
-    """Bind BAML evidence to exact contiguous source spans."""
-    bound = bind_evidence_references(
-        tuple(EvidenceReference(chunk_id=entry.chunk_id, quoted_span=entry.quoted_span) for entry in entries),
-        chunk_text_by_id,
-    )
-    return tuple(PopulationEvidence(chunk_id=item.chunk_id, exact_text=item.quoted_span) for item in bound)
+    """Preserve typed model evidence without semantic text matching."""
+    return tuple(PopulationEvidence(chunk_id=entry.chunk_id, exact_text=entry.quoted_span) for entry in entries)
 
 
 def build_population_reading_window(

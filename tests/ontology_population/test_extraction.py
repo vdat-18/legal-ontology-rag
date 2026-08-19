@@ -26,7 +26,7 @@ from legal_rag.baml_client.types import (
     OntologyTargetConductEntry,
 )
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
-from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError, LlmTaskExhaustedError
+from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError
 from legal_rag.chunker.models import Chunk
 from legal_rag.ontology_population.config import PopulationSettings
 from legal_rag.ontology_population.extraction import (
@@ -114,26 +114,27 @@ def test_extraction_binds_evidence_and_uses_reviewed_document_validity(
     assert str(first[0].consequences[0].minimum_amount) == "4000000"
 
 
-def test_extraction_rejects_non_exact_model_evidence(
+def test_extraction_preserves_model_evidence_without_text_matching(
     legal_chunk: Chunk,
     document_metadata: DocumentMetadataRecord,
 ) -> None:
-    """A model paraphrase cannot enter the population record."""
+    """Ontology population trusts typed LLM evidence without exact matching."""
     settings = replace(
         PopulationSettings.from_path(PROJECT_ROOT / "ontology" / "population_contract.yaml"),
         max_retries=0,
         retry_delay_seconds=0,
     )
+    evidence_text = "Nội dung do mô hình xác định."
 
-    with pytest.raises(LlmTaskExhaustedError) as error:
-        extract_population_from_document(
-            (legal_chunk,),
-            (legal_chunk,),
-            _PopulationClient("Nội dung do mô hình tự diễn giải."),
-            document_metadata,
-            settings,
-        )
-    assert "not exact source text" in str(error.value.__cause__)
+    records = extract_population_from_document(
+        (legal_chunk,),
+        (legal_chunk,),
+        _PopulationClient(evidence_text),
+        document_metadata,
+        settings,
+    )
+
+    assert records[0].evidence[0].exact_text == evidence_text
 
 
 def test_extraction_runs_batches_concurrently_and_preserves_target_order(
@@ -193,6 +194,12 @@ def test_extraction_reports_all_concurrent_exhausted_batches(
     document_metadata: DocumentMetadataRecord,
 ) -> None:
     """Independent failures are reported together after successful checkpoints finish."""
+
+    class _FailingPopulationClient:
+        def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
+            """Simulate an invalid typed LLM response for each independent batch."""
+            raise ValueError(items[0].target_chunk_id)
+
     targets = (
         replace(legal_chunk, chunk_id="target-1", chunk_index=0),
         replace(legal_chunk, chunk_id="target-2", chunk_index=1),
@@ -207,7 +214,7 @@ def test_extraction_reports_all_concurrent_exhausted_batches(
         extract_population_from_document(
             targets,
             targets,
-            _PopulationClient("Nội dung không có trong source."),
+            _FailingPopulationClient(),
             document_metadata,
             settings,
             max_concurrency=2,
@@ -301,7 +308,7 @@ def test_population_binding_inventory_requires_target_only_evidence(legal_chunk:
     item, inventory, _ = _target_inventory_fixture(legal_chunk)
     inventory.conducts[0].evidence = [OntologyEvidenceEntry(chunk_id="context", quoted_span=legal_chunk.text)]
 
-    with pytest.raises(KeyError, match="context"):
+    with pytest.raises(ValueError, match="target chunk"):
         build_population_binding_items((item,), (inventory,))
 
 
