@@ -57,8 +57,8 @@ describe retry-then-skip behavior.
   screening and fact-extraction batch sizes, and every synthesis LLM
   operation's token/temperature bounds.
 - Fact extraction sends one reading window per LLM call. Each window contains
-  up to two preceding chunks, the target, one following chunk, and up to two
-  non-adjacent bookend chunks from the same structurally identified article.
+  up to two preceding chunks, the target, and one following chunk, resolved
+  only through persisted neighbor links.
   Screening receives parser-derived structural context alongside target text.
   The batch-capable
   interface remains in place, with `batch_size=1`, so each work unit is one target.
@@ -276,9 +276,6 @@ không giới hạn trong tập đã qua được cổng sàng lọc — chỉ t
 lọc loại (ví dụ đoạn định nghĩa không nêu mức phạt cụ thể) vẫn có thể được
 kéo vào làm ngữ cảnh `Preceding` hoặc `Following` cho một `Target` liền kề,
 vì việc tra cứu này thuần cơ học, không tốn thêm LLM call nào.
-- **Chunk cùng Điều nhưng không liền kề.** Structural context chọn tối đa hai
-  chunk bookend ngoài local window làm `ArticleContext`, giúp giữ heading mức
-  phạt hoặc hình phạt bổ sung nằm xa mà không gửi toàn bộ Điều vào prompt.
 
 ### Định danh fact tách khỏi nội dung fact
 
@@ -1108,11 +1105,9 @@ Module trong `benchmark_synthesis/`:
   accepted/excluded trong bộ nhớ, để CLI ghi thẳng ra file cho bước sau đọc
   lại.
 - `fact_extraction.py` — dựng cửa sổ đọc theo thứ tự gồm tối đa 2 chunk
-  `Preceding`, `Target`, 1 chunk `Following`, rồi thêm tối đa 2 chunk
-  `ArticleContext` không liền kề từ cùng Điều; các neighbor đi qua
-  `previous_chunk_id` và `next_chunk_id`, còn same-article context dùng
-  structural context do parser tạo. Screening cũng nhận structural context
-  tách riêng khỏi source text. Sau đó code gọi BAML trích fact rồi gán `fact_id` và
+  `Preceding`, `Target` và 1 chunk `Following`; các neighbor chỉ đi qua
+  `previous_chunk_id` và `next_chunk_id` đã được chunker lưu. Screening nhận
+  structural context tách riêng khỏi source text. Sau đó code gọi BAML trích fact rồi gán `fact_id` và
   `fact_content_sha256` qua `sha256_json`. Nội dung pháp lý vẫn lấy từ typed
   LLM output, nhưng provenance được ràng buộc tất định trước khi ghi:
   `chunk_id` phải thuộc reading window và mỗi `quoted_span` phải là substring

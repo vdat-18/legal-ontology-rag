@@ -150,13 +150,15 @@ uv run --extra dev legal-populate-ontology `
   data/ontology/population/document.jsonl `
   data/ontology/progress/document.jsonl `
   data/ontology/graphs/document.ttl `
-  --target-ids-path ontology/pilots/168_2024_ND-CP_penalty_rules_v0.2.json `
+  --target-ids-path ontology/pilots/168_2024_ND-CP_penalty_rules_v0.3.json `
+  --max-concurrency 2 `
   --preflight-report-path data/ontology/preflight/document.run.json
 ```
 
 Omit both pilot-selection options for the full document. The command repeats preflight before loading provider settings,
 persists reviewable typed records, excludes general catalogs and procedural duties from `PenaltyRule`, and writes the
-Turtle graph only after SHACL conformance. See
+Turtle graph only after SHACL conformance. `--max-concurrency` bounds independent LLM batches while checkpoint writes
+remain serialized. See
 `docs/ontology_population_pipeline.md` for extraction boundaries, evidence requirements, resume behavior, and semantic
 limitations.
 

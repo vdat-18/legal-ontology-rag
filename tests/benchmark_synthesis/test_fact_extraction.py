@@ -96,39 +96,6 @@ def test_build_reading_window_includes_target_preceding_and_following_chunks() -
     }
 
 
-def test_build_reading_window_adds_bounded_same_article_bookends() -> None:
-    """Distant first and last chunks from the same article are bounded ArticleContext."""
-    article_six = "[LEGAL_STRUCTURE 1.0.0]\nĐiều 6. Xử phạt người điều khiển ô tô\n[/LEGAL_STRUCTURE]"
-    article_seven = "[LEGAL_STRUCTURE 1.0.0]\nĐiều 7. Xử phạt người điều khiển mô tô\n[/LEGAL_STRUCTURE]"
-    opening = _chunk("opening", "Mức phạt chung.", context_text=article_six, chunk_index=0)
-    preceding = _chunk("preceding", "Các hành vi sau đây:", context_text=article_six, chunk_index=1)
-    target = _chunk(
-        "target",
-        "b) Không chấp hành hiệu lệnh.",
-        previous_chunk_id="preceding",
-        next_chunk_id="following",
-        context_text=article_six,
-        chunk_index=2,
-    )
-    following = _chunk("following", "c) Hành vi khác.", context_text=article_six, chunk_index=3)
-    middle = _chunk("middle", "Nội dung giữa Điều.", context_text=article_six, chunk_index=4)
-    closing = _chunk("closing", "Hình phạt bổ sung.", context_text=article_six, chunk_index=5)
-    other = _chunk("other", "Điều khác.", context_text=article_seven, chunk_index=6)
-    chunks = (opening, preceding, target, following, middle, closing, other)
-
-    window = build_reading_window(
-        target,
-        {chunk.chunk_id: chunk for chunk in chunks},
-        max_preceding_chunks=1,
-        max_following_chunks=1,
-        max_article_context_chunks=2,
-    )
-
-    assert [entry.chunk_id for entry in window] == ["preceding", "target", "following", "opening", "closing"]
-    assert window[-2].role == ChunkWindowRole.ArticleContext
-    assert window[-1].role == ChunkWindowRole.ArticleContext
-
-
 def test_build_reading_window_keeps_structural_context_separate_from_source_text() -> None:
     """Parser-derived ancestry reaches the model without becoming evidence text."""
     target = _chunk(

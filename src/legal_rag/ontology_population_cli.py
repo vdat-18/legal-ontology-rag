@@ -26,6 +26,7 @@ def _parser() -> argparse.ArgumentParser:
     target_group = parser.add_mutually_exclusive_group()
     target_group.add_argument("--target-limit", type=int, help="Maximum accepted chunks selected for a pilot run")
     target_group.add_argument("--target-ids-path", type=Path, help="Reviewed pilot target-selection JSON path")
+    parser.add_argument("--max-concurrency", type=int, default=1, help="Maximum concurrent ontology-population batches")
     parser.add_argument("--preflight-report-path", type=Path, help="Optional machine-readable readiness report")
     return parser
 
@@ -96,6 +97,7 @@ def main() -> None:
         read_population_records(arguments.records_output_path) if arguments.records_output_path.exists() else ()
     )
     records_by_id = {record.population_id: record for record in existing_records}
+    chunk_order = {chunk.chunk_id: chunk.chunk_index for chunk in chunks}
     existing_progress = (
         read_population_progress(arguments.progress_output_path) if arguments.progress_output_path.exists() else ()
     )
@@ -104,18 +106,27 @@ def main() -> None:
     remaining_targets = tuple(chunk for chunk in accepted_chunks if chunk.chunk_id not in processed_ids)
 
     logger.info(
-        "Loaded {} accepted chunks from {}; {} already processed, {} remaining",
+        "Loaded {} accepted chunks from {}; {} already processed, {} remaining; max concurrency {}",
         len(accepted_chunks),
         arguments.chunks_path,
         len(accepted_chunks) - len(remaining_targets),
         len(remaining_targets),
+        arguments.max_concurrency,
     )
+
+    def ordered_records() -> tuple[OntologyPopulationRecord, ...]:
+        """Return stable source-ordered records regardless of completion order."""
+        return tuple(
+            sorted(
+                records_by_id.values(), key=lambda record: (chunk_order[record.source_chunk_id], record.population_id)
+            )
+        )
 
     def persist_batch(batch_results: Sequence[tuple[str, tuple[OntologyPopulationRecord, ...]]]) -> None:
         """Persist records before progress so interrupted writes replay safely."""
         for _, target_records in batch_results:
             records_by_id.update({record.population_id: record for record in target_records})
-        write_population_records(arguments.records_output_path, tuple(records_by_id.values()))
+        write_population_records(arguments.records_output_path, ordered_records())
         processed_ids.update(chunk_id for chunk_id, _ in batch_results)
         write_population_progress(
             arguments.progress_output_path,
@@ -136,10 +147,11 @@ def main() -> None:
             client,
             metadata,
             population_settings,
+            max_concurrency=arguments.max_concurrency,
             on_batch_processed=persist_batch,
         )
 
-    records = tuple(records_by_id.values())
+    records = ordered_records()
     write_population_records(arguments.records_output_path, records)
     write_population_progress(
         arguments.progress_output_path,

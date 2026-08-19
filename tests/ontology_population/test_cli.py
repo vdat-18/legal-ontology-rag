@@ -133,7 +133,16 @@ def test_cli_writes_reviewable_records_progress_and_validated_graph(
     )
     _CliPopulationClient.calls = 0
     _CliPopulationClient.settings = None
+    concurrency: list[int] = []
+    extract_population = extraction.extract_population_from_document
+
+    def track_concurrency(*args: object, **kwargs: object) -> object:
+        """Capture the CLI override while retaining the production extraction path."""
+        concurrency.append(kwargs["max_concurrency"])
+        return extract_population(*args, **kwargs)
+
     monkeypatch.setattr(extraction, "BamlOntologyPopulationClient", _CliPopulationClient)
+    monkeypatch.setattr(extraction, "extract_population_from_document", track_concurrency)
     monkeypatch.setattr(ontology_population_cli, "find_dotenv", lambda **_: str(dotenv_path))
     monkeypatch.setenv("LLM_BASE_URL", "https://stale.test/v1")
     monkeypatch.setenv("LLM_API_KEY", "stale-key")
@@ -155,6 +164,8 @@ def test_cli_writes_reviewable_records_progress_and_validated_graph(
             str(target_selection_path),
             "--preflight-report-path",
             str(preflight_path),
+            "--max-concurrency",
+            "2",
         ],
     )
 
@@ -177,6 +188,7 @@ def test_cli_writes_reviewable_records_progress_and_validated_graph(
         "target_selection",
     }
     assert _CliPopulationClient.calls == 1
+    assert concurrency == [2]
     assert _CliPopulationClient.settings == Settings(
         llm_base_url="https://dotenv.test/v1",
         llm_api_key="dotenv-key",

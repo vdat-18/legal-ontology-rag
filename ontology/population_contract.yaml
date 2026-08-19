@@ -1,6 +1,6 @@
 schema_version: "0.1.0"
 artifact_id: road-traffic-ontology-population-contract
-artifact_version: "0.9.0"
+artifact_version: "0.10.0"
 status: pilot_internal_validation
 ontology_version: "0.1.0"
 instance_namespace: https://w3id.org/legal-ontology-rag/data/
@@ -38,6 +38,10 @@ extraction_policy:
     include_adjacent_explicit_references: true
     include_same_article_explicit_references: true
     bind_by_specific_provision: true
+    require_governing_primary_heading: true
+    separate_conditional_variants: true
+    single_monetary_penalty_per_variant: true
+    single_point_deduction_per_variant: true
     attach_all_supported_consequences: true
   applicability_exceptions:
     classification_owner: llm
@@ -82,6 +86,9 @@ semantic_boundaries:
   - Consequences in adjacent chunks are mandatory when they directly head or explicitly reference a Target conduct's provision.
   - Same-article context supplies distant consequence catalogs; the LLM attaches only consequences that explicitly govern the Target rule's own provision.
   - A consequence for a referenced base provision never replaces a distinct consequence that explicitly governs the Target rule's more specific provision.
+  - A consequence requiring an additional applicability condition creates a separate rule variant whose condition tree contains that condition.
+  - Mutually exclusive monetary or point consequences never coexist in one rule variant.
+  - Every Target conduct governed by an explicit primary-sanction heading retains that primary consequence even when the heading is outside Target.
   - Every source-grounded applicability exception is represented in the condition tree and repeated for each affected atomic conduct.
   - Locally scoped exceptions remain attached only to the affected atomic conduct while shared exceptions are repeated across all affected records.
   - The LLM distinguishes applicability exceptions from intrinsic conduct or object qualifiers; deterministic code does not classify them from wording.

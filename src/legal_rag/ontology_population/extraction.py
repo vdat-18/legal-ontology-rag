@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Callable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 from decimal import Decimal
 from functools import partial
@@ -24,7 +25,12 @@ from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
 from legal_rag.benchmark_synthesis.evidence_binding import bind_evidence_references
 from legal_rag.benchmark_synthesis.fact_extraction import build_reading_window
-from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
+from legal_rag.benchmark_synthesis.llm_execution import (
+    IncompleteLlmTasksError,
+    LlmTaskExhaustedError,
+    LlmTaskFailure,
+    execute_llm_task,
+)
 from legal_rag.benchmark_synthesis.models import EvidenceReference
 from legal_rag.chunker.models import Chunk
 from legal_rag.ontology_population.config import PopulationSettings
@@ -37,7 +43,7 @@ from legal_rag.ontology_population.models import (
 )
 from legal_rag.settings import Settings
 
-ONTOLOGY_POPULATION_PROMPT_VERSION = "0.9.0"
+ONTOLOGY_POPULATION_PROMPT_VERSION = "0.10.0"
 
 
 class OntologyPopulationClient(Protocol):
@@ -80,39 +86,68 @@ def extract_population_from_document(
     metadata: DocumentMetadataRecord,
     population_settings: PopulationSettings,
     *,
+    max_concurrency: int = 1,
     on_batch_processed: Callable[[Sequence[tuple[str, tuple[OntologyPopulationRecord, ...]]]], None] | None = None,
 ) -> tuple[OntologyPopulationRecord, ...]:
-    """Extract source-grounded population records in bounded batches."""
+    """Extract population records concurrently and checkpoint each successful batch."""
     chunks_by_id = {chunk.chunk_id: chunk for chunk in document_chunks}
-    records: list[OntologyPopulationRecord] = []
-    for batch_start in range(0, len(target_chunks), population_settings.batch_size):
-        batch = target_chunks[batch_start : batch_start + population_settings.batch_size]
-        items = tuple(
-            FactExtractionBatchItem(
-                target_chunk_id=target.chunk_id,
-                window=list(
-                    build_population_reading_window(
-                        target,
-                        chunks_by_id,
-                        max_preceding_chunks=population_settings.max_preceding_chunks,
-                        max_following_chunks=population_settings.max_following_chunks,
-                        max_article_context_chunks=population_settings.max_article_context_chunks,
-                    )
-                ),
+    batches = [
+        target_chunks[batch_start : batch_start + population_settings.batch_size]
+        for batch_start in range(0, len(target_chunks), population_settings.batch_size)
+    ]
+    batch_results_by_index: dict[int, tuple[tuple[str, tuple[OntologyPopulationRecord, ...]], ...]] = {}
+    failures: list[LlmTaskFailure] = []
+    exhausted_errors: list[LlmTaskExhaustedError] = []
+    with ThreadPoolExecutor(max_workers=max_concurrency) as executor:
+        futures = {}
+        for batch_index, batch in enumerate(batches):
+            items = tuple(
+                FactExtractionBatchItem(
+                    target_chunk_id=target.chunk_id,
+                    window=list(
+                        build_population_reading_window(
+                            target,
+                            chunks_by_id,
+                            max_preceding_chunks=population_settings.max_preceding_chunks,
+                            max_following_chunks=population_settings.max_following_chunks,
+                            max_article_context_chunks=population_settings.max_article_context_chunks,
+                        )
+                    ),
+                )
+                for target in batch
             )
-            for target in batch
-        )
-        batch_results = execute_llm_task(
-            _batch_task_key(items),
-            partial(_extract_batch_records, client, items, metadata),
-            max_retries=population_settings.max_retries,
-            retry_delay_seconds=population_settings.retry_delay_seconds,
-        )
-        for _, target_records in batch_results:
-            records.extend(target_records)
-        if on_batch_processed is not None:
-            on_batch_processed(batch_results)
-    return tuple(records)
+            task_key = _batch_task_key(items)
+            future = executor.submit(
+                execute_llm_task,
+                task_key,
+                partial(_extract_batch_records, client, items, metadata),
+                max_retries=population_settings.max_retries,
+                retry_delay_seconds=population_settings.retry_delay_seconds,
+            )
+            futures[future] = (batch_index, task_key)
+
+        for future in as_completed(futures):
+            batch_index, task_key = futures[future]
+            try:
+                batch_results = future.result()
+            except LlmTaskExhaustedError as error:
+                failures.append(LlmTaskFailure(task_key=task_key, error=str(error)))
+                exhausted_errors.append(error)
+                continue
+            batch_results_by_index[batch_index] = batch_results
+            if on_batch_processed is not None:
+                on_batch_processed(batch_results)
+    if failures:
+        if len(exhausted_errors) == 1:
+            raise exhausted_errors[0]
+        incomplete_error = IncompleteLlmTasksError.for_stage("ontology population", failures)
+        raise incomplete_error
+    return tuple(
+        record
+        for batch_index in range(len(batches))
+        for _, target_records in batch_results_by_index[batch_index]
+        for record in target_records
+    )
 
 
 def _extract_batch_records(
@@ -151,6 +186,10 @@ def build_population_record(
     if not any(item.chunk_id == source_chunk_id for item in raw.evidence):
         msg = "Population rule conduct must retain evidence from its target chunk"
         raise ValueError(msg)
+    for kind in ("MonetaryPenalty", "PointDeduction"):
+        if sum(consequence.kind.value == kind for consequence in raw.consequences) > 1:
+            msg = f"A population rule variant may contain at most one {kind}"
+            raise ValueError(msg)
     if any(
         consequence.kind.value == "RemedialMeasure" and consequence.responsible_role_label_vi is None
         for consequence in raw.consequences

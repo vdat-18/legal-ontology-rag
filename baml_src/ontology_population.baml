@@ -110,16 +110,20 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
     vụ việc cụ thể.
 
     Thực hiện nội bộ theo đúng thứ tự sau trước khi tạo output:
-    1. Đọc toàn bộ Target từ đầu đến cuối và kiểm kê mọi conduct cụ thể. Conduct
-       ở đầu Target vẫn có thể thuộc heading mức phạt nằm trong Previous.
-    2. Với từng conduct trong Target, xác định provision_path riêng của rule,
-       rồi truy vết mọi consequence trực tiếp hoặc dẫn chiếu chính provision
-       đó trong toàn reading window, kể cả Preceding, Following và ArticleContext.
-    3. Tách conduct nguyên tử, dựng applicability/exception tree và lặp lại mọi
-       consequence dùng chung cho từng rule bị chi phối.
-    4. Tự kiểm tra coverage trước khi trả lời: không bỏ conduct chỉ vì heading
-       hoặc consequence nằm ngoài Target; không bỏ consequence chỉ vì nó dẫn
-       chiếu tới provision thay vì lặp lại conduct. Không xuất checklist này.
+    1. Đọc toàn bộ Target từ đầu đến cuối. Lập bảng mọi conduct cụ thể, các
+       mệnh đề hành vi thay thế, qualifier và ngoại lệ theo đúng phạm vi.
+    2. Với từng conduct, xác định provision_path và heading consequence chính
+       đang chi phối nó theo thứ tự văn bản, kể cả heading nằm ở Preceding.
+    3. Lập bảng mọi consequence trực tiếp hoặc dẫn chiếu provision đó trong
+       toàn reading window. Ghi riêng điều kiện bổ sung mà từng consequence yêu
+       cầu; không coi consequence có điều kiện là consequence vô điều kiện.
+    4. Tạo các rule variant. Mỗi variant chỉ chứa các consequence cùng áp dụng
+       dưới chính condition tree của variant đó. Tách conduct nguyên tử và lặp
+       lại consequence, qualifier, ngoại lệ chung cho mọi rule bị chi phối.
+    5. Tự kiểm tra coverage trước khi trả lời: từng conduct đã có heading chính
+       nếu source quy định; từng dẫn chiếu consequence đã được xét; từng điều
+       kiện và ngoại lệ cục bộ còn đúng phạm vi; không có hai consequence loại
+       trừ nhau trong cùng variant. Không xuất các bảng kiểm kê này.
 
     Quy tắc bắt buộc:
     - Chỉ dùng nội dung có bằng chứng trực tiếp trong reading window. Không
@@ -147,16 +151,40 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
       và danh sách conduct tiếp tục ở đầu Target, phải gắn mức phạt đó cho mọi
       conduct thuộc danh sách. Không được chỉ xử lý danh sách có heading nằm
       ngay trong Target.
+    - Với conduct nằm ở đầu Target, lần ngược theo đúng thứ tự văn bản tới
+      heading consequence gần nhất còn đang mở. Nếu heading đó chi phối danh
+      sách chứa conduct thì consequence chính là bắt buộc, kể cả khi Target chỉ
+      chứa phần cuối của một điểm hoặc khoản.
+    - PointDeduction, AdditionalSanction và RemedialMeasure không thay thế
+      consequence chính đang chi phối conduct. Một variant không được chỉ giữ
+      consequence bổ sung hoặc trừ điểm nếu source còn quy định consequence
+      chính cho cùng variant đó.
     - Nếu bất kỳ context chunk nào nêu consequence và dẫn chiếu rõ tới chính
       Điều/Khoản/Điểm của rule trong Target, phải gắn consequence đó cho mọi
       rule nằm trong phạm vi dẫn chiếu. Một rule phải giữ tất cả consequence
       được window hỗ trợ, không chỉ consequence xuất hiện gần conduct nhất.
+    - Đọc hết mọi danh mục consequence trong ArticleContext cho từng
+      provision_path. Khi một dẫn chiếu pháp lý nén nhiều Điểm/Khoản trong một
+      danh sách, giữ đúng phạm vi ngữ pháp dùng chung và kiểm tra từng phần tử;
+      không bỏ một phần tử chỉ vì cấp Điều, Khoản hoặc Điểm không được lặp lại.
     - Dùng provision_path của rule làm định danh pháp lý khi giải quyết dẫn
       chiếu. Không thay thế bằng consequence của một provision khác chỉ vì
       conduct hiện tại trích dẫn, kế thừa hoặc mô tả lại conduct ở provision đó.
       Khi nhiều clause consequence dẫn tới các provision chồng lấn, ưu tiên
       clause dẫn chiếu trực tiếp và cụ thể nhất tới provision của rule; không
       gắn đồng thời các giá trị loại trừ lẫn nhau.
+    - Nếu consequence dẫn chiếu một provision nhưng chỉ áp dụng khi có thêm
+      kết quả, hoàn cảnh, trạng thái tái phạm hoặc điều kiện khác, tạo rule
+      variant riêng. Variant có điều kiện phải dùng lại exact Target evidence
+      của conduct, thêm condition tree và evidence của điều kiện, rồi chỉ giữ
+      consequence áp dụng dưới điều kiện đó. Variant cơ bản không được nhận
+      consequence có điều kiện; variant có điều kiện không được giữ consequence
+      cơ bản nếu source quy định một consequence thay thế.
+    - Mỗi rule variant có tối đa một MonetaryPenalty và tối đa một
+      PointDeduction. Khi source đưa ra các giá trị khác nhau theo điều kiện,
+      chúng là các variant khác nhau, không phải nhiều consequence cùng loại
+      trong một rule. Nhiều AdditionalSanction hoặc RemedialMeasure chỉ cùng
+      tồn tại khi source cho thấy chúng áp dụng đồng thời.
     - PenaltyRule là quy tắc gắn một hành vi bị cấm hoặc nghĩa vụ cụ thể với
       hậu quả pháp lý áp dụng cho chủ thể vi phạm. Chỉ tạo rule khi window xác
       định được conduct cụ thể, applicability/provenance và ít nhất một legal
@@ -185,6 +213,10 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
       cứ xử phạt; lặp lại applicability, consequence và evidence dùng chung.
       Giữ đầy đủ mọi qualifier nội tại về đối tượng, địa điểm, phương tiện,
       kết quả và hoàn cảnh cấu thành hành vi.
+    - Trước khi gộp hai động từ, hành động hoặc lựa chọn vào một conduct, kiểm
+      tra liệu chỉ một trong số chúng xảy ra có đủ cấu thành vi phạm hay không.
+      Nếu có, chúng phải là các rule riêng. Không giữ một cặp hành vi thay thế
+      trong cùng nhãn chỉ vì source đặt chúng cạnh nhau hoặc dùng chung heading.
     - Không tách các thành phần chỉ là danh sách đối tượng, phương tiện, cách
       diễn đạt tương đương, hoặc các yếu tố phải kết hợp mới tạo thành một
       hành vi có nghĩa. Việc tách là quyết định ngữ nghĩa, không chỉ dựa vào
@@ -214,6 +246,10 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
       bộ khác nhau, tách thành các rules riêng theo phạm vi; mỗi rule giữ ngoại
       lệ cục bộ của chính nó và mọi ngoại lệ chung áp dụng cho toàn điểm. Không
       gộp chúng thành một conduct rồi chỉ giữ ngoại lệ chung.
+    - Một danh sách địa điểm không được gộp thành một rule nếu chỉ một số địa
+      điểm có ngoại lệ riêng. Tạo rule riêng cho phần có ngoại lệ cục bộ và giữ
+      exact evidence của ngoại lệ trong condition tree; các phần còn lại không
+      được nhận ngoại lệ đó.
     - Khi một ngoại lệ chung chi phối nhiều conduct đã tách, sao chép đầy đủ
       Atomic/Not tree và exact evidence sang từng rule. Khi ngoại lệ chỉ chi
       phối một phần danh sách, chỉ gắn nó vào các rule thuộc đúng phạm vi đó.

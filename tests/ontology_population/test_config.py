@@ -58,6 +58,10 @@ def test_population_contract_requires_atomic_target_conducts_and_canonical_paths
         "include_adjacent_explicit_references": True,
         "include_same_article_explicit_references": True,
         "bind_by_specific_provision": True,
+        "require_governing_primary_heading": True,
+        "separate_conditional_variants": True,
+        "single_monetary_penalty_per_variant": True,
+        "single_point_deduction_per_variant": True,
         "attach_all_supported_consequences": True,
     }
     assert policy["applicability_exceptions"] == {
@@ -75,22 +79,27 @@ def test_population_contract_requires_atomic_target_conducts_and_canonical_paths
 
 
 def test_population_contract_versions_complete_rule_assembly_policy() -> None:
-    """V0.9 requires complete Target coverage and same-article consequence assembly."""
+    """V0.10 separates conditional consequence variants."""
     contract = load_yaml(CONTRACT_PATH)
 
-    assert contract["artifact_version"] == "0.9.0"
+    assert contract["artifact_version"] == "0.10.0"
     assert any("applicability exception" in boundary for boundary in contract["semantic_boundaries"])
 
 
-def test_population_prompt_audits_adjacent_consequences_and_local_exceptions() -> None:
-    """The typed prompt protects the real-data V0.7 regression boundaries."""
+def test_population_prompt_audits_conditional_variants_and_local_exceptions() -> None:
+    """The typed prompt protects the reviewed population regression boundaries."""
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
 
-    assert "provision_path riêng của rule" in prompt
+    assert "Với từng conduct, xác định provision_path" in prompt
     assert "ArticleContext" in prompt
     assert "provision của rule" in prompt
     assert "Tự kiểm tra coverage" in prompt
     assert "đúng phạm vi" in prompt
+    assert "variant riêng" in prompt
+    assert "heading consequence gần nhất còn đang mở" in prompt
+    assert "tối đa một MonetaryPenalty" in prompt
+    assert "không thay thế" in prompt
+    assert "Đọc hết mọi danh mục consequence" in prompt
 
 
 def test_population_console_script_is_published() -> None:

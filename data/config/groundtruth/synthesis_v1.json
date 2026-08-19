@@ -37,7 +37,6 @@
       "max_concurrency": 4,
       "max_preceding_chunks": 2,
       "max_following_chunks": 1,
-      "max_article_context_chunks": 2,
       "max_output_tokens": 32768,
       "temperature": 0.0
     },

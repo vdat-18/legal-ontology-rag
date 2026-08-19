@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
@@ -20,7 +21,7 @@ from legal_rag.baml_client.types import (
     OntologySubjectKind,
 )
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
-from legal_rag.benchmark_synthesis.llm_execution import LlmTaskExhaustedError
+from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError, LlmTaskExhaustedError
 from legal_rag.chunker.models import Chunk
 from legal_rag.ontology_population.config import PopulationSettings
 from legal_rag.ontology_population.extraction import (
@@ -28,6 +29,7 @@ from legal_rag.ontology_population.extraction import (
     build_population_record,
     extract_population_from_document,
 )
+from legal_rag.ontology_population.models import OntologyPopulationRecord
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -125,6 +127,86 @@ def test_extraction_rejects_non_exact_model_evidence(
             settings,
         )
     assert "not exact source text" in str(error.value.__cause__)
+
+
+def test_extraction_runs_batches_concurrently_and_preserves_target_order(
+    legal_chunk: Chunk,
+    document_metadata: DocumentMetadataRecord,
+) -> None:
+    """Concurrent completion cannot change final population-record ordering."""
+    targets = (
+        replace(legal_chunk, chunk_id="target-1", chunk_index=0, next_chunk_id="target-2"),
+        replace(legal_chunk, chunk_id="target-2", chunk_index=1, previous_chunk_id="target-1"),
+    )
+    barrier = threading.Barrier(2)
+    second_checkpointed = threading.Event()
+    calls: list[str] = []
+    completion_order: list[str] = []
+    quoted_span = legal_chunk.text.split(". ", maxsplit=1)[0] + "."
+
+    class _ConcurrentPopulationClient(_PopulationClient):
+        def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
+            target_id = items[0].target_chunk_id
+            calls.append(target_id)
+            barrier.wait(timeout=2)
+            if target_id == "target-1":
+                assert second_checkpointed.wait(timeout=2)
+            return super().extract_batch(items)
+
+    def checkpoint(batch_results: Sequence[tuple[str, tuple[OntologyPopulationRecord, ...]]]) -> None:
+        """Record main-thread checkpoint order and release the first target."""
+        target_id = batch_results[0][0]
+        completion_order.append(target_id)
+        if target_id == "target-2":
+            second_checkpointed.set()
+
+    settings = replace(
+        PopulationSettings.from_path(PROJECT_ROOT / "ontology" / "population_contract.yaml"),
+        max_retries=0,
+        retry_delay_seconds=0,
+    )
+
+    records = extract_population_from_document(
+        targets,
+        targets,
+        _ConcurrentPopulationClient(quoted_span),
+        document_metadata,
+        settings,
+        max_concurrency=2,
+        on_batch_processed=checkpoint,
+    )
+
+    assert set(calls) == {"target-1", "target-2"}
+    assert completion_order == ["target-2", "target-1"]
+    assert [record.source_chunk_id for record in records] == ["target-1", "target-2"]
+
+
+def test_extraction_reports_all_concurrent_exhausted_batches(
+    legal_chunk: Chunk,
+    document_metadata: DocumentMetadataRecord,
+) -> None:
+    """Independent failures are reported together after successful checkpoints finish."""
+    targets = (
+        replace(legal_chunk, chunk_id="target-1", chunk_index=0),
+        replace(legal_chunk, chunk_id="target-2", chunk_index=1),
+    )
+    settings = replace(
+        PopulationSettings.from_path(PROJECT_ROOT / "ontology" / "population_contract.yaml"),
+        max_retries=0,
+        retry_delay_seconds=0,
+    )
+
+    with pytest.raises(IncompleteLlmTasksError) as error:
+        extract_population_from_document(
+            targets,
+            targets,
+            _PopulationClient("Nội dung không có trong source."),
+            document_metadata,
+            settings,
+            max_concurrency=2,
+        )
+
+    assert len(error.value.failures) == 2
 
 
 def test_population_window_includes_bounded_same_article_context(legal_chunk: Chunk) -> None:
@@ -350,6 +432,56 @@ def test_population_record_rejects_invalid_duration_bounds(
             evidence=[evidence],
         ),
         evidence,
+    )
+
+    with pytest.raises(ValueError, match=message):
+        build_population_record(raw, legal_chunk.chunk_id, document_metadata, {legal_chunk.chunk_id: legal_chunk.text})
+
+
+@pytest.mark.parametrize(
+    ("kind", "message"),
+    [
+        (OntologyConsequenceKind.MonetaryPenalty, "at most one MonetaryPenalty"),
+        (OntologyConsequenceKind.PointDeduction, "at most one PointDeduction"),
+    ],
+)
+def test_population_record_rejects_multiple_exclusive_consequences(
+    kind: OntologyConsequenceKind,
+    message: str,
+    legal_chunk: Chunk,
+    document_metadata: DocumentMetadataRecord,
+) -> None:
+    """Alternative numeric consequences must be emitted as separate rule variants."""
+    evidence = OntologyEvidenceEntry(chunk_id=legal_chunk.chunk_id, quoted_span=legal_chunk.text)
+    consequences = [
+        OntologyConsequenceEntry(
+            consequence_id=f"effect_{index}",
+            kind=kind,
+            minimum_amount=str(index) if kind == OntologyConsequenceKind.MonetaryPenalty else None,
+            maximum_amount=str(index + 1) if kind == OntologyConsequenceKind.MonetaryPenalty else None,
+            currency=OntologyCurrency.VND if kind == OntologyConsequenceKind.MonetaryPenalty else None,
+            point_value=index if kind == OntologyConsequenceKind.PointDeduction else None,
+            consequence_label_vi=None,
+            minimum_duration_months=None,
+            maximum_duration_months=None,
+            target_label_vi="Giấy phép lái xe" if kind == OntologyConsequenceKind.PointDeduction else None,
+            responsible_role_label_vi=None,
+            evidence=[evidence],
+        )
+        for index in (2, 4)
+    ]
+    raw = OntologyRuleEntry(
+        conduct_label_vi="Hành vi được kiểm tra",
+        subject_kind=None,
+        role_labels_vi=[],
+        vehicle_category_labels_vi=[],
+        condition_root_id=None,
+        conditions=[],
+        consequences=consequences,
+        valid_from=None,
+        valid_to=None,
+        provision_path="Điều kiểm tra",
+        evidence=[evidence],
     )
 
     with pytest.raises(ValueError, match=message):

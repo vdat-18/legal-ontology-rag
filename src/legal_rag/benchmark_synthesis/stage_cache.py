@@ -130,7 +130,6 @@ def build_fact_extraction_fingerprint(
                 "max_concurrency": settings.fact_extraction_max_concurrency,
                 "max_preceding_chunks": settings.fact_extraction_max_preceding_chunks,
                 "max_following_chunks": settings.fact_extraction_max_following_chunks,
-                "max_article_context_chunks": settings.fact_extraction_max_article_context_chunks,
                 "generation": asdict(settings.fact_extraction),
             },
         },

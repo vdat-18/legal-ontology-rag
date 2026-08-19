@@ -156,7 +156,6 @@ def main() -> None:
             metadata,
             max_preceding_chunks=synthesis_settings.fact_extraction_max_preceding_chunks,
             max_following_chunks=synthesis_settings.fact_extraction_max_following_chunks,
-            max_article_context_chunks=synthesis_settings.fact_extraction_max_article_context_chunks,
             batch_size=synthesis_settings.fact_extraction_batch_size,
             max_concurrency=synthesis_settings.fact_extraction_max_concurrency,
             max_retries=synthesis_settings.llm_max_retries,

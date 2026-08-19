@@ -132,7 +132,7 @@ uv run --extra dev legal-check-ontology-population `
   data/processed/groundtruth/168_2024_ND-CP_619502.document_metadata.jsonl `
   ontology/population_contract.yaml `
   data/ontology/preflight/168_2024_ND-CP_619502.json `
-  --target-ids-path ontology/pilots/168_2024_ND-CP_penalty_rules_v0.2.json
+  --target-ids-path ontology/pilots/168_2024_ND-CP_penalty_rules_v0.3.json
 ```
 
 The command does not call an LLM. It verifies unique chunk identity, one root document, exact screening coverage,
@@ -155,7 +155,8 @@ uv run --extra dev legal-populate-ontology `
   data/ontology/population/document.jsonl `
   data/ontology/progress/document.jsonl `
   data/ontology/graphs/document.ttl `
-  --target-ids-path ontology/pilots/168_2024_ND-CP_penalty_rules_v0.2.json `
+  --target-ids-path ontology/pilots/168_2024_ND-CP_penalty_rules_v0.3.json `
+  --max-concurrency 2 `
   --preflight-report-path data/ontology/preflight/document.run.json
 ```
 
@@ -177,6 +178,17 @@ Time-limited additional sanctions retain a source-grounded consequence label, af
 and upper duration in months. Consequence references bind to the populated rule's own provision path; a sanction for a
 referenced base provision does not replace a different sanction explicitly governing an aggravated or otherwise more
 specific provision.
+
+Conditional consequence references produce separate population variants. The base variant retains only consequences
+that apply without the additional condition; the conditional variant reuses the Target conduct evidence, records the
+extra condition in its condition tree, and retains only consequences applying under that condition. A variant may have
+at most one monetary penalty and one point deduction, while cumulative non-numeric consequences remain representable.
+For a Target beginning mid-list, the governing primary-sanction heading remains mandatory even when it occurs in a
+preceding chunk.
+
+The population CLI accepts `--max-concurrency` to run independent LLM batches concurrently. Successful batches are
+checkpointed by the calling thread, and persisted records are sorted by source chunk and stable population identity, so
+completion order cannot change the JSONL or RDF output. The default remains one worker for backward compatibility.
 
 ## Failure Boundaries
 
