@@ -84,31 +84,28 @@ class _FakeWordSegmenter:
         return tuple(tuple(evidence_graph._lexical_units(text)) for text in texts)
 
 
-def test_vietnamese_legal_tokens_preserve_syllables_and_add_segmented_terms() -> None:
-    """BM25 keeps exact accented syllables while adding Vietnamese legal words and phrase bigrams."""
+def test_vietnamese_legal_tokens_use_segmented_words_and_bigrams() -> None:
+    """BM25 indexes normalized Vietnamese words and adjacent phrase bigrams without syllable duplication."""
     tokens = evidence_graph._vietnamese_legal_tokens(
-        "Không chấp hành quyết định xử phạt",
         ("Không", "chấp_hành", "quyết_định", "xử_phạt"),
     )
 
-    assert "s:không" in tokens
-    assert "s:chấp" in tokens
+    assert "w:không" in tokens
     assert "w:chấp_hành" in tokens
     assert "w:quyết_định" in tokens
     assert "w:xử_phạt" in tokens
     assert "b:chấp_hành|quyết_định" in tokens
-    assert "s:khong" not in tokens
+    assert not any(token.startswith("s:") for token in tokens)
 
 
 def test_vietnamese_legal_tokens_normalize_unicode_and_stop_bigrams_at_punctuation() -> None:
     """Equivalent Unicode forms match, and phrase features never cross sentence punctuation."""
     decomposed = normalize("NFD", "Không chấp hành. Ô tô")
     tokens = evidence_graph._vietnamese_legal_tokens(
-        decomposed,
-        ("Không", "chấp_hành", ".", "Ô_tô"),
+        (decomposed.split()[0], "chấp_hành", ".", "Ô_tô"),
     )
 
-    assert "s:không" in tokens
+    assert "w:không" in tokens
     assert "w:chấp_hành" in tokens
     assert "w:ô_tô" in tokens
     assert "b:chấp_hành|ô_tô" not in tokens
@@ -128,9 +125,9 @@ def test_fact_retrieval_uses_only_statement() -> None:
     corpus = evidence_graph._lexical_corpus([text], _FakeWordSegmenter())
 
     assert text == fact.statement
-    assert "s:quyết" in corpus[0]
-    assert "s:vượt" not in corpus[0]
-    assert "s:điều" not in corpus[0]
+    assert "w:quyết" in corpus[0]
+    assert "w:vượt" not in corpus[0]
+    assert "w:điều" not in corpus[0]
 
 
 def test_reciprocal_rank_fusion_gives_both_rankings_equal_weight() -> None:

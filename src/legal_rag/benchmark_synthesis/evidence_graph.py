@@ -36,7 +36,7 @@ EVIDENCE_RELATION_SCHEMA_VERSION = "1.1.0"
 EVIDENCE_BUNDLE_SCHEMA_VERSION = "1.0.0"
 EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.1.0"
 EVIDENCE_RELATION_PROMPT_VERSION = "1.5.0"
-EVIDENCE_CANDIDATE_SELECTION_VERSION = "4.0.0"
+EVIDENCE_CANDIDATE_SELECTION_VERSION = "4.1.0"
 EVIDENCE_CANDIDATE_SET_SCHEMA_VERSION = "1.0.0"
 FACT_RETRIEVAL_TEXT_VERSION = "4.0.0"
 
@@ -155,11 +155,8 @@ def _lexical_units(text: str) -> list[str]:
     return "".join(character if character.isalnum() else " " for character in text).split()
 
 
-def _vietnamese_legal_tokens(text: str, segmented_tokens: Sequence[str]) -> list[str]:
-    """Return namespaced syllables, VnCoreNLP words, and word bigrams for Vietnamese legal BM25."""
-    normalized_text = normalize("NFC", text).casefold()
-    syllable_tokens = [f"s:{unit}" for unit in _lexical_units(normalized_text)]
-
+def _vietnamese_legal_tokens(segmented_tokens: Sequence[str]) -> list[str]:
+    """Return namespaced VnCoreNLP words and adjacent word bigrams for Vietnamese legal BM25."""
     word_tokens: list[str] = []
     bigram_tokens: list[str] = []
     previous_word: str | None = None
@@ -173,7 +170,7 @@ def _vietnamese_legal_tokens(text: str, segmented_tokens: Sequence[str]) -> list
         if previous_word is not None:
             bigram_tokens.append(f"b:{previous_word}|{word}")
         previous_word = word
-    return [*syllable_tokens, *word_tokens, *bigram_tokens]
+    return [*word_tokens, *bigram_tokens]
 
 
 def _lexical_corpus(texts: Sequence[str], word_segmenter: VietnameseWordSegmenter) -> list[list[str]]:
@@ -182,7 +179,7 @@ def _lexical_corpus(texts: Sequence[str], word_segmenter: VietnameseWordSegmente
     if len(segmented) != len(texts):
         msg = f"Word segmenter returned {len(segmented)} outputs for {len(texts)} statements"
         raise ValueError(msg)
-    return [_vietnamese_legal_tokens(text, tokens) for text, tokens in zip(texts, segmented, strict=True)]
+    return [_vietnamese_legal_tokens(tokens) for tokens in segmented]
 
 
 class _FactEncoder(Protocol):

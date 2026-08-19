@@ -360,7 +360,7 @@ Candidate retrieval chỉ dùng `LegalFact.statement`, vì Step 3 bắt buộc f
 là một mệnh đề pháp lý đầy đủ và độc lập. Dense embedding và BM25L chạy song
 song trên cùng statement. Dense leg mặc định gọi `deepinfra/BAAI/bge-m3` qua
 endpoint riêng trong `SYNTHESIS_EMBEDDING_*`; lexical leg dùng VnCoreNLP 1.2,
-giữ token âm tiết có dấu, từ ghép và bigram, không bỏ stopword pháp lý như
+giữ từ tiếng Việt đã phân đoạn và word bigram, không bỏ stopword pháp lý như
 `không`, `chưa`, `trừ`.
 
 Mỗi leg lấy top 30, sau đó standard RRF cộng `1 / (rrf_k + rank)` với đóng góp
@@ -1242,8 +1242,8 @@ trực tiếp không cần mock; các BAML client wrapper test theo mẫu mock
   toàn bộ fact đã trích xuất (không giới hạn cùng văn bản, vì multi-hop cần
   đúng cặp khác văn bản) bằng **statement-only hybrid retrieval + standard
   RRF**. Dense BGE-M3 và BM25L tiếng Việt cùng index `statement`, mỗi leg lấy
-  top 30 rồi RRF không trọng số lấy top 10 cho mỗi fact. Lexical token gồm âm
-  tiết có dấu, từ ghép VnCoreNLP 1.2 và bigram. Lý do cần nhánh lexical: một điều
+  top 30 rồi RRF không trọng số lấy top 10 cho mỗi fact. Lexical token gồm từ
+  ghép VnCoreNLP 1.2 và word bigram. Lý do cần nhánh lexical: một điều
   khoản sửa đổi **chép lại
   gần nguyên văn** điều khoản gốc — `336/2025` và `168/2024` trùng nhau 47
   `provision_path` — nên quan hệ `amended_by` biểu hiện thành trùng lặp từ
