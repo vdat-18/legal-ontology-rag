@@ -37,40 +37,30 @@ function VerifyCandidate(
   prompt #"
     {{ _.role("user") }}
 
-    Bạn là người kiểm chứng độc lập, không phải người đã sinh ra câu hỏi này.
-    Đọc câu hỏi, đáp án, lập luận và các fact căn cứ dưới đây, sau đó đánh giá
-    độc lập theo từng tiêu chí.
+    Kiểm chứng độc lập câu hỏi, đáp án và lập luận bằng các facts bên dưới;
+    không tin nhãn khai báo trước.
 
-    1. is_standalone: câu hỏi có tự đủ nghĩa, không cần ngữ cảnh bên ngoài.
-    2. is_specific: câu hỏi có đủ cụ thể để có một đáp án xác định, không quá
-       chung chung.
-    3. is_question_grounded: evidence của các fact dưới đây có đủ để trả lời
-       câu hỏi không.
-    4. is_answer_grounded: mọi nội dung trong đáp án có được evidence hỗ trợ
-       không, và đáp án có bỏ sót chế tài nào mà fact đã nêu không.
-    5. is_domain_relevant: câu hỏi có thuộc phạm vi xử phạt vi phạm giao
-       thông đường bộ tại Việt Nam không.
-    6. is_temporal_correct: nếu có as_of_date, nó có nằm trong khoảng hiệu
-       lực (valid_from, valid_to) của mọi fact liên quan không.
-    7. necessary_reasoning_hops: thử bỏ lần lượt từng fact khỏi danh sách
-       dưới đây — nếu đáp án vẫn đủ căn cứ khi thiếu một fact, fact đó không
-       thực sự cần thiết. Trả về số fact thực sự cần thiết, có thể khác
+    Tiêu chí:
+    1. standalone: câu hỏi tự đủ nghĩa.
+    2. specific: đủ chi tiết để có đáp án xác định.
+    3. question_grounded: facts đủ căn cứ trả lời.
+    4. answer_grounded: mọi ý trong đáp án có căn cứ và không bỏ sót chế tài
+       liên quan đã có trong facts.
+    5. domain_relevant: thuộc xử phạt giao thông đường bộ Việt Nam.
+    6. temporal_correct: as_of_date nằm trong hiệu lực của mọi fact cần dùng;
+       không có as_of_date thì true.
+    7. necessary_reasoning_hops: số fact tối thiểu vẫn đủ trả lời. Thử bỏ từng
+       fact; fact bỏ được là không cần thiết. Không mặc định bằng
        declared_reasoning_hops={{ declared_reasoning_hops }}.
+    8. uses_required_bridge: query và answer thật sự dùng bridge; bridge rỗng
+       thì true.
+    9. observed_query_type: chọn đúng một giá trị từ {{ query_type_catalog }}
+       theo query thực tế.
+    10. observed_answerability: phân loại theo evidence thực tế, không theo
+        nhãn đã khai.
 
-       Ví dụ: câu hỏi khai 2 hop dựa trên fact_1 (mức phạt tiền) và fact_2
-       (trừ điểm giấy phép, cùng hành vi). Nếu câu hỏi chỉ hỏi "phạt bao
-       nhiêu tiền", một mình fact_1 đã đủ căn cứ trả lời — trả về
-       necessary_reasoning_hops=1, không phải 2, dù bundle được chọn có 2
-       fact.
-    8. uses_required_bridge: nếu bridge dưới đây không rỗng, câu hỏi và đáp án
-       có thực sự dùng cầu nối đó để kết hợp các fact không. Nếu bridge rỗng,
-       trả về true.
-    9. observed_query_type: chọn đúng một giá trị trong danh sách sau, dựa
-       theo nội dung câu hỏi thực tế, không dựa theo nhãn đã gán trước:
-       {{ query_type_catalog }}
-    10. observed_answerability: đánh giá độc lập câu hỏi này answerable,
-       partially answerable, underspecified, hay unanswerable dựa trên
-       evidence thực có, không dựa theo nhãn đã gán trước.
+    reasoning phải ngắn gọn nhưng nêu rõ tiêu chí thất bại và fact nào thực
+    sự cần thiết.
 
     {% if as_of_date %}Thời điểm áp dụng: {{ as_of_date }}{% endif %}
     Bridge bắt buộc: {{ bridge }}

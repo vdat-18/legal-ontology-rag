@@ -79,10 +79,10 @@ def test_population_contract_requires_atomic_target_conducts_and_canonical_paths
 
 
 def test_population_contract_versions_complete_rule_assembly_policy() -> None:
-    """V0.10 separates conditional consequence variants."""
+    """V0.11 versions the concise population prompt."""
     contract = load_yaml(CONTRACT_PATH)
 
-    assert contract["artifact_version"] == "0.10.0"
+    assert contract["artifact_version"] == "0.11.0"
     assert any("applicability exception" in boundary for boundary in contract["semantic_boundaries"])
 
 
@@ -90,16 +90,16 @@ def test_population_prompt_audits_conditional_variants_and_local_exceptions() ->
     """The typed prompt protects the reviewed population regression boundaries."""
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
 
-    assert "Với từng conduct, xác định provision_path" in prompt
+    assert "Với mỗi conduct, xác định provision_path" in prompt
     assert "ArticleContext" in prompt
-    assert "provision của rule" in prompt
-    assert "Tự kiểm tra coverage" in prompt
-    assert "đúng phạm vi" in prompt
+    assert "Dùng provision_path đầy đủ của rule để bind" in prompt
+    assert "Audit coverage" in prompt
+    assert "thuộc phạm vi" in prompt
     assert "variant riêng" in prompt
-    assert "heading consequence gần nhất còn đang mở" in prompt
+    assert "quả chính gần nhất còn mở" in prompt
     assert "tối đa một MonetaryPenalty" in prompt
     assert "không thay thế" in prompt
-    assert "Đọc hết mọi danh mục consequence" in prompt
+    assert "Đọc toàn bộ các danh mục consequence" in prompt
 
 
 def test_population_console_script_is_published() -> None:

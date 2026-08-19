@@ -17,37 +17,18 @@ function ResolveDocumentMetadata(opening_sections: string[], closing_sections: s
   prompt #"
     {{ _.role("user") }}
 
-    Bạn là chuyên gia pháp lý, xác định thông tin nhận dạng của một văn bản quy
-    phạm pháp luật Việt Nam.
+    Xác định metadata của chính văn bản quy phạm pháp luật đang đọc.
 
-    Số hiệu văn bản nằm ở phần đầu, cạnh tên cơ quan ban hành. Ngày hiệu lực
-    nằm ở điều khoản thi hành, gần cuối phần nội dung.
+    Quy tắc:
+    - Chỉ dùng các đoạn đầu/cuối bên dưới; không dùng kiến thức bên ngoài.
+    - document_number là số hiệu của văn bản đang đọc, thường ở phần đầu;
+      không lấy số hiệu văn bản được dẫn chiếu, sửa đổi hoặc bãi bỏ.
+    - valid_from/valid_to là hiệu lực của toàn văn bản, không phải ngày ban
+      hành hoặc ngày hiệu lực riêng của một điều khoản.
+    - Chuẩn hóa ngày thành YYYY-MM-DD. Không nêu rõ thì trả về null, không đoán.
 
-    Nguyên tắc bắt buộc:
-    - Chỉ dùng thông tin có trong các đoạn dưới đây, không dùng kiến thức pháp
-      luật sẵn có của bạn.
-    - Một văn bản sửa đổi nhắc lại số hiệu của văn bản bị sửa đổi. Số hiệu cần
-      trả về là của văn bản đang đọc, không phải của văn bản bị sửa đổi hay bị
-      bãi bỏ.
-    - Nếu một điều khoản riêng lẻ có ngày hiệu lực muộn hơn, vẫn trả về ngày
-      hiệu lực của toàn văn bản.
-    - Trả về null cho ngày nào không được nêu rõ, thay vì đoán.
-
-    Ví dụ 1:
-    Phần đầu: "CHÍNH PHỦ ... Số: 168/2024/NĐ-CP ... Hà Nội, ngày 26 tháng 12
-    năm 2024"
-    Phần cuối: "Điều 55. Hiệu lực thi hành. Nghị định này có hiệu lực thi hành
-    từ ngày 01 tháng 01 năm 2025."
-    Kết quả: document_number="168/2024/NĐ-CP", valid_from="2025-01-01",
-    valid_to=null.
-
-    Ví dụ 2:
-    Phần đầu: "BỘ CÔNG AN ... Số: 13/2025/TT-BCA"
-    Phần cuối: "Sửa đổi, bổ sung điểm b khoản 2 Điều 27 của Thông tư số
-    73/2024/TT-BCA ..."
-    Kết quả: document_number="13/2025/TT-BCA", không phải 73/2024/TT-BCA vì đó
-    là văn bản bị sửa đổi. valid_from=null vì các đoạn đưa vào không nêu ngày
-    hiệu lực.
+    Ví dụ: phần đầu có "Số: 13/2025/TT-BCA", phần cuối dẫn "Thông tư số
+    73/2024/TT-BCA" thì document_number="13/2025/TT-BCA".
 
     Phần đầu văn bản:
     {% for section in opening_sections %}

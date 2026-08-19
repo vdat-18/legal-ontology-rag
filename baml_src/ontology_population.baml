@@ -104,183 +104,93 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
   prompt #"
     {{ _.role("user") }}
 
-    Bạn xây dựng dữ liệu instance cho ontology pháp luật giao thông đường bộ
-    từ văn bản quy phạm pháp luật Việt Nam. Hãy trích xuất quy tắc xử phạt
-    gắn với hành vi được mô tả cụ thể, không đưa ra kết luận áp dụng cho một
-    vụ việc cụ thể.
+    Mục tiêu
+    Xây dựng instance ontology từ văn bản pháp luật giao thông đường bộ Việt
+    Nam. Chỉ trích xuất PenaltyRule gắn conduct cụ thể với hậu quả pháp lý;
+    không kết luận cho vụ việc thực tế.
 
-    Thực hiện nội bộ theo đúng thứ tự sau trước khi tạo output:
-    1. Đọc toàn bộ Target từ đầu đến cuối. Lập bảng mọi conduct cụ thể, các
-       mệnh đề hành vi thay thế, qualifier và ngoại lệ theo đúng phạm vi.
-    2. Với từng conduct, xác định provision_path và heading consequence chính
-       đang chi phối nó theo thứ tự văn bản, kể cả heading nằm ở Preceding.
-    3. Lập bảng mọi consequence trực tiếp hoặc dẫn chiếu provision đó trong
-       toàn reading window. Ghi riêng điều kiện bổ sung mà từng consequence yêu
-       cầu; không coi consequence có điều kiện là consequence vô điều kiện.
-    4. Tạo các rule variant. Mỗi variant chỉ chứa các consequence cùng áp dụng
-       dưới chính condition tree của variant đó. Tách conduct nguyên tử và lặp
-       lại consequence, qualifier, ngoại lệ chung cho mọi rule bị chi phối.
-    5. Tự kiểm tra coverage trước khi trả lời: từng conduct đã có heading chính
-       nếu source quy định; từng dẫn chiếu consequence đã được xét; từng điều
-       kiện và ngoại lệ cục bộ còn đúng phạm vi; không có hai consequence loại
-       trừ nhau trong cùng variant. Không xuất các bảng kiểm kê này.
+    Quy trình nội bộ
+    1. Kiểm kê toàn bộ Target: conduct, lựa chọn hành vi, qualifier và ngoại lệ.
+    2. Với mỗi conduct, xác định provision_path và heading hậu quả chính đang
+       chi phối, kể cả heading mở ở Preceding.
+    3. Đọc toàn reading window, lập bản đồ mọi hậu quả trực tiếp hoặc dẫn chiếu
+       tới provision đó và giữ riêng điều kiện của từng hậu quả.
+    4. Tách conduct nguyên tử và rule variant; sao chép đúng applicability,
+       consequence, condition, exception và evidence dùng chung.
+    5. Audit coverage: mọi conduct, heading chính, dẫn chiếu, điều kiện và ngoại
+       lệ đã được xử lý đúng phạm vi; các hậu quả loại trừ nhau không cùng variant.
+       Không xuất dữ liệu kiểm kê hoặc audit.
 
-    Quy tắc bắt buộc:
-    - Chỉ dùng nội dung có bằng chứng trực tiếp trong reading window. Không
-      bổ sung kiến thức sẵn có và không đoán phần văn bản bị thiếu.
-    - Structural context do parser lấy từ metadata của source. Dùng nó để xác
-      định Chương, Mục, Điều, provision_path, vai trò và loại phương tiện áp
-      dụng. Không trích structural context làm quoted_span; evidence chỉ được
-      lấy nguyên văn từ Source text của chunk.
-    - Nếu structural context có nhiều VARIANT thì chunk đi qua ranh giới cấu
-      trúc. Đối chiếu thứ tự và heading trong Source text để không gán nội dung
-      thuộc Điều trước sang Điều sau hoặc ngược lại.
-    - Mỗi quoted_span phải là đoạn liên tục, nguyên văn, chính xác từng ký tự
-      trong chunk được dẫn. Một assertion cần nhiều đoạn thì dùng nhiều entry.
-    - Target là chunk chính. Preceding và Following cung cấp ngữ cảnh liền
-      trước và liền sau; ArticleContext cung cấp các phần khác trong cùng Điều
-      để giải quyết heading hoặc dẫn chiếu consequence nằm xa. Không trộn dữ
-      liệu giữa các window.
-    - Chỉ tạo rule cho conduct được quy định như một hành vi hoặc nghĩa vụ cụ
-      thể trong Target và có quoted evidence nằm trong Target. Preceding,
-      Following, ArticleContext và structural context có thể cung cấp mức phạt, phạm vi áp
-      dụng và ancestry, nhưng không được làm conduct chỉ xuất hiện ngoài Target
-      trở thành rule của Target.
-    - Preceding và Following không phải nguồn tùy chọn khi chúng trực tiếp hoàn
-      chỉnh rule của conduct trong Target. Nếu heading mức phạt nằm ở Previous
-      và danh sách conduct tiếp tục ở đầu Target, phải gắn mức phạt đó cho mọi
-      conduct thuộc danh sách. Không được chỉ xử lý danh sách có heading nằm
-      ngay trong Target.
-    - Với conduct nằm ở đầu Target, lần ngược theo đúng thứ tự văn bản tới
-      heading consequence gần nhất còn đang mở. Nếu heading đó chi phối danh
-      sách chứa conduct thì consequence chính là bắt buộc, kể cả khi Target chỉ
-      chứa phần cuối của một điểm hoặc khoản.
-    - PointDeduction, AdditionalSanction và RemedialMeasure không thay thế
-      consequence chính đang chi phối conduct. Một variant không được chỉ giữ
-      consequence bổ sung hoặc trừ điểm nếu source còn quy định consequence
-      chính cho cùng variant đó.
-    - Nếu bất kỳ context chunk nào nêu consequence và dẫn chiếu rõ tới chính
-      Điều/Khoản/Điểm của rule trong Target, phải gắn consequence đó cho mọi
-      rule nằm trong phạm vi dẫn chiếu. Một rule phải giữ tất cả consequence
-      được window hỗ trợ, không chỉ consequence xuất hiện gần conduct nhất.
-    - Đọc hết mọi danh mục consequence trong ArticleContext cho từng
-      provision_path. Khi một dẫn chiếu pháp lý nén nhiều Điểm/Khoản trong một
-      danh sách, giữ đúng phạm vi ngữ pháp dùng chung và kiểm tra từng phần tử;
-      không bỏ một phần tử chỉ vì cấp Điều, Khoản hoặc Điểm không được lặp lại.
-    - Dùng provision_path của rule làm định danh pháp lý khi giải quyết dẫn
-      chiếu. Không thay thế bằng consequence của một provision khác chỉ vì
-      conduct hiện tại trích dẫn, kế thừa hoặc mô tả lại conduct ở provision đó.
-      Khi nhiều clause consequence dẫn tới các provision chồng lấn, ưu tiên
-      clause dẫn chiếu trực tiếp và cụ thể nhất tới provision của rule; không
-      gắn đồng thời các giá trị loại trừ lẫn nhau.
-    - Nếu consequence dẫn chiếu một provision nhưng chỉ áp dụng khi có thêm
-      kết quả, hoàn cảnh, trạng thái tái phạm hoặc điều kiện khác, tạo rule
-      variant riêng. Variant có điều kiện phải dùng lại exact Target evidence
-      của conduct, thêm condition tree và evidence của điều kiện, rồi chỉ giữ
-      consequence áp dụng dưới điều kiện đó. Variant cơ bản không được nhận
-      consequence có điều kiện; variant có điều kiện không được giữ consequence
-      cơ bản nếu source quy định một consequence thay thế.
-    - Mỗi rule variant có tối đa một MonetaryPenalty và tối đa một
-      PointDeduction. Khi source đưa ra các giá trị khác nhau theo điều kiện,
-      chúng là các variant khác nhau, không phải nhiều consequence cùng loại
-      trong một rule. Nhiều AdditionalSanction hoặc RemedialMeasure chỉ cùng
-      tồn tại khi source cho thấy chúng áp dụng đồng thời.
-    - PenaltyRule là quy tắc gắn một hành vi bị cấm hoặc nghĩa vụ cụ thể với
-      hậu quả pháp lý áp dụng cho chủ thể vi phạm. Chỉ tạo rule khi window xác
-      định được conduct cụ thể, applicability/provenance và ít nhất một legal
-      consequence. Nếu chưa đủ, trả rules rỗng.
-    - Không dùng các cụm chung như "vi phạm hành chính" hoặc "thực hiện hành
-      vi vi phạm" làm conduct để biến một quy định chung thành PenaltyRule.
-    - Trả rules rỗng cho danh mục chung về hình thức xử phạt hoặc biện pháp
-      khắc phục; nguyên tắc xử lý nhiều vi phạm; định nghĩa; thẩm quyền, hồ sơ,
-      tạm giữ hoặc thu hồi giấy phép; và nghĩa vụ thủ tục của người thi hành
-      công vụ. Các nội dung này không phải PenaltyRule chỉ vì có nhắc tới một
-      loại hậu quả pháp lý.
-    - Một hậu quả đứng riêng chỉ là thành phần của rule khi window đồng thời
-      định danh được provision cụ thể mà hậu quả đó áp dụng. Một Target chỉ là
-      danh mục consequence hoặc danh sách dẫn chiếu không tạo PenaltyRule mới;
-      các consequence đó được gắn vào rule của Target conduct provision tương
-      ứng khi chunk conduct được xử lý.
-    - subject_kind phân loại NaturalPerson hoặc Organization khi source xác
-      định rõ loại chủ thể, kể cả thông qua heading cấu trúc áp dụng cho danh
-      sách conduct. Giữ nhất quán cùng một subject kind cho các conduct chịu
-      chung heading. Vai trò pháp lý vẫn nằm ở role_labels_vi và các vai trò
-      khác nhau không được tự đồng nhất.
-    - conduct và vehicle category là các concept candidate theo đúng nghĩa
-      source; không gộp chỉ vì câu chữ tương tự.
-    - Mỗi rule phải biểu diễn đúng một conduct có thể đối chiếu độc lập. Tách
-      các mệnh đề hành vi thay thế khi từng mệnh đề có thể độc lập thỏa mãn căn
-      cứ xử phạt; lặp lại applicability, consequence và evidence dùng chung.
-      Giữ đầy đủ mọi qualifier nội tại về đối tượng, địa điểm, phương tiện,
-      kết quả và hoàn cảnh cấu thành hành vi.
-    - Trước khi gộp hai động từ, hành động hoặc lựa chọn vào một conduct, kiểm
-      tra liệu chỉ một trong số chúng xảy ra có đủ cấu thành vi phạm hay không.
-      Nếu có, chúng phải là các rule riêng. Không giữ một cặp hành vi thay thế
-      trong cùng nhãn chỉ vì source đặt chúng cạnh nhau hoặc dùng chung heading.
-    - Không tách các thành phần chỉ là danh sách đối tượng, phương tiện, cách
-      diễn đạt tương đương, hoặc các yếu tố phải kết hợp mới tạo thành một
-      hành vi có nghĩa. Việc tách là quyết định ngữ nghĩa, không chỉ dựa vào
-      dấu phẩy, dấu chấm phẩy hay từ "hoặc".
-    - Không dùng một nhãn bao quát để thay thế danh sách các hành vi thay thế.
-      Ngược lại, không tách danh sách đối tượng, điều kiện đo lường hoặc các
-      thành phần phải kết hợp mới tạo thành một conduct hoàn chỉnh.
-    - condition tree giữ nguyên AND/OR/NOT của source. condition_id chỉ là ID
-      cục bộ duy nhất trong rule; operand_ids phải trỏ tới condition trong
-      cùng rule và không tạo chu trình.
-    - Phân biệt bằng ngữ nghĩa giữa ngoại lệ giới hạn phạm vi áp dụng của rule
-      và qualifier nội tại mô tả chính đối tượng hoặc hành vi. Không quyết định
-      chỉ vì xuất hiện từ "trừ" hoặc một mẫu câu cụ thể.
-    - Mọi ngoại lệ giới hạn phạm vi áp dụng phải được biểu diễn trong condition
-      tree. Tạo một Atomic mô tả chính xác trường hợp hoặc nhóm quy định bị
-      loại trừ, sau đó tạo Not trỏ tới Atomic đó; nếu còn điều kiện khác thì
-      kết hợp bằng AllOf/AnyOf đúng logic của source. Giữ exact evidence của
-      mệnh đề ngoại lệ trong các condition liên quan.
-    - Không để ngoại lệ áp dụng chỉ nằm trong conduct_label_vi. Nhãn conduct
-      mô tả hành vi tích cực có thể đối chiếu độc lập; condition tree mô tả
-      khi rule được áp dụng hoặc không được áp dụng.
-    - Khi tách một điểm thành nhiều conduct nguyên tử, lặp lại đầy đủ cùng cây
-      ngoại lệ cho từng rule chịu ngoại lệ đó. condition_id là cục bộ nên tạo
-      lại trong từng rule; không được giữ ngoại lệ cho chỉ một conduct.
-    - Ngoại lệ chỉ gắn với một phần tử trong danh sách phải giữ đúng phạm vi của
-      phần tử đó. Nếu các địa điểm hoặc hành vi trong cùng điểm có ngoại lệ cục
-      bộ khác nhau, tách thành các rules riêng theo phạm vi; mỗi rule giữ ngoại
-      lệ cục bộ của chính nó và mọi ngoại lệ chung áp dụng cho toàn điểm. Không
-      gộp chúng thành một conduct rồi chỉ giữ ngoại lệ chung.
-    - Một danh sách địa điểm không được gộp thành một rule nếu chỉ một số địa
-      điểm có ngoại lệ riêng. Tạo rule riêng cho phần có ngoại lệ cục bộ và giữ
-      exact evidence của ngoại lệ trong condition tree; các phần còn lại không
-      được nhận ngoại lệ đó.
-    - Khi một ngoại lệ chung chi phối nhiều conduct đã tách, sao chép đầy đủ
-      Atomic/Not tree và exact evidence sang từng rule. Khi ngoại lệ chỉ chi
-      phối một phần danh sách, chỉ gắn nó vào các rule thuộc đúng phạm vi đó.
-    - Nếu phần loại trừ chỉ thu hẹp chính loại đối tượng cấu thành hành vi, ví
-      dụ loại thiết bị không thuộc hành vi bị cấm, giữ nó như qualifier của
-      conduct thay vì tự động biến thành ngoại lệ áp dụng. Việc phân loại này
-      phải dựa trên ý nghĩa toàn câu và phạm vi quy phạm.
-    - Phân loại hậu quả thành MonetaryPenalty, PointDeduction,
-      AdditionalSanction hoặc RemedialMeasure chỉ khi source trực tiếp hỗ trợ.
-      Nội dung biểu mẫu hoặc phụ lục không tự chứng minh RemedialMeasure.
-    - MonetaryPenalty phải tách minimum_amount và maximum_amount thành số
-      thập phân không có dấu phân cách và ghi currency. Không biến thiếu dữ
-      liệu thành 0 hoặc tự đoán đơn vị tiền tệ.
-    - PointDeduction phải có point_value và target_label_vi. AdditionalSanction
-      phải có consequence_label_vi và target_label_vi. Nếu source nêu khoảng
-      thời hạn theo tháng, điền cả minimum_duration_months và
-      maximum_duration_months; không bỏ thời hạn trong quoted evidence nhưng
-      để structured value trống. RemedialMeasure phải có consequence_label_vi,
-      target_label_vi và responsible_role_label_vi được source hoặc structural
-      context xác định; nếu không xác định được thì không xuất candidate đó.
-    - valid_to null nghĩa là chưa biết. Không diễn giải null thành vô hạn.
-    - provision_path giữ đầy đủ các cấp Chương, Mục, Điều, Khoản và Điểm có
-      trong source theo thứ tự từ tổng quát đến cụ thể. Viết hoa đúng tên cấp,
-      dùng separator ` > `, không thêm tiêu đề của cấp, và bỏ cấp không có
-      trong source.
-    - Không tạo ConductOccurrence, LegalChange, amendment link, replacement
-      link hoặc cross-document rule identity từ lexical similarity.
-    - Trả đúng một kết quả cho mỗi target_chunk_id. Rules rỗng chỉ hợp lệ sau
-      khi đã kiểm kê toàn bộ Target và xác nhận không conduct nào trong Target
-      có đủ applicability cùng consequence trực tiếp hoặc dẫn chiếu trong
-      reading window.
+    Nguồn và evidence
+    - Chỉ dùng reading window; không dùng kiến thức ngoài hoặc đoán phần thiếu.
+      Không trộn dữ liệu giữa các target window.
+    - Target chứa conduct cần tạo rule. Preceding/Following hoàn chỉnh ngữ cảnh
+      liền kề; ArticleContext hoàn chỉnh heading, scope và dẫn chiếu trong cùng
+      Điều. Context không được biến conduct chỉ xuất hiện ngoài Target thành rule.
+    - Structural context chỉ xác định ancestry, subject/role, vehicle và
+      provision_path. Nếu có nhiều VARIANT, đối chiếu Source text và thứ tự cấu
+      trúc để giữ đúng ranh giới. Không dùng structural context làm quoted_span.
+    - Mỗi quoted_span phải liên tục và khớp chính xác từng ký tự trong Source
+      text của chunk được dẫn; dùng nhiều evidence entry cho nhiều đoạn.
+    - Mọi conduct phải có evidence trong Target. Subject, role, vehicle, path,
+      ngày hiệu lực và giá trị consequence phải được source hoặc structural
+      context cho phép ở trên xác định; không tự đồng nhất vai trò hay concept
+      chỉ vì câu chữ tương tự. valid_to null chỉ có nghĩa là chưa biết.
+
+    PenaltyRule và consequence
+    - Chỉ tạo PenaltyRule khi xác định đủ conduct cụ thể, applicability,
+      provenance và ít nhất một consequence. Quy định chung, định nghĩa, nguyên
+      tắc, thẩm quyền, thủ tục, hồ sơ, tạm giữ/thu hồi, danh mục consequence và
+      nghĩa vụ của người thi hành công vụ không tự tạo PenaltyRule.
+    - Target thuần consequence hoặc dẫn chiếu trả rules rỗng; consequence đó chỉ
+      gắn vào rule của conduct provision tương ứng. Không dùng mô tả vi phạm
+      chung làm conduct.
+    - Với Target bắt đầu giữa danh sách, lần ngược theo thứ tự tới heading hậu
+      quả chính gần nhất còn mở và gắn nó cho mọi conduct thuộc phạm vi.
+      Preceding/Following là bắt buộc khi trực tiếp hoàn chỉnh rule.
+    - Đọc toàn bộ các danh mục consequence trong ArticleContext. Giải nén danh
+      sách dẫn chiếu theo phạm vi ngữ pháp dùng chung và kiểm tra từng provision.
+      Dùng provision_path đầy đủ của rule để bind; khi phạm vi chồng lấn, chọn
+      clause trực tiếp và cụ thể nhất, không lấy consequence của provision khác.
+    - Giữ mọi consequence được window hỗ trợ. PointDeduction,
+      AdditionalSanction và RemedialMeasure không thay thế hậu quả chính. Các
+      consequence không định lượng chỉ cùng tồn tại khi source quy định cộng dồn.
+    - Consequence có điều kiện tạo variant riêng: giữ lại Target evidence của
+      conduct, thêm condition/evidence tương ứng và chỉ giữ hậu quả của variant.
+      Không chuyển hậu quả có điều kiện sang variant cơ bản hoặc giữ hậu quả cơ
+      bản khi source quy định hậu quả thay thế.
+    - Mỗi variant có tối đa một MonetaryPenalty và một PointDeduction. Giá trị
+      khác nhau theo điều kiện phải nằm ở variant khác nhau.
+    - Chỉ phân loại consequence khi source hỗ trợ. MonetaryPenalty cần min/max
+      dạng số không dấu phân cách và currency, không điền 0 hay đoán đơn vị.
+      PointDeduction cần point_value và target_label_vi. AdditionalSanction cần
+      consequence_label_vi, target_label_vi và đủ hai cận tháng nếu source nêu
+      khoảng. RemedialMeasure cần consequence_label_vi, target_label_vi và
+      responsible_role_label_vi; không suy ra từ biểu mẫu hoặc phụ lục.
+
+    Atomicity, conditions và output
+    - Mỗi rule chứa đúng một conduct có thể đối chiếu độc lập. Tách các hành vi
+      thay thế nếu từng hành vi riêng đã đủ cấu thành; không dùng nhãn bao quát.
+      Giữ cùng conduct các qualifier, danh sách đối tượng/phương tiện, cách diễn
+      đạt tương đương hoặc thành phần phải kết hợp mới có nghĩa. Quyết định theo
+      ngữ nghĩa, không theo dấu câu hay từ khóa.
+    - Phân biệt qualifier cấu thành conduct với ngoại lệ giới hạn applicability
+      theo ý nghĩa và phạm vi quy phạm. conduct_label_vi chỉ mô tả hành vi tích
+      cực cùng qualifier nội tại; ngoại lệ applicability nằm trong condition tree.
+    - Giữ nguyên logic AND/OR/NOT. Biểu diễn ngoại lệ applicability bằng Atomic
+      có exact evidence và Not trỏ tới Atomic; kết hợp AllOf/AnyOf khi cần.
+      condition_id là cục bộ, operand_ids chỉ trỏ trong rule và không tạo chu trình.
+    - Lặp đầy đủ cây ngoại lệ chung cho mọi atomic rule bị chi phối. Ngoại lệ cục
+      bộ chỉ gắn phần tử thuộc phạm vi; tách rule nếu các hành vi, đối tượng hoặc
+      địa điểm có scope ngoại lệ khác nhau. Phần loại trừ chỉ thu hẹp đối tượng
+      cấu thành conduct vẫn là qualifier, không tự động là applicability exception.
+    - provision_path theo thứ tự Chương > Mục > Điều > Khoản > Điểm, separator
+      ` > `, không kèm tiêu đề và bỏ cấp không có trong source.
+    - Không tạo ConductOccurrence, LegalChange, liên kết sửa đổi/thay thế,
+      equivalence hoặc cross-document identity.
+    - Trả đúng một result cho mỗi target_chunk_id. Chỉ trả rules rỗng sau khi
+      audit toàn Target xác nhận không conduct nào đủ applicability và consequence
+      trực tiếp hoặc dẫn chiếu trong reading window.
 
     {% for item in items %}
     === target_chunk_id={{ item.target_chunk_id }} ===

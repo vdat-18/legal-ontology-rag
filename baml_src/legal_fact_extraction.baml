@@ -57,59 +57,36 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
   prompt #"
     {{ _.role("user") }}
 
-    Bạn là chuyên gia pháp lý, trích xuất fact xử phạt vi phạm giao thông
-    đường bộ có căn cứ xác thực từ văn bản quy phạm pháp luật Việt Nam.
+    Bạn trích xuất các fact nguyên tử về xử phạt vi phạm giao thông đường bộ
+    từ từng reading window. Target là chunk cần trích xuất; Preceding và
+    Following chỉ giúp hoàn chỉnh quy định bị chia chunk.
 
-    Đọc từng reading window dưới đây và trích xuất các fact pháp lý nguyên
-    tử về xử phạt vi phạm giao thông đường bộ tại Việt Nam. Trong mỗi window,
-    chunk vai trò Target là trọng tâm; các chunk khác chỉ là ngữ cảnh hỗ trợ.
+    Quy tắc bắt buộc:
+    - Chỉ tạo fact cho hành vi, nghĩa vụ hoặc quy tắc có căn cứ trực tiếp
+      trong Target. Context có thể bổ sung subject, conditions, chế tài và
+      provision_path, nhưng không được tạo fact chỉ xuất hiện ngoài Target.
+    - Mỗi fact biểu diễn một hành vi/quy tắc nguyên tử với đúng đối tượng và
+      điều kiện áp dụng. Tách riêng các hành vi hoặc đối tượng có chế tài khác nhau.
+    - Chỉ điền trường có căn cứ trực tiếp trong window; không dùng kiến thức
+      bên ngoài, không suy đoán. Không đủ căn cứ cho fact hoàn chỉnh thì bỏ fact.
+    - Mọi nội dung của fact phải được phủ bởi evidence. quoted_span phải là
+      chuỗi liên tục, nguyên văn chính xác từ text của đúng chunk_id. Nội dung
+      cách nhau dùng nhiều evidence entry; không ghép hoặc diễn giải.
+    - Structural context chỉ dùng để hiểu cấu trúc và provision_path, không
+      được dùng làm quoted evidence. Với nhiều VARIANT, đối chiếu Source text
+      và thứ tự window để không trộn quy định qua ranh giới Điều.
+    - Xử lý từng window độc lập. Trả đúng một kết quả cho mỗi target_chunk_id,
+      giữ nguyên id; facts=[] là hợp lệ.
 
-    Nguyên tắc bắt buộc:
-    - Chỉ trích xuất nội dung có bằng chứng trực tiếp trong các đoạn dưới đây.
-      Không dùng kiến thức pháp luật sẵn có của bạn để bổ sung hoặc suy diễn.
-    - Mỗi evidence.quoted_span phải là một đoạn trích nguyên văn, chính xác
-      từng ký tự, từ đúng chunk có evidence.chunk_id tương ứng.
-    - Mỗi quoted_span phải là một đoạn liên tục trong source text. Nếu fact
-      cần hai đoạn cách nhau bởi nội dung khác, tạo hai evidence entry; không
-      được ghép hai đoạn rồi bỏ phần nằm giữa.
-    - Nếu một fact cần thông tin từ nhiều chunk trong window, liệt kê đủ các
-      evidence từ tất cả chunk đó.
-    - Nếu window không chứa đủ căn cứ để tạo một fact hoàn chỉnh nào, trả về
-      danh sách rỗng thay vì đoán.
-    - Một Target có thể sinh ra không, một, hoặc nhiều fact, ví dụ một hàng
-      bảng liệt kê nhiều hành vi khác nhau.
-    - Trả về đúng một kết quả cho mỗi target_chunk_id, giữ nguyên target_chunk_id.
-      Mảng facts rỗng là kết quả hợp lệ.
-    - Xử lý từng window độc lập. Không trộn nội dung hoặc evidence giữa các window.
-    - Nếu structural context có nhiều VARIANT thì chunk đi qua ranh giới cấu
-      trúc. Đối chiếu thứ tự và heading trong Source text để không gán nội dung
-      thuộc Điều trước sang Điều sau hoặc ngược lại.
-    Ví dụ:
+    Tự kiểm tra trước khi trả lời: conduct có evidence trong Target; subject,
+    conditions và mọi chế tài đúng với conduct; evidence đủ và trích chính xác.
 
-    Window ví dụ 1:
-    [Target] chunk_id=chunk_042
-    Điều 6 khoản 9 điểm b: Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng
-    đối với người điều khiển xe ô tô không chấp hành hiệu lệnh của đèn tín
-    hiệu giao thông.
-    ---
-    Kết quả: một fact với conduct="Không chấp hành hiệu lệnh của đèn tín
-    hiệu giao thông", monetary_penalty="4.000.000 đồng đến 6.000.000 đồng",
-    evidence=[{chunk_id: "chunk_042", quoted_span: "Phạt tiền từ 4.000.000
-    đồng đến 6.000.000 đồng đối với người điều khiển xe ô tô không chấp
-    hành hiệu lệnh của đèn tín hiệu giao thông"}]. quoted_span trích nguyên
-    văn, không diễn giải lại.
+    Ví dụ ngắn:
+    - Target nêu "không chấp hành hiệu lệnh của đèn tín hiệu" và window nêu
+      mức phạt tương ứng -> tạo một fact với cả evidence hành vi và mức phạt.
+    - Target chỉ giải thích thuật ngữ, không nêu quy tắc xử phạt -> facts=[].
 
-    Window ví dụ 2:
-    [Target] chunk_id=chunk_003
-    Điều 3. Giải thích từ ngữ
-    Trong Nghị định này, các từ ngữ dưới đây được hiểu như sau: "Người điều
-    khiển xe" là người đang lái, vận hành phương tiện tham gia giao thông
-    đường bộ.
-    ---
-    Kết quả: danh sách rỗng — đây là điều khoản giải thích từ ngữ, không nêu
-    hành vi vi phạm hay mức phạt cụ thể nào để trích xuất fact.
-
-    Bây giờ đọc các window sau:
+    Các reading window:
 
     {% for item in items %}
     === target_chunk_id={{ item.target_chunk_id }} ===

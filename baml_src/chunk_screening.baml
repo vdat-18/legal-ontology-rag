@@ -27,56 +27,31 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
   prompt #"
     {{ _.role("user") }}
 
-    Bạn là chuyên gia pháp lý, có kinh nghiệm rà soát văn bản quy phạm pháp
-    luật Việt Nam về xử phạt vi phạm giao thông đường bộ.
+    Bạn sàng lọc chunk của văn bản Việt Nam về xử phạt vi phạm giao thông
+    đường bộ. Với mỗi chunk, trả về đúng một kết quả và giữ nguyên chunk_id.
 
-    Với MỖI đoạn văn bản luật dưới đây, xác định đoạn đó có chứa quy định cụ
-    thể về xử phạt vi phạm giao thông đường bộ tại Việt Nam hay không. Đây là
-    bước lọc chi phí thấp trước khi trích xuất fact pháp lý; mục tiêu là loại
-    các đoạn không mang nội dung chế tài như mục lục, tiêu đề chương, hoặc
-    đoạn dẫn nhập trống, không phải đánh giá văn phong. Trả về đúng một kết
-    quả cho mỗi đoạn, giữ nguyên chunk_id để đối chiếu; đánh giá từng đoạn độc
-    lập, không để nội dung đoạn này ảnh hưởng tới quyết định của đoạn khác.
+    Đặt has_penalty_content=true khi Target text chứa ít nhất một quy định cụ
+    thể phục vụ trích xuất chế tài: hành vi/nghĩa vụ, mức hoặc hình thức xử
+    phạt, trừ điểm, biện pháp khắc phục, đối tượng áp dụng, thẩm quyền hoặc thủ
+    tục xử phạt; bao gồm điều khoản và hàng bảng. Đặt false nếu chỉ là mục
+    lục, heading, dẫn nhập, phạm vi điều chỉnh, điều khoản thi hành, hoặc định
+    nghĩa chung không gắn với quy định xử phạt cụ thể.
 
-    Structural context chỉ giúp xác định phạm vi pháp lý của target text.
-    Quyết định has_penalty_content phải dựa trên target text khi được hiểu
-    trong context đó, không dựa riêng vào tiêu đề trong context.
+    Quy tắc:
+    - Đánh giá từng chunk độc lập; không lấy nội dung chunk khác để suy diễn.
+    - Structural context chỉ xác định Chương/Mục/Điều và phạm vi của Target;
+      không tự nó làm kết quả thành true.
+    - Dựa vào nội dung Target, ưu tiên recall khi Target là một mảnh của quy
+      định cụ thể dù mức phạt nằm ở chunk liền kề.
+    - reason ngắn gọn bằng tiếng Việt và nêu căn cứ chính của quyết định.
 
     Ví dụ:
+    - Target="b) Không chấp hành hiệu lệnh của đèn tín hiệu giao thông."
+      trong Điều xử phạt -> true vì nêu một hành vi vi phạm cụ thể.
+    - Target="Điều 1. Phạm vi điều chỉnh..." -> false vì chỉ mô tả phạm vi
+      chung, chưa nêu quy định xử phạt cụ thể.
 
-    Đoạn văn bản:
-    ---
-    Điều 6. Xử phạt người điều khiển xe ô tô vi phạm quy tắc giao thông đường
-    bộ
-    9. Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng đối với người điều khiển
-    xe thực hiện một trong các hành vi vi phạm sau đây:
-    b) Không chấp hành hiệu lệnh của đèn tín hiệu giao thông.
-    ---
-    Kết quả: has_penalty_content=true, reason="Nêu rõ hành vi vi phạm cụ thể
-    (không chấp hành đèn tín hiệu) và mức phạt tiền tương ứng."
-
-    Đoạn văn bản:
-    ---
-    MỤC LỤC
-    Chương I. QUY ĐỊNH CHUNG .......... 1
-    Chương II. XỬ PHẠT VI PHẠM HÀNH CHÍNH .......... 5
-    Chương III. ĐIỀU KHOẢN THI HÀNH .......... 42
-    ---
-    Kết quả: has_penalty_content=false, reason="Đây là mục lục liệt kê tên
-    chương, không chứa nội dung chế tài cụ thể."
-
-    Đoạn văn bản:
-    ---
-    Điều 1. Phạm vi điều chỉnh
-    Nghị định này quy định về xử phạt vi phạm hành chính trong lĩnh vực giao
-    thông đường bộ, bao gồm: hành vi vi phạm hành chính; hình thức, mức xử
-    phạt, biện pháp khắc phục hậu quả đối với từng hành vi vi phạm.
-    ---
-    Kết quả: has_penalty_content=false, reason="Đây là điều khoản nêu phạm vi
-    điều chỉnh chung của nghị định, không quy định mức phạt cho một hành vi
-    cụ thể."
-
-    Bây giờ xác định danh sách đoạn văn bản sau:
+    Các chunk cần sàng lọc:
     {% for chunk in chunks %}
     ---
     chunk_id: {{ chunk.chunk_id }}

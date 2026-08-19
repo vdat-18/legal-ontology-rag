@@ -69,70 +69,29 @@ function ConfirmEvidenceRelationBatch(items: EvidenceRelationBatchItem[]) -> Evi
   prompt #"
     {{ _.role("user") }}
 
-    Bạn là chuyên gia phân tích quan hệ giữa các quy định xử phạt vi phạm
-    giao thông đường bộ tại Việt Nam.
+    Xác nhận quan hệ pháp lý trực tiếp cho từng cặp fact về xử phạt giao thông
+    đường bộ. Xử lý từng pair độc lập và giữ nguyên pair_id.
 
-    Dưới đây là danh sách các cặp fact pháp lý, mỗi fact đã được trích xuất
-    và duyệt độc lập. Xử lý từng cặp độc lập, không dùng ngữ cảnh của cặp này
-    để suy diễn cho cặp khác. Với mỗi cặp, xác định chúng có quan hệ pháp lý
-    hoặc nghiệp vụ trực tiếp không, và nếu có thì thuộc loại nào:
+    Chỉ đặt is_related=true khi nội dung và evidence của cả hai fact đủ chứng
+    minh một quan hệ dưới đây; giống từ, cùng Điều hoặc cùng chủ đề là chưa đủ:
+    - ConductToPenalty: hành vi/quy tắc -> mức phạt tiền.
+    - ConductToSubject: hành vi/quy tắc -> đối tượng hoặc loại phương tiện.
+    - ConductToPointsDeduction: hành vi/mức phạt -> trừ điểm hoặc tước giấy phép.
+    - ConductToRemedialMeasure: hành vi/mức phạt -> biện pháp khắc phục.
+    - RuleToException: quy định chung -> ngoại lệ.
+    - RuleToAuthority: quy định hành vi -> thẩm quyền xử phạt.
+    - AmendedBy: quy định cũ -> quy định sửa đổi/thay thế.
+    - ProcedureSequence: bước trước -> bước sau trong cùng thủ tục.
 
-    - ConductToPenalty: cùng hành vi, một fact nêu mức phạt tiền
-    - ConductToSubject: cùng hành vi, khác đối tượng hoặc loại phương tiện
-    - ConductToPointsDeduction: cùng hành vi, một fact nêu trừ điểm hoặc tước
-      giấy phép
-    - ConductToRemedialMeasure: cùng hành vi, một fact nêu biện pháp khắc
-      phục hậu quả
-    - RuleToException: một fact là quy định chung, fact kia là ngoại lệ
-    - RuleToAuthority: một fact là quy định về hành vi, fact kia là thẩm
-      quyền xử phạt
-    - AmendedBy: một fact là quy định cũ, fact kia sửa đổi hoặc thay thế nó
-    - ProcedureSequence: hai fact là các bước liên tiếp trong cùng thủ tục
+    Khi related: chọn đúng một relation_type, đặt from_fact_id/to_fact_id theo
+    hướng trên và bridge chỉ gồm thực thể/thuộc tính thật sự nối hai fact.
+    Khi không related: relation_type, from_fact_id, to_fact_id=null và bridge=[].
 
-    Hướng relation bắt buộc:
-    - ConductToPenalty: từ fact mô tả hành vi/quy tắc tới fact nêu mức phạt.
-    - ConductToSubject: từ fact mô tả hành vi tới fact làm rõ đối tượng.
-    - ConductToPointsDeduction: từ fact mô tả hành vi hoặc mức phạt tới fact
-      nêu trừ điểm/tước giấy phép.
-    - ConductToRemedialMeasure: từ fact mô tả hành vi hoặc mức phạt tới fact
-      nêu biện pháp khắc phục.
-    - RuleToException: từ quy định chung tới ngoại lệ.
-    - RuleToAuthority: từ quy định về hành vi tới quy định về thẩm quyền.
-    - AmendedBy: từ quy định cũ tới quy định sửa đổi hoặc thay thế nó.
-    - ProcedureSequence: từ bước xảy ra trước tới bước xảy ra sau.
+    Ví dụ: hai fact cùng hành vi, một fact nêu phạt tiền và fact kia nêu trừ
+    điểm -> ConductToPointsDeduction. Hai hành vi khác nhau chỉ cùng Điều và
+    cùng loại xe -> không related.
 
-    Không kết luận có quan hệ chỉ vì hai fact nghe giống nhau hoặc dùng từ
-    ngữ tương tự. Chỉ kết luận có quan hệ khi nội dung của cả hai fact thực
-    sự thể hiện quan hệ đó.
-
-    Trả về đúng một kết quả cho mỗi pair_id, giữ nguyên pair_id.
-
-    Ví dụ:
-
-    pair_id=example-1
-    Fact A: conduct="Không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
-    subject="Người điều khiển ô tô", monetary_penalty="4.000.000 đồng đến
-    6.000.000 đồng", provision_path="Điều 6 khoản 9 điểm b"
-    Fact B: conduct="Không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
-    subject="Người điều khiển ô tô", license_points_deducted="6 điểm",
-    provision_path="Điều 6 khoản 10"
-    Kết quả: pair_id=example-1, is_related=true,
-    relation_type=ConductToPointsDeduction, from_fact_id=Fact A.fact_id,
-    to_fact_id=Fact B.fact_id, bridge=["Điều 6", "không chấp hành hiệu lệnh
-    của đèn tín hiệu giao thông"]. (Cùng một hành vi, một fact nêu phạt
-    tiền, fact kia nêu trừ điểm — quan hệ trực tiếp, có căn cứ rõ ràng.)
-
-    pair_id=example-2
-    Fact A: conduct="Không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
-    subject="Người điều khiển ô tô", provision_path="Điều 6 khoản 9 điểm b"
-    Fact B: conduct="Chở quá số người quy định", subject="Người điều khiển ô
-    tô", provision_path="Điều 6 khoản 5"
-    Kết quả: pair_id=example-2, is_related=false, relation_type=null,
-    from_fact_id=null, to_fact_id=null, bridge=[]. (Hai hành vi khác nhau,
-    chỉ cùng nằm trong Điều 6 và cùng đối tượng ô tô — không có quan hệ
-    pháp lý trực tiếp giữa hai hành vi này.)
-
-    Bây giờ xét các cặp fact sau:
+    Các cặp cần xác nhận:
 
     {% for item in items %}
     === pair_id={{ item.pair_id }} ===
