@@ -18,7 +18,7 @@ from legal_rag.chunker.models import Chunk
 _SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
 
 
-def _chunk(content_sha256: str = "content-hash") -> Chunk:
+def _chunk(content_sha256: str = "content-hash", *, context_text: str = "") -> Chunk:
     """Build one chunk whose source identity can be changed per test."""
     return Chunk(
         chunk_id="chunk-1",
@@ -38,7 +38,7 @@ def _chunk(content_sha256: str = "content-hash") -> Chunk:
         sequence_start=0,
         sequence_end=0,
         text="Phạt tiền.",
-        context_text="",
+        context_text=context_text,
         embedding_text="Phạt tiền.",
         text_token_count=3,
         embedding_token_count=3,
@@ -62,6 +62,22 @@ def test_screening_fingerprint_changes_with_source_or_model() -> None:
 
     assert original.run_id != changed_source.run_id
     assert original.run_id != changed_model.run_id
+
+
+def test_screening_fingerprint_changes_with_structural_context() -> None:
+    """Screening caches become stale when parser-derived legal structure changes."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+    original = build_chunk_screening_fingerprint(
+        (_chunk(),), settings, llm_base_url="https://llm.test/v1", llm_model="provider/model-a"
+    )
+    changed = build_chunk_screening_fingerprint(
+        (_chunk(context_text="Điều 6"),),
+        settings,
+        llm_base_url="https://llm.test/v1",
+        llm_model="provider/model-a",
+    )
+
+    assert original.run_id != changed.run_id
 
 
 def test_screening_fingerprint_changes_with_stage_config() -> None:

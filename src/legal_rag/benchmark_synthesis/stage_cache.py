@@ -63,7 +63,7 @@ def build_chunk_screening_fingerprint(
         prompt_version=CHUNK_SCREENING_PROMPT_VERSION,
         model=llm_model,
         identity={
-            "chunks": [_chunk_identity(chunk, include_context=False) for chunk in chunks],
+            "chunks": [_chunk_identity(chunk, include_context=True) for chunk in chunks],
             "llm": {"base_url": llm_base_url, "model": llm_model},
             "settings": {
                 "batch_size": settings.chunk_screening_batch_size,
@@ -130,6 +130,7 @@ def build_fact_extraction_fingerprint(
                 "max_concurrency": settings.fact_extraction_max_concurrency,
                 "max_preceding_chunks": settings.fact_extraction_max_preceding_chunks,
                 "max_following_chunks": settings.fact_extraction_max_following_chunks,
+                "max_article_context_chunks": settings.fact_extraction_max_article_context_chunks,
                 "generation": asdict(settings.fact_extraction),
             },
         },

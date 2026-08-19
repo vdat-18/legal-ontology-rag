@@ -46,6 +46,7 @@ def _chunk(
     previous_chunk_id: str | None = None,
     next_chunk_id: str | None = None,
     context_text: str = "",
+    chunk_index: int = 0,
 ) -> Chunk:
     """Build one minimal chunk for fact-extraction tests."""
     return Chunk(
@@ -53,7 +54,7 @@ def _chunk(
         content_sha256="content-hash",
         chunker_config_sha256="config-hash",
         scope_id="scope-id",
-        chunk_index=0,
+        chunk_index=chunk_index,
         kind="paragraph_group",
         source_name="168_2024_ND-CP.docx",
         source_sha256="source-hash",
@@ -76,20 +77,56 @@ def _chunk(
 
 
 def test_build_reading_window_includes_target_preceding_and_following_chunks() -> None:
-    """The window combines the target with its configured adjacent chunks."""
-    preceding_one = _chunk("prev1", "Phần ngay trước.")
+    """The local window follows document order and labels both directions explicitly."""
+    preceding_two = _chunk("prev2", "Phần trước xa hơn.")
+    preceding_one = _chunk("prev1", "Phần ngay trước.", previous_chunk_id="prev2")
     target = _chunk("target", "Nội dung mục tiêu.", previous_chunk_id="prev1", next_chunk_id="next")
     following = _chunk("next", "Phần sau.")
-    chunks_by_id = {chunk.chunk_id: chunk for chunk in (preceding_one, target, following)}
+    chunks_by_id = {chunk.chunk_id: chunk for chunk in (preceding_two, preceding_one, target, following)}
 
-    window = build_reading_window(target, chunks_by_id, max_preceding_chunks=1, max_following_chunks=1)
+    window = build_reading_window(target, chunks_by_id, max_preceding_chunks=2, max_following_chunks=1)
 
+    assert [entry.chunk_id for entry in window] == ["prev2", "prev1", "target", "next"]
     roles_by_id = {entry.chunk_id: entry.role for entry in window}
     assert roles_by_id == {
         "target": ChunkWindowRole.Target,
-        "prev1": ChunkWindowRole.Adjacent,
-        "next": ChunkWindowRole.Adjacent,
+        "prev2": ChunkWindowRole.Preceding,
+        "prev1": ChunkWindowRole.Preceding,
+        "next": ChunkWindowRole.Following,
     }
+
+
+def test_build_reading_window_adds_bounded_same_article_bookends() -> None:
+    """Distant first and last chunks from the same article are bounded ArticleContext."""
+    article_six = "[LEGAL_STRUCTURE 1.0.0]\nĐiều 6. Xử phạt người điều khiển ô tô\n[/LEGAL_STRUCTURE]"
+    article_seven = "[LEGAL_STRUCTURE 1.0.0]\nĐiều 7. Xử phạt người điều khiển mô tô\n[/LEGAL_STRUCTURE]"
+    opening = _chunk("opening", "Mức phạt chung.", context_text=article_six, chunk_index=0)
+    preceding = _chunk("preceding", "Các hành vi sau đây:", context_text=article_six, chunk_index=1)
+    target = _chunk(
+        "target",
+        "b) Không chấp hành hiệu lệnh.",
+        previous_chunk_id="preceding",
+        next_chunk_id="following",
+        context_text=article_six,
+        chunk_index=2,
+    )
+    following = _chunk("following", "c) Hành vi khác.", context_text=article_six, chunk_index=3)
+    middle = _chunk("middle", "Nội dung giữa Điều.", context_text=article_six, chunk_index=4)
+    closing = _chunk("closing", "Hình phạt bổ sung.", context_text=article_six, chunk_index=5)
+    other = _chunk("other", "Điều khác.", context_text=article_seven, chunk_index=6)
+    chunks = (opening, preceding, target, following, middle, closing, other)
+
+    window = build_reading_window(
+        target,
+        {chunk.chunk_id: chunk for chunk in chunks},
+        max_preceding_chunks=1,
+        max_following_chunks=1,
+        max_article_context_chunks=2,
+    )
+
+    assert [entry.chunk_id for entry in window] == ["preceding", "target", "following", "opening", "closing"]
+    assert window[-2].role == ChunkWindowRole.ArticleContext
+    assert window[-1].role == ChunkWindowRole.ArticleContext
 
 
 def test_build_reading_window_keeps_structural_context_separate_from_source_text() -> None:
@@ -477,7 +514,7 @@ def test_extract_facts_from_document_retries_invalid_batch_coverage(invalid_resu
 
 
 def test_extract_facts_from_document_resolves_context_excluded_from_target_chunks() -> None:
-    """A preceding chunk missing from target_chunks is still resolved as Adjacent context from document_chunks."""
+    """A preceding chunk missing from target_chunks still comes from the full document chunk set."""
     preceding = _chunk("preceding", "Trong Nghị định này, xe cơ giới được hiểu là ô tô, mô tô.")
     target = _chunk(
         "target",
@@ -504,7 +541,7 @@ def test_extract_facts_from_document_resolves_context_excluded_from_target_chunk
         retry_delay_seconds=0,
     )
 
-    assert seen_roles == {"target": ChunkWindowRole.Target, "preceding": ChunkWindowRole.Adjacent}
+    assert seen_roles == {"target": ChunkWindowRole.Target, "preceding": ChunkWindowRole.Preceding}
 
 
 def _settings() -> Settings:

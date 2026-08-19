@@ -18,7 +18,7 @@ from legal_rag.settings import Settings
 _SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
 
 
-def _chunk(chunk_id: str, text: str) -> Chunk:
+def _chunk(chunk_id: str, text: str, *, context_text: str = "") -> Chunk:
     """Build one minimal chunk for chunk-screening tests."""
     return Chunk(
         chunk_id=chunk_id,
@@ -38,7 +38,7 @@ def _chunk(chunk_id: str, text: str) -> Chunk:
         sequence_start=0,
         sequence_end=0,
         text=text,
-        context_text="",
+        context_text=context_text,
         embedding_text=text,
         text_token_count=5,
         embedding_token_count=5,
@@ -79,6 +79,23 @@ def test_screen_chunks_returns_one_record_per_chunk_in_order() -> None:
     assert records[0].has_penalty_content is True
     assert records[1].has_penalty_content is False
     assert records[1].reason == "Đây là mục lục, không có chế tài."
+
+
+def test_screen_chunks_passes_structural_context_separately_from_target_text() -> None:
+    """Screening receives parser-derived structure without merging it into source text."""
+    context_text = "[LEGAL_STRUCTURE 1.0.0]\nĐiều 6. Xử phạt người điều khiển ô tô\n[/LEGAL_STRUCTURE]"
+    chunk = _chunk("chunk-1", "b) Không chấp hành hiệu lệnh.", context_text=context_text)
+    seen_items: list[ChunkScreeningItem] = []
+
+    class _RecordingClient:
+        def screen(self, items: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            seen_items.extend(items)
+            return [ChunkScreeningResult(chunk_id="chunk-1", has_penalty_content=True, reason="Penalty item.")]
+
+    screen_chunks([chunk], _RecordingClient(), batch_size=50, max_retries=0, retry_delay_seconds=0)
+
+    assert seen_items[0].context_text == context_text
+    assert seen_items[0].text == chunk.text
 
 
 def test_screen_chunks_batches_calls_by_batch_size() -> None:
@@ -262,7 +279,15 @@ def test_baml_chunk_screening_client_parses_typed_result(monkeypatch: pytest.Mon
         ),
     )
 
-    results = client.screen([ChunkScreeningItem(chunk_id="chunk-1", text="Điều 6 khoản 9 điểm b quy định mức phạt.")])
+    results = client.screen(
+        [
+            ChunkScreeningItem(
+                chunk_id="chunk-1",
+                context_text="Điều 6",
+                text="Điều 6 khoản 9 điểm b quy định mức phạt.",
+            )
+        ]
+    )
 
     assert results[0].chunk_id == "chunk-1"
     assert results[0].has_penalty_content is True

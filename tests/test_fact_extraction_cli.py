@@ -229,6 +229,60 @@ def test_fact_extraction_cli_extracts_and_writes_facts(monkeypatch: pytest.Monke
     assert stage_cache_path(facts_path).exists()
 
 
+def test_fact_extraction_cli_rejects_conflicting_content_for_one_fact_id(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Two extracted records with one identity cannot silently overwrite each other."""
+    chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
+    screening_path = tmp_path / "chunk_screening.jsonl"
+    facts_path = tmp_path / "legal_facts.jsonl"
+    chunks = (
+        _chunk("chunk-1", "Phạt tiền đối với hành vi vượt đèn đỏ."),
+        _chunk("chunk-2", "Phạt tiền đối với hành vi vượt đèn đỏ."),
+    )
+    write_chunks(chunks_path, chunks)
+    write_chunk_screening(
+        screening_path,
+        [
+            ChunkScreeningRecord(chunk_id=chunk.chunk_id, has_penalty_content=True, reason="Penalty.")
+            for chunk in chunks
+        ],
+    )
+
+    class _ConflictingClient:
+        def __init__(self, settings: object, synthesis_settings: object) -> None:
+            return None
+
+        def extract_batch(self, items: list[FactExtractionBatchItem]) -> tuple[FactExtractionBatchResult, ...]:
+            return tuple(
+                FactExtractionBatchResult(
+                    target_chunk_id=item.target_chunk_id,
+                    facts=[
+                        BamlLegalFact(
+                            conduct="Vượt đèn đỏ",
+                            subject="Người điều khiển ô tô",
+                            conditions=[],
+                            monetary_penalty=f"Mức phạt {item.target_chunk_id}",
+                            license_points_deducted=None,
+                            additional_penalties=[],
+                            remedial_measures=[],
+                            valid_from=None,
+                            valid_to=None,
+                            provision_path="Điều 6 khoản 9 điểm b",
+                            evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id, quoted_span="Phạt tiền")],
+                        )
+                    ],
+                )
+                for item in items
+            )
+
+    _configure_cli(monkeypatch, chunks_path, screening_path, facts_path)
+    monkeypatch.setattr(fact_extraction, "BamlFactExtractionClient", _ConflictingClient)
+
+    with pytest.raises(ValueError, match="Conflicting content for fact_id"):
+        fact_extraction_cli.main()
+
+
 def test_fact_extraction_cli_stamps_document_metadata_onto_every_fact(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -259,7 +313,7 @@ def test_fact_extraction_cli_stamps_document_metadata_onto_every_fact(
 def test_fact_extraction_cli_uses_excluded_chunk_as_adjacent_context(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """A chunk excluded by screening is still resolved as Adjacent context for a later target chunk."""
+    """A chunk excluded by screening is still resolved as preceding context for a later target chunk."""
     chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
     screening_path = tmp_path / "chunk_screening.jsonl"
     facts_path = tmp_path / "legal_facts.jsonl"

@@ -114,7 +114,7 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
        ở đầu Target vẫn có thể thuộc heading mức phạt nằm trong Previous.
     2. Với từng conduct trong Target, xác định provision_path riêng của rule,
        rồi truy vết mọi consequence trực tiếp hoặc dẫn chiếu chính provision
-       đó trong toàn reading window, kể cả Adjacent và ArticleContext.
+       đó trong toàn reading window, kể cả Preceding, Following và ArticleContext.
     3. Tách conduct nguyên tử, dựng applicability/exception tree và lặp lại mọi
        consequence dùng chung cho từng rule bị chi phối.
     4. Tự kiểm tra coverage trước khi trả lời: không bỏ conduct chỉ vì heading
@@ -133,15 +133,16 @@ function ExtractOntologyPopulationBatch(items: FactExtractionBatchItem[]) -> Ont
       thuộc Điều trước sang Điều sau hoặc ngược lại.
     - Mỗi quoted_span phải là đoạn liên tục, nguyên văn, chính xác từng ký tự
       trong chunk được dẫn. Một assertion cần nhiều đoạn thì dùng nhiều entry.
-    - Target là chunk chính. Adjacent cung cấp ngữ cảnh liền kề; ArticleContext
-      cung cấp các phần khác trong cùng Điều để giải quyết heading hoặc dẫn
-      chiếu consequence nằm xa. Không trộn dữ liệu giữa các window.
+    - Target là chunk chính. Preceding và Following cung cấp ngữ cảnh liền
+      trước và liền sau; ArticleContext cung cấp các phần khác trong cùng Điều
+      để giải quyết heading hoặc dẫn chiếu consequence nằm xa. Không trộn dữ
+      liệu giữa các window.
     - Chỉ tạo rule cho conduct được quy định như một hành vi hoặc nghĩa vụ cụ
-      thể trong Target và có quoted evidence nằm trong Target. Adjacent,
-      ArticleContext và structural context có thể cung cấp mức phạt, phạm vi áp
+      thể trong Target và có quoted evidence nằm trong Target. Preceding,
+      Following, ArticleContext và structural context có thể cung cấp mức phạt, phạm vi áp
       dụng và ancestry, nhưng không được làm conduct chỉ xuất hiện ngoài Target
       trở thành rule của Target.
-    - Previous và Following không phải nguồn tùy chọn khi chúng trực tiếp hoàn
+    - Preceding và Following không phải nguồn tùy chọn khi chúng trực tiếp hoàn
       chỉnh rule của conduct trong Target. Nếu heading mức phạt nằm ở Previous
       và danh sách conduct tiếp tục ở đầu Target, phải gắn mức phạt đó cho mọi
       conduct thuộc danh sách. Không được chỉ xử lý danh sách có heading nằm

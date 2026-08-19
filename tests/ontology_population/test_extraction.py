@@ -152,7 +152,7 @@ def test_population_window_includes_bounded_same_article_context(legal_chunk: Ch
 
     assert [entry.chunk_id for entry in window] == ["near", "target", "distant"]
     assert {entry.chunk_id: entry.role for entry in window} == {
-        "near": ChunkWindowRole.Adjacent,
+        "near": ChunkWindowRole.Preceding,
         "target": ChunkWindowRole.Target,
         "distant": ChunkWindowRole.ArticleContext,
     }

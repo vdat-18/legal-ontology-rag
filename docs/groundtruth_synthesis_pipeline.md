@@ -56,7 +56,11 @@ describe retry-then-skip behavior.
   for embedding selection, retry bounds and delay, quality thresholds,
   screening and fact-extraction batch sizes, and every synthesis LLM
   operation's token/temperature bounds.
-- Fact extraction sends one reading window per LLM call. The batch-capable
+- Fact extraction sends one reading window per LLM call. Each window contains
+  up to two preceding chunks, the target, one following chunk, and up to two
+  non-adjacent bookend chunks from the same structurally identified article.
+  Screening receives parser-derived structural context alongside target text.
+  The batch-capable
   interface remains in place, with `batch_size=1`, so each work unit is one target.
   A response must contain exactly one result per target id. Successful batches
   write facts once and then mark every target in that batch in
@@ -260,18 +264,21 @@ toàn văn bản, vì thông tin đó không nằm trong cửa sổ đọc của
 
 ### Gộp chunk khi một fact cần nhiều nguồn
 
-Trong fact extraction, cửa sổ đọc tạm thời chỉ mở rộng theo chunk liền kề:
+Trong fact extraction, cửa sổ đọc mở rộng bằng liên kết liền kề và structural context:
 
 - **Chunk liền kề bị cắt bởi giới hạn token.** Chunker cắt một điều khoản dài
   thành hai chunk theo `previous_chunk_id`/`next_chunk_id` đã có sẵn trong
-  schema chunk. Gộp bằng cách kéo thêm tối đa 1 chunk liền trước và 1 chunk
+  schema chunk. Gộp bằng cách kéo thêm tối đa 2 chunk liền trước và 1 chunk
   liền sau vào cùng cửa sổ đọc, thuần cơ học, không cần LLM đoán.
 Chunk liền kề được tra trên **toàn bộ chunk gốc của văn bản**,
 không giới hạn trong tập đã qua được cổng sàng lọc — chỉ tập đã lọc mới quyết
 định chunk nào được chọn làm `Target` (tốn LLM call). Một chunk bị cổng sàng
 lọc loại (ví dụ đoạn định nghĩa không nêu mức phạt cụ thể) vẫn có thể được
-kéo vào làm ngữ cảnh `Adjacent` cho một `Target` liền kề,
+kéo vào làm ngữ cảnh `Preceding` hoặc `Following` cho một `Target` liền kề,
 vì việc tra cứu này thuần cơ học, không tốn thêm LLM call nào.
+- **Chunk cùng Điều nhưng không liền kề.** Structural context chọn tối đa hai
+  chunk bookend ngoài local window làm `ArticleContext`, giúp giữ heading mức
+  phạt hoặc hình phạt bổ sung nằm xa mà không gửi toàn bộ Điều vào prompt.
 
 ### Định danh fact tách khỏi nội dung fact
 
@@ -1100,9 +1107,12 @@ Module trong `benchmark_synthesis/`:
   reason) cho **mọi** chunk đầu vào, kể cả chunk bị loại — không tự chia
   accepted/excluded trong bộ nhớ, để CLI ghi thẳng ra file cho bước sau đọc
   lại.
-- `fact_extraction.py` — dựng cửa sổ đọc gồm `Target`, tối đa 1 chunk
-  liền trước qua `previous_chunk_id` và 1 chunk liền sau qua
-  `next_chunk_id`, gọi BAML trích fact, rồi gán `fact_id` và
+- `fact_extraction.py` — dựng cửa sổ đọc theo thứ tự gồm tối đa 2 chunk
+  `Preceding`, `Target`, 1 chunk `Following`, rồi thêm tối đa 2 chunk
+  `ArticleContext` không liền kề từ cùng Điều; các neighbor đi qua
+  `previous_chunk_id` và `next_chunk_id`, còn same-article context dùng
+  structural context do parser tạo. Screening cũng nhận structural context
+  tách riêng khỏi source text. Sau đó code gọi BAML trích fact rồi gán `fact_id` và
   `fact_content_sha256` qua `sha256_json`. Nội dung pháp lý vẫn lấy từ typed
   LLM output, nhưng provenance được ràng buộc tất định trước khi ghi:
   `chunk_id` phải thuộc reading window và mỗi `quoted_span` phải là substring
@@ -1124,7 +1134,8 @@ BAML trong `baml_src/`:
 - `legal_fact_extraction.baml` — enum `ChunkWindowRole`, class
   `ChunkWindowEntry`, `EvidenceEntry`, `LegalFact` khớp JSON ở mục 2, function
   `ExtractLegalFacts(window: ChunkWindowEntry[]) -> LegalFact[]`, kèm persona
-  và few-shot examples. Window chỉ có vai trò `Target` và `Adjacent`.
+  và few-shot examples. Window phân biệt `Preceding`, `Target`, `Following`
+  và `ArticleContext`.
 
 CLI tách thành các artifact riêng, nối nhau qua file — theo đúng cách các phase
 sau nối nhau (`legal_facts.jsonl` → `evidence_relations.jsonl`/`scenarios.jsonl`

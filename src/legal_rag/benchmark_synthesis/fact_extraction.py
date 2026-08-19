@@ -35,7 +35,7 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
 EXTRACTION_PROGRESS_SCHEMA_VERSION = "1.0.0"
-FACT_EXTRACTION_PROMPT_VERSION = "1.4.0"
+FACT_EXTRACTION_PROMPT_VERSION = "1.5.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,26 +55,68 @@ class ExtractionProgressRecord:
 def _walk_adjacent_chunks(
     start_chunk_id: str | None,
     chunks_by_id: Mapping[str, Chunk],
-    entries: dict[str, ChunkWindowEntry],
     *,
     max_chunks: int,
     next_chunk_id: Callable[[Chunk], str | None],
-) -> None:
-    """Walk a previous/next chunk chain, adding each hop found to entries as Adjacent context."""
+) -> tuple[Chunk, ...]:
+    """Return up to max_chunks neighbors by walking one linked direction."""
+    chunks: list[Chunk] = []
+    seen_ids: set[str] = set()
     chunk_id = start_chunk_id
     for _ in range(max_chunks):
-        if chunk_id is None or chunk_id in entries:
-            return
+        if chunk_id is None or chunk_id in seen_ids:
+            break
         chunk = chunks_by_id.get(chunk_id)
         if chunk is None:
-            return
-        entries[chunk_id] = ChunkWindowEntry(
-            chunk_id=chunk_id,
-            role=ChunkWindowRole.Adjacent,
-            context_text=chunk.context_text,
-            text=chunk.text,
-        )
+            break
+        chunks.append(chunk)
+        seen_ids.add(chunk_id)
         chunk_id = next_chunk_id(chunk)
+    return tuple(chunks)
+
+
+def _window_entry(chunk: Chunk, role: ChunkWindowRole) -> ChunkWindowEntry:
+    """Return one BAML reading-window entry for a persisted chunk."""
+    return ChunkWindowEntry(
+        chunk_id=chunk.chunk_id,
+        role=role,
+        context_text=chunk.context_text,
+        text=chunk.text,
+    )
+
+
+def _article_context_chunks(
+    target: Chunk,
+    chunks: Sequence[Chunk],
+    excluded_ids: set[str],
+    *,
+    max_chunks: int,
+) -> tuple[Chunk, ...]:
+    """Return bounded non-adjacent bookends from the target's article context."""
+    target_articles = _structural_articles(target.context_text)
+    if max_chunks == 0 or len(target_articles) != 1:
+        return ()
+    target_article = target_articles[0]
+    candidates = sorted(
+        (
+            chunk
+            for chunk in chunks
+            if chunk.scope_id == target.scope_id
+            and target_article in _structural_articles(chunk.context_text)
+            and chunk.chunk_id not in excluded_ids
+        ),
+        key=lambda chunk: (chunk.chunk_index, chunk.chunk_id),
+    )
+    if len(candidates) <= max_chunks:
+        return tuple(candidates)
+    if max_chunks == 1:
+        return (candidates[0],)
+    return (*candidates[: max_chunks - 1], candidates[-1])
+
+
+def _structural_articles(context_text: str) -> tuple[str, ...]:
+    """Read article labels from the parser-owned structural-context serialization."""
+    return tuple(dict.fromkeys(line.strip() for line in context_text.splitlines() if line.strip().startswith("Điều ")))
 
 
 def build_reading_window(
@@ -83,32 +125,38 @@ def build_reading_window(
     *,
     max_preceding_chunks: int,
     max_following_chunks: int,
+    max_article_context_chunks: int = 0,
 ) -> tuple[ChunkWindowEntry, ...]:
-    """Assemble one reading window around a target chunk."""
-    entries: dict[str, ChunkWindowEntry] = {
-        target.chunk_id: ChunkWindowEntry(
-            chunk_id=target.chunk_id,
-            role=ChunkWindowRole.Target,
-            context_text=target.context_text,
-            text=target.text,
-        )
-    }
-    _walk_adjacent_chunks(
+    """Assemble one document-ordered window plus bounded same-article context."""
+    preceding = _walk_adjacent_chunks(
         target.previous_chunk_id,
         chunks_by_id,
-        entries,
         max_chunks=max_preceding_chunks,
         next_chunk_id=lambda chunk: chunk.previous_chunk_id,
     )
-    _walk_adjacent_chunks(
+    following = _walk_adjacent_chunks(
         target.next_chunk_id,
         chunks_by_id,
-        entries,
         max_chunks=max_following_chunks,
         next_chunk_id=lambda chunk: chunk.next_chunk_id,
     )
-
-    return tuple(entries.values())
+    excluded_ids = {
+        target.chunk_id,
+        *(chunk.chunk_id for chunk in preceding),
+        *(chunk.chunk_id for chunk in following),
+    }
+    article_context = _article_context_chunks(
+        target,
+        tuple(chunks_by_id.values()),
+        excluded_ids,
+        max_chunks=max_article_context_chunks,
+    )
+    return (
+        *(_window_entry(chunk, ChunkWindowRole.Preceding) for chunk in reversed(preceding)),
+        _window_entry(target, ChunkWindowRole.Target),
+        *(_window_entry(chunk, ChunkWindowRole.Following) for chunk in following),
+        *(_window_entry(chunk, ChunkWindowRole.ArticleContext) for chunk in article_context),
+    )
 
 
 class FactExtractionClient(Protocol):
@@ -212,6 +260,7 @@ def extract_facts_from_document(
     *,
     max_preceding_chunks: int,
     max_following_chunks: int,
+    max_article_context_chunks: int = 0,
     batch_size: int,
     max_concurrency: int = 1,
     max_retries: int,
@@ -239,6 +288,7 @@ def extract_facts_from_document(
                             chunks_by_id,
                             max_preceding_chunks=max_preceding_chunks,
                             max_following_chunks=max_following_chunks,
+                            max_article_context_chunks=max_article_context_chunks,
                         )
                     ),
                 )

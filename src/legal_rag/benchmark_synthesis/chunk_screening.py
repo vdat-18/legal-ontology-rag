@@ -24,7 +24,7 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
 CHUNK_SCREENING_SCHEMA_VERSION = "1.0.0"
-CHUNK_SCREENING_PROMPT_VERSION = "1.0.0"
+CHUNK_SCREENING_PROMPT_VERSION = "1.1.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,7 +122,14 @@ def screen_chunks(
     with ThreadPoolExecutor(max_workers=max_concurrency) as executor:
         futures = {}
         for batch in batches:
-            items = [ChunkScreeningItem(chunk_id=chunk.chunk_id, text=chunk.text) for chunk in batch]
+            items = [
+                ChunkScreeningItem(
+                    chunk_id=chunk.chunk_id,
+                    context_text=chunk.context_text,
+                    text=chunk.text,
+                )
+                for chunk in batch
+            ]
             task_key = f"chunks:{batch[0].chunk_id}:{batch[-1].chunk_id}"
             future = executor.submit(
                 execute_llm_task,

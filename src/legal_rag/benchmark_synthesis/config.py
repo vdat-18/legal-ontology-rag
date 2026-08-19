@@ -8,7 +8,7 @@ from math import isfinite
 from pathlib import Path
 from typing import Any
 
-SYNTHESIS_CONFIG_SCHEMA_VERSION = "1.6.0"
+SYNTHESIS_CONFIG_SCHEMA_VERSION = "1.7.0"
 _MAX_LLM_TEMPERATURE = 2.0
 
 
@@ -106,6 +106,7 @@ class SynthesisSettings:
     fact_extraction_max_concurrency: int
     fact_extraction_max_preceding_chunks: int
     fact_extraction_max_following_chunks: int
+    fact_extraction_max_article_context_chunks: int
     evidence_relation_batch_size: int
     evidence_relation_max_concurrency: int
     candidate_generation_batch_size: int
@@ -155,7 +156,14 @@ class SynthesisSettings:
             if value < 1:
                 msg = f"{name} must be positive, got {value}"
                 raise ValueError(msg)
-        if self.fact_extraction_max_preceding_chunks < 0 or self.fact_extraction_max_following_chunks < 0:
+        if any(
+            value < 0
+            for value in (
+                self.fact_extraction_max_preceding_chunks,
+                self.fact_extraction_max_following_chunks,
+                self.fact_extraction_max_article_context_chunks,
+            )
+        ):
             msg = "fact-extraction context sizes must not be negative"
             raise ValueError(msg)
         for name, value in {
@@ -203,6 +211,7 @@ class SynthesisSettings:
             fact_extraction_max_concurrency=extraction["max_concurrency"],
             fact_extraction_max_preceding_chunks=extraction["max_preceding_chunks"],
             fact_extraction_max_following_chunks=extraction["max_following_chunks"],
+            fact_extraction_max_article_context_chunks=extraction["max_article_context_chunks"],
             evidence_relation_batch_size=relation["batch_size"],
             evidence_relation_max_concurrency=relation["max_concurrency"],
             candidate_generation_batch_size=stages["candidate_generation"]["batch_size"],

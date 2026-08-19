@@ -99,7 +99,18 @@ def main() -> None:
     )
 
     existing_facts = read_legal_facts(arguments.facts_output_path) if arguments.facts_output_path.exists() else ()
-    facts_by_id = {fact.fact_id: fact for fact in existing_facts}
+    facts_by_id: dict[str, LegalFact] = {}
+
+    def _merge_facts(facts: Sequence[LegalFact]) -> None:
+        """Merge facts without silently replacing conflicting content."""
+        for fact in facts:
+            existing = facts_by_id.get(fact.fact_id)
+            if existing is not None and existing.fact_content_sha256 != fact.fact_content_sha256:
+                msg = f"Conflicting content for fact_id {fact.fact_id}"
+                raise ValueError(msg)
+            facts_by_id.setdefault(fact.fact_id, fact)
+
+    _merge_facts(existing_facts)
     existing_progress = (
         read_extraction_progress(arguments.progress_output_path) if arguments.progress_output_path.exists() else ()
     )
@@ -117,7 +128,7 @@ def main() -> None:
     def _persist_batch(batch_results: Sequence[tuple[str, tuple[LegalFact, ...]]]) -> None:
         """Write batch facts before progress so an interrupted write can only cause a safe replay."""
         for _, target_facts in batch_results:
-            facts_by_id.update({fact.fact_id: fact for fact in target_facts})
+            _merge_facts(target_facts)
         write_legal_facts(
             arguments.facts_output_path, tuple(sorted(facts_by_id.values(), key=lambda fact: fact.fact_id))
         )
@@ -145,6 +156,7 @@ def main() -> None:
             metadata,
             max_preceding_chunks=synthesis_settings.fact_extraction_max_preceding_chunks,
             max_following_chunks=synthesis_settings.fact_extraction_max_following_chunks,
+            max_article_context_chunks=synthesis_settings.fact_extraction_max_article_context_chunks,
             batch_size=synthesis_settings.fact_extraction_batch_size,
             max_concurrency=synthesis_settings.fact_extraction_max_concurrency,
             max_retries=synthesis_settings.llm_max_retries,

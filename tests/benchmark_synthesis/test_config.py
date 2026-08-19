@@ -31,8 +31,9 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.document_metadata_closing_chunk_count == 5
     assert settings.fact_extraction_batch_size == 1
     assert settings.fact_extraction_max_concurrency == 4
-    assert settings.fact_extraction_max_preceding_chunks == 1
+    assert settings.fact_extraction_max_preceding_chunks == 2
     assert settings.fact_extraction_max_following_chunks == 1
+    assert settings.fact_extraction_max_article_context_chunks == 2
     assert settings.fact_extraction.max_output_tokens == 32_768
     assert settings.evidence_relation_batch_size == 10
     assert settings.evidence_relation_max_concurrency == 10
@@ -93,6 +94,14 @@ def test_synthesis_settings_reject_non_positive_fact_extraction_max_concurrency(
 
     with pytest.raises(ValueError, match="fact_extraction_max_concurrency must be positive"):
         replace(settings, fact_extraction_max_concurrency=0)
+
+
+def test_synthesis_settings_reject_negative_fact_extraction_context_size() -> None:
+    """Fact extraction context limits cannot be negative."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+
+    with pytest.raises(ValueError, match="fact-extraction context sizes must not be negative"):
+        replace(settings, fact_extraction_max_article_context_chunks=-1)
 
 
 def test_synthesis_settings_reject_non_positive_evidence_relation_max_concurrency() -> None:

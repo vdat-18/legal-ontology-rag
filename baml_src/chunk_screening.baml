@@ -1,5 +1,9 @@
 class ChunkScreeningItem {
   chunk_id string
+  context_text string @description(#"
+    Ngữ cảnh cấu trúc do parser tạo, dùng để hiểu Chương, Mục và Điều của
+    target text. Không tự coi context này là nội dung chế tài.
+  "#)
   text string
 }
 
@@ -33,6 +37,10 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     đoạn dẫn nhập trống, không phải đánh giá văn phong. Trả về đúng một kết
     quả cho mỗi đoạn, giữ nguyên chunk_id để đối chiếu; đánh giá từng đoạn độc
     lập, không để nội dung đoạn này ảnh hưởng tới quyết định của đoạn khác.
+
+    Structural context chỉ giúp xác định phạm vi pháp lý của target text.
+    Quyết định has_penalty_content phải dựa trên target text khi được hiểu
+    trong context đó, không dựa riêng vào tiêu đề trong context.
 
     Ví dụ:
 
@@ -72,6 +80,11 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     {% for chunk in chunks %}
     ---
     chunk_id: {{ chunk.chunk_id }}
+    {% if chunk.context_text %}
+    Structural context:
+    {{ chunk.context_text }}
+    {% endif %}
+    Target text:
     {{ chunk.text }}
     ---
     {% endfor %}
