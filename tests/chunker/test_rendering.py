@@ -31,6 +31,81 @@ def _record(kind: SourceKind, payload: dict[str, object], *, order_index: int = 
     )
 
 
+def _heading(text: str, bookmark_name: str, order_index: int) -> SourceRecord:
+    """Build one full-paragraph OOXML structural heading."""
+    return _record(
+        "paragraph",
+        {
+            "text": text,
+            "bookmarks": [
+                {
+                    "name": bookmark_name,
+                    "start_offset": 0,
+                    "end_offset": len(text),
+                }
+            ],
+        },
+        order_index=order_index,
+    )
+
+
+def test_render_carries_parser_derived_legal_structure_to_later_paragraphs() -> None:
+    """Later leaf text inherits chapter, section, and article headings from OOXML bookmarks."""
+    scope = _scope(
+        _heading("Chương II", "chuong_2", 0),
+        _heading("HÀNH VI VI PHẠM", "chuong_2_name", 1),
+        _heading("Mục 1. VI PHẠM QUY TẮC GIAO THÔNG", "muc_1_2", 2),
+        _heading("Điều 6. Xử phạt người điều khiển xe ô tô", "dieu_6", 3),
+        _record("paragraph", {"text": "a) Không chấp hành hiệu lệnh."}, order_index=4),
+    )
+
+    units = render_source_scope(scope)
+
+    assert [(entry.level, entry.text) for entry in units[-1].structural_context] == [
+        ("chapter", "Chương II\nHÀNH VI VI PHẠM"),
+        ("section", "Mục 1. VI PHẠM QUY TẮC GIAO THÔNG"),
+        ("article", "Điều 6. Xử phạt người điều khiển xe ô tô"),
+    ]
+    assert units[-1].structural_context[0].source_refs == ("source/0", "source/1")
+
+
+def test_render_ignores_bookmarks_that_do_not_cover_a_complete_heading() -> None:
+    """Inline bookmarks never become structural ancestry for later content."""
+    record = _record(
+        "paragraph",
+        {
+            "text": "Dẫn chiếu Điều 6 của Nghị định này.",
+            "bookmarks": [{"name": "dieu_6", "start_offset": 9, "end_offset": 15}],
+        },
+    )
+
+    units = render_source_scope(_scope(record))
+
+    assert units[0].structural_context == ()
+
+
+def test_render_accepts_structural_bookmarks_with_only_trailing_whitespace_outside() -> None:
+    """DOCX heading bookmarks may exclude harmless trailing paragraph whitespace."""
+    text = "Điều 12. Xử phạt các hành vi vi phạm khác "
+    heading = _record(
+        "paragraph",
+        {
+            "text": text,
+            "bookmarks": [
+                {
+                    "name": "dieu_12",
+                    "start_offset": 0,
+                    "end_offset": len(text.rstrip()),
+                }
+            ],
+        },
+    )
+
+    units = render_source_scope(_scope(heading))
+
+    assert units[0].structural_context[0].text == text.rstrip()
+
+
 def test_render_paragraph_and_attached_images_without_losing_order_or_provenance() -> None:
     """A text record is followed by each independently searchable image caption."""
     record = _record(

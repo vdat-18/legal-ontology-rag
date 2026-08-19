@@ -9,7 +9,12 @@ from pathlib import Path
 
 from legal_rag.chunker.models import CHUNK_SCHEMA_VERSION, Chunk, ChunkFragment, SourceScope
 from legal_rag.chunker.reader import read_source_scopes
-from legal_rag.chunker.rendering import SPREADSHEET_RENDERING_VERSION, TABLE_RENDERING_VERSION, render_source_scope
+from legal_rag.chunker.rendering import (
+    SPREADSHEET_RENDERING_VERSION,
+    TABLE_RENDERING_VERSION,
+    render_source_scope,
+    render_structural_context_variants,
+)
 from legal_rag.chunker.splitting import split_units
 from legal_rag.embedding.tokenizer import EmbeddingTokenizer
 from legal_rag.parser.hashing import sha256_json
@@ -88,6 +93,7 @@ def pack_scope_fragments(
     chunks: list[Chunk] = []
     for chunk_index, group in enumerate(groups):
         text = "\n\n".join(fragment.text for fragment in group)
+        context_text = render_structural_context_variants(tuple(fragment.structural_context for fragment in group))
         content_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
         unit_ids = tuple(dict.fromkeys(unit_id for fragment in group for unit_id in fragment.unit_ids))
         source_refs = tuple(dict.fromkeys(source_ref for fragment in group for source_ref in fragment.source_refs))
@@ -123,7 +129,7 @@ def pack_scope_fragments(
                 sequence_start=group[0].sequence_start,
                 sequence_end=group[-1].sequence_end,
                 text=text,
-                context_text="",
+                context_text=context_text,
                 embedding_text=text,
                 text_token_count=token_count,
                 embedding_token_count=token_count,

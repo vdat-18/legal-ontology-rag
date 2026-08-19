@@ -9,6 +9,11 @@ class ChunkWindowEntry {
     Target là chunk chính đang được đọc để trích fact. Adjacent là chunk liền
     kề bị chunker cắt ra từ cùng một điều khoản.
   "#)
+  context_text string @description(#"
+    Ngữ cảnh cấu trúc do parser lấy từ metadata tài liệu. Có thể dùng để hiểu
+    Chương, Mục, Điều và phạm vi áp dụng, nhưng không phải source text để trích
+    evidence.quoted_span.
+  "#)
   text string
 }
 
@@ -73,6 +78,9 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     - Trả về đúng một kết quả cho mỗi target_chunk_id, giữ nguyên target_chunk_id.
       Mảng facts rỗng là kết quả hợp lệ.
     - Xử lý từng window độc lập. Không trộn nội dung hoặc evidence giữa các window.
+    - Nếu structural context có nhiều VARIANT thì chunk đi qua ranh giới cấu
+      trúc. Đối chiếu thứ tự và heading trong Source text để không gán nội dung
+      thuộc Điều trước sang Điều sau hoặc ngược lại.
     Ví dụ:
 
     Window ví dụ 1:
@@ -104,6 +112,11 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     === target_chunk_id={{ item.target_chunk_id }} ===
     {% for entry in item.window %}
     [{{ entry.role }}] chunk_id={{ entry.chunk_id }}
+    {% if entry.context_text %}
+    Structural context (không dùng làm quoted evidence):
+    {{ entry.context_text }}
+    {% endif %}
+    Source text:
     {{ entry.text }}
     ---
     {% endfor %}

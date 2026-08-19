@@ -22,8 +22,13 @@ def main() -> None:
     from dotenv import find_dotenv, load_dotenv
 
     from legal_rag.benchmark_synthesis.config import SynthesisSettings
-    from legal_rag.benchmark_synthesis.document_metadata import BamlDocumentMetadataClient, resolve_document_metadata
-    from legal_rag.benchmark_synthesis.writer import read_document_metadata, write_document_metadata
+    from legal_rag.benchmark_synthesis.document_metadata import BamlDocumentMetadataClient
+    from legal_rag.benchmark_synthesis.document_preparation import prepare_document_metadata
+    from legal_rag.benchmark_synthesis.stage_cache import (
+        build_document_metadata_fingerprint,
+        initialize_stage_cache,
+        stage_cache_path,
+    )
     from legal_rag.chunker.writer import read_chunks
     from legal_rag.settings import Settings
 
@@ -34,22 +39,28 @@ def main() -> None:
     settings = Settings.from_environment()
     synthesis_settings = SynthesisSettings.from_path(arguments.synthesis_config)
 
-    if arguments.metadata_output_path.exists():
-        record = read_document_metadata(arguments.metadata_output_path)
+    chunks = read_chunks(arguments.chunks_path)
+    fingerprint_path = stage_cache_path(arguments.metadata_output_path)
+    initialize_stage_cache(
+        fingerprint_path,
+        (arguments.metadata_output_path,),
+        build_document_metadata_fingerprint(
+            chunks,
+            synthesis_settings,
+            llm_base_url=settings.llm_base_url,
+            llm_model=settings.llm_model,
+        ),
+    )
+    was_complete = arguments.metadata_output_path.exists()
+    record = prepare_document_metadata(
+        chunks,
+        arguments.metadata_output_path,
+        lambda: BamlDocumentMetadataClient(settings, synthesis_settings),
+        synthesis_settings,
+    )
+    if was_complete:
         logger.info("Document metadata already complete for {}, skipping LLM call", record.document_number)
         return
-
-    chunks = read_chunks(arguments.chunks_path)
-    client = BamlDocumentMetadataClient(settings, synthesis_settings)
-    record = resolve_document_metadata(
-        chunks,
-        client,
-        opening_chunk_count=synthesis_settings.document_metadata_opening_chunk_count,
-        closing_chunk_count=synthesis_settings.document_metadata_closing_chunk_count,
-        max_retries=synthesis_settings.llm_max_retries,
-        retry_delay_seconds=synthesis_settings.llm_retry_delay_seconds,
-    )
-    write_document_metadata(arguments.metadata_output_path, record)
     logger.info(
         "Resolved document {} (valid_from={}, valid_to={}), wrote {}",
         record.document_number,

@@ -32,7 +32,7 @@ from legal_rag.ontology_population.models import (
 )
 from legal_rag.settings import Settings
 
-ONTOLOGY_POPULATION_PROMPT_VERSION = "0.1.0"
+ONTOLOGY_POPULATION_PROMPT_VERSION = "0.6.0"
 
 
 class OntologyPopulationClient(Protocol):
@@ -142,6 +142,12 @@ def build_population_record(
     chunk_text_by_id: Mapping[str, str],
 ) -> OntologyPopulationRecord:
     """Convert one typed model result into a stable reviewable record."""
+    if any(
+        consequence.kind.value == "RemedialMeasure" and consequence.responsible_role_label_vi is None
+        for consequence in raw.consequences
+    ):
+        msg = "RemedialMeasure requires a source-grounded responsible role"
+        raise ValueError(msg)
     evidence = bind_population_evidence(raw.evidence, chunk_text_by_id)
     conditions = tuple(
         PopulationCondition(

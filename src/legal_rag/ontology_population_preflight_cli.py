@@ -17,7 +17,9 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("metadata_path", type=Path, help="Document-metadata JSONL path")
     parser.add_argument("contract_path", type=Path, help="Versioned ontology population contract YAML path")
     parser.add_argument("report_output_path", type=Path, help="Machine-readable population-readiness JSON report")
-    parser.add_argument("--target-limit", type=int, help="Maximum accepted chunks selected for a pilot run")
+    target_group = parser.add_mutually_exclusive_group()
+    target_group.add_argument("--target-limit", type=int, help="Maximum accepted chunks selected for a pilot run")
+    target_group.add_argument("--target-ids-path", type=Path, help="Reviewed pilot target-selection JSON path")
     return parser
 
 
@@ -25,22 +27,33 @@ def main() -> None:
     """Persist structural readiness and fail after recording any blocking issue."""
     from legal_rag.io_utils import write_json_atomic
     from legal_rag.ontology_population.config import PopulationSettings
-    from legal_rag.ontology_population.preflight import load_population_inputs, run_population_preflight
+    from legal_rag.ontology_population.preflight import (
+        load_population_inputs,
+        load_population_target_selection,
+        run_population_preflight,
+    )
 
     arguments = _parser().parse_args()
     settings = PopulationSettings.from_path(arguments.contract_path)
     bundle = load_population_inputs(arguments.chunks_path, arguments.screening_path, arguments.metadata_path)
+    target_selection = (
+        load_population_target_selection(arguments.target_ids_path) if arguments.target_ids_path is not None else None
+    )
+    artifact_paths = [
+        ("chunks", arguments.chunks_path),
+        ("screening", arguments.screening_path),
+        ("metadata", arguments.metadata_path),
+        ("population_contract", arguments.contract_path),
+    ]
+    if arguments.target_ids_path is not None:
+        artifact_paths.append(("target_selection", arguments.target_ids_path))
     report = run_population_preflight(
         bundle,
         settings,
-        (
-            ("chunks", arguments.chunks_path),
-            ("screening", arguments.screening_path),
-            ("metadata", arguments.metadata_path),
-            ("population_contract", arguments.contract_path),
-        ),
+        tuple(artifact_paths),
         datetime.now(UTC),
         target_limit=arguments.target_limit,
+        target_selection=target_selection,
     )
     write_json_atomic(arguments.report_output_path, report.to_dict())
     logger.info(

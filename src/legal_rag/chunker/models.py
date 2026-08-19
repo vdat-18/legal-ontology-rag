@@ -12,6 +12,7 @@ CHUNK_SCHEMA_VERSION = "1.0.0"
 SourceKind = Literal["paragraph", "table", "image", "spreadsheet_row"]
 RecordScope = Literal["root", "attachment_child"]
 ChunkKind = Literal["paragraph_group", "table", "image", "spreadsheet_group"]
+StructuralLevel = Literal["chapter", "section", "article"]
 
 SUPPORTED_SOURCE_KINDS = frozenset(("paragraph", "table", "image", "spreadsheet_row"))
 
@@ -42,6 +43,15 @@ class SourceScope:
 
 
 @dataclass(frozen=True, slots=True)
+class StructuralContextEntry:
+    """One source-grounded legal heading active at a document position."""
+
+    level: StructuralLevel
+    text: str
+    source_refs: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class NormalizedUnit:
     """One searchable source unit before token-aware splitting."""
 
@@ -51,6 +61,7 @@ class NormalizedUnit:
     source_refs: tuple[str, ...]
     text: str
     source_payload: Mapping[str, Any]
+    structural_context: tuple[StructuralContextEntry, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,6 +75,7 @@ class ChunkFragment:
     unit_ids: tuple[str, ...]
     source_refs: tuple[str, ...]
     text: str
+    structural_context: tuple[StructuralContextEntry, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

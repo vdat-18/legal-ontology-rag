@@ -10,7 +10,8 @@ The versioned execution and semantic contract is `ontology/population_contract.y
 
 ```text
 chunk JSONL + screening + document metadata
-  -> bounded reading windows
+  -> parser-derived Chương/Mục/Điều context
+  -> target plus two preceding and one following chunk
   -> typed BAML extraction
   -> exact evidence binding
   -> reviewable population JSONL
@@ -38,11 +39,38 @@ Those relations require reviewed multi-document assembly. Similar wording and ch
 
 The LLM decides source-grounded semantic structure:
 
-- regulated conduct candidate;
+- one independently matchable regulated-conduct candidate per population record;
 - explicit subject kind, roles, and vehicle categories;
 - AND/OR/NOT condition structure;
 - consequence subtype and structured values;
 - exact supporting spans and provision path.
+
+Alternative acts that independently trigger the same consequence are separate records, with shared consequence and
+applicability repeated as needed. Lists of vehicles, objects, paraphrases, or inseparable components of one act remain
+together. Every conduct must have exact Target evidence; adjacent chunks may only complete its consequence or context.
+Provision paths use the canonical identifier-only form `Chương II > Mục 1 > Điều 6 > Khoản 5 > Điểm a`.
+
+An applicability exception is part of the condition tree, not merely text appended to the conduct label. The LLM
+represents the excluded situation or cited provision as an `Atomic` condition and negates it with `Not`, combining it
+with other qualifiers according to the source's AND/OR structure. When one provision is split into multiple atomic
+conducts, every affected record repeats the complete exception tree and exact exception evidence. The LLM decides
+whether exclusion wording is a rule-applicability exception or an intrinsic conduct/object qualifier from the meaning
+of the full provision; deterministic code does not classify it from keywords or punctuation.
+
+Before returning candidates, the LLM audits the complete Target in source order. A sanction heading in a preceding
+chunk remains mandatory when its conduct list continues into the Target. A consequence in an adjacent chunk also
+remains mandatory when it explicitly cites a Target provision, including additional sanctions and point deductions.
+The audit attaches every supported consequence to each affected atomic rule and permits an empty result only after all
+specific Target conducts have been considered. When exceptions have different local scopes within one listed point,
+the LLM separates the affected conducts so each record retains its own local exceptions plus any shared exception.
+
+Each population request contains the target chunk, at most two preceding chunks, and at most one following chunk in the
+same persisted scope. Every entry also carries `context_text` derived from full-paragraph OOXML structural bookmarks
+such as Chương, Mục, and Điều. This ancestry supplies headings that may be many chunks before the target. It is kept
+separate from source `text`: the LLM may use it for applicability and `provision_path`, but exact evidence binding never
+accepts a quote from structural context. Adjacent chunks remain bounded local context; the target remains the extraction
+anchor. When one existing chunk crosses an Article boundary, `context_text` retains each ordered ancestry as a separate
+`VARIANT`; the prompt requires matching those variants against the explicit heading transition in source text.
 
 Deterministic code owns:
 
@@ -62,10 +90,11 @@ Inputs:
 
 | Artifact | Purpose |
 | --- | --- |
-| Chunk JSONL | Stable chunk IDs, source hashes, text, and adjacency |
+| Chunk JSONL | Stable chunk IDs, source hashes, source text, parser-derived structural context, and adjacency |
 | Screening JSONL | Limits LLM calls to chunks already confirmed as penalty-content candidates |
 | Document metadata JSONL | Reviewed document number and fallback validity dates |
 | Population contract YAML | Versioned execution limits, namespace, scope, and semantic boundaries |
+| Target-selection JSON | Optional reviewed pilot membership; exact accepted chunk IDs without semantic scoring |
 
 Outputs:
 
@@ -81,6 +110,17 @@ inventing a date.
 
 ## Real-Data Preflight
 
+Regenerate chunks from parser output after adding or changing structural-context handling:
+
+```powershell
+uv run legal-chunk `
+  data/processed/groundtruth/168_2024_ND-CP_619502.source.jsonl `
+  data/processed/groundtruth/168_2024_ND-CP_619502.chunks.jsonl
+```
+
+Structural context does not become chunk evidence and does not alter source-text chunk identity. Existing screening and
+reviewed target IDs therefore remain compatible when chunk boundaries and source text are unchanged.
+
 Run the structural preflight before configuring or spending any LLM calls:
 
 ```powershell
@@ -90,13 +130,14 @@ uv run --extra dev legal-check-ontology-population `
   data/processed/groundtruth/168_2024_ND-CP_619502.document_metadata.jsonl `
   ontology/population_contract.yaml `
   data/ontology/preflight/168_2024_ND-CP_619502.json `
-  --target-limit 10
+  --target-ids-path ontology/pilots/168_2024_ND-CP_penalty_rules_v0.2.json
 ```
 
 The command does not call an LLM. It verifies unique chunk identity, one root document, exact screening coverage,
-persisted previous/next links, target availability, and document metadata. The report fingerprints every input, records
-the deterministic target IDs, estimates LLM batches, and emits a stable `pilot_run_id`. It does not reconsider the
-semantic screening verdict or make any legal classification.
+persisted previous/next links, target availability, and document metadata. A target-selection file must name the same
+document, contain unique known chunk IDs, and cannot bypass a rejected screening verdict. The report fingerprints every
+input, records the deterministic target IDs, estimates LLM batches, and emits a stable `pilot_run_id`. It does not
+reconsider the semantic screening verdict or make any legal classification.
 
 A missing document-level `valid_from` is a warning rather than an invented date. Population remains possible only when
 each extracted rule supplies its own source-specific validity; otherwise final SHACL validation rejects the graph.
@@ -112,23 +153,30 @@ uv run --extra dev legal-populate-ontology `
   data/ontology/population/document.jsonl `
   data/ontology/progress/document.jsonl `
   data/ontology/graphs/document.ttl `
-  --target-limit 10 `
+  --target-ids-path ontology/pilots/168_2024_ND-CP_penalty_rules_v0.2.json `
   --preflight-report-path data/ontology/preflight/document.run.json
 ```
 
 Required provider environment variables are `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, and `LLM_TIMEOUT_SECONDS`.
 
-Omit `--target-limit` for a full-document run. Target selection follows persisted chunk order and uses no lexical or
-semantic scoring. The command runs the same preflight before loading provider settings, writes each successful batch
-before marking its target chunks complete, and skips completed targets on rerun, including valid zero-rule results. It
-rejects duplicate checkpoints and any persisted record or progress row outside the current target selection, then
-rematerializes and revalidates the graph from all persisted records. Use separate output paths when starting a smaller
-pilot after a larger run.
+Use either `--target-ids-path` for a reviewed pilot or `--target-limit` for a simple document-order smoke test; omit both
+for a full-document run. Selection uses no lexical or semantic scoring. The command runs the same preflight before
+loading provider settings, writes each successful batch before marking its target chunks complete, and skips completed
+targets on rerun, including valid zero-rule results. It rejects duplicate checkpoints and any persisted record or
+progress row outside the current target selection, then rematerializes and revalidates the graph from all persisted
+records. Use separate output paths when changing target selection.
+
+Population creates `PenaltyRule` candidates only for specifically described prohibited conduct or duties tied to a
+source-grounded consequence. General sanction/remedy catalogs, multi-violation principles, enforcement authority,
+license handling, records, and other procedural duties return zero rules. A `RemedialMeasure` without a source-grounded
+responsible role fails before persistence rather than reaching final graph validation.
 
 ## Failure Boundaries
 
 - A missing or paraphrased evidence span fails exact evidence binding.
 - Missing condition references raise during RDF materialization.
+- Missing semantic exceptions must be found through LLM/pilot review; deterministic validation cannot infer them from
+  words such as `trừ` without becoming a prohibited rule-based legal classifier.
 - Missing required consequence values, targets, provenance, or validity fail SHACL.
 - The Turtle output is not written when SHACL validation fails.
 - Provider failures use the configured bounded retry count and explicit timeout.

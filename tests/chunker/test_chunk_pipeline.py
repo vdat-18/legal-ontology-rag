@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from legal_rag.chunker.models import ChunkFragment, ChunkKind, SourceScope
+from legal_rag.chunker.models import ChunkFragment, ChunkKind, SourceScope, StructuralContextEntry
 from legal_rag.chunker.pipeline import pack_scope_fragments
 from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.embedding.tokenizer import EmbeddingTokenizer
@@ -67,6 +67,7 @@ def _fragment(
     *,
     kind: ChunkKind = "paragraph_group",
     packing_key: tuple[str, ...] = (),
+    structural_context: tuple[StructuralContextEntry, ...] = (),
 ) -> ChunkFragment:
     """Build one bounded fragment with stable provenance."""
     return ChunkFragment(
@@ -77,6 +78,7 @@ def _fragment(
         unit_ids=(f"unit-{index}",),
         source_refs=(f"source/{index}",),
         text=text,
+        structural_context=structural_context,
     )
 
 
@@ -187,3 +189,55 @@ def test_boundary_configuration_changes_config_and_chunk_identity() -> None:
 
     assert smaller.chunker_config_sha256 != larger.chunker_config_sha256
     assert smaller.chunk_id != larger.chunk_id
+
+
+def test_chunks_render_single_or_boundary_spanning_structural_context() -> None:
+    """A packed chunk retains every article ancestry when it crosses a boundary."""
+    article_six = (
+        StructuralContextEntry(
+            level="article",
+            text="Điều 6. Xử phạt người điều khiển xe ô tô",
+            source_refs=("source/article-6",),
+        ),
+    )
+    shared = _pack(
+        _scope(),
+        (
+            _fragment(0, "a)", structural_context=article_six),
+            _fragment(1, "b)", structural_context=article_six),
+        ),
+    )[0]
+    article_seven = (
+        StructuralContextEntry(
+            level="article",
+            text="Điều 7. Xử phạt người điều khiển xe mô tô",
+            source_refs=("source/article-7",),
+        ),
+    )
+    mixed = _pack(
+        _scope(),
+        (
+            _fragment(0, "d)", structural_context=article_six),
+            _fragment(1, "Điều 7", structural_context=article_seven),
+        ),
+    )[0]
+
+    assert shared.context_text == "\n".join(
+        (
+            "[LEGAL_STRUCTURE 1.0.0]",
+            "Điều 6. Xử phạt người điều khiển xe ô tô",
+            "[/LEGAL_STRUCTURE]",
+        )
+    )
+    assert mixed.context_text == "\n".join(
+        (
+            "[LEGAL_STRUCTURE_VARIANTS 1.0.0]",
+            "[VARIANT 1]",
+            "Điều 6. Xử phạt người điều khiển xe ô tô",
+            "[/VARIANT]",
+            "[VARIANT 2]",
+            "Điều 7. Xử phạt người điều khiển xe mô tô",
+            "[/VARIANT]",
+            "[/LEGAL_STRUCTURE_VARIANTS]",
+        )
+    )

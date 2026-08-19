@@ -102,6 +102,7 @@ def test_cli_writes_reviewable_records_progress_and_validated_graph(
     progress_path = tmp_path / "progress.jsonl"
     graph_path = tmp_path / "population.ttl"
     preflight_path = tmp_path / "preflight.json"
+    target_selection_path = tmp_path / "target-selection.json"
     dotenv_path = tmp_path / ".env"
     write_chunks(chunks_path, (legal_chunk,))
     write_chunk_screening(
@@ -109,6 +110,16 @@ def test_cli_writes_reviewable_records_progress_and_validated_graph(
         (ChunkScreeningRecord(chunk_id=legal_chunk.chunk_id, has_penalty_content=True, reason="Penalty rule."),),
     )
     write_document_metadata(metadata_path, document_metadata)
+    target_selection_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "0.1.0",
+                "document_number": document_metadata.document_number,
+                "chunk_ids": [legal_chunk.chunk_id],
+            }
+        ),
+        encoding="utf-8",
+    )
     dotenv_path.write_text(
         "\n".join(
             (
@@ -140,6 +151,8 @@ def test_cli_writes_reviewable_records_progress_and_validated_graph(
             str(records_path),
             str(progress_path),
             str(graph_path),
+            "--target-ids-path",
+            str(target_selection_path),
             "--preflight-report-path",
             str(preflight_path),
         ],
@@ -156,6 +169,13 @@ def test_cli_writes_reviewable_records_progress_and_validated_graph(
     assert [record.chunk_id for record in read_population_progress(progress_path)] == [legal_chunk.chunk_id]
     assert len(Graph().parse(graph_path, format="turtle")) > 0
     assert json.loads(preflight_path.read_text(encoding="utf-8"))["overall_status"] == "ready"
+    assert {item["artifact_type"] for item in json.loads(preflight_path.read_text(encoding="utf-8"))["artifacts"]} == {
+        "chunks",
+        "screening",
+        "metadata",
+        "population_contract",
+        "target_selection",
+    }
     assert _CliPopulationClient.calls == 1
     assert _CliPopulationClient.settings == Settings(
         llm_base_url="https://dotenv.test/v1",

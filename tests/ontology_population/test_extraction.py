@@ -22,7 +22,7 @@ from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataReco
 from legal_rag.benchmark_synthesis.llm_execution import LlmTaskExhaustedError
 from legal_rag.chunker.models import Chunk
 from legal_rag.ontology_population.config import PopulationSettings
-from legal_rag.ontology_population.extraction import extract_population_from_document
+from legal_rag.ontology_population.extraction import build_population_record, extract_population_from_document
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -117,3 +117,44 @@ def test_extraction_rejects_non_exact_model_evidence(
             settings,
         )
     assert "not exact source text" in str(error.value.__cause__)
+
+
+def test_population_record_rejects_remedial_measure_without_responsible_role(
+    legal_chunk: Chunk,
+    document_metadata: DocumentMetadataRecord,
+) -> None:
+    """An incomplete remedial measure fails before persisted RDF validation."""
+    evidence = OntologyEvidenceEntry(chunk_id=legal_chunk.chunk_id, quoted_span=legal_chunk.text)
+    raw = OntologyRuleEntry(
+        conduct_label_vi="Vi phạm hành chính nói chung",
+        subject_kind=None,
+        role_labels_vi=[],
+        vehicle_category_labels_vi=[],
+        condition_root_id=None,
+        conditions=[],
+        consequences=[
+            OntologyConsequenceEntry(
+                consequence_id="remedy",
+                kind=OntologyConsequenceKind.RemedialMeasure,
+                minimum_amount=None,
+                maximum_amount=None,
+                currency=None,
+                point_value=None,
+                target_label_vi="tình trạng ban đầu",
+                responsible_role_label_vi=None,
+                evidence=[evidence],
+            )
+        ],
+        valid_from=None,
+        valid_to=None,
+        provision_path="Điều 3 khoản 3 điểm a",
+        evidence=[evidence],
+    )
+
+    with pytest.raises(ValueError, match="requires a source-grounded responsible role"):
+        build_population_record(
+            raw,
+            legal_chunk.chunk_id,
+            document_metadata,
+            {legal_chunk.chunk_id: legal_chunk.text},
+        )

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
@@ -21,6 +22,7 @@ from legal_rag.ontology_population.models import OntologyPopulationRecord, Popul
 from legal_rag.parser.hashing import sha256_json
 
 POPULATION_PREFLIGHT_SCHEMA_VERSION = "0.1.0"
+POPULATION_TARGET_SELECTION_SCHEMA_VERSION = "0.1.0"
 
 CheckStatus = Literal["passed", "failed", "warning"]
 
@@ -32,6 +34,14 @@ class PopulationInputBundle:
     chunks: tuple[Chunk, ...]
     screening: tuple[ChunkScreeningRecord, ...]
     metadata: DocumentMetadataRecord
+
+
+@dataclass(frozen=True, slots=True)
+class PopulationTargetSelection:
+    """Reviewed chunk IDs selected for one population pilot."""
+
+    document_number: str
+    chunk_ids: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,13 +119,50 @@ def load_population_inputs(chunks_path: Path, screening_path: Path, metadata_pat
     )
 
 
-def select_population_targets(bundle: PopulationInputBundle, target_limit: int | None) -> tuple[Chunk, ...]:
+def load_population_target_selection(path: Path) -> PopulationTargetSelection:
+    """Load one versioned reviewed population-target selection."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload["schema_version"] != POPULATION_TARGET_SELECTION_SCHEMA_VERSION:
+        msg = f"Unsupported population target selection schema: {payload['schema_version']}"
+        raise ValueError(msg)
+    return PopulationTargetSelection(
+        document_number=payload["document_number"],
+        chunk_ids=tuple(payload["chunk_ids"]),
+    )
+
+
+def select_population_targets(
+    bundle: PopulationInputBundle,
+    target_limit: int | None,
+    target_selection: PopulationTargetSelection | None = None,
+) -> tuple[Chunk, ...]:
     """Select accepted targets in stable document order for a full or bounded pilot run."""
     if target_limit is not None and target_limit < 1:
         msg = "Population target limit must be at least one"
         raise ValueError(msg)
     accepted_ids = {record.chunk_id for record in bundle.screening if record.has_penalty_content}
     accepted_chunks = tuple(chunk for chunk in bundle.chunks if chunk.chunk_id in accepted_ids)
+    if target_selection is not None:
+        if target_limit is not None:
+            msg = "Population target limit and target selection are mutually exclusive"
+            raise ValueError(msg)
+        if target_selection.document_number != bundle.metadata.document_number:
+            msg = "Population target selection document number does not match metadata"
+            raise ValueError(msg)
+        duplicate_ids = _duplicates(target_selection.chunk_ids)
+        if duplicate_ids:
+            msg = f"Duplicate population target IDs: {', '.join(duplicate_ids)}"
+            raise ValueError(msg)
+        chunks_by_id = {chunk.chunk_id: chunk for chunk in bundle.chunks}
+        unknown_ids = set(target_selection.chunk_ids) - set(chunks_by_id)
+        rejected_ids = set(target_selection.chunk_ids) - accepted_ids
+        if unknown_ids or rejected_ids:
+            msg = (
+                f"Invalid population target selection: {len(unknown_ids)} unknown IDs, "
+                f"{len(rejected_ids - unknown_ids)} screening-rejected IDs"
+            )
+            raise ValueError(msg)
+        return tuple(chunks_by_id[chunk_id] for chunk_id in target_selection.chunk_ids)
     return accepted_chunks if target_limit is None else accepted_chunks[:target_limit]
 
 
@@ -151,9 +198,10 @@ def run_population_preflight(
     checked_at: datetime,
     *,
     target_limit: int | None = None,
+    target_selection: PopulationTargetSelection | None = None,
 ) -> PopulationPreflightReport:
     """Assess structural readiness without making semantic or external-service decisions."""
-    selected_targets = select_population_targets(bundle, target_limit)
+    selected_targets = select_population_targets(bundle, target_limit, target_selection)
     artifacts = tuple(_fingerprint(artifact_type, path) for artifact_type, path in artifact_paths)
     checks = (
         _chunk_inventory_check(bundle.chunks),

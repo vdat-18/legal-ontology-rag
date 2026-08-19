@@ -6,10 +6,17 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from legal_rag.chunker.models import NormalizedUnit, SourceRecord, SourceScope
+from legal_rag.chunker.models import NormalizedUnit, SourceRecord, SourceScope, StructuralContextEntry, StructuralLevel
 
 TABLE_RENDERING_VERSION = "1.0.0"
 SPREADSHEET_RENDERING_VERSION = "1.0.0"
+STRUCTURAL_CONTEXT_RENDERING_VERSION = "1.0.0"
+
+_STRUCTURAL_BOOKMARK_PREFIXES: tuple[tuple[str, StructuralLevel], ...] = (
+    ("chuong_", "chapter"),
+    ("muc_", "section"),
+    ("dieu_", "article"),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,10 +27,75 @@ class RenderedContent:
     source_refs: tuple[str, ...]
 
 
+@dataclass(slots=True)
+class _StructuralContextState:
+    """Track active legal headings from parser-provided OOXML bookmarks."""
+
+    chapter: StructuralContextEntry | None = None
+    chapter_key: str | None = None
+    section: StructuralContextEntry | None = None
+    section_key: str | None = None
+    article: StructuralContextEntry | None = None
+    article_key: str | None = None
+
+    def update(self, record: SourceRecord) -> None:
+        """Apply a structural heading carried by one source record."""
+        marker = _structural_marker(record)
+        if marker is None:
+            return
+        level, key, is_title = marker
+        if is_title:
+            self._append_title(level, key, record)
+            return
+
+        entry = StructuralContextEntry(
+            level=level, text=record.payload["text"].strip(), source_refs=(record.source_ref,)
+        )
+        if level == "chapter":
+            self.chapter = entry
+            self.chapter_key = key
+            self.section = None
+            self.section_key = None
+            self.article = None
+            self.article_key = None
+        elif level == "section":
+            self.section = entry
+            self.section_key = key
+            self.article = None
+            self.article_key = None
+        else:
+            self.article = entry
+            self.article_key = key
+
+    def entries(self) -> tuple[StructuralContextEntry, ...]:
+        """Return active headings in document hierarchy order."""
+        return tuple(entry for entry in (self.chapter, self.section, self.article) if entry is not None)
+
+    def _append_title(self, level: StructuralLevel, key: str, record: SourceRecord) -> None:
+        """Append a separately bookmarked heading title to its active marker."""
+        attribute = level
+        key_attribute = f"{level}_key"
+        entry = getattr(self, attribute)
+        if entry is None or getattr(self, key_attribute) != key:
+            return
+        setattr(
+            self,
+            attribute,
+            StructuralContextEntry(
+                level=level,
+                text=f"{entry.text}\n{record.payload['text'].strip()}",
+                source_refs=(*entry.source_refs, record.source_ref),
+            ),
+        )
+
+
 def render_source_scope(scope: SourceScope) -> tuple[NormalizedUnit, ...]:
     """Render one ordered source scope into searchable units."""
     units: list[NormalizedUnit] = []
+    structural_context = _StructuralContextState()
     for record in scope.records:
+        structural_context.update(record)
+        context_entries = structural_context.entries()
         if record.kind == "paragraph":
             text = record.payload["text"]
             if text.strip():
@@ -35,6 +107,7 @@ def render_source_scope(scope: SourceScope) -> tuple[NormalizedUnit, ...]:
                         source_refs=(record.source_ref,),
                         text=text,
                         source_payload=record.payload,
+                        structural_context=context_entries,
                     )
                 )
         elif record.kind == "table":
@@ -48,6 +121,7 @@ def render_source_scope(scope: SourceScope) -> tuple[NormalizedUnit, ...]:
                         source_refs=table.source_refs,
                         text=table.text,
                         source_payload=record.payload,
+                        structural_context=context_entries,
                     )
                 )
         elif record.kind == "spreadsheet_row":
@@ -66,14 +140,64 @@ def render_source_scope(scope: SourceScope) -> tuple[NormalizedUnit, ...]:
                         source_refs=spreadsheet_row.source_refs,
                         text=spreadsheet_row.text,
                         source_payload=record.payload,
+                        structural_context=context_entries,
                     )
                 )
         elif record.kind != "image":
             msg = f"Unsupported normalized source kind: {record.kind}"
             raise ValueError(msg)
 
-        units.extend(_render_images(record))
+        units.extend(_render_images(record, context_entries))
     return tuple(units)
+
+
+def render_structural_context(entries: Sequence[StructuralContextEntry]) -> str:
+    """Render source-grounded heading ancestry separately from evidence text."""
+    if not entries:
+        return ""
+    lines = (entry.text for entry in entries)
+    return "\n".join((f"[LEGAL_STRUCTURE {STRUCTURAL_CONTEXT_RENDERING_VERSION}]", *lines, "[/LEGAL_STRUCTURE]"))
+
+
+def render_structural_context_variants(
+    contexts: Sequence[tuple[StructuralContextEntry, ...]],
+) -> str:
+    """Render every distinct ancestry when one chunk crosses a structural boundary."""
+    unique_contexts = tuple(dict.fromkeys(context for context in contexts if context))
+    article_contexts = tuple(
+        context for context in unique_contexts if any(entry.level == "article" for entry in context)
+    )
+    selected_contexts = article_contexts or unique_contexts
+    if len(selected_contexts) < 2:
+        return render_structural_context(selected_contexts[0]) if selected_contexts else ""
+
+    variants = []
+    for index, context in enumerate(selected_contexts, start=1):
+        lines = (entry.text for entry in context)
+        variants.append("\n".join((f"[VARIANT {index}]", *lines, "[/VARIANT]")))
+    return "\n".join(
+        (
+            f"[LEGAL_STRUCTURE_VARIANTS {STRUCTURAL_CONTEXT_RENDERING_VERSION}]",
+            *variants,
+            "[/LEGAL_STRUCTURE_VARIANTS]",
+        )
+    )
+
+
+def _structural_marker(record: SourceRecord) -> tuple[StructuralLevel, str, bool] | None:
+    """Read one full-paragraph structural marker from OOXML bookmark metadata."""
+    if record.kind != "paragraph":
+        return None
+    text = record.payload["text"]
+    for bookmark in record.payload.get("bookmarks", ()):
+        if text[: bookmark["start_offset"]].strip() or text[bookmark["end_offset"] :].strip():
+            continue
+        name = bookmark["name"]
+        for prefix, level in _STRUCTURAL_BOOKMARK_PREFIXES:
+            if name.startswith(prefix):
+                is_title = name.endswith("_name")
+                return level, name.removesuffix("_name"), is_title
+    return None
 
 
 def render_table(source_ref: str, rows: Sequence[Mapping[str, Any]]) -> RenderedContent | None:
@@ -142,7 +266,9 @@ def render_spreadsheet_row(
     return RenderedContent("\n".join(lines), (source_ref,)) if has_content else None
 
 
-def _render_images(record: SourceRecord) -> tuple[NormalizedUnit, ...]:
+def _render_images(
+    record: SourceRecord, structural_context: tuple[StructuralContextEntry, ...]
+) -> tuple[NormalizedUnit, ...]:
     """Render every captioned image occurrence attached to one parser record."""
     units: list[NormalizedUnit] = []
     for image in record.payload.get("images", ()):
@@ -156,6 +282,7 @@ def _render_images(record: SourceRecord) -> tuple[NormalizedUnit, ...]:
                     source_refs=tuple(dict.fromkeys((image["source_ref"], image["parent_source_ref"]))),
                     text=description,
                     source_payload=image,
+                    structural_context=structural_context,
                 )
             )
     return tuple(units)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Callable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import date
 from functools import partial
@@ -34,7 +35,7 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
 EXTRACTION_PROGRESS_SCHEMA_VERSION = "1.0.0"
-FACT_EXTRACTION_PROMPT_VERSION = "1.3.0"
+FACT_EXTRACTION_PROMPT_VERSION = "1.4.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,7 +68,12 @@ def _walk_adjacent_chunks(
         chunk = chunks_by_id.get(chunk_id)
         if chunk is None:
             return
-        entries[chunk_id] = ChunkWindowEntry(chunk_id=chunk_id, role=ChunkWindowRole.Adjacent, text=chunk.text)
+        entries[chunk_id] = ChunkWindowEntry(
+            chunk_id=chunk_id,
+            role=ChunkWindowRole.Adjacent,
+            context_text=chunk.context_text,
+            text=chunk.text,
+        )
         chunk_id = next_chunk_id(chunk)
 
 
@@ -80,7 +86,12 @@ def build_reading_window(
 ) -> tuple[ChunkWindowEntry, ...]:
     """Assemble one reading window around a target chunk."""
     entries: dict[str, ChunkWindowEntry] = {
-        target.chunk_id: ChunkWindowEntry(chunk_id=target.chunk_id, role=ChunkWindowRole.Target, text=target.text)
+        target.chunk_id: ChunkWindowEntry(
+            chunk_id=target.chunk_id,
+            role=ChunkWindowRole.Target,
+            context_text=target.context_text,
+            text=target.text,
+        )
     }
     _walk_adjacent_chunks(
         target.previous_chunk_id,
@@ -202,48 +213,63 @@ def extract_facts_from_document(
     max_preceding_chunks: int,
     max_following_chunks: int,
     batch_size: int,
+    max_concurrency: int = 1,
     max_retries: int,
     retry_delay_seconds: float,
     on_batch_processed: Callable[[Sequence[tuple[str, tuple[LegalFact, ...]]]], None] | None = None,
 ) -> tuple[LegalFact, ...]:
-    """Extract legal facts in batches, persisting each successful batch before continuing."""
+    """Extract facts in bounded concurrent batches and checkpoint each successful batch."""
     chunks_by_id = {chunk.chunk_id: chunk for chunk in document_chunks}
 
-    facts: list[LegalFact] = []
+    batch_results_by_index: dict[int, tuple[tuple[str, tuple[LegalFact, ...]], ...]] = {}
     failures: list[LlmTaskFailure] = []
-    for batch_start in range(0, len(target_chunks), batch_size):
-        batch = target_chunks[batch_start : batch_start + batch_size]
-        items = tuple(
-            FactExtractionBatchItem(
-                target_chunk_id=target.chunk_id,
-                window=list(
-                    build_reading_window(
-                        target,
-                        chunks_by_id,
-                        max_preceding_chunks=max_preceding_chunks,
-                        max_following_chunks=max_following_chunks,
-                    )
-                ),
+    batches = [
+        target_chunks[batch_start : batch_start + batch_size]
+        for batch_start in range(0, len(target_chunks), batch_size)
+    ]
+    with ThreadPoolExecutor(max_workers=max_concurrency) as executor:
+        futures = {}
+        for batch_index, batch in enumerate(batches):
+            items = tuple(
+                FactExtractionBatchItem(
+                    target_chunk_id=target.chunk_id,
+                    window=list(
+                        build_reading_window(
+                            target,
+                            chunks_by_id,
+                            max_preceding_chunks=max_preceding_chunks,
+                            max_following_chunks=max_following_chunks,
+                        )
+                    ),
+                )
+                for target in batch
             )
-            for target in batch
-        )
-        task_key = _batch_task_key(items)
-
-        try:
-            batch_results = execute_llm_task(
+            task_key = _batch_task_key(items)
+            future = executor.submit(
+                execute_llm_task,
                 task_key,
                 partial(_extract_batch_facts, client, items, metadata),
                 max_retries=max_retries,
                 retry_delay_seconds=retry_delay_seconds,
             )
-        except LlmTaskExhaustedError as error:
-            failures.append(LlmTaskFailure(task_key=task_key, error=str(error)))
-        else:
-            for _, target_facts in batch_results:
-                facts.extend(target_facts)
+            futures[future] = (batch_index, task_key)
+
+        for future in as_completed(futures):
+            batch_index, task_key = futures[future]
+            try:
+                batch_results = future.result()
+            except LlmTaskExhaustedError as error:
+                failures.append(LlmTaskFailure(task_key=task_key, error=str(error)))
+                continue
+            batch_results_by_index[batch_index] = batch_results
             if on_batch_processed is not None:
                 on_batch_processed(batch_results)
     if failures:
         incomplete_error = IncompleteLlmTasksError.for_stage("fact extraction", failures)
         raise incomplete_error
-    return tuple(facts)
+    return tuple(
+        fact
+        for batch_index in range(len(batches))
+        for _, target_facts in batch_results_by_index[batch_index]
+        for fact in target_facts
+    )

@@ -135,7 +135,7 @@ Populate the ontology from screened legal-document chunks before any GraphRAG in
 ```powershell
 uv run --extra dev legal-check-ontology-population `
   <chunks.jsonl> <screening.jsonl> <metadata.jsonl> ontology/population_contract.yaml `
-  <preflight-report.json> --target-limit 10
+  <preflight-report.json> --target-ids-path <reviewed-target-selection.json>
 ```
 
 This offline preflight fingerprints the inputs, validates their structural consistency, and records the exact pilot
@@ -150,12 +150,13 @@ uv run --extra dev legal-populate-ontology `
   data/ontology/population/document.jsonl `
   data/ontology/progress/document.jsonl `
   data/ontology/graphs/document.ttl `
-  --target-limit 10 `
+  --target-ids-path ontology/pilots/168_2024_ND-CP_penalty_rules_v0.2.json `
   --preflight-report-path data/ontology/preflight/document.run.json
 ```
 
-Omit `--target-limit` for the full document. The command repeats preflight before loading provider settings, persists
-reviewable typed records, and writes the Turtle graph only after SHACL conformance. See
+Omit both pilot-selection options for the full document. The command repeats preflight before loading provider settings,
+persists reviewable typed records, excludes general catalogs and procedural duties from `PenaltyRule`, and writes the
+Turtle graph only after SHACL conformance. See
 `docs/ontology_population_pipeline.md` for extraction boundaries, evidence requirements, resume behavior, and semantic
 limitations.
 

@@ -8,7 +8,7 @@ from math import isfinite
 from pathlib import Path
 from typing import Any
 
-SYNTHESIS_CONFIG_SCHEMA_VERSION = "1.5.0"
+SYNTHESIS_CONFIG_SCHEMA_VERSION = "1.6.0"
 _MAX_LLM_TEMPERATURE = 2.0
 
 
@@ -99,9 +99,11 @@ class SynthesisSettings:
     bundle_overlap_threshold: float
     max_quality_retries: int
     chunk_screening_batch_size: int
+    chunk_screening_max_concurrency: int
     document_metadata_opening_chunk_count: int
     document_metadata_closing_chunk_count: int
     fact_extraction_batch_size: int
+    fact_extraction_max_concurrency: int
     fact_extraction_max_preceding_chunks: int
     fact_extraction_max_following_chunks: int
     evidence_relation_batch_size: int
@@ -139,9 +141,11 @@ class SynthesisSettings:
             "vncorenlp_max_heap_megabytes": self.vncorenlp_max_heap_megabytes,
             "vncorenlp_timeout_seconds": self.vncorenlp_timeout_seconds,
             "chunk_screening_batch_size": self.chunk_screening_batch_size,
+            "chunk_screening_max_concurrency": self.chunk_screening_max_concurrency,
             "document_metadata_opening_chunk_count": self.document_metadata_opening_chunk_count,
             "document_metadata_closing_chunk_count": self.document_metadata_closing_chunk_count,
             "fact_extraction_batch_size": self.fact_extraction_batch_size,
+            "fact_extraction_max_concurrency": self.fact_extraction_max_concurrency,
             "evidence_relation_batch_size": self.evidence_relation_batch_size,
             "evidence_relation_max_concurrency": self.evidence_relation_max_concurrency,
             "candidate_generation_batch_size": self.candidate_generation_batch_size,
@@ -192,9 +196,11 @@ class SynthesisSettings:
             bundle_overlap_threshold=quality["bundle_overlap_threshold"],
             max_quality_retries=quality["max_retries"],
             chunk_screening_batch_size=screening["batch_size"],
+            chunk_screening_max_concurrency=screening["max_concurrency"],
             document_metadata_opening_chunk_count=metadata["opening_chunk_count"],
             document_metadata_closing_chunk_count=metadata["closing_chunk_count"],
             fact_extraction_batch_size=extraction["batch_size"],
+            fact_extraction_max_concurrency=extraction["max_concurrency"],
             fact_extraction_max_preceding_chunks=extraction["max_preceding_chunks"],
             fact_extraction_max_following_chunks=extraction["max_following_chunks"],
             evidence_relation_batch_size=relation["batch_size"],

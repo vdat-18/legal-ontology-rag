@@ -310,6 +310,7 @@ def _fragment(unit: NormalizedUnit, content: RenderedContent) -> ChunkFragment:
         unit_ids=unit.unit_ids,
         source_refs=content.source_refs,
         text=content.text,
+        structural_context=unit.structural_context,
     )
 
 

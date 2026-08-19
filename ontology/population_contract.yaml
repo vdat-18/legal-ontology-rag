@@ -1,6 +1,6 @@
 schema_version: "0.1.0"
 artifact_id: road-traffic-ontology-population-contract
-artifact_version: "0.1.0"
+artifact_version: "0.8.0"
 status: pilot_internal_validation
 ontology_version: "0.1.0"
 instance_namespace: https://w3id.org/legal-ontology-rag/data/
@@ -10,8 +10,9 @@ input:
   document_metadata_schema_version: "1.0.0"
   requires_chunk_screening: true
   reading_window:
-    max_preceding_chunks: 1
+    max_preceding_chunks: 2
     max_following_chunks: 1
+    includes_structural_context: true
 output:
   record_schema_version: "0.1.0"
   rdf_serialization: turtle
@@ -23,6 +24,33 @@ extraction:
   max_retries: 2
   retry_delay_seconds: 120
   max_response_bytes: 1048576
+extraction_policy:
+  conduct_granularity: atomic_independently_matchable
+  requires_target_conduct_evidence: true
+  target_coverage:
+    exhaustive_specific_conducts: true
+    internal_llm_audit: true
+    empty_only_after_complete_audit: true
+  consequence_assembly:
+    classification_owner: llm
+    include_preceding_structural_heading: true
+    include_adjacent_explicit_references: true
+    attach_all_supported_consequences: true
+  applicability_exceptions:
+    classification_owner: llm
+    representation: condition_tree
+    repeat_for_each_atomic_conduct: true
+    separate_from_conduct_label: true
+    preserve_local_scope: true
+  provision_path:
+    ordered_levels:
+      - Chương
+      - Mục
+      - Điều
+      - Khoản
+      - Điểm
+    separator: " > "
+    include_heading_titles: false
 population_scope:
   included:
     - source_provenance
@@ -43,6 +71,16 @@ validation:
   advanced_shacl: true
 semantic_boundaries:
   - LLM output is a source-grounded candidate structure, not a final legal applicability decision.
+  - General sanction catalogs, procedural duties, authority rules, and abstract violation references are not populated as PenaltyRule instances.
   - Every material component must retain exact chunk evidence and an authoritative provision path.
+  - Parser-derived structural context may establish provision ancestry and applicability but is never quoted evidence.
+  - Each population record represents one independently matchable regulated conduct, not an aggregate label for alternative acts.
+  - The LLM exhaustively audits every specific Target conduct before returning candidates or an empty result.
+  - Consequences in adjacent chunks are mandatory when they directly head or explicitly reference a Target conduct's provision.
+  - Every source-grounded applicability exception is represented in the condition tree and repeated for each affected atomic conduct.
+  - Locally scoped exceptions remain attached only to the affected atomic conduct while shared exceptions are repeated across all affected records.
+  - The LLM distinguishes applicability exceptions from intrinsic conduct or object qualifiers; deterministic code does not classify them from wording.
+  - Every populated conduct must have exact evidence in the target chunk; adjacent chunks may only complete its context and consequence.
+  - Provision paths use the canonical ordered level format without heading titles.
   - Missing validity end and missing consequence values remain unknown.
   - Candidate concepts are scoped to a populated rule until a separate semantic consolidation review approves reuse.

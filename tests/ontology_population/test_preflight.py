@@ -19,8 +19,12 @@ from legal_rag.chunker.writer import write_chunks
 from legal_rag.ontology_population.config import PopulationSettings
 from legal_rag.ontology_population.models import OntologyPopulationRecord, PopulationProgressRecord
 from legal_rag.ontology_population.preflight import (
+    PopulationInputBundle,
+    PopulationTargetSelection,
     load_population_inputs,
+    load_population_target_selection,
     run_population_preflight,
+    select_population_targets,
     validate_population_resume_state,
 )
 
@@ -156,6 +160,83 @@ def test_preflight_selects_a_bounded_pilot_in_document_order(
     assert report.accepted_chunk_count == 2
     assert report.selected_target_ids == (first.chunk_id,)
     assert report.estimated_llm_batches == 1
+
+
+def test_reviewed_target_selection_controls_pilot_membership(
+    tmp_path: Path, legal_chunk: Chunk, document_metadata: DocumentMetadataRecord
+) -> None:
+    """A versioned reviewed selection chooses exact accepted chunks in declared order."""
+    first = replace(legal_chunk, next_chunk_id="chunk-2")
+    second = replace(
+        legal_chunk,
+        chunk_id="chunk-2",
+        content_sha256="content-sha-2",
+        chunk_index=1,
+        sequence_start=1,
+        sequence_end=1,
+        previous_chunk_id=first.chunk_id,
+    )
+    screening = (
+        ChunkScreeningRecord(first.chunk_id, True, "Confirmed by model."),
+        ChunkScreeningRecord(second.chunk_id, True, "Confirmed by model."),
+    )
+    chunks_path, screening_path, metadata_path = _write_inputs(tmp_path, (first, second), screening, document_metadata)
+    selection_path = tmp_path / "selection.json"
+    selection_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "0.1.0",
+                "document_number": document_metadata.document_number,
+                "chunk_ids": [second.chunk_id, first.chunk_id],
+            }
+        ),
+        encoding="utf-8",
+    )
+    bundle = load_population_inputs(chunks_path, screening_path, metadata_path)
+    selection = load_population_target_selection(selection_path)
+
+    selected = select_population_targets(bundle, None, selection)
+    report = run_population_preflight(
+        bundle,
+        PopulationSettings.from_path(CONTRACT_PATH),
+        (
+            ("chunks", chunks_path),
+            ("screening", screening_path),
+            ("metadata", metadata_path),
+            ("population_contract", CONTRACT_PATH),
+            ("target_selection", selection_path),
+        ),
+        CHECKED_AT,
+        target_selection=selection,
+    )
+
+    assert tuple(chunk.chunk_id for chunk in selected) == (second.chunk_id, first.chunk_id)
+    assert report.selected_target_ids == (second.chunk_id, first.chunk_id)
+    assert {artifact.artifact_type for artifact in report.artifacts} == {
+        "chunks",
+        "screening",
+        "metadata",
+        "population_contract",
+        "target_selection",
+    }
+
+
+def test_reviewed_target_selection_rejects_screening_rejected_chunk(
+    legal_chunk: Chunk, document_metadata: DocumentMetadataRecord
+) -> None:
+    """A pilot manifest cannot bypass the upstream typed screening verdict."""
+    bundle = PopulationInputBundle(
+        chunks=(legal_chunk,),
+        screening=(ChunkScreeningRecord(legal_chunk.chunk_id, False, "Not a candidate."),),
+        metadata=document_metadata,
+    )
+    selection = PopulationTargetSelection(
+        document_number=document_metadata.document_number,
+        chunk_ids=(legal_chunk.chunk_id,),
+    )
+
+    with pytest.raises(ValueError, match="screening-rejected IDs"):
+        select_population_targets(bundle, None, selection)
 
 
 def test_preflight_cli_persists_blocked_report_before_failing(

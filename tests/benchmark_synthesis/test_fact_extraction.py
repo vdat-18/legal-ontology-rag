@@ -44,6 +44,7 @@ def _chunk(
     *,
     previous_chunk_id: str | None = None,
     next_chunk_id: str | None = None,
+    context_text: str = "",
 ) -> Chunk:
     """Build one minimal chunk for fact-extraction tests."""
     return Chunk(
@@ -64,7 +65,7 @@ def _chunk(
         sequence_start=0,
         sequence_end=0,
         text=text,
-        context_text="",
+        context_text=context_text,
         embedding_text=text,
         text_token_count=5,
         embedding_token_count=5,
@@ -88,6 +89,25 @@ def test_build_reading_window_includes_target_preceding_and_following_chunks() -
         "prev1": ChunkWindowRole.Adjacent,
         "next": ChunkWindowRole.Adjacent,
     }
+
+
+def test_build_reading_window_keeps_structural_context_separate_from_source_text() -> None:
+    """Parser-derived ancestry reaches the model without becoming evidence text."""
+    target = _chunk(
+        "target",
+        "a) Không chấp hành hiệu lệnh.",
+        context_text="[LEGAL_STRUCTURE 1.0.0]\nĐiều 6. Xử phạt người điều khiển xe ô tô\n[/LEGAL_STRUCTURE]",
+    )
+
+    entry = build_reading_window(
+        target,
+        {target.chunk_id: target},
+        max_preceding_chunks=0,
+        max_following_chunks=0,
+    )[0]
+
+    assert entry.context_text == target.context_text
+    assert entry.text == target.text
 
 
 def test_build_reading_window_limits_preceding_chunk_depth() -> None:

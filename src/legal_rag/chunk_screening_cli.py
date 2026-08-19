@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Sequence
 from pathlib import Path
 
 from loguru import logger
@@ -22,13 +21,14 @@ def main() -> None:
     """Screen chunks not yet in the output file, writing progress after every batch so it survives being interrupted."""
     from dotenv import find_dotenv, load_dotenv
 
-    from legal_rag.benchmark_synthesis.chunk_screening import (
-        BamlChunkScreeningClient,
-        ChunkScreeningRecord,
-        screen_chunks,
-    )
+    from legal_rag.benchmark_synthesis.chunk_screening import BamlChunkScreeningClient
     from legal_rag.benchmark_synthesis.config import SynthesisSettings
-    from legal_rag.benchmark_synthesis.writer import read_chunk_screening, write_chunk_screening
+    from legal_rag.benchmark_synthesis.document_preparation import prepare_chunk_screening
+    from legal_rag.benchmark_synthesis.stage_cache import (
+        build_chunk_screening_fingerprint,
+        initialize_stage_cache,
+        stage_cache_path,
+    )
     from legal_rag.chunker.writer import read_chunks
     from legal_rag.settings import Settings
 
@@ -40,33 +40,23 @@ def main() -> None:
     synthesis_settings = SynthesisSettings.from_path(arguments.synthesis_config)
 
     chunks = read_chunks(arguments.chunks_path)
-    existing_records = (
-        read_chunk_screening(arguments.screening_output_path) if arguments.screening_output_path.exists() else ()
+    fingerprint_path = stage_cache_path(arguments.screening_output_path)
+    initialize_stage_cache(
+        fingerprint_path,
+        (arguments.screening_output_path,),
+        build_chunk_screening_fingerprint(
+            chunks,
+            synthesis_settings,
+            llm_base_url=settings.llm_base_url,
+            llm_model=settings.llm_model,
+        ),
     )
-    records_by_chunk_id = {record.chunk_id: record for record in existing_records}
-    chunks_to_screen = tuple(chunk for chunk in chunks if chunk.chunk_id not in records_by_chunk_id)
-
-    def _persist_batch(batch_records: Sequence[ChunkScreeningRecord]) -> None:
-        """Merge one screened batch into the running results and rewrite the output file."""
-        records_by_chunk_id.update({record.chunk_id: record for record in batch_records})
-        write_chunk_screening(
-            arguments.screening_output_path,
-            tuple(records_by_chunk_id[chunk.chunk_id] for chunk in chunks if chunk.chunk_id in records_by_chunk_id),
-        )
-
-    if chunks_to_screen:
-        screening_client = BamlChunkScreeningClient(settings, synthesis_settings)
-        screen_chunks(
-            chunks_to_screen,
-            screening_client,
-            batch_size=synthesis_settings.chunk_screening_batch_size,
-            max_retries=synthesis_settings.llm_max_retries,
-            retry_delay_seconds=synthesis_settings.llm_retry_delay_seconds,
-            on_batch_screened=_persist_batch,
-        )
-
-    records = tuple(records_by_chunk_id[chunk.chunk_id] for chunk in chunks if chunk.chunk_id in records_by_chunk_id)
-    write_chunk_screening(arguments.screening_output_path, records)
+    records = prepare_chunk_screening(
+        chunks,
+        arguments.screening_output_path,
+        lambda: BamlChunkScreeningClient(settings, synthesis_settings),
+        synthesis_settings,
+    )
     accepted_count = sum(1 for record in records if record.has_penalty_content)
     logger.info(
         "Chunk screening gate: {} accepted, {} excluded, {} still unscreened, wrote {}",

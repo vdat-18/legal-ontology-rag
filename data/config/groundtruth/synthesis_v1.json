@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.5.0",
+  "schema_version": "1.6.0",
   "embedding_profile": "bge_m3",
   "embedding": {
     "batch_size": 64,
@@ -22,6 +22,7 @@
   "stages": {
     "chunk_screening": {
       "batch_size": 50,
+      "max_concurrency": 4,
       "max_output_tokens": 16384,
       "temperature": 0.0
     },
@@ -33,6 +34,7 @@
     },
     "fact_extraction": {
       "batch_size": 1,
+      "max_concurrency": 4,
       "max_preceding_chunks": 1,
       "max_following_chunks": 1,
       "max_output_tokens": 32768,

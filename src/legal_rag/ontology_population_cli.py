@@ -23,7 +23,9 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("records_output_path", type=Path, help="Reviewable population-record JSONL destination")
     parser.add_argument("progress_output_path", type=Path, help="Population-progress JSONL destination")
     parser.add_argument("graph_output_path", type=Path, help="Validated Turtle instance-graph destination")
-    parser.add_argument("--target-limit", type=int, help="Maximum accepted chunks selected for a pilot run")
+    target_group = parser.add_mutually_exclusive_group()
+    target_group.add_argument("--target-limit", type=int, help="Maximum accepted chunks selected for a pilot run")
+    target_group.add_argument("--target-ids-path", type=Path, help="Reviewed pilot target-selection JSON path")
     parser.add_argument("--preflight-report-path", type=Path, help="Optional machine-readable readiness report")
     return parser
 
@@ -44,6 +46,7 @@ def main() -> None:
     from legal_rag.ontology_population.models import OntologyPopulationRecord, PopulationProgressRecord
     from legal_rag.ontology_population.preflight import (
         load_population_inputs,
+        load_population_target_selection,
         run_population_preflight,
         select_population_targets,
         validate_population_resume_state,
@@ -60,17 +63,24 @@ def main() -> None:
     arguments = _parser().parse_args()
     population_settings = PopulationSettings.from_path(arguments.contract_path)
     bundle = load_population_inputs(arguments.chunks_path, arguments.screening_path, arguments.metadata_path)
+    target_selection = (
+        load_population_target_selection(arguments.target_ids_path) if arguments.target_ids_path is not None else None
+    )
+    artifact_paths = [
+        ("chunks", arguments.chunks_path),
+        ("screening", arguments.screening_path),
+        ("metadata", arguments.metadata_path),
+        ("population_contract", arguments.contract_path),
+    ]
+    if arguments.target_ids_path is not None:
+        artifact_paths.append(("target_selection", arguments.target_ids_path))
     preflight = run_population_preflight(
         bundle,
         population_settings,
-        (
-            ("chunks", arguments.chunks_path),
-            ("screening", arguments.screening_path),
-            ("metadata", arguments.metadata_path),
-            ("population_contract", arguments.contract_path),
-        ),
+        tuple(artifact_paths),
         datetime.now(UTC),
         target_limit=arguments.target_limit,
+        target_selection=target_selection,
     )
     if arguments.preflight_report_path is not None:
         write_json_atomic(arguments.preflight_report_path, preflight.to_dict())
@@ -81,7 +91,7 @@ def main() -> None:
 
     chunks = bundle.chunks
     metadata = bundle.metadata
-    accepted_chunks = select_population_targets(bundle, arguments.target_limit)
+    accepted_chunks = select_population_targets(bundle, arguments.target_limit, target_selection)
     existing_records = (
         read_population_records(arguments.records_output_path) if arguments.records_output_path.exists() else ()
     )

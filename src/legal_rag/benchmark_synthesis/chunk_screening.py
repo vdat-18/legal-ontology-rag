@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -109,32 +110,41 @@ def screen_chunks(
     client: ChunkScreeningClient,
     *,
     batch_size: int,
+    max_concurrency: int = 1,
     max_retries: int,
     retry_delay_seconds: float,
     on_batch_screened: Callable[[Sequence[ChunkScreeningRecord]], None] | None = None,
 ) -> tuple[ChunkScreeningRecord, ...]:
-    """Screen every chunk, retrying a failed batch before skipping it; call on_batch_screened after each batch."""
+    """Screen chunks in bounded concurrent batches and checkpoint each successful batch."""
     results_by_chunk_id: dict[str, ChunkScreeningResult] = {}
     failures: list[LlmTaskFailure] = []
-    for batch_start in range(0, len(chunks), batch_size):
-        batch = chunks[batch_start : batch_start + batch_size]
-        items = [ChunkScreeningItem(chunk_id=chunk.chunk_id, text=chunk.text) for chunk in batch]
-        task_key = f"chunks:{batch[0].chunk_id}:{batch[-1].chunk_id}"
-        try:
-            results = execute_llm_task(
+    batches = [chunks[batch_start : batch_start + batch_size] for batch_start in range(0, len(chunks), batch_size)]
+    with ThreadPoolExecutor(max_workers=max_concurrency) as executor:
+        futures = {}
+        for batch in batches:
+            items = [ChunkScreeningItem(chunk_id=chunk.chunk_id, text=chunk.text) for chunk in batch]
+            task_key = f"chunks:{batch[0].chunk_id}:{batch[-1].chunk_id}"
+            future = executor.submit(
+                execute_llm_task,
                 task_key,
                 lambda items=items: _screen_batch(client, items),
                 max_retries=max_retries,
                 retry_delay_seconds=retry_delay_seconds,
             )
-        except LlmTaskExhaustedError as error:
-            failures.append(LlmTaskFailure(task_key=task_key, error=str(error)))
-        else:
+            futures[future] = (batch, task_key)
+
+        for future in as_completed(futures):
+            batch, task_key = futures[future]
+            try:
+                results = future.result()
+            except LlmTaskExhaustedError as error:
+                failures.append(LlmTaskFailure(task_key=task_key, error=str(error)))
+                continue
             for result in results:
                 results_by_chunk_id[result.chunk_id] = result
-        logger.debug("Screened {}/{} chunks", len(results_by_chunk_id), len(chunks))
-        if on_batch_screened is not None:
-            on_batch_screened(_records_for(batch, results_by_chunk_id))
+            logger.debug("Screened {}/{} chunks", len(results_by_chunk_id), len(chunks))
+            if on_batch_screened is not None:
+                on_batch_screened(_records_for(batch, results_by_chunk_id))
 
     records = _records_for(chunks, results_by_chunk_id)
     if failures:
