@@ -1,4 +1,4 @@
-"""Tests for corpus-level ground-truth assembly and validation."""
+"""Tests for simple corpus-level ground-truth packaging."""
 
 from __future__ import annotations
 
@@ -8,59 +8,20 @@ from pathlib import Path
 
 import pytest
 
-from legal_rag.benchmark_synthesis.assembly import GroundTruthValidationError, assemble_groundtruth_corpus
-from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
-from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
-from legal_rag.benchmark_synthesis.fact_extraction import ExtractionProgressRecord
-from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
-from legal_rag.benchmark_synthesis.writer import (
-    write_chunk_screening,
-    write_document_metadata,
-    write_extraction_progress,
-    write_legal_facts,
-)
-from legal_rag.chunker.models import Chunk
-from legal_rag.chunker.writer import write_chunks
+from legal_rag.benchmark_synthesis.assembly import RUN_MANIFEST_SCHEMA_VERSION, assemble_groundtruth_corpus
+from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.writer import write_legal_facts
 
-_DOCUMENT_ID = "168_2024_ND-CP_619502"
-_SPAN = "Phat tien tu 4.000.000 dong den 6.000.000 dong."
+_DOCUMENT_A = "168_2024_ND-CP_619502"
+_DOCUMENT_B = "second_document"
 _SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
 
 
-def _chunk() -> Chunk:
-    """Build one chunk used by a complete assembly fixture."""
-    return Chunk(
-        chunk_id="chunk-1",
-        content_sha256="content-hash",
-        chunker_config_sha256="chunker-config-hash",
-        scope_id="scope-id",
-        chunk_index=0,
-        kind="paragraph_group",
-        source_name=f"{_DOCUMENT_ID}.docx",
-        source_sha256="source-hash",
-        record_scope="root",
-        parent_attachment_id=None,
-        attachment_member_path=None,
-        attachment_member_sha256=None,
-        unit_ids=("unit-0",),
-        source_refs=("word/document.xml#/body/0",),
-        sequence_start=0,
-        sequence_end=0,
-        text=_SPAN,
-        context_text="",
-        embedding_text=_SPAN,
-        text_token_count=10,
-        embedding_token_count=10,
-        previous_chunk_id=None,
-        next_chunk_id=None,
-    )
-
-
-def _fact() -> LegalFact:
+def _fact(fact_id: str = "fact-1", *, content_hash: str = "fact-content-hash") -> LegalFact:
     """Build one fact with chunk-level provenance."""
     return LegalFact(
-        fact_id="fact-1",
-        fact_content_sha256="fact-content-hash",
+        fact_id=fact_id,
+        fact_content_sha256=content_hash,
         statement="Nguoi dieu khien oto vuot den do bi phat tien.",
         conduct="Vuot den do",
         subject="Nguoi dieu khien oto",
@@ -78,34 +39,29 @@ def _fact() -> LegalFact:
     )
 
 
-def _write_fixture(tmp_path: Path, *, facts: tuple[LegalFact, ...] | None = None) -> tuple[Path, Path, Path]:
-    """Write one complete document phase plus corpus config and snapshot."""
+def _write_inputs(
+    tmp_path: Path,
+    documents: tuple[tuple[str, tuple[LegalFact, ...]], ...],
+) -> tuple[Path, Path, Path]:
+    """Write only the per-document fact artifacts required by assembly."""
     processed_dir = tmp_path / "processed"
     processed_dir.mkdir()
-    write_chunks(processed_dir / f"{_DOCUMENT_ID}.chunks.jsonl", [_chunk()])
-    write_chunk_screening(
-        processed_dir / f"{_DOCUMENT_ID}.chunk_screening.jsonl",
-        [ChunkScreeningRecord(chunk_id="chunk-1", has_penalty_content=True, reason="Penalty content")],
-    )
-    write_document_metadata(
-        processed_dir / f"{_DOCUMENT_ID}.document_metadata.jsonl",
-        DocumentMetadataRecord(document_number="168/2024/ND-CP", valid_from=None, valid_to=None),
-    )
-    write_legal_facts(processed_dir / f"{_DOCUMENT_ID}.legal_facts.jsonl", facts or (_fact(),))
-    write_extraction_progress(
-        processed_dir / f"{_DOCUMENT_ID}.extraction_progress.jsonl",
-        [ExtractionProgressRecord(chunk_id="chunk-1")],
-    )
+    for document_id, facts in documents:
+        write_legal_facts(processed_dir / f"{document_id}.legal_facts.jsonl", facts)
+
     config_path = tmp_path / "corpus.json"
-    config_path.write_text(json.dumps({"documents": [{"file": f"{_DOCUMENT_ID}.docx"}]}), encoding="utf-8")
+    config_path.write_text(
+        json.dumps({"documents": [{"file": f"{document_id}.docx"} for document_id, _ in documents]}),
+        encoding="utf-8",
+    )
     snapshot_path = tmp_path / "snapshot.json"
     snapshot_path.write_text(json.dumps({"snapshot_id": "snapshot-1"}), encoding="utf-8")
     return processed_dir, config_path, snapshot_path
 
 
-def _assemble(tmp_path: Path, *, facts: tuple[LegalFact, ...] | None = None):
-    """Assemble the fixture with one versioned config hash input."""
-    processed_dir, config_path, snapshot_path = _write_fixture(tmp_path, facts=facts)
+def _assemble(tmp_path: Path, documents: tuple[tuple[str, tuple[LegalFact, ...]], ...]):
+    """Package one test corpus with versioned provenance inputs."""
+    processed_dir, config_path, snapshot_path = _write_inputs(tmp_path, documents)
     return assemble_groundtruth_corpus(
         processed_dir,
         config_path,
@@ -116,68 +72,87 @@ def _assemble(tmp_path: Path, *, facts: tuple[LegalFact, ...] | None = None):
     )
 
 
-def test_assembly_emits_complete_reproducibility_manifest(tmp_path: Path) -> None:
-    """A complete phase assembles facts and records snapshot, model, prompts, and config hashes."""
-    result = _assemble(tmp_path)
+def test_assembly_packages_facts_and_minimal_manifest(tmp_path: Path) -> None:
+    """Assembly joins facts and records only corpus-level provenance."""
+    result = _assemble(tmp_path, ((_DOCUMENT_A, (_fact(),)),))
 
     assert result.facts == (_fact(),)
-    assert result.manifest["complete"] is True
+    assert result.manifest["schema_version"] == RUN_MANIFEST_SCHEMA_VERSION
+    assert result.manifest["legal_fact_schema_version"] == LEGAL_FACT_SCHEMA_VERSION
     assert result.manifest["corpus_snapshot_id"] == "snapshot-1"
-    assert result.manifest["llm_model"] == "provider/test-model"
-    assert result.manifest["prompt_versions"]
+    assert result.manifest["documents"] == (_DOCUMENT_A,)
+    assert result.manifest["fact_count"] == 1
+    assert result.manifest["document_summaries"] == [{"document_id": _DOCUMENT_A, "fact_count": 1}]
+    assert result.manifest["prompt_versions"] == {
+        "chunk_screening": "1.2.0",
+        "document_metadata": "1.1.0",
+        "fact_extraction": "2.0.0",
+    }
+    assert result.manifest["fact_corpus_sha256"]
     assert result.manifest["config_sha256"]
-    assert result.manifest["fact_ledger_sha256"]
-    assert _SYNTHESIS_CONFIG_PATH.as_posix() in result.manifest["config_sha256"]
 
 
-def test_assembly_run_id_changes_with_fact_content(tmp_path: Path) -> None:
-    """A different extracted fact ledger produces a different reproducibility run ID."""
+def test_assembly_preserves_document_and_fact_order(tmp_path: Path) -> None:
+    """Facts retain corpus-config order and their order within each document."""
+    fact_a1 = _fact("fact-a1")
+    fact_a2 = _fact("fact-a2")
+    fact_b1 = _fact("fact-b1")
+
+    result = _assemble(
+        tmp_path,
+        ((_DOCUMENT_A, (fact_a1, fact_a2)), (_DOCUMENT_B, (fact_b1,))),
+    )
+
+    assert result.facts == (fact_a1, fact_a2, fact_b1)
+
+
+def test_assembly_preserves_duplicate_and_conflicting_fact_ids(tmp_path: Path) -> None:
+    """Assembly packages every input record without deduplication or conflict checks."""
+    first = _fact()
+    duplicate = _fact()
+    conflict = replace(_fact(), fact_content_sha256="different-content", monetary_penalty="different")
+
+    result = _assemble(tmp_path, ((_DOCUMENT_A, (first, duplicate, conflict)),))
+
+    assert result.facts == (first, duplicate, conflict)
+    assert result.manifest["fact_count"] == 3
+
+
+def test_assembly_does_not_require_screening_metadata_or_progress_artifacts(tmp_path: Path) -> None:
+    """Per-document legal facts are the only synthesis artifact assembly reads."""
+    result = _assemble(tmp_path, ((_DOCUMENT_A, (_fact(),)),))
+
+    assert len(result.facts) == 1
+
+
+def test_assembly_lets_missing_fact_file_raise_naturally(tmp_path: Path) -> None:
+    """A missing required fact artifact raises the reader's native file error."""
+    processed_dir = tmp_path / "processed"
+    processed_dir.mkdir()
+    config_path = tmp_path / "corpus.json"
+    config_path.write_text(json.dumps({"documents": [{"file": f"{_DOCUMENT_A}.docx"}]}), encoding="utf-8")
+    snapshot_path = tmp_path / "snapshot.json"
+    snapshot_path.write_text(json.dumps({"snapshot_id": "snapshot-1"}), encoding="utf-8")
+
+    with pytest.raises(FileNotFoundError):
+        assemble_groundtruth_corpus(
+            processed_dir,
+            config_path,
+            snapshot_path,
+            _SYNTHESIS_CONFIG_PATH,
+            [],
+            llm_model="provider/test-model",
+        )
+
+
+def test_assembly_run_id_changes_with_ordered_fact_content(tmp_path: Path) -> None:
+    """The manifest fingerprint changes when packaged fact content changes."""
     first_dir = tmp_path / "first"
     second_dir = tmp_path / "second"
     first_dir.mkdir()
     second_dir.mkdir()
-    changed_fact = replace(_fact(), fact_content_sha256="changed-content", monetary_penalty="changed")
 
-    first = _assemble(first_dir)
-    second = _assemble(second_dir, facts=(changed_fact,))
+    first = _assemble(first_dir, ((_DOCUMENT_A, (_fact(),)),))
+    second = _assemble(second_dir, ((_DOCUMENT_A, (_fact(content_hash="changed-content"),)),))
 
     assert first.manifest["run_id"] != second.manifest["run_id"]
-
-
-def test_assembly_rejects_incomplete_extraction_progress(tmp_path: Path) -> None:
-    """An accepted screening task without extraction progress blocks assembly."""
-    processed_dir, config_path, snapshot_path = _write_fixture(tmp_path)
-    write_extraction_progress(processed_dir / f"{_DOCUMENT_ID}.extraction_progress.jsonl", [])
-
-    with pytest.raises(GroundTruthValidationError, match="progress does not cover"):
-        assemble_groundtruth_corpus(
-            processed_dir, config_path, snapshot_path, _SYNTHESIS_CONFIG_PATH, [], llm_model="model"
-        )
-
-
-def test_assembly_rejects_missing_evidence_chunk(tmp_path: Path) -> None:
-    """A fact cannot reference a chunk absent from the document artifact."""
-    fact = replace(
-        _fact(),
-        evidence=(EvidenceReference(chunk_id="chunk-missing"),),
-    )
-
-    with pytest.raises(GroundTruthValidationError, match="missing chunk_id"):
-        _assemble(tmp_path, facts=(fact,))
-
-
-def test_assembly_accepts_chunk_level_evidence(tmp_path: Path) -> None:
-    """Assembly needs only a valid source chunk reference for each fact."""
-    fact = replace(_fact(), evidence=(EvidenceReference(chunk_id="chunk-1"),))
-
-    result = _assemble(tmp_path, facts=(fact,))
-
-    assert result.facts == (fact,)
-
-
-def test_assembly_rejects_duplicate_fact_identity_with_conflicting_content(tmp_path: Path) -> None:
-    """The same fact id cannot silently represent two different fact contents."""
-    conflict = replace(_fact(), fact_content_sha256="different-content", monetary_penalty="different")
-
-    with pytest.raises(GroundTruthValidationError, match="Conflicting content"):
-        _assemble(tmp_path, facts=(_fact(), conflict))

@@ -21,9 +21,10 @@ describe retry-then-skip behavior.
   fingerprints. A CLI refuses to resume legacy artifacts without sidecars, or
   artifacts produced from different chunks, config, prompt version, model, or
   upstream stage run ids.
-- `legal-assemble-groundtruth` validates every selected document and produces
-  corpus-level `legal_facts.jsonl` plus `run_manifest.json`. The evidence graph
-  consumes this assembled fact file.
+- `legal-assemble-groundtruth` đọc `legal_facts.jsonl` của từng văn bản theo
+  thứ tự corpus config, nối nguyên trạng và tạo corpus-level `legal_facts.jsonl`
+  cùng `run_manifest.json`. Bước này không validate, deduplicate hoặc sửa fact.
+  Evidence graph tiêu thụ file fact đã đóng gói này.
 - Fact extraction requires every evidence reference to point to a chunk in the
   reading window, but trusts the model's supporting span semantically instead
   of requiring character-for-character source matching.
@@ -73,8 +74,9 @@ describe retry-then-skip behavior.
   `PATH` and can be overridden by `SYNTHESIS_VNCORENLP_JAVA_PATH`.
 - `legal-assemble-groundtruth` always hashes the required synthesis config in
   the run manifest, alongside any taxonomy/persona/distribution configs passed
-  through additional `--config` arguments. The manifest identity also hashes
-  the assembled `(fact_id, fact_content_sha256)` ledger.
+  through additional `--config` arguments. Manifest fingerprint băm danh sách
+  `(fact_id, fact_content_sha256)` theo đúng thứ tự đóng gói và giữ cả record
+  trùng; đây chỉ là provenance, không phải deduplication hay quality gate.
 - `groundtruth_corpus_v1.json` contains all 35 documents in
   `road_traffic_penalty_scope.json`'s broad `in_scope` list; its corpus snapshot
   freezes that complete selection for reproducible synthesis runs.

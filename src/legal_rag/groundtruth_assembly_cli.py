@@ -1,4 +1,4 @@
-"""Command-line interface for validating and assembling ground-truth facts."""
+"""Command-line interface for packaging corpus-level ground-truth facts."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from loguru import logger
 
 def _parser() -> argparse.ArgumentParser:
     """Build the corpus assembly command-line interface."""
-    parser = argparse.ArgumentParser(description="Validate document synthesis artifacts and assemble legal facts.")
+    parser = argparse.ArgumentParser(description="Package per-document legal facts into one corpus artifact.")
     parser.add_argument("processed_dir", type=Path, help="Directory containing per-document synthesis artifacts")
     parser.add_argument("corpus_config", type=Path, help="Ground-truth corpus selection JSON path")
     parser.add_argument("snapshot", type=Path, help="Frozen corpus snapshot JSON path")
@@ -22,7 +22,7 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    """Validate every selected document and write one reproducible corpus-level run."""
+    """Package every selected document's facts and write one corpus-level run."""
     from dotenv import find_dotenv, load_dotenv
 
     from legal_rag.benchmark_synthesis.assembly import assemble_groundtruth_corpus
@@ -46,7 +46,7 @@ def main() -> None:
     write_legal_facts(arguments.facts_output_path, result.facts)
     write_json_atomic(arguments.manifest_output_path, result.manifest)
     logger.info(
-        "Assembled {} validated facts into run {}, wrote {} and {}",
+        "Packaged {} facts into run {}, wrote {} and {}",
         len(result.facts),
         result.manifest["run_id"],
         arguments.facts_output_path,
