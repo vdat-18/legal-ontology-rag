@@ -153,6 +153,13 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
     - Chỉ tạo conduct khi Target trực tiếp mô tả hành vi hoặc nghĩa vụ cụ thể.
       Cụm chỉ nói "hành vi quy định tại" một provision khác không phải conduct,
       kể cả khi Target nêu hậu quả áp dụng cho provision đó.
+    - Clause consequence chỉ xác định phạm vi bằng dẫn chiếu vẫn là catalog,
+      không phải conduct source. Không dựng conduct từ tên hình phạt, đối tượng
+      bị tịch thu/thu hồi/tước quyền, biện pháp khắc phục hoặc wording mô tả đối
+      tượng của hậu quả. provision_path phải trỏ tới clause trực tiếp định nghĩa
+      conduct, không trỏ tới clause catalog đang dẫn chiếu conduct đó.
+    - Nếu Target trộn clause conduct trực tiếp với catalog dẫn chiếu, chỉ tạo
+      entry cho clause conduct trực tiếp và bỏ qua phần catalog khi lập inventory.
     - Đọc Target đến hết và xử lý mọi heading Khoản/Điểm xuất hiện trong chunk.
     - Mỗi entry là một hành vi có thể độc lập cấu thành vi phạm. Tách lựa chọn
       hành vi độc lập; giữ cùng entry danh sách đối tượng, phương tiện, cách diễn
@@ -167,7 +174,8 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
       tục, khớp chính xác Target text. Evidence phải trực tiếp chứa wording tạo
       conduct; một dẫn chiếu chung không đủ làm conduct evidence.
     - Trả đúng một result cho mỗi target_chunk_id; conducts rỗng nếu Target chỉ
-      chứa consequence catalog, dẫn chiếu, thủ tục hoặc quy định chung.
+      chứa consequence catalog, dẫn chiếu, thủ tục hoặc quy định chung. Trước
+      khi trả, audit từng entry và loại entry không có direct conduct clause.
 
     {% for item in items %}
     === target_chunk_id={{ item.target_chunk_id }} ===

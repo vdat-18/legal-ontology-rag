@@ -84,10 +84,10 @@ def test_population_contract_requires_atomic_target_conducts_and_canonical_paths
 
 
 def test_population_contract_versions_complete_rule_assembly_policy() -> None:
-    """V0.13 inventories Target conducts before binding consequences."""
+    """V0.14 inventories only conducts stated directly in each Target."""
     contract = load_yaml(CONTRACT_PATH)
 
-    assert contract["artifact_version"] == "0.13.0"
+    assert contract["artifact_version"] == "0.14.0"
     assert any("applicability exception" in boundary for boundary in contract["semantic_boundaries"])
 
 
@@ -120,6 +120,9 @@ def test_population_prompt_preserves_vietnamese_legal_structure() -> None:
     assert "không được chỉ ghi chuỗi ID" in prompt
     assert "không biến hành động tuân thủ thành hành vi vi phạm" in prompt
     assert "Không mở rộng một dẫn chiếu" in prompt
+    assert "Không dựng conduct từ tên hình phạt" in prompt
+    assert "không trỏ tới clause catalog" in prompt
+    assert "loại entry không có direct conduct clause" in prompt
     assert "function ExtractOntologyTargetConductBatch" in prompt
     assert "function BindOntologyPopulationBatch" in prompt
 

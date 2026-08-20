@@ -1,6 +1,6 @@
 schema_version: "0.1.0"
 artifact_id: road-traffic-ontology-population-contract
-artifact_version: "0.13.0"
+artifact_version: "0.14.0"
 status: pilot_internal_validation
 ontology_version: "0.1.0"
 instance_namespace: https://w3id.org/legal-ontology-rag/data/
