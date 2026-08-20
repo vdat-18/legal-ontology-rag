@@ -33,20 +33,11 @@ def _fact(fact_id: str, conduct: str) -> LegalFact:
     """Build one legal fact for CLI tests."""
     return LegalFact(
         fact_id=fact_id,
-        fact_content_sha256=f"content-{fact_id}",
         statement=f"Người điều khiển ô tô {conduct.lower()} bị phạt tiền.",
-        conduct=conduct,
-        subject="Người điều khiển ô tô",
-        conditions=(),
-        monetary_penalty="4.000.000 đồng",
-        license_points_deducted=None,
-        additional_penalties=(),
-        remedial_measures=(),
         valid_from=None,
         valid_to=None,
         document_number="168/2024/NĐ-CP",
-        provision_path="Điều 6",
-        evidence=(EvidenceReference(chunk_id=f"chunk-{fact_id}", quoted_span=""),),
+        evidence=(EvidenceReference(chunk_id=f"chunk-{fact_id}"),),
     )
 
 

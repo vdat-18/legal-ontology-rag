@@ -11,7 +11,6 @@ from legal_rag.benchmark_synthesis.candidate_generation import (
     CANDIDATE_SCHEMA_VERSION,
     CandidateDraft,
     ClaimEvidence,
-    FactAnswerFields,
     RequiredClaim,
 )
 from legal_rag.benchmark_synthesis.candidate_record import (
@@ -100,23 +99,11 @@ def read_legal_facts(input_path: Path) -> tuple[LegalFact, ...]:
             facts.append(
                 LegalFact(
                     fact_id=payload["fact_id"],
-                    fact_content_sha256=payload["fact_content_sha256"],
                     statement=payload["statement"],
-                    conduct=payload["conduct"],
-                    subject=payload["subject"],
-                    conditions=tuple(payload["conditions"]),
-                    monetary_penalty=payload["monetary_penalty"],
-                    license_points_deducted=payload["license_points_deducted"],
-                    additional_penalties=tuple(payload["additional_penalties"]),
-                    remedial_measures=tuple(payload["remedial_measures"]),
                     valid_from=_parse_date(payload["valid_from"]),
                     valid_to=_parse_date(payload["valid_to"]),
                     document_number=payload["document_number"],
-                    provision_path=payload["provision_path"],
-                    evidence=tuple(
-                        EvidenceReference(chunk_id=entry["chunk_id"], quoted_span=entry.get("quoted_span"))
-                        for entry in payload["evidence"]
-                    ),
+                    evidence=tuple(EvidenceReference(chunk_id=entry["chunk_id"]) for entry in payload["evidence"]),
                     source_chunk_id=payload["source_chunk_id"],
                 )
             )
@@ -308,16 +295,6 @@ def _parse_candidate_draft(payload: dict[str, object]) -> CandidateDraft:
             )
             for claim in payload["required_claims"]
         ),
-        answer_fields=tuple(
-            FactAnswerFields(
-                fact_id=fields["fact_id"],
-                monetary_penalty=fields["monetary_penalty"],
-                license_points_deducted=fields["license_points_deducted"],
-                additional_penalties=tuple(fields["additional_penalties"]),
-                remedial_measures=tuple(fields["remedial_measures"]),
-            )
-            for fields in payload["answer_fields"]
-        ),
         evolutions=tuple(payload["evolutions"]),
         gold_chunk_ids=tuple(payload["gold_chunk_ids"]),
         query_type=payload["query_type"],
@@ -329,7 +306,6 @@ def _parse_candidate_draft(payload: dict[str, object]) -> CandidateDraft:
         reasoning_hops=payload["reasoning_hops"],
         as_of_date=_parse_date(payload["as_of_date"]),
         source_fact_ids=tuple(payload["source_fact_ids"]),
-        source_fact_content_sha256=tuple(payload["source_fact_content_sha256"]),
         generator_model=payload["generator_model"],
     )
 

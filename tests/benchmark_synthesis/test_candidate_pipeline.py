@@ -26,19 +26,10 @@ def _fact(fact_id: str = "fact-1") -> LegalFact:
     """Build one minimal legal fact for pipeline tests."""
     return LegalFact(
         fact_id=fact_id,
-        fact_content_sha256=f"content-{fact_id}",
         statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền.",
-        conduct="Vượt đèn đỏ",
-        subject="Người điều khiển ô tô",
-        conditions=(),
-        monetary_penalty="4.000.000 đồng",
-        license_points_deducted=None,
-        additional_penalties=(),
-        remedial_measures=(),
         valid_from=None,
         valid_to=None,
         document_number="168/2024/NĐ-CP",
-        provision_path="Điều 6",
         evidence=(EvidenceReference(chunk_id="chunk-1"),),
     )
 
@@ -130,7 +121,6 @@ def _draft(scenario_id: str) -> CandidateDraft:
         reference_answer_vi="a",
         reasoning_vi="r",
         required_claims=(),
-        answer_fields=(),
         evolutions=(),
         gold_chunk_ids=("chunk-1",),
         query_type="penalty_for_conduct",
@@ -142,7 +132,6 @@ def _draft(scenario_id: str) -> CandidateDraft:
         reasoning_hops=1,
         as_of_date=date(2025, 1, 1),
         source_fact_ids=("fact-1",),
-        source_fact_content_sha256=("content-fact-1",),
         generator_model="m",
     )
 

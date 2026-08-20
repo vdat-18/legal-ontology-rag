@@ -46,9 +46,7 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.evidence_retrieval.bm25_delta == 0.5
     assert settings.evidence_relation.max_output_tokens == 4096
     assert settings.candidate_generation.max_output_tokens == 8192
-    assert settings.candidate_critique.max_output_tokens == 2048
     assert settings.candidate_evolution.max_output_tokens == 8192
-    assert settings.verification.max_output_tokens == 1024
 
 
 def test_synthesis_settings_reject_unknown_schema(tmp_path: Path) -> None:

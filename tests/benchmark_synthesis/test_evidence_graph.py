@@ -36,25 +36,14 @@ def _fact(
     conduct: str | None = "Vượt đèn đỏ",
     subject: str | None = "Người điều khiển ô tô",
     statement: str | None = None,
-    provision_path: str = "Điều 6",
-    conditions: tuple[str, ...] = (),
 ) -> LegalFact:
     """Build one minimal legal fact for evidence-graph tests."""
     return LegalFact(
         fact_id=fact_id,
-        fact_content_sha256=f"content-{fact_id}",
         statement=statement or ". ".join(part for part in (conduct, subject) if part),
-        conduct=conduct,
-        subject=subject,
-        conditions=conditions,
-        monetary_penalty="4.000.000 đồng",
-        license_points_deducted=None,
-        additional_penalties=(),
-        remedial_measures=(),
         valid_from=None,
         valid_to=None,
         document_number=document_number,
-        provision_path=provision_path,
         evidence=(EvidenceReference(chunk_id="chunk-1"),),
     )
 
@@ -116,9 +105,6 @@ def test_fact_retrieval_uses_only_statement() -> None:
     fact = _fact(
         "fact-a",
         statement="Quyết định xử phạt phải được gửi cho người vi phạm.",
-        conduct="Vượt đèn đỏ",
-        subject="Người điều khiển ô tô",
-        provision_path="Điều 6",
     )
 
     text = evidence_graph._fact_embedding_text(fact)
@@ -491,10 +477,10 @@ def test_baml_evidence_relation_client_returns_none_when_unrelated(monkeypatch: 
     assert relations == [None]
 
 
-def test_baml_evidence_relation_client_sends_conditions_and_evidence_chunk_ids(
+def test_baml_evidence_relation_client_sends_statements_and_evidence_chunk_ids(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Relation confirmation sends applicability conditions and source chunk ids to BAML."""
+    """Relation confirmation sends complete statements and source chunk ids to BAML."""
     captured_items: list[object] = []
     request = object()
 
@@ -504,12 +490,12 @@ def test_baml_evidence_relation_client_sends_conditions_and_evidence_chunk_ids(
 
     fact_a = replace(
         _fact("fact-a"),
-        conditions=("Khi chuyển hướng tại nơi đường giao nhau",),
+        statement="Khi chuyển hướng tại nơi đường giao nhau, người điều khiển phải tuân thủ quy định.",
         evidence=(EvidenceReference(chunk_id="chunk-a"),),
     )
     fact_b = replace(
         _fact("fact-b"),
-        conditions=("Trừ trường hợp xe ưu tiên",),
+        statement="Quy định không áp dụng cho xe ưu tiên đang làm nhiệm vụ.",
         evidence=(EvidenceReference(chunk_id="chunk-b"),),
     )
     monkeypatch.setattr(evidence_graph.b.request, "ConfirmEvidenceRelationBatch", _capture_request)
@@ -532,9 +518,8 @@ def test_baml_evidence_relation_client_sends_conditions_and_evidence_chunk_ids(
     assert len(captured_items) == 1
     item = captured_items[0]
     assert item.fact_a.statement == fact_a.statement
-    assert item.fact_a.conditions == ["Khi chuyển hướng tại nơi đường giao nhau"]
     assert item.fact_a.evidence_chunk_ids == ["chunk-a"]
-    assert item.fact_b.conditions == ["Trừ trường hợp xe ưu tiên"]
+    assert item.fact_b.statement == fact_b.statement
     assert item.fact_b.evidence_chunk_ids == ["chunk-b"]
 
 

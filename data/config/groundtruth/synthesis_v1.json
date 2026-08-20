@@ -15,9 +15,7 @@
     "max_response_bytes": 1048576
   },
   "quality": {
-    "span_match_threshold": 0.85,
-    "bundle_overlap_threshold": 0.5,
-    "max_retries": 2
+    "bundle_overlap_threshold": 0.5
   },
   "stages": {
     "chunk_screening": {
@@ -62,16 +60,8 @@
       "max_output_tokens": 8192,
       "temperature": 0.0
     },
-    "candidate_critique": {
-      "max_output_tokens": 2048,
-      "temperature": 0.0
-    },
     "candidate_evolution": {
       "max_output_tokens": 8192,
-      "temperature": 0.0
-    },
-    "verification": {
-      "max_output_tokens": 1024,
       "temperature": 0.0
     }
   }

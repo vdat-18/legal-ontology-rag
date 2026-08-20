@@ -29,8 +29,8 @@ from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
-CANDIDATE_SCHEMA_VERSION = "1.2.0"
-CANDIDATE_GENERATION_PROMPT_VERSION = "1.4.0"
+CANDIDATE_SCHEMA_VERSION = "2.0.0"
+CANDIDATE_GENERATION_PROMPT_VERSION = "2.0.0"
 
 _EVOLUTION_OPERATION_BY_ID: dict[str, EvolutionOperation] = {
     "concretizing": EvolutionOperation.Concretizing,
@@ -70,27 +70,6 @@ class RequiredClaim:
 
 
 @dataclass(frozen=True, slots=True)
-class FactAnswerFields:
-    """Penalty fields copied mechanically from one approved fact, never LLM-generated."""
-
-    fact_id: str
-    monetary_penalty: str | None
-    license_points_deducted: str | None
-    additional_penalties: tuple[str, ...]
-    remedial_measures: tuple[str, ...]
-
-    def to_dict(self) -> dict[str, Any]:
-        """Return a JSON-serializable answer-fields record."""
-        return {
-            "fact_id": self.fact_id,
-            "monetary_penalty": self.monetary_penalty,
-            "license_points_deducted": self.license_points_deducted,
-            "additional_penalties": list(self.additional_penalties),
-            "remedial_measures": list(self.remedial_measures),
-        }
-
-
-@dataclass(frozen=True, slots=True)
 class CandidateDraft:
     """One single-turn candidate generated and evolved, trusting LLM output as-is."""
 
@@ -100,7 +79,6 @@ class CandidateDraft:
     reference_answer_vi: str
     reasoning_vi: str
     required_claims: tuple[RequiredClaim, ...]
-    answer_fields: tuple[FactAnswerFields, ...]
     evolutions: tuple[str, ...]
     gold_chunk_ids: tuple[str, ...]
     query_type: str
@@ -112,7 +90,6 @@ class CandidateDraft:
     reasoning_hops: int
     as_of_date: date | None
     source_fact_ids: tuple[str, ...]
-    source_fact_content_sha256: tuple[str, ...]
     generator_model: str
     bundle_kind: str = "single_hop"
     bridge: tuple[str, ...] = ()
@@ -130,7 +107,6 @@ class CandidateDraft:
             "reference_answer_vi": self.reference_answer_vi,
             "reasoning_vi": self.reasoning_vi,
             "required_claims": [claim.to_dict() for claim in self.required_claims],
-            "answer_fields": [fields.to_dict() for fields in self.answer_fields],
             "evolutions": list(self.evolutions),
             "gold_chunk_ids": list(self.gold_chunk_ids),
             "query_type": self.query_type,
@@ -142,7 +118,6 @@ class CandidateDraft:
             "reasoning_hops": self.reasoning_hops,
             "as_of_date": self.as_of_date.isoformat() if self.as_of_date else None,
             "source_fact_ids": list(self.source_fact_ids),
-            "source_fact_content_sha256": list(self.source_fact_content_sha256),
             "generator_model": self.generator_model,
         }
 
@@ -152,17 +127,9 @@ def build_fact_context(fact: LegalFact) -> FactContext:
     return FactContext(
         fact_id=fact.fact_id,
         statement=fact.statement,
-        conduct=fact.conduct,
-        subject=fact.subject,
-        conditions=list(fact.conditions),
-        monetary_penalty=fact.monetary_penalty,
-        license_points_deducted=fact.license_points_deducted,
-        additional_penalties=list(fact.additional_penalties),
-        remedial_measures=list(fact.remedial_measures),
         valid_from=fact.valid_from.isoformat() if fact.valid_from else None,
         valid_to=fact.valid_to.isoformat() if fact.valid_to else None,
         document_number=fact.document_number,
-        provision_path=fact.provision_path,
         evidence_chunk_ids=[entry.chunk_id for entry in fact.evidence],
     )
 
@@ -380,8 +347,6 @@ def _candidate_from_generated(
     generator_model: str,
 ) -> CandidateDraft:
     """Attach one typed LLM result to its deterministic scenario metadata."""
-    facts = [facts_by_id[fact_id] for fact_id in scenario.fact_ids]
-
     required_claims = tuple(
         RequiredClaim(
             claim=claim.claim,
@@ -395,17 +360,6 @@ def _candidate_from_generated(
         )
         for claim in raw.required_claims
     )
-    answer_fields = tuple(
-        FactAnswerFields(
-            fact_id=fact.fact_id,
-            monetary_penalty=fact.monetary_penalty,
-            license_points_deducted=fact.license_points_deducted,
-            additional_penalties=fact.additional_penalties,
-            remedial_measures=fact.remedial_measures,
-        )
-        for fact in facts
-    )
-
     return _with_identity(
         CandidateDraft(
             sample_id="",
@@ -416,7 +370,6 @@ def _candidate_from_generated(
             reference_answer_vi=raw.reference_answer_vi,
             reasoning_vi=raw.reasoning_vi,
             required_claims=required_claims,
-            answer_fields=answer_fields,
             evolutions=(),
             gold_chunk_ids=scenario.gold_chunk_ids,
             query_type=scenario.query_type,
@@ -428,7 +381,6 @@ def _candidate_from_generated(
             reasoning_hops=scenario.reasoning_hops,
             as_of_date=scenario.as_of_date,
             source_fact_ids=scenario.fact_ids,
-            source_fact_content_sha256=tuple(fact.fact_content_sha256 for fact in facts),
             generator_model=generator_model,
         )
     )

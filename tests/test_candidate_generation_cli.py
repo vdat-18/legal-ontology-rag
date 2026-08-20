@@ -29,27 +29,18 @@ from legal_rag.benchmark_synthesis.writer import (
 )
 
 _REPO_CONFIG_DIR = Path(__file__).resolve().parent.parent / "data" / "config" / "groundtruth"
-_PENALTY_SPAN = "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."
+_REFERENCE_ANSWER = "Người điều khiển ô tô vượt đèn đỏ bị phạt tiền."
 
 
 def _fact() -> LegalFact:
     """Build one approved-ready legal fact for CLI tests."""
     return LegalFact(
         fact_id="fact-1",
-        fact_content_sha256="content-fact-1",
         statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền.",
-        conduct="Vượt đèn đỏ",
-        subject="Người điều khiển ô tô",
-        conditions=(),
-        monetary_penalty="4.000.000 đồng đến 6.000.000 đồng",
-        license_points_deducted=None,
-        additional_penalties=(),
-        remedial_measures=(),
         valid_from=None,
         valid_to=None,
         document_number="168/2024/NĐ-CP",
-        provision_path="Điều 6",
-        evidence=(EvidenceReference(chunk_id="chunk-1", quoted_span=_PENALTY_SPAN),),
+        evidence=(EvidenceReference(chunk_id="chunk-1"),),
     )
 
 
@@ -72,7 +63,7 @@ def _scenario() -> Scenario:
 
 
 class _FakeGenerationClient:
-    """Return a fixed candidate whose evidence is a real, exact quote from the chunk."""
+    """Return a fixed candidate grounded in the source fact."""
 
     def __init__(self, settings: object, synthesis_settings: object) -> None:
         return None
@@ -81,7 +72,7 @@ class _FakeGenerationClient:
         """Return one candidate grounded in the real chunk text."""
         return BamlGeneratedCandidate(
             query_vi="oto vuot den do bi phat bao nhieu",
-            reference_answer_vi=_PENALTY_SPAN,
+            reference_answer_vi=_REFERENCE_ANSWER,
             reasoning_vi="Theo Điều 6.",
             required_claims=[
                 BamlClaimReference(claim="Mức phạt tiền áp dụng", fact_id="fact-1", evidence_chunk_ids=["chunk-1"]),

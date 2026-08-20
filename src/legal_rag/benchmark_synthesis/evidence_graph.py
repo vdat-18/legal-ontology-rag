@@ -226,7 +226,7 @@ def build_evidence_candidate_run_id(
                 "batch_size": synthesis_settings.embedding_batch_size,
                 "profile": asdict(profile),
             },
-            "facts": sorted((fact.fact_id, fact.fact_content_sha256) for fact in facts),
+            "facts": sorted(fact.fact_id for fact in facts),
         }
     )
 
@@ -367,17 +367,9 @@ def _summarize(fact: LegalFact) -> LegalFactSummary:
     return LegalFactSummary(
         fact_id=fact.fact_id,
         statement=fact.statement,
-        conduct=fact.conduct,
-        subject=fact.subject,
-        conditions=list(fact.conditions),
-        monetary_penalty=fact.monetary_penalty,
-        license_points_deducted=fact.license_points_deducted,
-        additional_penalties=list(fact.additional_penalties),
-        remedial_measures=list(fact.remedial_measures),
         valid_from=fact.valid_from.isoformat() if fact.valid_from else None,
         valid_to=fact.valid_to.isoformat() if fact.valid_to else None,
         document_number=fact.document_number,
-        provision_path=fact.provision_path,
         evidence_chunk_ids=[evidence.chunk_id for evidence in fact.evidence],
     )
 

@@ -61,7 +61,7 @@ def assemble_groundtruth_corpus(
         "config_sha256": config_hashes,
         "corpus_snapshot_id": snapshot["snapshot_id"],
         "documents": document_ids,
-        "fact_corpus_sha256": sha256_json([(fact.fact_id, fact.fact_content_sha256) for fact in facts]),
+        "fact_corpus_sha256": sha256_json([fact.fact_id for fact in facts]),
         "legal_fact_schema_version": LEGAL_FACT_SCHEMA_VERSION,
         "llm_model": llm_model,
         "prompt_versions": prompt_versions,

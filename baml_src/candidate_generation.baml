@@ -1,17 +1,9 @@
 class FactContext {
   fact_id string
   statement string
-  conduct string?
-  subject string?
-  conditions string[]
-  monetary_penalty string?
-  license_points_deducted string?
-  additional_penalties string[]
-  remedial_measures string[]
   valid_from string?
   valid_to string?
   document_number string
-  provision_path string
   evidence_chunk_ids string[] @description(#"
     chunk_id đã có sẵn cho fact này. Mọi evidence_chunk_ids trong
     required_claims phải là tập con của danh sách này cho đúng fact_id.
@@ -114,49 +106,13 @@ function GenerateSingleTurnCandidateBatch(
     Fact pháp lý:
     {% for fact in item.facts %}
     [{{ fact.fact_id }}] {{ fact.statement }}
-    {% if fact.conduct %}Hành vi: {{ fact.conduct }}{% endif %}
-    {% if fact.subject %}Đối tượng: {{ fact.subject }}{% endif %}
-    Điều khoản: {{ fact.provision_path }} ({{ fact.document_number }})
-    Phạt tiền: {{ fact.monetary_penalty }}
-    Trừ điểm: {{ fact.license_points_deducted }}
-    Hình phạt bổ sung: {{ fact.additional_penalties }}
-    Biện pháp khắc phục: {{ fact.remedial_measures }}
+    Văn bản: {{ fact.document_number }}
     Hiệu lực: {{ fact.valid_from }} đến {{ fact.valid_to }}
     Chunk căn cứ: {{ fact.evidence_chunk_ids }}
     ---
     {% endfor %}
     ===== END TASK {{ item.task_id }} =====
     {% endfor %}
-
-    {{ ctx.output_format }}
-  "#
-}
-
-class SurfaceCritique {
-  passes bool @description(#"True nếu câu hỏi đã đúng phong cách yêu cầu, không cần viết lại."#)
-  feedback string @description(#"Lý do chưa đạt. Rỗng nếu passes=true."#)
-  rewritten_query_vi string @description(#"
-    Câu hỏi viết lại theo đúng phong cách yêu cầu, giữ nguyên ý nghĩa và nội
-    dung. Giữ nguyên văn bản gốc nếu passes=true.
-  "#)
-}
-
-function CritiqueSurface(
-  query_vi: string,
-  query_style: string,
-  query_length: string,
-  query_form: string
-) -> SurfaceCritique {
-  client OpenAICompatibleProvider
-  prompt #"
-    {{ _.role("user") }}
-
-    Chỉ đánh giá bề mặt câu hỏi theo style={{ query_style }},
-    length={{ query_length }}, form={{ query_form }}; không chấm nội dung pháp
-    lý. Nếu chưa đạt, viết lại mà không đổi ý nghĩa. Nếu đạt, giữ nguyên.
-
-    Câu hỏi:
-    {{ query_vi }}
 
     {{ ctx.output_format }}
   "#

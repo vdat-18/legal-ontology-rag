@@ -6,7 +6,6 @@ import hashlib
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from datetime import date
 from functools import partial
 from typing import Any, Protocol
 
@@ -34,7 +33,7 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
 EXTRACTION_PROGRESS_SCHEMA_VERSION = "1.0.0"
-FACT_EXTRACTION_PROMPT_VERSION = "2.0.0"
+FACT_EXTRACTION_PROMPT_VERSION = "3.0.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -157,17 +156,9 @@ def build_extracted_fact(
         window_chunks_by_id[reference.chunk_id]
     return build_legal_fact(
         statement=raw.statement,
-        conduct=raw.conduct,
-        subject=raw.subject,
-        conditions=tuple(raw.conditions),
-        monetary_penalty=raw.monetary_penalty,
-        license_points_deducted=raw.license_points_deducted,
-        additional_penalties=tuple(raw.additional_penalties),
-        remedial_measures=tuple(raw.remedial_measures),
-        valid_from=date.fromisoformat(raw.valid_from) if raw.valid_from else metadata.valid_from,
-        valid_to=date.fromisoformat(raw.valid_to) if raw.valid_to else metadata.valid_to,
+        valid_from=metadata.valid_from,
+        valid_to=metadata.valid_to,
         document_number=metadata.document_number,
-        provision_path=raw.provision_path,
         evidence=evidence,
         source_chunk_id=source_chunk_id,
     )

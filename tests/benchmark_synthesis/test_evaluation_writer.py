@@ -8,7 +8,6 @@ from pathlib import Path
 from legal_rag.benchmark_synthesis.candidate_generation import (
     CandidateDraft,
     ClaimEvidence,
-    FactAnswerFields,
     RequiredClaim,
 )
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
@@ -47,19 +46,10 @@ def _fact() -> LegalFact:
     """Build one legal fact covering every nullable and tuple field."""
     return LegalFact(
         fact_id="fact-1",
-        fact_content_sha256="content-1",
         statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền.",
-        conduct="Vượt đèn đỏ",
-        subject="Người điều khiển ô tô",
-        conditions=("Ban đêm",),
-        monetary_penalty="4.000.000 đồng",
-        license_points_deducted=None,
-        additional_penalties=(),
-        remedial_measures=(),
         valid_from=None,
         valid_to=None,
         document_number="168/2024/NĐ-CP",
-        provision_path="Điều 6",
         evidence=(EvidenceReference(chunk_id="chunk-1"),),
     )
 
@@ -214,15 +204,6 @@ def _candidate_draft() -> CandidateDraft:
                 evidence=(ClaimEvidence(chunk_id="chunk-1"),),
             ),
         ),
-        answer_fields=(
-            FactAnswerFields(
-                fact_id="fact-1",
-                monetary_penalty="4.000.000 đồng",
-                license_points_deducted=None,
-                additional_penalties=(),
-                remedial_measures=(),
-            ),
-        ),
         evolutions=("concretizing",),
         gold_chunk_ids=("chunk-1",),
         query_type="penalty_for_conduct",
@@ -234,7 +215,6 @@ def _candidate_draft() -> CandidateDraft:
         reasoning_hops=1,
         as_of_date=date(2025, 2, 10),
         source_fact_ids=("fact-1",),
-        source_fact_content_sha256=("content-fact-1",),
         generator_model="provider/generator-model",
     )
 

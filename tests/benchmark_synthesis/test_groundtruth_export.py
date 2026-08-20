@@ -7,7 +7,6 @@ from datetime import date
 from legal_rag.benchmark_synthesis.candidate_generation import (
     CandidateDraft,
     ClaimEvidence,
-    FactAnswerFields,
     RequiredClaim,
 )
 from legal_rag.benchmark_synthesis.groundtruth_export import export_ground_truth
@@ -30,15 +29,6 @@ def _candidate() -> CandidateDraft:
                 evidence=(ClaimEvidence(chunk_id="chunk-1"),),
             ),
         ),
-        answer_fields=(
-            FactAnswerFields(
-                fact_id="fact-1",
-                monetary_penalty="4.000.000 đồng đến 6.000.000 đồng",
-                license_points_deducted=None,
-                additional_penalties=(),
-                remedial_measures=(),
-            ),
-        ),
         evolutions=("concretizing",),
         gold_chunk_ids=("chunk-1",),
         query_type="penalty_for_conduct",
@@ -50,7 +40,6 @@ def _candidate() -> CandidateDraft:
         reasoning_hops=1,
         as_of_date=date(2025, 1, 1),
         source_fact_ids=("fact-1",),
-        source_fact_content_sha256=("content-1",),
         generator_model="provider/model",
     )
 

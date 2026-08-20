@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -17,23 +16,14 @@ _DOCUMENT_B = "second_document"
 _SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
 
 
-def _fact(fact_id: str = "fact-1", *, content_hash: str = "fact-content-hash") -> LegalFact:
+def _fact(fact_id: str = "fact-1", *, statement: str = "Nguoi dieu khien oto vuot den do bi phat tien.") -> LegalFact:
     """Build one fact with chunk-level provenance."""
     return LegalFact(
         fact_id=fact_id,
-        fact_content_sha256=content_hash,
-        statement="Nguoi dieu khien oto vuot den do bi phat tien.",
-        conduct="Vuot den do",
-        subject="Nguoi dieu khien oto",
-        conditions=(),
-        monetary_penalty="4.000.000-6.000.000 dong",
-        license_points_deducted=None,
-        additional_penalties=(),
-        remedial_measures=(),
+        statement=statement,
         valid_from=None,
         valid_to=None,
         document_number="168/2024/ND-CP",
-        provision_path="Dieu 6",
         evidence=(EvidenceReference(chunk_id="chunk-1"),),
         source_chunk_id="chunk-1",
     )
@@ -86,7 +76,7 @@ def test_assembly_packages_facts_and_minimal_manifest(tmp_path: Path) -> None:
     assert result.manifest["prompt_versions"] == {
         "chunk_screening": "1.2.0",
         "document_metadata": "1.1.0",
-        "fact_extraction": "2.0.0",
+        "fact_extraction": "3.0.0",
     }
     assert result.manifest["fact_corpus_sha256"]
     assert result.manifest["config_sha256"]
@@ -110,7 +100,7 @@ def test_assembly_preserves_duplicate_and_conflicting_fact_ids(tmp_path: Path) -
     """Assembly packages every input record without deduplication or conflict checks."""
     first = _fact()
     duplicate = _fact()
-    conflict = replace(_fact(), fact_content_sha256="different-content", monetary_penalty="different")
+    conflict = _fact(statement="Noi dung khac cung fact id.")
 
     result = _assemble(tmp_path, ((_DOCUMENT_A, (first, duplicate, conflict)),))
 
@@ -153,6 +143,6 @@ def test_assembly_run_id_changes_with_ordered_fact_content(tmp_path: Path) -> No
     second_dir.mkdir()
 
     first = _assemble(first_dir, ((_DOCUMENT_A, (_fact(),)),))
-    second = _assemble(second_dir, ((_DOCUMENT_A, (_fact(content_hash="changed-content"),)),))
+    second = _assemble(second_dir, ((_DOCUMENT_A, (_fact(statement="changed-content"),)),))
 
     assert first.manifest["run_id"] != second.manifest["run_id"]

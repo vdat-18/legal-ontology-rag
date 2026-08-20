@@ -32,19 +32,8 @@ class EvidenceEntry {
 class LegalFact {
   statement string @description(#"
     Một mệnh đề pháp lý nguyên tử, đầy đủ và tự hiểu được, bao quát toàn bộ
-    nội dung chính của fact bất kể đó là hành vi, chế tài, thẩm quyền, thủ tục,
-    ngoại lệ hoặc nghĩa vụ.
+    chủ thể, hành vi hoặc nghĩa vụ, điều kiện và hậu quả pháp lý có căn cứ.
   "#)
-  conduct string? @description(#"Hành vi vi phạm nếu fact có nêu; null nếu không áp dụng."#)
-  subject string? @description(#"Đối tượng hoặc loại phương tiện áp dụng nếu có; null nếu không nêu."#)
-  conditions string[] @description(#"Điều kiện áp dụng bổ sung, nếu có. Mảng rỗng nếu không có."#)
-  monetary_penalty string?
-  license_points_deducted string?
-  additional_penalties string[] @description(#"Hình phạt bổ sung, ví dụ tước giấy phép. Mảng rỗng nếu không có."#)
-  remedial_measures string[] @description(#"Biện pháp khắc phục hậu quả. Mảng rỗng nếu không có."#)
-  valid_from string? @description(#"Định dạng YYYY-MM-DD. Chỉ điền khi window nêu ngày hiệu lực riêng của điều khoản này."#)
-  valid_to string? @description(#"Định dạng YYYY-MM-DD. Chỉ điền khi window nêu ngày hết hiệu lực riêng của điều khoản này."#)
-  provision_path string @description(#"Ví dụ: Điều 6 khoản 9 điểm b."#)
   evidence EvidenceEntry[] @description(#"Ít nhất một phần tử. Mọi nội dung của fact phải có căn cứ ở đây."#)
 }
 
@@ -66,12 +55,13 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     - Chỉ tạo fact cho quy định có căn cứ trực tiếp trong Target. Context có
       thể hoàn chỉnh statement, subject, conditions, hậu quả và provision_path,
       nhưng không được tạo fact chỉ xuất hiện ngoài Target.
-    - statement là một mệnh đề pháp lý nguyên tử, đầy đủ và tự hiểu được. Nó
-      phải giữ được nội dung kể cả khi quy định không phù hợp field chuyên biệt.
-    - Tách riêng các quy tắc, hành vi hoặc đối tượng có điều kiện hay hậu quả khác nhau.
-      Chỉ điền conduct và subject khi thật sự áp dụng; nếu không thì trả null.
-    - Chỉ điền trường có căn cứ trực tiếp trong window; không dùng kiến thức
-      bên ngoài, không suy đoán. Không đủ căn cứ cho fact hoàn chỉnh thì bỏ fact.
+    - statement là nguồn sự thật duy nhất: một mệnh đề pháp lý nguyên tử, đầy
+      đủ và tự hiểu được. Ghi trực tiếp mọi chủ thể, hành vi hoặc nghĩa vụ,
+      điều kiện, mức hoặc hình thức xử phạt, biện pháp, ngoại lệ, thẩm quyền,
+      thủ tục và hiệu lực cần thiết cho nội dung đó.
+    - Tách riêng các quy tắc, hành vi hoặc đối tượng có điều kiện hay hậu quả
+      khác nhau. Không dùng kiến thức bên ngoài, không suy đoán. Không đủ căn
+      cứ cho một statement hoàn chỉnh thì bỏ fact.
     - Mọi nội dung của fact phải được phủ bởi evidence từ đúng chunk_id trong
       window. Chỉ tham chiếu chunk thực sự làm căn cứ cho fact.
     - Structural context chỉ dùng để hiểu cấu trúc và provision_path, không
@@ -80,15 +70,14 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     - Xử lý từng window độc lập. Trả đúng một kết quả cho mỗi target_chunk_id,
       giữ nguyên id; facts=[] là hợp lệ.
 
-    Tự kiểm tra trước khi trả lời: statement có căn cứ trong Target; các field
-    chuyên biệt nhất quán với statement; các chunk evidence đủ và đúng intent.
+    Tự kiểm tra trước khi trả lời: statement có căn cứ trong Target, tự đủ
+    nghĩa, và các chunk evidence đủ cho toàn bộ nội dung của statement.
 
     Ví dụ ngắn:
     - Target nêu "không chấp hành hiệu lệnh của đèn tín hiệu" và window nêu
-      mức phạt tương ứng -> statement bao quát hành vi và mức phạt, đồng thời
-      điền các field conduct, subject và monetary_penalty phù hợp.
-    - Target quy định thẩm quyền xử phạt -> statement giữ trọn quy định;
-      conduct có thể null nếu không có hành vi cụ thể.
+      mức phạt tương ứng -> statement bao quát đầy đủ chủ thể, hành vi, mức
+      phạt và hậu quả liên quan.
+    - Target quy định thẩm quyền xử phạt -> statement giữ trọn quy định.
     - Target chỉ giải thích thuật ngữ, không nêu quy tắc xử phạt -> facts=[].
 
     Các reading window:

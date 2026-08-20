@@ -30,19 +30,10 @@ def _fact(fact_id: str = "fact-1") -> LegalFact:
     """Build one minimal legal fact for candidate-generation tests."""
     return LegalFact(
         fact_id=fact_id,
-        fact_content_sha256=f"content-{fact_id}",
         statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền và trừ điểm.",
-        conduct="Vượt đèn đỏ",
-        subject="Người điều khiển ô tô",
-        conditions=(),
-        monetary_penalty="4.000.000 đồng",
-        license_points_deducted="4 điểm",
-        additional_penalties=(),
-        remedial_measures=(),
         valid_from=None,
         valid_to=None,
         document_number="168/2024/NĐ-CP",
-        provision_path="Điều 6",
         evidence=(
             EvidenceReference(chunk_id="chunk-1"),
             EvidenceReference(chunk_id="chunk-2"),
@@ -77,15 +68,11 @@ def test_build_fact_context_exposes_only_real_evidence_chunk_ids() -> None:
     assert context.statement == _fact().statement
 
 
-def test_build_fact_context_accepts_general_rule_without_specialized_fields() -> None:
-    """Candidate generation receives the complete statement even when conduct and subject are absent."""
-    context = build_fact_context(
-        replace(_fact(), statement="Quyết định xử phạt phải được gửi đúng hạn.", conduct=None, subject=None)
-    )
+def test_build_fact_context_accepts_general_legal_statement() -> None:
+    """Candidate generation receives the complete legal statement without specialized fields."""
+    context = build_fact_context(replace(_fact(), statement="Quyết định xử phạt phải được gửi đúng hạn."))
 
     assert context.statement == "Quyết định xử phạt phải được gửi đúng hạn."
-    assert context.conduct is None
-    assert context.subject is None
 
 
 class _FakeGenerationClient:
@@ -145,22 +132,6 @@ def test_generate_candidate_drops_hallucinated_chunk_id() -> None:
     assert candidate.required_claims[0].evidence == ()
 
 
-def test_generate_candidate_answer_fields_are_copied_mechanically_from_fact() -> None:
-    """answer_fields mirror the fact's own penalty fields exactly, not LLM output."""
-    fact = _fact()
-    generated = BamlGeneratedCandidate(query_vi="q", reference_answer_vi="a", reasoning_vi="r", required_claims=[])
-    client = _FakeGenerationClient(generated)
-
-    candidate = generate_candidate(
-        _scenario(), {"fact-1": fact}, "Tài xế cá nhân", "Mức phạt của một hành vi", client, generator_model="m"
-    )
-
-    assert len(candidate.answer_fields) == 1
-    assert candidate.answer_fields[0].fact_id == "fact-1"
-    assert candidate.answer_fields[0].monetary_penalty == fact.monetary_penalty
-    assert candidate.answer_fields[0].license_points_deducted == fact.license_points_deducted
-
-
 def test_generate_candidate_carries_declared_scenario_labels_unchanged() -> None:
     """Scenario labels pass through to the draft exactly as declared."""
     fact = _fact()
@@ -177,7 +148,6 @@ def test_generate_candidate_carries_declared_scenario_labels_unchanged() -> None
     assert candidate.answerability == scenario.answerability
     assert candidate.reasoning_hops == scenario.reasoning_hops
     assert candidate.source_fact_ids == ("fact-1",)
-    assert candidate.source_fact_content_sha256 == (fact.fact_content_sha256,)
 
 
 def test_generate_candidate_sample_id_is_deterministic() -> None:
@@ -260,7 +230,7 @@ def test_evolve_candidate_applies_operations_in_sequence_and_records_them() -> N
     assert evolved.sample_id != draft.sample_id
 
 
-def test_evolve_candidate_never_changes_claims_or_answer_fields() -> None:
+def test_evolve_candidate_never_changes_claims() -> None:
     """Evolution only touches query_vi and reference_answer_vi, never evidence."""
     draft = _draft_for_evolution()
     client = _FakeEvolutionClient(
@@ -274,7 +244,6 @@ def test_evolve_candidate_never_changes_claims_or_answer_fields() -> None:
     evolved = evolve_candidate(draft, ["hypothetical"], client, llm_max_retries=0, llm_retry_delay_seconds=0)
 
     assert evolved.required_claims == draft.required_claims
-    assert evolved.answer_fields == draft.answer_fields
 
 
 def _settings() -> Settings:
@@ -328,17 +297,9 @@ def test_baml_candidate_generation_client_parses_typed_result(monkeypatch: pytes
     fact_context = FactContext(
         fact_id="fact-1",
         statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền.",
-        conduct="Vượt đèn đỏ",
-        subject="Người điều khiển ô tô",
-        conditions=[],
-        monetary_penalty="4.000.000 đồng",
-        license_points_deducted=None,
-        additional_penalties=[],
-        remedial_measures=[],
         valid_from=None,
         valid_to=None,
         document_number="168/2024/NĐ-CP",
-        provision_path="Điều 6",
         evidence_chunk_ids=["chunk-1"],
     )
 

@@ -32,8 +32,6 @@ class QueryTypeDefinition:
     query_type_id: str
     bundle_kinds: tuple[BundleKind, ...]
     minimum_facts: int
-    required_all_fields: tuple[str, ...]
-    required_any_fields: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,8 +128,6 @@ def load_query_taxonomy(config_path: Path) -> QueryTaxonomy:
                 query_type_id=entry["id"],
                 bundle_kinds=tuple(entry["bundle_kinds"]),
                 minimum_facts=entry.get("minimum_facts", 1),
-                required_all_fields=tuple(entry.get("required_all_fields", ())),
-                required_any_fields=tuple(entry.get("required_any_fields", ())),
             )
             for entry in config["query_types"]
             if entry.get("mvp_enabled", True)
@@ -262,7 +258,7 @@ def sample_scenarios(
                         "bridge": list(bundle.bridge),
                         "bundle_id": bundle.bundle_id,
                         "bundle_kind": bundle.kind,
-                        "facts": [(fact.fact_id, fact.fact_content_sha256) for fact in facts],
+                        "facts": [fact.fact_id for fact in facts],
                         "persona": persona,
                         "query_form": query_form,
                         "query_length": query_length,
@@ -297,12 +293,6 @@ def _eligible_query_types(
     eligible: list[str] = []
     for definition in taxonomy.definitions:
         if bundle.kind not in definition.bundle_kinds or len(facts) < definition.minimum_facts:
-            continue
-        if any(not any(getattr(fact, field) for fact in facts) for field in definition.required_all_fields):
-            continue
-        if definition.required_any_fields and not any(
-            getattr(fact, field) for fact in facts for field in definition.required_any_fields
-        ):
             continue
         eligible.append(definition.query_type_id)
     return tuple(eligible)

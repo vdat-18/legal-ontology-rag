@@ -11,19 +11,10 @@ def _fact(**overrides: object) -> LegalFact:
     """Build one legal fact for serialization tests."""
     defaults: dict[str, object] = {
         "fact_id": "fact-id",
-        "fact_content_sha256": "content-hash",
         "statement": "Người điều khiển ô tô vượt đèn đỏ bị phạt tiền và trừ điểm.",
-        "conduct": "Không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
-        "subject": "Người điều khiển ô tô",
-        "conditions": (),
-        "monetary_penalty": "4.000.000 đồng đến 6.000.000 đồng",
-        "license_points_deducted": "4 điểm",
-        "additional_penalties": (),
-        "remedial_measures": (),
         "valid_from": date(2025, 1, 1),
         "valid_to": None,
         "document_number": "168/2024/NĐ-CP",
-        "provision_path": "Điều 6 khoản 9 điểm b",
         "evidence": (EvidenceReference(chunk_id="chunk-1"),),
     }
     defaults.update(overrides)
@@ -37,22 +28,5 @@ def test_legal_fact_to_dict_serializes_stable_output_schema() -> None:
     assert record["schema_version"] == LEGAL_FACT_SCHEMA_VERSION
     assert record["valid_from"] == "2025-01-01"
     assert record["valid_to"] is None
-    assert record["conditions"] == []
     assert record["statement"] == "Người điều khiển ô tô vượt đèn đỏ bị phạt tiền và trừ điểm."
     assert record["evidence"] == [{"chunk_id": "chunk-1"}]
-
-
-def test_legal_fact_to_dict_serializes_missing_penalty_fields_as_null() -> None:
-    """Optional monetary and points fields serialize as null, not omitted."""
-    record = _fact(monetary_penalty=None, license_points_deducted=None).to_dict()
-
-    assert record["monetary_penalty"] is None
-    assert record["license_points_deducted"] is None
-
-
-def test_legal_fact_to_dict_serializes_absent_specialized_fields_as_null() -> None:
-    """A general legal statement does not need placeholder conduct or subject text."""
-    record = _fact(conduct=None, subject=None).to_dict()
-
-    assert record["conduct"] is None
-    assert record["subject"] is None

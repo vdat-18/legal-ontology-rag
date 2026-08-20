@@ -29,7 +29,6 @@ def _export_candidate(candidate: CandidateDraft) -> dict[str, Any]:
         "bridge": list(candidate.bridge),
         "reasoning_vi": candidate.reasoning_vi,
         "required_claims": [claim.to_dict() for claim in candidate.required_claims],
-        "answer_fields": [fields.to_dict() for fields in candidate.answer_fields],
         "evolutions": list(candidate.evolutions),
         "query_type": candidate.query_type,
         "query_form": candidate.query_form,
@@ -40,6 +39,5 @@ def _export_candidate(candidate: CandidateDraft) -> dict[str, Any]:
         "reasoning_hops": candidate.reasoning_hops,
         "as_of_date": candidate.as_of_date.isoformat() if candidate.as_of_date else None,
         "source_fact_ids": list(candidate.source_fact_ids),
-        "source_fact_content_sha256": list(candidate.source_fact_content_sha256),
         "generator_model": candidate.generator_model,
     }

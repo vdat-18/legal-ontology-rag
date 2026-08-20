@@ -47,20 +47,11 @@ def _existing_fact(fact_id: str, source_chunk_id: str) -> LegalFact:
     """Build one already-extracted legal fact for resume tests."""
     return LegalFact(
         fact_id=fact_id,
-        fact_content_sha256=f"content-{fact_id}",
         statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền.",
-        conduct="Vượt đèn đỏ",
-        subject="Người điều khiển ô tô",
-        conditions=(),
-        monetary_penalty="4.000.000 đồng đến 6.000.000 đồng",
-        license_points_deducted=None,
-        additional_penalties=(),
-        remedial_measures=(),
         valid_from=None,
         valid_to=None,
         document_number="168/2024/NĐ-CP",
-        provision_path="Điều 6",
-        evidence=(EvidenceReference(chunk_id=source_chunk_id, quoted_span="Phạt tiền"),),
+        evidence=(EvidenceReference(chunk_id=source_chunk_id),),
         source_chunk_id=source_chunk_id,
     )
 
@@ -108,16 +99,6 @@ class _OneFactExtractionClient:
                 facts=[
                     BamlLegalFact(
                         statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền và trừ điểm.",
-                        conduct="Vượt đèn đỏ",
-                        subject="Người điều khiển ô tô",
-                        conditions=[],
-                        monetary_penalty="4.000.000 đồng đến 6.000.000 đồng",
-                        license_points_deducted="4 điểm",
-                        additional_penalties=[],
-                        remedial_measures=[],
-                        valid_from=None,
-                        valid_to=None,
-                        provision_path="Điều 6 khoản 9 điểm b",
                         evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id)],
                     )
                 ],
@@ -222,14 +203,15 @@ def test_fact_extraction_cli_extracts_and_writes_facts(monkeypatch: pytest.Monke
 
     facts = read_legal_facts(facts_path)
     assert len(facts) == 1
-    assert facts[0].conduct == "Vượt đèn đỏ"
+    assert facts[0].statement == "Người điều khiển ô tô vượt đèn đỏ bị phạt tiền và trừ điểm."
+    assert facts[0].evidence == (EvidenceReference(chunk_id="chunk-1"),)
     assert stage_cache_path(facts_path).exists()
 
 
-def test_fact_extraction_cli_rejects_conflicting_content_for_one_fact_id(
+def test_fact_extraction_cli_persists_distinct_content_addressed_facts(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Two extracted records with one identity cannot silently overwrite each other."""
+    """Different statements and evidence receive distinct identities and are both persisted."""
     chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
     screening_path = tmp_path / "chunk_screening.jsonl"
     facts_path = tmp_path / "legal_facts.jsonl"
@@ -256,17 +238,7 @@ def test_fact_extraction_cli_rejects_conflicting_content_for_one_fact_id(
                     target_chunk_id=item.target_chunk_id,
                     facts=[
                         BamlLegalFact(
-                            statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền.",
-                            conduct="Vượt đèn đỏ",
-                            subject="Người điều khiển ô tô",
-                            conditions=[],
-                            monetary_penalty=f"Mức phạt {item.target_chunk_id}",
-                            license_points_deducted=None,
-                            additional_penalties=[],
-                            remedial_measures=[],
-                            valid_from=None,
-                            valid_to=None,
-                            provision_path="Điều 6 khoản 9 điểm b",
+                            statement=f"Người điều khiển ô tô vượt đèn đỏ chịu mức phạt {item.target_chunk_id}.",
                             evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id)],
                         )
                     ],
@@ -277,8 +249,12 @@ def test_fact_extraction_cli_rejects_conflicting_content_for_one_fact_id(
     _configure_cli(monkeypatch, chunks_path, screening_path, facts_path)
     monkeypatch.setattr(fact_extraction, "BamlFactExtractionClient", _ConflictingClient)
 
-    with pytest.raises(ValueError, match="Conflicting content for fact_id"):
-        fact_extraction_cli.main()
+    fact_extraction_cli.main()
+
+    facts = read_legal_facts(facts_path)
+    assert len(facts) == 2
+    assert len({fact.fact_id for fact in facts}) == 2
+    assert {fact.source_chunk_id for fact in facts} == {"chunk-1", "chunk-2"}
 
 
 def test_fact_extraction_cli_stamps_document_metadata_onto_every_fact(
@@ -395,16 +371,6 @@ def test_fact_extraction_cli_resumes_by_skipping_already_extracted_chunks(
                     facts=[
                         BamlLegalFact(
                             statement="Người điều khiển ô tô thực hiện hành vi bị trừ điểm giấy phép.",
-                            conduct="Trừ điểm giấy phép",
-                            subject="Người điều khiển ô tô",
-                            conditions=[],
-                            monetary_penalty=None,
-                            license_points_deducted="6 điểm",
-                            additional_penalties=[],
-                            remedial_measures=[],
-                            valid_from=None,
-                            valid_to=None,
-                            provision_path="Điều 6 khoản 10",
                             evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id)],
                         )
                     ],
@@ -523,16 +489,6 @@ def test_fact_extraction_cli_persists_progress_if_interrupted_mid_document(
                     facts=[
                         BamlLegalFact(
                             statement=f"Người điều khiển thực hiện hành vi {item.target_chunk_id} bị phạt tiền.",
-                            conduct=f"Hành vi {item.target_chunk_id}",
-                            subject="Người điều khiển ô tô",
-                            conditions=[],
-                            monetary_penalty="4.000.000 đồng",
-                            license_points_deducted=None,
-                            additional_penalties=[],
-                            remedial_measures=[],
-                            valid_from=None,
-                            valid_to=None,
-                            provision_path="Điều 6",
                             evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id)],
                         )
                     ],

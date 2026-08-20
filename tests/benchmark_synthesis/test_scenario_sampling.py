@@ -31,26 +31,16 @@ _REPO_CONFIG_DIR = Path(__file__).resolve().parents[2] / "data" / "config" / "gr
 def _fact(
     fact_id: str,
     *,
-    content_sha256: str | None = None,
     valid_from: date | None = None,
     valid_to: date | None = None,
 ) -> LegalFact:
     """Build one minimal legal fact for scenario-sampling tests."""
     return LegalFact(
         fact_id=fact_id,
-        fact_content_sha256=content_sha256 or f"content-{fact_id}",
         statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền.",
-        conduct="Vượt đèn đỏ",
-        subject="Người điều khiển ô tô",
-        conditions=(),
-        monetary_penalty="4.000.000 đồng",
-        license_points_deducted=None,
-        additional_penalties=(),
-        remedial_measures=(),
         valid_from=valid_from,
         valid_to=valid_to,
         document_number="168/2024/NĐ-CP",
-        provision_path="Điều 6",
         evidence=(EvidenceReference(chunk_id=f"chunk-{fact_id}"),),
     )
 
@@ -82,8 +72,6 @@ def _config(
                     query_type_id=query_type_id,
                     bundle_kinds=("single_hop", "synthesis", "multi_hop", "temporal"),
                     minimum_facts=1,
-                    required_all_fields=(),
-                    required_any_fields=(),
                 )
                 for query_type_id in query_type_ids
             )
@@ -150,22 +138,16 @@ def test_load_query_type_descriptions_reads_repo_config() -> None:
     assert descriptions["penalty_for_conduct"] == "Mức phạt của một hành vi"
 
 
-def test_general_rule_is_not_misclassified_as_penalty_or_subject_query() -> None:
-    """A statement-only fact remains eligible without being forced into specialized query types."""
+def test_statement_only_fact_uses_structural_query_type_eligibility() -> None:
+    """Query-type eligibility depends on bundle shape, leaving semantics to generation."""
     taxonomy = load_query_taxonomy(_REPO_CONFIG_DIR / "query_taxonomy.json")
-    fact = replace(
-        _fact("fact-general"),
-        statement="Quyết định xử phạt phải được gửi cho người vi phạm đúng hạn.",
-        conduct=None,
-        subject=None,
-        monetary_penalty=None,
-    )
+    fact = replace(_fact("fact-general"), statement="Quyết định xử phạt phải được gửi đúng hạn.")
 
     eligible = scenario_sampling._eligible_query_types(_bundle("bundle-general", (fact.fact_id,)), (fact,), taxonomy)
 
     assert "legal_rule" in eligible
-    assert "penalty_for_conduct" not in eligible
-    assert "subject_and_vehicle" not in eligible
+    assert "penalty_for_conduct" in eligible
+    assert "subject_and_vehicle" in eligible
 
 
 def test_load_persona_descriptions_reads_repo_config() -> None:
@@ -322,14 +304,15 @@ def test_sample_scenarios_scenario_id_changes_with_bridge() -> None:
     assert first[0].scenario_id != second[0].scenario_id
 
 
-def test_sample_scenarios_scenario_id_changes_with_fact_content() -> None:
-    """Changing a fact's content hash invalidates scenario identity."""
-    bundle = _bundle("bundle-a", ("a",))
-    first_facts = {"a": _fact("a", content_sha256="first-content")}
-    second_facts = {"a": _fact("a", content_sha256="second-content")}
+def test_sample_scenarios_scenario_id_changes_with_fact_identity() -> None:
+    """Changing the content-derived fact identity invalidates scenario identity."""
+    first_bundle = _bundle("bundle-a", ("a",))
+    second_bundle = _bundle("bundle-a", ("b",))
+    first_facts = {"a": _fact("a")}
+    second_facts = {"b": _fact("b")}
 
-    first = sample_scenarios([bundle], first_facts, _config(), total_samples=1)
-    second = sample_scenarios([bundle], second_facts, _config(), total_samples=1)
+    first = sample_scenarios([first_bundle], first_facts, _config(), total_samples=1)
+    second = sample_scenarios([second_bundle], second_facts, _config(), total_samples=1)
 
     assert first[0].scenario_id != second[0].scenario_id
 

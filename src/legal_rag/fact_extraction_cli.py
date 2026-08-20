@@ -102,12 +102,8 @@ def main() -> None:
     facts_by_id: dict[str, LegalFact] = {}
 
     def _merge_facts(facts: Sequence[LegalFact]) -> None:
-        """Merge facts without silently replacing conflicting content."""
+        """Merge content-addressed facts without duplicating identical identities."""
         for fact in facts:
-            existing = facts_by_id.get(fact.fact_id)
-            if existing is not None and existing.fact_content_sha256 != fact.fact_content_sha256:
-                msg = f"Conflicting content for fact_id {fact.fact_id}"
-                raise ValueError(msg)
             facts_by_id.setdefault(fact.fact_id, fact)
 
     _merge_facts(existing_facts)

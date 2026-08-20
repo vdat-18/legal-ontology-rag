@@ -147,16 +147,6 @@ def _baml_fact(**overrides: object) -> BamlLegalFact:
     """Build one generated BAML legal fact for validation tests."""
     defaults: dict[str, object] = {
         "statement": "Người điều khiển ô tô không chấp hành đèn tín hiệu bị phạt tiền và trừ điểm.",
-        "conduct": "Không chấp hành hiệu lệnh của đèn tín hiệu giao thông",
-        "subject": "Người điều khiển ô tô",
-        "conditions": [],
-        "monetary_penalty": "4.000.000 đồng đến 6.000.000 đồng",
-        "license_points_deducted": "4 điểm",
-        "additional_penalties": [],
-        "remedial_measures": [],
-        "valid_from": None,
-        "valid_to": None,
-        "provision_path": "Điều 6 khoản 9 điểm b",
         "evidence": [BamlEvidenceEntry(chunk_id="chunk-1")],
     }
     defaults.update(overrides)
@@ -197,36 +187,20 @@ def test_build_extracted_fact_falls_back_to_document_effective_dates() -> None:
     assert fact.valid_to == date(2027, 12, 31)
 
 
-def test_build_extracted_fact_prefers_provision_effective_date_over_document_date() -> None:
-    """A provision stating its own effective date keeps it instead of the document-wide one."""
-    fact = _build_extracted(_baml_fact(valid_from="2026-01-01"))
-
-    assert fact.valid_from == date(2026, 1, 1)
-
-
-def test_build_extracted_fact_identity_is_stable_for_identical_identity_fields() -> None:
-    """Changing structured details without changing the legal statement preserves fact identity."""
+def test_build_extracted_fact_identity_is_stable_for_identical_content() -> None:
+    """Identical statements and provenance produce the same content-addressed identity."""
     first = _build_extracted()
-    second = _build_extracted(_baml_fact(monetary_penalty="5.000.000 đồng"))
+    second = _build_extracted()
 
     assert first.fact_id == second.fact_id
-    assert first.fact_content_sha256 != second.fact_content_sha256
 
 
-def test_build_extracted_fact_supports_rules_without_conduct_or_subject() -> None:
-    """A general legal rule remains representable when specialized fields do not apply."""
+def test_build_extracted_fact_supports_general_legal_statements() -> None:
+    """A general legal rule is represented directly by its self-contained statement."""
     fact = _build_extracted(
-        _baml_fact(
-            statement="Quyết định xử phạt phải được gửi cho người vi phạm trong thời hạn luật định.",
-            conduct=None,
-            subject=None,
-            monetary_penalty=None,
-            license_points_deducted=None,
-        )
+        _baml_fact(statement="Quyết định xử phạt phải được gửi cho người vi phạm trong thời hạn luật định.")
     )
 
-    assert fact.conduct is None
-    assert fact.subject is None
     assert fact.statement.startswith("Quyết định xử phạt")
 
 
@@ -277,7 +251,6 @@ def test_extract_facts_from_document_collects_every_fact_per_target() -> None:
     fact_one = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="target")])
     fact_two = _baml_fact(
         statement="Người điều khiển ô tô thực hiện hành vi khác bị phạt tiền.",
-        conduct="Hành vi khác",
         evidence=[BamlEvidenceEntry(chunk_id="target")],
     )
     client = _FakeExtractionClient({"target": (fact_one, fact_two)})
@@ -295,7 +268,7 @@ def test_extract_facts_from_document_collects_every_fact_per_target() -> None:
     )
 
     assert len(facts) == 2
-    assert {fact.conduct for fact in facts} == {fact_one.conduct, fact_two.conduct}
+    assert {fact.statement for fact in facts} == {fact_one.statement, fact_two.statement}
 
 
 def test_extract_facts_from_document_batches_five_targets_per_request() -> None:
@@ -337,7 +310,6 @@ def test_extract_facts_from_document_runs_batches_concurrently_and_preserves_fac
                     facts=[
                         _baml_fact(
                             statement=f"Người điều khiển thực hiện hành vi {item.target_chunk_id} bị phạt tiền.",
-                            conduct=f"Hành vi {item.target_chunk_id}",
                             evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id)],
                         )
                     ],
@@ -537,12 +509,8 @@ def test_baml_fact_extraction_client_parses_typed_batch_result(monkeypatch: pyte
         fact_extraction,
         "execute_baml_request",
         lambda *args, **kwargs: (
-            '[{"target_chunk_id":"c1","facts":[{"conduct":"Vượt đèn đỏ",'
-            '"subject":"Người điều khiển ô tô","conditions":[],'
+            '[{"target_chunk_id":"c1","facts":[{'
             '"statement":"Người điều khiển ô tô vượt đèn đỏ bị phạt tiền",'
-            '"monetary_penalty":"4.000.000 đồng","license_points_deducted":null,'
-            '"additional_penalties":[],"remedial_measures":[],"valid_from":null,"valid_to":null,'
-            '"provision_path":"Điều 6",'
             '"evidence":[{"chunk_id":"c1"}]}]}]'
         ),
     )
@@ -553,5 +521,5 @@ def test_baml_fact_extraction_client_parses_typed_batch_result(monkeypatch: pyte
 
     assert len(results) == 1
     assert results[0].target_chunk_id == "c1"
-    assert results[0].facts[0].conduct == "Vượt đèn đỏ"
+    assert results[0].facts[0].statement == "Người điều khiển ô tô vượt đèn đỏ bị phạt tiền"
     assert results[0].facts[0].evidence[0].chunk_id == "c1"
