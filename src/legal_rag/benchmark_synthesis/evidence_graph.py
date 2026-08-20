@@ -32,32 +32,26 @@ from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
-EVIDENCE_RELATION_SCHEMA_VERSION = "1.1.0"
-EVIDENCE_BUNDLE_SCHEMA_VERSION = "1.0.0"
+EVIDENCE_RELATION_SCHEMA_VERSION = "2.0.0"
+EVIDENCE_BUNDLE_SCHEMA_VERSION = "2.0.0"
 EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.1.0"
-EVIDENCE_RELATION_PROMPT_VERSION = "1.5.0"
+EVIDENCE_RELATION_PROMPT_VERSION = "2.0.0"
 EVIDENCE_CANDIDATE_SELECTION_VERSION = "4.1.0"
 EVIDENCE_CANDIDATE_SET_SCHEMA_VERSION = "1.0.0"
 FACT_RETRIEVAL_TEXT_VERSION = "4.0.0"
 
 RelationType = Literal[
-    "conduct_to_penalty",
-    "conduct_to_subject",
-    "conduct_to_points_deduction",
-    "conduct_to_remedial_measure",
+    "complementary_rule",
     "rule_to_exception",
     "rule_to_authority",
     "amended_by",
     "procedure_sequence",
 ]
 
-BundleKind = Literal["single_hop", "synthesis", "multi_hop", "temporal"]
+BundleKind = Literal["single_hop", "multi_hop", "temporal"]
 
 _RELATION_TYPE_BY_BAML_ENUM: dict[str, RelationType] = {
-    "ConductToPenalty": "conduct_to_penalty",
-    "ConductToSubject": "conduct_to_subject",
-    "ConductToPointsDeduction": "conduct_to_points_deduction",
-    "ConductToRemedialMeasure": "conduct_to_remedial_measure",
+    "ComplementaryRule": "complementary_rule",
     "RuleToException": "rule_to_exception",
     "RuleToAuthority": "rule_to_authority",
     "AmendedBy": "amended_by",
@@ -67,7 +61,7 @@ _RELATION_TYPE_BY_BAML_ENUM: dict[str, RelationType] = {
 
 @dataclass(frozen=True, slots=True)
 class EvidenceRelation:
-    """One confirmed relation between two approved facts."""
+    """One confirmed relation between two legal facts."""
 
     relation_id: str
     relation_type: RelationType
@@ -370,7 +364,6 @@ def _summarize(fact: LegalFact) -> LegalFactSummary:
         valid_from=fact.valid_from.isoformat() if fact.valid_from else None,
         valid_to=fact.valid_to.isoformat() if fact.valid_to else None,
         document_number=fact.document_number,
-        evidence_chunk_ids=[evidence.chunk_id for evidence in fact.evidence],
     )
 
 
@@ -487,19 +480,11 @@ def confirm_evidence_relations(
     return tuple(relations), tuple(failures)
 
 
-def classify_bundle_kind(relation: EvidenceRelation, facts_by_id: Mapping[str, LegalFact]) -> BundleKind:
-    """Classify a relation's bundle kind: temporal, multi-hop, or synthesis.
-
-    A relation whose two facts come from different documents is multi-hop
-    unless it is an amendment relation, which is always temporal regardless
-    of document — this is the structural downgrade rule from the pipeline
-    design, expressed directly rather than as a post-hoc correction.
-    """
+def classify_bundle_kind(relation: EvidenceRelation) -> BundleKind:
+    """Classify amendments as temporal and every other two-fact relation as multi-hop."""
     if relation.relation_type == "amended_by":
         return "temporal"
-    from_document = facts_by_id[relation.from_fact_id].document_number
-    to_document = facts_by_id[relation.to_fact_id].document_number
-    return "multi_hop" if from_document != to_document else "synthesis"
+    return "multi_hop"
 
 
 def evidence_relation_sort_key(relation: EvidenceRelation) -> tuple[object, ...]:
@@ -521,11 +506,10 @@ def sample_bundles(
 ) -> tuple[EvidenceBundle, ...]:
     """Sample single-hop and relation-derived bundles, bounding overlap between them.
 
-    Every approved fact contributes exactly one single-hop bundle; those are
+    Every legal fact contributes exactly one single-hop bundle; those are
     excluded from the overlap check since, by construction, every other
     bundle overlaps with them.
     """
-    facts_by_id = {fact.fact_id: fact for fact in facts}
     single_hop_bundles = tuple(
         EvidenceBundle(
             bundle_id=sha256_json({"fact_ids": [fact.fact_id]}),
@@ -539,7 +523,7 @@ def sample_bundles(
     selected: list[EvidenceBundle] = list(single_hop_bundles)
     for relation in sorted(relations, key=evidence_relation_sort_key):
         fact_ids = tuple(sorted((relation.from_fact_id, relation.to_fact_id)))
-        kind = classify_bundle_kind(relation, facts_by_id)
+        kind = classify_bundle_kind(relation)
         candidate = EvidenceBundle(
             bundle_id=sha256_json(
                 {

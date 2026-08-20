@@ -1,8 +1,5 @@
 enum RelationType {
-  ConductToPenalty
-  ConductToSubject
-  ConductToPointsDeduction
-  ConductToRemedialMeasure
+  ComplementaryRule
   RuleToException
   RuleToAuthority
   AmendedBy
@@ -15,7 +12,6 @@ class LegalFactSummary {
   valid_from string?
   valid_to string?
   document_number string
-  evidence_chunk_ids string[]
 }
 
 class ConfirmedRelation {
@@ -60,12 +56,11 @@ function ConfirmEvidenceRelationBatch(items: EvidenceRelationBatchItem[]) -> Evi
     Xác nhận quan hệ pháp lý trực tiếp cho từng cặp fact về xử phạt giao thông
     đường bộ. Xử lý từng pair độc lập và giữ nguyên pair_id.
 
-    Chỉ đặt is_related=true khi nội dung và evidence của cả hai fact đủ chứng
-    minh một quan hệ dưới đây; giống từ, cùng Điều hoặc cùng chủ đề là chưa đủ:
-    - ConductToPenalty: hành vi/quy tắc -> mức phạt tiền.
-    - ConductToSubject: hành vi/quy tắc -> đối tượng hoặc loại phương tiện.
-    - ConductToPointsDeduction: hành vi/mức phạt -> trừ điểm hoặc tước giấy phép.
-    - ConductToRemedialMeasure: hành vi/mức phạt -> biện pháp khắc phục.
+    Mỗi statement là một quy tắc pháp lý hoàn chỉnh. Chỉ đặt is_related=true
+    khi hai statement và metadata chứng minh một quan hệ trực tiếp dưới đây;
+    giống từ, cùng Điều hoặc cùng chủ đề chung chung là chưa đủ:
+    - ComplementaryRule: quy tắc nền -> quy tắc bổ sung một khía cạnh, điều
+      kiện, hệ quả hoặc cách áp dụng cần thiết cho cùng tình huống pháp lý.
     - RuleToException: quy định chung -> ngoại lệ.
     - RuleToAuthority: quy định hành vi -> thẩm quyền xử phạt.
     - AmendedBy: quy định cũ -> quy định sửa đổi/thay thế.
@@ -76,8 +71,8 @@ function ConfirmEvidenceRelationBatch(items: EvidenceRelationBatchItem[]) -> Evi
     Khi không related: relation_type, from_fact_id, to_fact_id=null và bridge=[].
 
     Ví dụ: hai fact cùng hành vi, một fact nêu phạt tiền và fact kia nêu trừ
-    điểm -> ConductToPointsDeduction. Hai hành vi khác nhau chỉ cùng Điều và
-    cùng loại xe -> không related.
+    điểm -> ComplementaryRule. Hai hành vi khác nhau chỉ cùng Điều và cùng
+    loại xe -> không related.
 
     Các cặp cần xác nhận:
 

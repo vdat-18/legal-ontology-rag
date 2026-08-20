@@ -230,7 +230,7 @@ class _FakeRelationClient:
 def _relation(
     from_fact_id: str = "fact-a",
     to_fact_id: str = "fact-b",
-    relation_type: str = "conduct_to_penalty",
+    relation_type: str = "complementary_rule",
 ) -> EvidenceRelation:
     """Build one confirmed evidence relation for tests."""
     return EvidenceRelation(
@@ -355,27 +355,17 @@ def test_confirm_evidence_relations_reports_a_pair_that_fails_every_attempt_as_a
 
 
 def test_classify_bundle_kind_amended_by_is_always_temporal() -> None:
-    """An amendment relation is temporal even within the same document."""
-    facts_by_id = {"a": _fact("a", document_number="168/2024/NĐ-CP"), "b": _fact("b", document_number="168/2024/NĐ-CP")}
+    """An amendment relation is temporal."""
     relation = _relation("a", "b", relation_type="amended_by")
 
-    assert classify_bundle_kind(relation, facts_by_id) == "temporal"
+    assert classify_bundle_kind(relation) == "temporal"
 
 
-def test_classify_bundle_kind_cross_document_is_multi_hop() -> None:
-    """A non-amendment relation across two documents is multi-hop."""
-    facts_by_id = {"a": _fact("a", document_number="168/2024/NĐ-CP"), "b": _fact("b", document_number="238/2026/NĐ-CP")}
-    relation = _relation("a", "b", relation_type="conduct_to_penalty")
+def test_classify_bundle_kind_non_amendment_is_multi_hop() -> None:
+    """Every non-amendment two-fact relation is multi-hop."""
+    relation = _relation("a", "b", relation_type="complementary_rule")
 
-    assert classify_bundle_kind(relation, facts_by_id) == "multi_hop"
-
-
-def test_classify_bundle_kind_same_document_is_synthesis() -> None:
-    """A non-amendment relation within one document is synthesis, not multi-hop."""
-    facts_by_id = {"a": _fact("a", document_number="168/2024/NĐ-CP"), "b": _fact("b", document_number="168/2024/NĐ-CP")}
-    relation = _relation("a", "b", relation_type="conduct_to_penalty")
-
-    assert classify_bundle_kind(relation, facts_by_id) == "synthesis"
+    assert classify_bundle_kind(relation) == "multi_hop"
 
 
 def test_sample_bundles_includes_one_single_hop_bundle_per_fact() -> None:
@@ -391,7 +381,7 @@ def test_sample_bundles_includes_one_single_hop_bundle_per_fact() -> None:
 def test_sample_bundles_excludes_relation_bundle_exceeding_overlap_threshold() -> None:
     """A relation bundle that duplicates an already-selected bundle is dropped."""
     facts = [_fact("a"), _fact("b")]
-    duplicate_relations = [_relation("a", "b"), _relation("a", "b", relation_type="conduct_to_subject")]
+    duplicate_relations = [_relation("a", "b"), _relation("a", "b", relation_type="rule_to_exception")]
 
     bundles = sample_bundles(facts, duplicate_relations, overlap_threshold=0.5)
 
@@ -477,10 +467,10 @@ def test_baml_evidence_relation_client_returns_none_when_unrelated(monkeypatch: 
     assert relations == [None]
 
 
-def test_baml_evidence_relation_client_sends_statements_and_evidence_chunk_ids(
+def test_baml_evidence_relation_client_sends_statements_and_document_metadata(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Relation confirmation sends complete statements and source chunk ids to BAML."""
+    """Relation confirmation sends complete statements and document metadata to BAML."""
     captured_items: list[object] = []
     request = object()
 
@@ -518,9 +508,9 @@ def test_baml_evidence_relation_client_sends_statements_and_evidence_chunk_ids(
     assert len(captured_items) == 1
     item = captured_items[0]
     assert item.fact_a.statement == fact_a.statement
-    assert item.fact_a.evidence_chunk_ids == ["chunk-a"]
+    assert item.fact_a.document_number == fact_a.document_number
     assert item.fact_b.statement == fact_b.statement
-    assert item.fact_b.evidence_chunk_ids == ["chunk-b"]
+    assert item.fact_b.document_number == fact_b.document_number
 
 
 def test_build_relation_is_deterministic_for_identical_inputs() -> None:

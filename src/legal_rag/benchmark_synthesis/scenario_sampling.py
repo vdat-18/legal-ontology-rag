@@ -21,8 +21,8 @@ from legal_rag.benchmark_synthesis.evidence_graph import BundleKind, EvidenceBun
 from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.parser.hashing import sha256_json
 
-SCENARIO_SCHEMA_VERSION = "1.0.0"
-SCENARIO_DISTRIBUTION_SCHEMA_VERSION = "1.1.0"
+SCENARIO_SCHEMA_VERSION = "2.0.0"
+SCENARIO_DISTRIBUTION_SCHEMA_VERSION = "2.0.0"
 
 
 @dataclass(frozen=True, slots=True)

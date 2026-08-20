@@ -52,7 +52,7 @@ class _AlwaysRelatedClient:
         return [
             evidence_graph.EvidenceRelation(
                 relation_id=f"relation-{fact_a.fact_id}-{fact_b.fact_id}",
-                relation_type="conduct_to_penalty",
+                relation_type="complementary_rule",
                 from_fact_id=fact_a.fact_id,
                 to_fact_id=fact_b.fact_id,
                 bridge=("Điều 6",),
@@ -244,7 +244,7 @@ def test_evidence_graph_cli_allow_incomplete_relations_samples_from_confirmed_pa
             return [
                 evidence_graph.EvidenceRelation(
                     relation_id=f"relation-{fact_x.fact_id}-{fact_y.fact_id}",
-                    relation_type="conduct_to_penalty",
+                    relation_type="complementary_rule",
                     from_fact_id=fact_x.fact_id,
                     to_fact_id=fact_y.fact_id,
                     bridge=("Điều 6",),
@@ -300,7 +300,7 @@ def test_evidence_graph_cli_does_not_recheck_a_pair_already_processed(
                 relations.append(
                     evidence_graph.EvidenceRelation(
                         relation_id=f"relation-{fact_x.fact_id}-{fact_y.fact_id}",
-                        relation_type="conduct_to_penalty",
+                        relation_type="complementary_rule",
                         from_fact_id=fact_x.fact_id,
                         to_fact_id=fact_y.fact_id,
                         bridge=("Điều 6",),
@@ -348,7 +348,7 @@ def test_evidence_graph_cli_persists_progress_if_interrupted_mid_run(
             return [
                 evidence_graph.EvidenceRelation(
                     relation_id=f"relation-{fact_x.fact_id}-{fact_y.fact_id}",
-                    relation_type="conduct_to_penalty",
+                    relation_type="complementary_rule",
                     from_fact_id=fact_x.fact_id,
                     to_fact_id=fact_y.fact_id,
                     bridge=("Điều 6",),
@@ -448,7 +448,7 @@ def test_evidence_graph_cli_replaces_relation_written_before_progress(
         [
             evidence_graph.EvidenceRelation(
                 relation_id="relation-before-crash",
-                relation_type="conduct_to_penalty",
+                relation_type="complementary_rule",
                 from_fact_id="fact-a",
                 to_fact_id="fact-b",
                 bridge=("Điều 6",),

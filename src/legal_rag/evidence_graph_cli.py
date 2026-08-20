@@ -16,9 +16,7 @@ if TYPE_CHECKING:
 
 def _parser() -> argparse.ArgumentParser:
     """Build the evidence-graph command-line interface."""
-    parser = argparse.ArgumentParser(
-        description="Confirm evidence relations between approved facts and sample scenarios."
-    )
+    parser = argparse.ArgumentParser(description="Confirm evidence relations between legal facts and sample scenarios.")
     parser.add_argument("facts_path", type=Path, help="Legal-facts JSONL path")
     parser.add_argument("relations_output_path", type=Path, help="Destination evidence-relations JSONL path")
     parser.add_argument(

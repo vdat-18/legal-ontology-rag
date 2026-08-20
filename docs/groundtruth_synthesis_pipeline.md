@@ -189,16 +189,32 @@ Bước này không validate, sửa nội dung hoặc deduplicate fact. Corpus f
 ## 4. Evidence graph và evidence bundle
 
 Candidate retrieval đề xuất các cặp fact có khả năng liên quan bằng dense và
-lexical retrieval. Đây chỉ là bước đề xuất ứng viên.
+lexical retrieval trên duy nhất `statement`, rồi gộp thứ hạng bằng RRF. Đây
+chỉ là bước đề xuất ứng viên.
 
-LLM đọc `statement`, metadata và evidence chunk IDs để quyết định hai fact có
-thực sự liên quan hay không, loại quan hệ, hướng quan hệ và `bridge`. Retrieval
+LLM đọc `fact_id`, `statement`, `document_number`, `valid_from` và `valid_to`
+để quyết định hai fact có thực sự liên quan hay không, loại quan hệ, hướng
+quan hệ và `bridge`. Evidence chunk IDs không được gửi vì ID không mang nội
+dung ngữ nghĩa; chúng vẫn được giữ trong fact để tạo gold chunks. Retrieval
 score hoặc keyword không phải quyết định cuối.
+
+Relation taxonomy dành cho các statement tự đầy đủ:
+
+- `complementary_rule`: quy tắc nền và quy tắc bổ sung cho cùng tình huống;
+- `rule_to_exception`: quy định chung và ngoại lệ;
+- `rule_to_authority`: quy định và thẩm quyền xử phạt;
+- `amended_by`: quy định cũ và quy định sửa đổi/thay thế;
+- `procedure_sequence`: hai bước liên tiếp trong một thủ tục.
 
 Các relation đã xác nhận được chuyển thành:
 
 - `single_hop` bundle: một fact;
-- `multi_hop` bundle: nhiều fact có quan hệ và bridge.
+- `multi_hop` bundle: hai fact có quan hệ và bridge;
+- `temporal` bundle: hai fact nối bằng quan hệ sửa đổi.
+
+Không còn bundle kind `synthesis`. Mọi relation hai fact không phải sửa đổi
+đều là `multi_hop`, không suy luận loại bundle từ việc hai fact cùng hay khác
+văn bản.
 
 Bundle giữ `fact_ids`; gold chunks được suy ra trực tiếp từ `evidence` của các
 fact trong bundle.

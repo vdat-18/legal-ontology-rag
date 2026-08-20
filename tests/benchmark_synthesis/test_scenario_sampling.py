@@ -70,7 +70,7 @@ def _config(
             definitions=tuple(
                 QueryTypeDefinition(
                     query_type_id=query_type_id,
-                    bundle_kinds=("single_hop", "synthesis", "multi_hop", "temporal"),
+                    bundle_kinds=("single_hop", "multi_hop", "temporal"),
                     minimum_facts=1,
                 )
                 for query_type_id in query_type_ids
@@ -84,8 +84,7 @@ def _config(
             bundle_answerability_values=("answerable", "partially_answerable"),
             bundle_kind_weights=(
                 ("single_hop", 0.4),
-                ("synthesis", 0.2),
-                ("multi_hop", 0.2),
+                ("multi_hop", 0.4),
                 ("temporal", 0.2),
             ),
         ),
@@ -116,8 +115,7 @@ def test_load_scenario_distribution_reads_repo_config() -> None:
     assert distribution.bundle_answerability_values == ("answerable", "partially_answerable")
     assert dict(distribution.bundle_kind_weights) == {
         "single_hop": 0.4,
-        "synthesis": 0.2,
-        "multi_hop": 0.2,
+        "multi_hop": 0.4,
         "temporal": 0.2,
     }
 
@@ -176,19 +174,17 @@ def test_sample_scenarios_stops_at_the_requested_total() -> None:
 
 def test_sample_scenarios_balances_bundle_kinds_for_small_totals() -> None:
     """A small sample includes each available bundle kind before repeating one."""
-    facts_by_id = {fact_id: _fact(fact_id) for fact_id in ("a", "b", "c", "d", "e", "f")}
+    facts_by_id = {fact_id: _fact(fact_id) for fact_id in ("a", "b", "c", "d", "e")}
     bundles = [
         _bundle("single", ("a",)),
-        _bundle("synthesis", ("b", "c"), kind="synthesis"),
-        _bundle("multi-hop", ("d", "e"), kind="multi_hop"),
-        _bundle("temporal", ("e", "f"), kind="temporal"),
+        _bundle("multi-hop", ("b", "c"), kind="multi_hop"),
+        _bundle("temporal", ("d", "e"), kind="temporal"),
     ]
 
-    scenarios = sample_scenarios(bundles, facts_by_id, _config(), total_samples=4)
+    scenarios = sample_scenarios(bundles, facts_by_id, _config(), total_samples=3)
 
     assert {scenario.bundle_kind for scenario in scenarios} == {
         "single_hop",
-        "synthesis",
         "multi_hop",
         "temporal",
     }
@@ -197,7 +193,7 @@ def test_sample_scenarios_balances_bundle_kinds_for_small_totals() -> None:
 def test_sample_scenarios_sets_reasoning_hops_to_bundle_size() -> None:
     """A two-fact bundle produces scenarios with reasoning_hops=2."""
     facts_by_id = {"a": _fact("a"), "b": _fact("b")}
-    bundle = _bundle("bundle-ab", ("a", "b"), kind="synthesis")
+    bundle = _bundle("bundle-ab", ("a", "b"), kind="multi_hop")
 
     scenarios = sample_scenarios([bundle], facts_by_id, _config(), total_samples=1)
 
@@ -207,7 +203,7 @@ def test_sample_scenarios_sets_reasoning_hops_to_bundle_size() -> None:
 def test_sample_scenarios_collects_deduplicated_sorted_gold_chunk_ids() -> None:
     """gold_chunk_ids is the sorted union of evidence chunk_ids across the bundle's facts."""
     facts_by_id = {"a": _fact("a"), "b": _fact("b")}
-    bundle = _bundle("bundle-ab", ("a", "b"), kind="synthesis")
+    bundle = _bundle("bundle-ab", ("a", "b"), kind="multi_hop")
 
     scenarios = sample_scenarios([bundle], facts_by_id, _config(), total_samples=1)
 
@@ -220,7 +216,7 @@ def test_sample_scenarios_picks_date_inside_shared_validity_interval() -> None:
         "a": _fact("a", valid_from=date(2024, 1, 1), valid_to=date(2025, 12, 31)),
         "b": _fact("b", valid_from=date(2025, 1, 1), valid_to=date(2026, 12, 31)),
     }
-    bundle = _bundle("bundle-ab", ("a", "b"), kind="synthesis")
+    bundle = _bundle("bundle-ab", ("a", "b"), kind="multi_hop")
 
     scenarios = sample_scenarios([bundle], facts_by_id, _config(), total_samples=1)
 
