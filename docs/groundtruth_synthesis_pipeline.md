@@ -41,7 +41,7 @@ Document chunks
                     |
                     `-- 4. Build evidence graph and bundles
                             |
-                            `-- 5. Sample scenarios
+                            `-- 5. Plan and sample scenarios
                                     |
                                     `-- 6. Generate/evolve candidates
                                             |
@@ -233,22 +233,50 @@ văn bản.
 Bundle giữ `fact_ids`; gold chunks được suy ra trực tiếp từ `evidence` của các
 fact trong bundle.
 
-## 5. Lấy mẫu scenario
+## 5. Lập kế hoạch và lấy mẫu scenario
 
-Scenario sampling kết hợp evidence bundle với taxonomy và các trục phân bố:
+### 5A. LLM xác nhận query type được hỗ trợ
+
+LLM nhận từng bundle cùng `kind`, `bridge`, các fact statement, metadata hiệu
+lực và danh sách query type ứng viên đã lọc theo hình dạng bundle. LLM chỉ
+chọn query type mà nội dung fact thực sự đủ căn cứ để sinh câu hỏi và đáp án,
+không chọn theo từ khóa, cùng chủ đề hoặc chỉ vì bundle có đủ số fact.
+
+Với `multi_hop` và `temporal`, query type chỉ được chọn khi câu hỏi thực sự
+cần mọi fact và bridge. Planner có thể trả danh sách rỗng; bundle đó được ghi
+nhận là đã xử lý nhưng không đi vào sampling. Nếu câu hỏi cần mốc thời gian,
+planner chỉ được chọn `as_of_date` từ các ngày hiệu lực đã cung cấp.
+
+Output trung gian `scenario_plans.jsonl` là checkpoint semantic theo
+`bundle_id`, gồm các query type được duyệt và `as_of_date` tương ứng. Run ID
+bao gồm bundles, facts, taxonomy, prompt, model và stage config để không resume
+nhầm dữ liệu cũ.
+
+### 5B. Code cân bằng phân bố
+
+Scenario sampling chỉ dùng query type đã được LLM duyệt, sau đó cân bằng các
+trục cấu hình:
 
 - query type và query form;
 - persona;
 - query style và query length;
 - answerability;
-- single-hop hoặc multi-hop;
-- `as_of_date` nếu các fact có khoảng hiệu lực chung.
+- single-hop, multi-hop hoặc temporal;
+- `as_of_date` gắn với query type đã chọn.
 
-Eligibility hiện chỉ dựa trên cấu trúc bundle và số lượng fact tối thiểu của
-query type. Nó không còn kiểm tra các field chuyên biệt đã bị xóa.
+Code không tự quyết định một statement là mức phạt, thủ tục, thẩm quyền hay
+ngoại lệ. Phần code chỉ điều phối phân bố và provenance; quyết định tương
+thích ngữ nghĩa thuộc về LLM planner.
 
-Output `scenarios.jsonl` chứa `fact_ids`, `bridge` và `gold_chunk_ids`, chưa
-chứa câu hỏi hay đáp án hoàn chỉnh.
+Output của bước này:
+
+```text
+data/benchmark_synthesis/scenario_plans.jsonl
+data/benchmark_synthesis/scenarios.jsonl
+```
+
+`scenarios.jsonl` chứa `fact_ids`, `bridge` và `gold_chunk_ids`, chưa chứa câu
+hỏi hay đáp án hoàn chỉnh.
 
 ## 6. Sinh candidate
 

@@ -23,6 +23,7 @@ from legal_rag.parser.hashing import sha256_json
 
 SCENARIO_SCHEMA_VERSION = "2.0.0"
 SCENARIO_DISTRIBUTION_SCHEMA_VERSION = "2.0.0"
+SCENARIO_PLAN_SCHEMA_VERSION = "1.0.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +80,39 @@ class EvolutionConfig:
 
     operation_ids: tuple[str, ...]
     max_rounds: int
+
+
+@dataclass(frozen=True, slots=True)
+class ScenarioQueryTypePlan:
+    """One semantically supported query type and its optional evaluation date."""
+
+    query_type_id: str
+    as_of_date: date | None
+
+    def to_dict(self) -> dict[str, str | None]:
+        """Return one JSON-serializable planned query type."""
+        return {
+            "query_type_id": self.query_type_id,
+            "as_of_date": self.as_of_date.isoformat() if self.as_of_date else None,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ScenarioBundlePlan:
+    """Semantic query capabilities confirmed for one evidence bundle."""
+
+    bundle_id: str
+    query_types: tuple[ScenarioQueryTypePlan, ...]
+    run_id: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return one JSON-serializable scenario-planning record."""
+        return {
+            "schema_version": SCENARIO_PLAN_SCHEMA_VERSION,
+            "bundle_id": self.bundle_id,
+            "query_types": [query_type.to_dict() for query_type in self.query_types],
+            "run_id": self.run_id,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,6 +216,7 @@ def load_persona_descriptions(config_path: Path) -> Mapping[str, str]:
 def sample_scenarios(
     bundles: Sequence[EvidenceBundle],
     facts_by_id: Mapping[str, LegalFact],
+    plans_by_bundle_id: Mapping[str, ScenarioBundlePlan],
     config: ScenarioSamplingConfig,
     *,
     total_samples: int,
@@ -198,12 +233,15 @@ def sample_scenarios(
         "query_type": Counter(),
         "answerability": Counter(),
     }
-    bundles_by_kind: dict[BundleKind, list[tuple[EvidenceBundle, tuple[LegalFact, ...], tuple[str, ...]]]] = {}
+    bundles_by_kind: dict[
+        BundleKind,
+        list[tuple[EvidenceBundle, tuple[LegalFact, ...], tuple[ScenarioQueryTypePlan, ...]]],
+    ] = {}
     for bundle in bundles:
         facts = tuple(facts_by_id[fact_id] for fact_id in bundle.fact_ids)
-        eligible_query_types = _eligible_query_types(bundle, facts, config.query_taxonomy)
-        if eligible_query_types:
-            bundles_by_kind.setdefault(bundle.kind, []).append((bundle, facts, eligible_query_types))
+        query_type_plans = plans_by_bundle_id[bundle.bundle_id].query_types
+        if query_type_plans:
+            bundles_by_kind.setdefault(bundle.kind, []).append((bundle, facts, query_type_plans))
     for kind_bundles in bundles_by_kind.values():
         kind_bundles.sort(key=lambda item: item[0].bundle_id)
     weighted_kinds = tuple(
@@ -227,7 +265,7 @@ def sample_scenarios(
             key=lambda kind: (kind_usage[kind] / weights[kind], kind_order[kind]),
         )
         kind_bundles = bundles_by_kind[bundle_kind]
-        bundle, facts, eligible_query_types = kind_bundles[bundle_offsets[bundle_kind] % len(kind_bundles)]
+        bundle, facts, query_type_plans = kind_bundles[bundle_offsets[bundle_kind] % len(kind_bundles)]
         bundle_offsets[bundle_kind] += 1
         attempt_index = bundle_attempts[bundle.bundle_id]
         bundle_attempts[bundle.bundle_id] += 1
@@ -236,9 +274,12 @@ def sample_scenarios(
         query_style = _pick_least_used(config.distribution.query_styles, usage_counts["query_style"])
         query_length = _pick_least_used(config.distribution.query_lengths, usage_counts["query_length"])
         query_form = _pick_least_used(config.distribution.query_forms, usage_counts["query_form"])
-        query_type = _pick_least_used(eligible_query_types, usage_counts["query_type"])
+        query_type = _pick_least_used(
+            tuple(plan.query_type_id for plan in query_type_plans), usage_counts["query_type"]
+        )
         answerability = _pick_least_used(config.distribution.bundle_answerability_values, usage_counts["answerability"])
-        as_of_date = _pick_shared_as_of_date(facts)
+        query_type_plan = next(plan for plan in query_type_plans if plan.query_type_id == query_type)
+        as_of_date = query_type_plan.as_of_date
 
         used_persona_bundle_pairs.add((persona, bundle.bundle_id))
         kind_usage[bundle_kind] += 1
@@ -284,20 +325,6 @@ def sample_scenarios(
     return tuple(scenarios)
 
 
-def _eligible_query_types(
-    bundle: EvidenceBundle,
-    facts: Sequence[LegalFact],
-    taxonomy: QueryTaxonomy,
-) -> tuple[str, ...]:
-    """Return configured query types whose structural requirements match a bundle."""
-    eligible: list[str] = []
-    for definition in taxonomy.definitions:
-        if bundle.kind not in definition.bundle_kinds or len(facts) < definition.minimum_facts:
-            continue
-        eligible.append(definition.query_type_id)
-    return tuple(eligible)
-
-
 def _pick_persona(
     persona_ids: Sequence[str],
     bundle_id: str,
@@ -314,15 +341,3 @@ def _pick_persona(
 def _pick_least_used(values: Sequence[str], counts: Counter[str]) -> str:
     """Pick the value used least so far, preferring the first on ties."""
     return min(values, key=lambda value: counts[value])
-
-
-def _pick_shared_as_of_date(facts: Sequence[LegalFact]) -> date | None:
-    """Return a date inside every fact's validity interval, or None when no shared date exists."""
-    valid_froms = [fact.valid_from for fact in facts if fact.valid_from is not None]
-    if not valid_froms:
-        return None
-    candidate = max(valid_froms)
-    valid_tos = [fact.valid_to for fact in facts if fact.valid_to is not None]
-    if valid_tos and candidate > min(valid_tos):
-        return None
-    return candidate

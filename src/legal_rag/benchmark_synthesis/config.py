@@ -8,7 +8,7 @@ from math import isfinite
 from pathlib import Path
 from typing import Any
 
-SYNTHESIS_CONFIG_SCHEMA_VERSION = "1.8.0"
+SYNTHESIS_CONFIG_SCHEMA_VERSION = "1.9.0"
 _MAX_LLM_TEMPERATURE = 2.0
 
 
@@ -84,6 +84,8 @@ class SynthesisSettings:
     fact_extraction_max_following_chunks: int
     evidence_relation_batch_size: int
     evidence_relation_max_concurrency: int
+    scenario_planning_batch_size: int
+    scenario_planning_max_concurrency: int
     candidate_generation_batch_size: int
     candidate_generation_max_concurrency: int
     evidence_retrieval: EvidenceRetrievalSettings
@@ -91,6 +93,7 @@ class SynthesisSettings:
     document_metadata: LlmStageSettings
     fact_extraction: LlmStageSettings
     evidence_relation: LlmStageSettings
+    scenario_planning: LlmStageSettings
     candidate_generation: LlmStageSettings
     candidate_evolution: LlmStageSettings
 
@@ -121,6 +124,8 @@ class SynthesisSettings:
             "fact_extraction_max_concurrency": self.fact_extraction_max_concurrency,
             "evidence_relation_batch_size": self.evidence_relation_batch_size,
             "evidence_relation_max_concurrency": self.evidence_relation_max_concurrency,
+            "scenario_planning_batch_size": self.scenario_planning_batch_size,
+            "scenario_planning_max_concurrency": self.scenario_planning_max_concurrency,
             "candidate_generation_batch_size": self.candidate_generation_batch_size,
             "candidate_generation_max_concurrency": self.candidate_generation_max_concurrency,
         }
@@ -173,6 +178,8 @@ class SynthesisSettings:
             fact_extraction_max_following_chunks=extraction["max_following_chunks"],
             evidence_relation_batch_size=relation["batch_size"],
             evidence_relation_max_concurrency=relation["max_concurrency"],
+            scenario_planning_batch_size=stages["scenario_planning"]["batch_size"],
+            scenario_planning_max_concurrency=stages["scenario_planning"]["max_concurrency"],
             candidate_generation_batch_size=stages["candidate_generation"]["batch_size"],
             candidate_generation_max_concurrency=stages["candidate_generation"]["max_concurrency"],
             evidence_retrieval=_evidence_retrieval_settings(retrieval),
@@ -180,6 +187,7 @@ class SynthesisSettings:
             document_metadata=_stage_settings(metadata),
             fact_extraction=_stage_settings(extraction),
             evidence_relation=_stage_settings(relation),
+            scenario_planning=_stage_settings(stages["scenario_planning"]),
             candidate_generation=_stage_settings(stages["candidate_generation"]),
             candidate_evolution=_stage_settings(stages["candidate_evolution"]),
         )

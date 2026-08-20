@@ -35,7 +35,13 @@ from legal_rag.benchmark_synthesis.fact_extraction import (
     ExtractionProgressRecord,
 )
 from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
-from legal_rag.benchmark_synthesis.scenario_sampling import SCENARIO_SCHEMA_VERSION, Scenario
+from legal_rag.benchmark_synthesis.scenario_sampling import (
+    SCENARIO_PLAN_SCHEMA_VERSION,
+    SCENARIO_SCHEMA_VERSION,
+    Scenario,
+    ScenarioBundlePlan,
+    ScenarioQueryTypePlan,
+)
 from legal_rag.io_utils import write_json_atomic, write_jsonl_atomic
 
 
@@ -201,6 +207,36 @@ def read_evidence_relation_progress(input_path: Path) -> tuple[EvidenceRelationP
 def write_scenarios(output_path: Path, scenarios: Sequence[Scenario]) -> None:
     """Atomically replace one UTF-8 JSONL output with scenario records."""
     write_jsonl_atomic(output_path, (scenario.to_dict() for scenario in scenarios))
+
+
+def write_scenario_plans(output_path: Path, plans: Sequence[ScenarioBundlePlan]) -> None:
+    """Atomically replace one UTF-8 JSONL output with semantic bundle plans."""
+    write_jsonl_atomic(output_path, (plan.to_dict() for plan in plans))
+
+
+def read_scenario_plans(input_path: Path) -> tuple[ScenarioBundlePlan, ...]:
+    """Read semantic bundle plans back into typed records."""
+    plans: list[ScenarioBundlePlan] = []
+    with input_path.open(encoding="utf-8") as source_file:
+        for line in source_file:
+            payload = json.loads(line)
+            if payload["schema_version"] != SCENARIO_PLAN_SCHEMA_VERSION:
+                msg = f"Unsupported scenario-plan schema: {payload['schema_version']}"
+                raise ValueError(msg)
+            plans.append(
+                ScenarioBundlePlan(
+                    bundle_id=payload["bundle_id"],
+                    query_types=tuple(
+                        ScenarioQueryTypePlan(
+                            query_type_id=query_type["query_type_id"],
+                            as_of_date=_parse_date(query_type["as_of_date"]),
+                        )
+                        for query_type in payload["query_types"]
+                    ),
+                    run_id=payload["run_id"],
+                )
+            )
+    return tuple(plans)
 
 
 def read_scenarios(input_path: Path) -> tuple[Scenario, ...]:
