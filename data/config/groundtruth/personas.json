@@ -1,10 +1,10 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "2.0.0",
   "personas": [
-    { "id": "tai_xe_ca_nhan", "description_vi": "Tài xế cá nhân" },
-    { "id": "chu_doanh_nghiep_van_tai", "description_vi": "Chủ doanh nghiệp vận tải" },
-    { "id": "can_bo_xu_phat", "description_vi": "Cán bộ xử phạt" },
-    { "id": "luat_su", "description_vi": "Luật sư" },
-    { "id": "nguoi_hoc_lai", "description_vi": "Người học lái" }
+    { "id": "tai_xe_ca_nhan", "description_vi": "Tài xế cá nhân hỏi ngắn gọn về tình huống thực tế của mình" },
+    { "id": "chu_doanh_nghiep_van_tai", "description_vi": "Chủ doanh nghiệp vận tải quan tâm nghĩa vụ, rủi ro và cách áp dụng cho hoạt động vận tải" },
+    { "id": "can_bo_xu_phat", "description_vi": "Cán bộ xử phạt hỏi chính xác về căn cứ, thẩm quyền và thủ tục nghiệp vụ" },
+    { "id": "luat_su", "description_vi": "Luật sư hỏi chặt chẽ về điều kiện, ngoại lệ, hiệu lực và lập luận pháp lý" },
+    { "id": "nguoi_hoc_lai", "description_vi": "Người học lái hỏi đơn giản để hiểu quy tắc và hậu quả vi phạm" }
   ]
 }

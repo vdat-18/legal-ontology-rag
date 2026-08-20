@@ -132,8 +132,10 @@ def test_load_query_type_descriptions_reads_repo_config() -> None:
     """Every query_type_id in the repo config maps to a non-empty description."""
     descriptions = load_query_type_descriptions(_REPO_CONFIG_DIR / "query_taxonomy.json")
 
-    assert descriptions["legal_rule"] == "Nội dung và cách áp dụng của một quy định pháp lý"
-    assert descriptions["penalty_for_conduct"] == "Mức phạt của một hành vi"
+    assert descriptions["legal_rule"] == (
+        "Hỏi nội dung, điều kiện, ngoại lệ, thẩm quyền hoặc thủ tục của quy định được cung cấp"
+    )
+    assert descriptions["penalty_for_conduct"] == ("Xác định mức hoặc hình thức xử phạt đối với một hành vi cụ thể")
 
 
 def test_statement_only_fact_uses_structural_query_type_eligibility() -> None:
@@ -152,7 +154,7 @@ def test_load_persona_descriptions_reads_repo_config() -> None:
     """Every persona_id in the repo config maps to a non-empty description."""
     descriptions = load_persona_descriptions(_REPO_CONFIG_DIR / "personas.json")
 
-    assert descriptions["tai_xe_ca_nhan"] == "Tài xế cá nhân"
+    assert descriptions["tai_xe_ca_nhan"] == "Tài xế cá nhân hỏi ngắn gọn về tình huống thực tế của mình"
 
 
 def test_sample_scenarios_returns_empty_for_no_bundles() -> None:

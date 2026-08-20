@@ -53,57 +53,69 @@ function GenerateSingleTurnCandidateBatch(
   prompt #"
     {{ _.role("user") }}
 
-    Với mỗi task, tạo một câu hỏi tiếng Việt về xử phạt giao thông, đáp án
-    tham chiếu, lập luận và các claim bắt buộc. Chỉ dùng facts của chính task;
-    trả đúng một kết quả cho mỗi task, giữ nguyên task_id và thứ tự.
+    Nhiệm vụ: với mỗi task, tạo một mẫu ground truth single-turn để đánh giá
+    RAG trong domain xử lý vi phạm giao thông đường bộ tại Việt Nam. Chỉ dùng
+    facts của task; trả đúng một kết quả, giữ nguyên task_id và thứ tự.
 
     {% for item in items %}
     ===== TASK {{ item.task_id }} =====
-    Cấu hình:
-    - Persona: {{ item.persona_description }}
-    - Loại câu hỏi: {{ item.query_type_description }}
+    Yêu cầu scenario:
+    - Người hỏi: {{ item.persona_description }}
+    - Mục tiêu câu hỏi: {{ item.query_type_description }}
     - Answerability: {{ item.answerability }}
-    - Bundle: {{ item.bundle_kind }}; reasoning_hops={{ item.reasoning_hops }}
-    {% if item.bridge %}- Bridge bắt buộc: {{ item.bridge }}{% endif %}
-    - Form: {{ item.query_form }}; style={{ item.query_style }};
-      length={{ item.query_length }}{% if item.query_length == "short" %} (5-10 từ){% elif item.query_length == "medium" %} (10-20 từ){% elif item.query_length == "long" %} (>20 từ){% endif %}
-    {% if item.as_of_date %}- Thời điểm áp dụng: {{ item.as_of_date }}{% endif %}
+    - Evidence shape: {{ item.bundle_kind }}, reasoning_hops={{ item.reasoning_hops }}
+    {% if item.bridge %}- Nội dung nối các fact: {{ item.bridge }}{% endif %}
+    - Form={{ item.query_form }}, style={{ item.query_style }}, length={{ item.query_length }}
+    {% if item.as_of_date %}- Thời điểm phải áp dụng: {{ item.as_of_date }}{% endif %}
 
-    query_vi phải tự nhiên theo persona và form, không mang văn phong hành
-    chính. Trừ persona luật sư/cán bộ xử phạt, không trích số Điều/khoản/điểm.
-    Áp dụng chính xác query_style sau; ví dụ chỉ minh họa cách gõ, không được
-    sao chép nội dung:
+    Grounding và coverage:
+    - Mọi kết luận, con số, điều kiện, ngoại lệ và mốc thời gian phải có trong
+      facts. Không thêm kiến thức pháp luật, tình tiết làm đổi kết luận, số
+      Điều/khoản/điểm hoặc chunk_id không được cung cấp.
+    - Mục tiêu câu hỏi phải được diễn giải trong giới hạn facts; không ép đúng
+      loại bằng cách bịa nội dung mà facts không hỗ trợ.
+    - Với reasoning_hops=1, một fact phải đủ để trả lời. Với reasoning_hops>1,
+      câu hỏi và đáp án phải thực sự cần mọi fact, required_claims bao phủ mọi
+      fact và thể hiện nội dung bridge; không ghép nhiều fact chỉ để làm dài.
+    - Nếu answerable, facts phải trả lời trọn câu hỏi. Nếu partially_answerable,
+      câu hỏi phải thiếu đúng một thông tin ảnh hưởng việc áp dụng mà facts
+      không xác định; đáp án nêu phần kết luận có căn cứ và phần chưa thể kết
+      luận, không tự điền dữ kiện thiếu.
+
+    query_vi:
+    - Viết như người hỏi thật theo persona, không dùng thuật ngữ nội bộ, không
+      lộ đáp án. Chỉ luật sư hoặc cán bộ xử phạt mới nên hỏi bằng số điều khoản
+      khi số đó có trong facts.
+    - Form=specific: nêu tình huống cụ thể. Form=abstract: hỏi trực tiếp về quy
+      tắc nhưng vẫn tự nhiên, không sao chép nguyên statement.
+    - Tuân thủ length: short khoảng 5-10 từ; medium 10-20 từ; long trên 20 từ
+      nhưng vẫn là một câu hỏi gọn.
+    - Tuân thủ chính xác style:
     {% if item.query_style == "standard" %}
-    - standard: đủ dấu, đúng chính tả, câu hoàn chỉnh và có dấu hỏi.
-      Ví dụ: "Xe ô tô vượt đèn đỏ thì bị phạt bao nhiêu tiền?"
+      standard: tiếng Việt đủ dấu, đúng chính tả, câu hoàn chỉnh có dấu hỏi.
     {% elif item.query_style == "no_diacritics" %}
-    - no_diacritics: hoàn toàn không dấu, không tạo thêm lỗi chính tả.
-      Ví dụ: "xe oto vuot den do thi bi phat bao nhieu tien"
+      no_diacritics: query hoàn toàn không dấu, không thêm lỗi chính tả.
     {% elif item.query_style == "misspelled" %}
-    - misspelled: vẫn có dấu nhưng dùng vài lỗi/viết tắt chat tự nhiên; không
-      biến thành no_diacritics. Ví dụ: "oto vượt đèn đỏ phạt mấy tiền v ạ"
+      misspelled: vẫn có dấu, chỉ thêm vài lỗi hoặc viết tắt chat tự nhiên.
     {% elif item.query_style == "keyword_style" %}
-    - keyword_style: chỉ từ khóa cốt lõi, không thành câu và không dấu hỏi.
-      Ví dụ: "oto vuot den do muc phat"
+      keyword_style: chỉ các từ khóa cốt lõi, không thành câu, không dấu hỏi.
     {% else %}
-    - Thực hiện đúng mô tả style={{ item.query_style }}.
+      Thực hiện đúng style={{ item.query_style }}.
     {% endif %}
 
-    Ràng buộc nội dung:
-    - Chỉ dùng facts bên dưới; không bổ sung kiến thức, đổi evidence hoặc tạo
-      chunk_id. Mỗi claim phải trỏ đúng fact_id và tập con evidence_chunk_ids
-      của fact đó.
-    - Câu hỏi, đáp án và lập luận phải thực sự cần đủ reasoning_hops; nếu >1,
-      required_claims phải bao phủ mọi fact và sử dụng bridge nếu có.
-    - Với partially_answerable, trả lời phần có căn cứ rồi hỏi thêm dữ kiện cụ
-      thể còn thiếu; không nói về "dữ liệu được cung cấp" và không biến thành
-      answerable hoàn toàn.
-    - reference_answer_vi và reasoning_vi dùng tiếng Việt chuẩn, rõ ràng như
-      tư vấn pháp lý; không dùng thuật ngữ nội bộ hoặc từ tiếng Anh "fact".
-    - Tự kiểm tra tính nhất quán giữa query, answer, reasoning và claims trước
-      khi trả lời.
+    Đáp án, lập luận và claims:
+    - reference_answer_vi trả lời trực tiếp, đủ điều kiện/ngoại lệ và hệ quả
+      cần thiết; dùng tiếng Việt chuẩn dù query có lỗi hoặc không dấu.
+    - reasoning_vi giải thích ngắn cách facts dẫn tới đáp án, theo đúng thứ tự
+      suy luận; không bịa citation và không nói "dữ liệu được cung cấp".
+    - Mỗi required claim là một ý bắt buộc trong đáp án, trỏ đúng fact_id và
+      chỉ dùng evidence_chunk_ids thuộc fact đó. Không tạo claim cho phần chưa
+      thể kết luận của partially_answerable và không lặp claim cùng nội dung.
 
-    Fact pháp lý:
+    Trước khi trả lời, tự kiểm tra query, answer, reasoning, claims, số hop,
+    answerability và evidence nhất quán với nhau.
+
+    Facts:
     {% for fact in item.facts %}
     [{{ fact.fact_id }}] {{ fact.statement }}
     Văn bản: {{ fact.document_number }}
@@ -151,12 +163,16 @@ function EvolveCandidateBatch(
   prompt #"
     {{ _.role("user") }}
 
-    Với mỗi task, áp dụng đúng một phép biến đổi mà không đổi căn cứ pháp lý
-    hoặc kết luận. Giữ nguyên task_id, thứ tự và trả đúng một kết quả mỗi task.
+    Nhiệm vụ: biến đổi bề mặt một mẫu hỏi đáp về xử lý vi phạm giao thông
+    đường bộ mà không thay đổi căn cứ, answerability hoặc kết luận pháp lý.
+    Giữ nguyên task_id, thứ tự và trả đúng một kết quả mỗi task.
 
-    - Concretizing: thêm tình tiết cụ thể vào tình huống
-    - Reasoning: buộc suy luận từ quy định thay vì tra cứu trực tiếp
-    - Hypothetical: đặt giả định "nếu ... thì"
+    - Concretizing: thêm đúng một chi tiết tình huống không làm thay đổi phạm
+      vi áp dụng hoặc kết luận.
+    - Reasoning: viết lại câu hỏi để người trả lời phải nối các dữ kiện/quy tắc
+      đã có, không thêm kiến thức hay hop mới.
+    - Hypothetical: chuyển cùng nội dung sang giả định "nếu... thì", giữ nguyên
+      điều kiện và hệ quả.
 
     {% for item in items %}
     ===== TASK {{ item.task_id }} =====
@@ -171,15 +187,18 @@ function EvolveCandidateBatch(
     Lập luận gốc:
     {{ item.reasoning_vi }}
 
-    Giữ nguyên cách gõ của query gốc (dấu, lỗi/viết tắt, câu hay từ khóa); chỉ
-    đổi tình huống theo operation. Giữ length={{ item.query_length }}
+    Giữ kiểu gõ của query gốc: có/không dấu, lỗi/viết tắt, câu đầy đủ hay từ
+    khóa. Giữ length={{ item.query_length }}
     {% if item.query_length == "short" %}(khoảng 5-10 từ){% elif item.query_length == "medium" %}(khoảng 10-20 từ){% elif item.query_length == "long" %}(trên 20 từ){% endif %}
-    và không kéo dài thành đoạn văn. Concretizing chỉ thêm đúng một chi tiết.
+    và không kéo dài thành đoạn văn.
     ===== END TASK {{ item.task_id }} =====
     {% endfor %}
 
-    Cập nhật answer và reasoning cho nhất quán với query mới, bằng tiếng Việt
-    chuẩn; không thêm căn cứ, thuật ngữ nội bộ hoặc cụm "dữ liệu được cung cấp".
+    Cập nhật answer và reasoning cho nhất quán với query mới. Giữ nguyên mọi
+    con số, điều kiện, ngoại lệ, mức độ chắc chắn và phần thông tin còn thiếu.
+    Không thêm căn cứ, citation, hành vi, chế tài hoặc kết luận mới. Answer và
+    reasoning luôn dùng tiếng Việt chuẩn, không dùng thuật ngữ nội bộ hay cụm
+    "dữ liệu được cung cấp".
 
     {{ ctx.output_format }}
   "#

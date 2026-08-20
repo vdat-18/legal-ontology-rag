@@ -17,18 +17,22 @@ function ResolveDocumentMetadata(opening_sections: string[], closing_sections: s
   prompt #"
     {{ _.role("user") }}
 
-    Xác định metadata của chính văn bản quy phạm pháp luật đang đọc.
+    Nhiệm vụ: xác định metadata cấp văn bản để gắn thống nhất vào mọi legal
+    fact được trích từ văn bản về xử lý vi phạm giao thông đường bộ này.
 
-    Quy tắc:
-    - Chỉ dùng các đoạn đầu/cuối bên dưới; không dùng kiến thức bên ngoài.
-    - document_number là số hiệu của văn bản đang đọc, thường ở phần đầu;
-      không lấy số hiệu văn bản được dẫn chiếu, sửa đổi hoặc bãi bỏ.
-    - valid_from/valid_to là hiệu lực của toàn văn bản, không phải ngày ban
-      hành hoặc ngày hiệu lực riêng của một điều khoản.
-    - Chuẩn hóa ngày thành YYYY-MM-DD. Không nêu rõ thì trả về null, không đoán.
+    Chỉ dùng các đoạn đầu/cuối được cung cấp, không dùng kiến thức bên ngoài.
+    - document_number: số hiệu của chính văn bản đang đọc. Ưu tiên dòng số/ký
+      hiệu ở phần đầu; không lấy số hiệu của văn bản được viện dẫn, sửa đổi,
+      thay thế hoặc bãi bỏ.
+    - valid_from: ngày toàn văn bản bắt đầu có hiệu lực. Không nhầm với ngày
+      ký, ban hành, đăng công báo hoặc ngày áp dụng riêng của một điều khoản.
+    - valid_to: ngày toàn văn bản hết hiệu lực chỉ khi nguồn nêu rõ. Việc một
+      điều khoản hay văn bản khác bị bãi bỏ không làm văn bản hiện tại hết hiệu
+      lực.
 
-    Ví dụ: phần đầu có "Số: 13/2025/TT-BCA", phần cuối dẫn "Thông tư số
-    73/2024/TT-BCA" thì document_number="13/2025/TT-BCA".
+    Chuẩn hóa ngày thành YYYY-MM-DD. Với ngày hiệu lực không được nêu rõ, trả
+    null và không suy đoán. Các dẫn chiếu ở phần cuối không được ghi đè số hiệu
+    xác định từ phần đầu.
 
     Phần đầu văn bản:
     {% for section in opening_sections %}

@@ -14,6 +14,19 @@ hiểu ngữ nghĩa pháp lý; code chỉ điều phối, gắn metadata, tạo 
 trì quan hệ giữa fact với chunk nguồn. Không dùng regex, keyword matching,
 handcrafted score hoặc exact-span matching để quyết định ngữ nghĩa.
 
+## Contract chung của prompt
+
+Mọi prompt dùng cùng phạm vi: quy định về hành vi/nghĩa vụ, chủ thể và phương
+tiện, điều kiện/ngoại lệ, chế tài, trừ điểm hoặc tước quyền sử dụng, biện pháp
+khắc phục, thẩm quyền, thủ tục và hiệu lực liên quan trực tiếp đến xử lý vi
+phạm giao thông đường bộ tại Việt Nam.
+
+Mỗi stage chỉ làm đúng một nhiệm vụ: screening chọn target; metadata giải
+thông tin toàn văn bản; extraction tạo fact; relation nối các fact hoàn chỉnh;
+generation tạo mẫu hỏi đáp; evolution chỉ đổi bề mặt. Tất cả stage chỉ dùng
+input được cung cấp, không bổ sung kiến thức pháp luật bên ngoài và giữ nguyên
+ID của từng batch item.
+
 ## Tổng quan
 
 ```text
@@ -46,7 +59,8 @@ context.
 
 LLM quyết định chunk có nội dung pháp lý đáng trích xuất cho domain hay không.
 Screening chạy theo batch và trả kết quả theo `chunk_id`. Đây là quyết định
-ngữ nghĩa của LLM, không phải keyword rule.
+ngữ nghĩa của LLM, không phải keyword rule. Screening ưu tiên recall cho mọi
+quy định có thể làm căn cứ hỏi đáp, không chỉ các chunk chứa mức phạt tiền.
 
 Chỉ chunk được chấp nhận mới trở thành `Target` ở bước trích fact. Tuy nhiên,
 mọi chunk gốc vẫn có thể được dùng làm context liền kề cho một target.
@@ -259,8 +273,14 @@ LLM sinh:
 - `reasoning_vi`;
 - `required_claims`, mỗi claim trỏ về `fact_id` và evidence chunk IDs.
 
+Prompt buộc mọi con số, điều kiện, ngoại lệ và kết luận phải có trong facts.
+Với multi-hop, mọi fact phải cần thiết cho câu hỏi và đáp án. Với
+`partially_answerable`, đáp án chỉ nêu phần có căn cứ và phần chưa thể kết
+luận; không tự điền thông tin còn thiếu.
+
 Nếu có evolution, LLM biến đổi query, answer và reasoning theo operation được
-cấu hình. Claims và provenance gốc vẫn được giữ.
+cấu hình nhưng phải giữ nguyên căn cứ, answerability, con số và kết luận.
+Claims và provenance gốc vẫn được giữ.
 
 Không có critique gate hoặc verification gate sau generation. Pipeline tin
 typed output của LLM và ghi candidate trực tiếp. Code chỉ giữ evidence IDs

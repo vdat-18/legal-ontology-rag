@@ -32,8 +32,8 @@ class ConfirmedRelation {
     theo hướng ngữ nghĩa của relation.
   "#)
   bridge string[] @description(#"
-    Thực thể hoặc thuộc tính chung khiến hai fact liên quan, ví dụ số điều
-    khoản hoặc tên hành vi dùng chung. Rỗng khi is_related=false.
+    Cụm ngắn mô tả tình huống, quy tắc hoặc đối tượng thực sự nối hai fact.
+    Rỗng khi is_related=false.
   "#)
 }
 
@@ -53,36 +53,42 @@ function ConfirmEvidenceRelationBatch(items: EvidenceRelationBatchItem[]) -> Evi
   prompt #"
     {{ _.role("user") }}
 
-    Xác nhận quan hệ pháp lý trực tiếp cho từng cặp fact về xử phạt giao thông
-    đường bộ. Xử lý từng pair độc lập và giữ nguyên pair_id.
+    Nhiệm vụ: xác nhận quan hệ trực tiếp giữa các legal fact hoàn chỉnh trong
+    domain xử lý vi phạm giao thông đường bộ. Xử lý độc lập từng pair và giữ
+    nguyên pair_id.
 
-    Mỗi statement là một quy tắc pháp lý hoàn chỉnh. Chỉ đặt is_related=true
-    khi hai statement và metadata chứng minh một quan hệ trực tiếp dưới đây;
-    giống từ, cùng Điều hoặc cùng chủ đề chung chung là chưa đủ:
-    - ComplementaryRule: quy tắc nền -> quy tắc bổ sung một khía cạnh, điều
-      kiện, hệ quả hoặc cách áp dụng cần thiết cho cùng tình huống pháp lý.
-    - RuleToException: quy định chung -> ngoại lệ.
-    - RuleToAuthority: quy định hành vi -> thẩm quyền xử phạt.
-    - AmendedBy: quy định cũ -> quy định sửa đổi/thay thế.
-    - ProcedureSequence: bước trước -> bước sau trong cùng thủ tục.
+    Chỉ đặt is_related=true khi kết hợp hai statement tạo ra một liên hệ pháp
+    lý hữu ích để hỏi đáp và thuộc đúng một loại:
+    - ComplementaryRule: quy tắc nền -> quy tắc bổ sung cho cùng tình huống,
+      như điều kiện áp dụng, chế tài khác, biện pháp hoặc cách thực hiện.
+    - RuleToException: quy tắc chung -> trường hợp loại trừ hoặc ngoại lệ.
+    - RuleToAuthority: quy tắc được xử lý -> chủ thể có thẩm quyền xử lý.
+    - AmendedBy: quy định cũ -> quy định sửa đổi, thay thế hoặc làm thay đổi
+      cách áp dụng quy định cũ.
+    - ProcedureSequence: bước trước -> bước sau trong cùng quy trình xử lý.
 
-    Khi related: chọn đúng một relation_type, đặt from_fact_id/to_fact_id theo
-    hướng trên và bridge chỉ gồm thực thể/thuộc tính thật sự nối hai fact.
-    Khi không related: relation_type, from_fact_id, to_fact_id=null và bridge=[].
+    Không xác nhận nếu hai fact chỉ trùng từ, cùng loại phương tiện, cùng văn
+    bản/chủ đề, diễn đạt lặp lại, hoặc không đủ căn cứ xác định hướng. Metadata
+    thời gian chỉ hỗ trợ, không tự chứng minh quan hệ sửa đổi.
 
-    Ví dụ: hai fact cùng hành vi, một fact nêu phạt tiền và fact kia nêu trừ
-    điểm -> ComplementaryRule. Hai hành vi khác nhau chỉ cùng Điều và cùng
-    loại xe -> không related.
+    Khi related: chọn một relation_type; đặt from_fact_id/to_fact_id theo hướng
+    mô tả trên; bridge gồm 1-3 cụm ngắn nêu đúng hành vi, tình huống, thủ tục
+    hoặc quy định chung nối hai fact, không chỉ ghi số Điều. Khi không related:
+    relation_type, from_fact_id, to_fact_id=null và bridge=[].
 
     Các cặp cần xác nhận:
 
     {% for item in items %}
     === pair_id={{ item.pair_id }} ===
-    Fact A:
-    {{ item.fact_a }}
+    Fact A [{{ item.fact_a.fact_id }}]
+    Statement: {{ item.fact_a.statement }}
+    Văn bản: {{ item.fact_a.document_number }}
+    Hiệu lực: {{ item.fact_a.valid_from }} đến {{ item.fact_a.valid_to }}
 
-    Fact B:
-    {{ item.fact_b }}
+    Fact B [{{ item.fact_b.fact_id }}]
+    Statement: {{ item.fact_b.statement }}
+    Văn bản: {{ item.fact_b.document_number }}
+    Hiệu lực: {{ item.fact_b.valid_from }} đến {{ item.fact_b.valid_to }}
     === end pair_id={{ item.pair_id }} ===
     {% endfor %}
 

@@ -10,12 +10,8 @@ class ChunkScreeningItem {
 class ChunkScreeningResult {
   chunk_id string @description(#"Phải trùng với một chunk_id trong danh sách đầu vào."#)
   has_penalty_content bool @description(#"
-    true nếu đoạn văn bản chứa quy định cụ thể về xử phạt vi phạm giao thông
-    đường bộ tại Việt Nam (hành vi, mức phạt, thẩm quyền, thủ tục, hoặc đối
-    tượng áp dụng), dạng điều khoản hoặc hàng của một bảng chế tài. false nếu
-    đoạn văn bản chỉ là mục lục, tiêu đề chương, đoạn dẫn nhập, điều khoản thi
-    hành, định nghĩa chung không kèm chế tài, hoặc nội dung ngoài phạm vi xử
-    phạt giao thông đường bộ.
+    Tên field được giữ để tương thích schema. true nếu target chứa nội dung
+    pháp lý có thể trích thành fact về xử lý vi phạm giao thông đường bộ.
   "#)
   reason string @description(#"
     Giải thích ngắn gọn bằng tiếng Việt cho quyết định has_penalty_content.
@@ -27,29 +23,27 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
   prompt #"
     {{ _.role("user") }}
 
-    Bạn sàng lọc chunk của văn bản Việt Nam về xử phạt vi phạm giao thông
-    đường bộ. Với mỗi chunk, trả về đúng một kết quả và giữ nguyên chunk_id.
+    Nhiệm vụ: chọn các target đáng gửi sang bước trích xuất fact cho benchmark
+    hỏi đáp về xử lý vi phạm giao thông đường bộ tại Việt Nam. Xử lý độc lập
+    từng chunk, trả đúng một kết quả và giữ nguyên chunk_id.
 
-    Đặt has_penalty_content=true khi Target text chứa ít nhất một quy định cụ
-    thể phục vụ trích xuất chế tài: hành vi/nghĩa vụ, mức hoặc hình thức xử
-    phạt, trừ điểm, biện pháp khắc phục, đối tượng áp dụng, thẩm quyền hoặc thủ
-    tục xử phạt; bao gồm điều khoản và hàng bảng. Đặt false nếu chỉ là mục
-    lục, heading, dẫn nhập, phạm vi điều chỉnh, điều khoản thi hành, hoặc định
-    nghĩa chung không gắn với quy định xử phạt cụ thể.
+    has_penalty_content=true khi Target chứa ít nhất một nội dung có thể làm
+    căn cứ trả lời câu hỏi trong domain, gồm: hành vi vi phạm hoặc nghĩa vụ;
+    chủ thể/phương tiện và điều kiện áp dụng; mức hay hình thức xử phạt; trừ
+    điểm, tước quyền sử dụng; biện pháp khắc phục; ngoại lệ; thẩm quyền; trình
+    tự, thời hạn hoặc thủ tục xử lý; quy định sửa đổi/chuyển tiếp ảnh hưởng
+    trực tiếp đến việc áp dụng. Bao gồm quy định nằm trong bảng hoặc Target là
+    mảnh trực tiếp của một quy định bị chia chunk.
 
-    Quy tắc:
-    - Đánh giá từng chunk độc lập; không lấy nội dung chunk khác để suy diễn.
-    - Structural context chỉ xác định Chương/Mục/Điều và phạm vi của Target;
-      không tự nó làm kết quả thành true.
-    - Dựa vào nội dung Target, ưu tiên recall khi Target là một mảnh của quy
-      định cụ thể dù mức phạt nằm ở chunk liền kề.
-    - reason ngắn gọn bằng tiếng Việt và nêu căn cứ chính của quyết định.
+    has_penalty_content=false khi Target chỉ là mục lục, tiêu đề, lời dẫn,
+    căn cứ ban hành, chữ ký, thông tin hành chính, phạm vi chung, định nghĩa
+    không quyết định cách xử lý vi phạm, hiệu lực chung của toàn văn bản, hoặc
+    nội dung ngoài giao thông đường bộ.
 
-    Ví dụ:
-    - Target="b) Không chấp hành hiệu lệnh của đèn tín hiệu giao thông."
-      trong Điều xử phạt -> true vì nêu một hành vi vi phạm cụ thể.
-    - Target="Điều 1. Phạm vi điều chỉnh..." -> false vì chỉ mô tả phạm vi
-      chung, chưa nêu quy định xử phạt cụ thể.
+    Chỉ dùng Target text để quyết định. Structural context chỉ giúp hiểu vị trí
+    và phạm vi; không tự tạo nội dung pháp lý. Ưu tiên recall khi Target có một
+    phần quy định rõ ràng dù phần còn lại nằm ở chunk liền kề. reason viết một
+    câu ngắn, nêu loại nội dung tìm thấy hoặc lý do loại.
 
     Các chunk cần sàng lọc:
     {% for chunk in chunks %}

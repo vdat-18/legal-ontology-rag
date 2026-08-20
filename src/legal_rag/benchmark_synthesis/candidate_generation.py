@@ -30,7 +30,7 @@ from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
 CANDIDATE_SCHEMA_VERSION = "2.0.0"
-CANDIDATE_GENERATION_PROMPT_VERSION = "2.0.0"
+CANDIDATE_GENERATION_PROMPT_VERSION = "3.0.0"
 
 _EVOLUTION_OPERATION_BY_ID: dict[str, EvolutionOperation] = {
     "concretizing": EvolutionOperation.Concretizing,
