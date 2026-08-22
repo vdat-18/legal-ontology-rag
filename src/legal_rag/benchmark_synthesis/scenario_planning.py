@@ -32,7 +32,7 @@ from legal_rag.benchmark_synthesis.scenario_sampling import (
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
-SCENARIO_PLANNING_PROMPT_VERSION = "1.1.0"
+SCENARIO_PLANNING_PROMPT_VERSION = "1.2.0"
 
 
 class ScenarioPlanningClient(Protocol):

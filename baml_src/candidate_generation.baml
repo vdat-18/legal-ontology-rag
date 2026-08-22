@@ -72,11 +72,14 @@ function GenerateSingleTurnCandidateBatch(
     - Mọi kết luận, con số, điều kiện, ngoại lệ và mốc thời gian phải có trong
       facts. Không thêm kiến thức pháp luật, tình tiết làm đổi kết luận, số
       Điều/khoản/điểm hoặc chunk_id không được cung cấp.
+    - Bridge chỉ mô tả cách các fact được nối, không phải nguồn pháp lý. Không
+      đưa nội dung chỉ xuất hiện trong bridge vào query, answer hoặc claims.
     - Mục tiêu câu hỏi phải được diễn giải trong giới hạn facts; không ép đúng
       loại bằng cách bịa nội dung mà facts không hỗ trợ.
     - Với reasoning_hops=1, một fact phải đủ để trả lời. Với reasoning_hops>1,
       câu hỏi và đáp án phải thực sự cần mọi fact, required_claims bao phủ mọi
-      fact và thể hiện nội dung bridge; không ghép nhiều fact chỉ để làm dài.
+      fact và thể hiện đúng mối nối có căn cứ trong facts; không ghép nhiều
+      fact chỉ để làm dài.
     - Nếu answerable, facts phải trả lời trọn câu hỏi. Nếu partially_answerable,
       câu hỏi phải thiếu đúng một thông tin ảnh hưởng việc áp dụng mà facts
       không xác định; đáp án nêu phần kết luận có căn cứ và phần chưa thể kết

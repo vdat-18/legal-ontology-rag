@@ -44,8 +44,13 @@ function PlanScenarioBundles(items: ScenarioPlanningBatchItem[]) -> ScenarioPlan
 
     Chỉ chọn query type khi các statement đủ căn cứ để tạo câu hỏi đúng mô tả
     mà không bổ sung kiến thức. Với multi_hop hoặc temporal, câu hỏi phải thực
-    sự cần mọi fact và bridge; nếu một fact đã đủ thì không chọn loại yêu cầu
-    kết hợp. Không chọn chỉ vì trùng từ, cùng văn bản hoặc cùng chủ đề chung.
+    sự cần mọi fact và phản ánh mối nối được bridge tóm tắt; nếu một fact đã
+    đủ thì không chọn loại yêu cầu kết hợp. Không chọn chỉ vì trùng từ, cùng
+    văn bản hoặc cùng chủ đề chung.
+
+    Bridge chỉ tóm tắt lý do Step 4 ghép facts, không phải evidence và không
+    được bổ sung nội dung thiếu trong statements. Nếu bridge rộng hơn hoặc
+    mâu thuẫn với statements thì chỉ dựa vào statements.
 
     as_of_date:
     - Null nếu câu hỏi không cần một ngày cụ thể hoặc là so sánh trước/sau.
