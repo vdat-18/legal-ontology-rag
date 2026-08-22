@@ -27,8 +27,8 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.chunk_screening_batch_size == 50
     assert settings.chunk_screening_max_concurrency == 4
     assert settings.chunk_screening.max_output_tokens == 16_384
-    assert settings.document_metadata_opening_chunk_count == 5
-    assert settings.document_metadata_closing_chunk_count == 5
+    assert settings.document_metadata_opening_chunk_count == 10
+    assert settings.document_metadata_closing_chunk_count == 10
     assert settings.fact_extraction_batch_size == 1
     assert settings.fact_extraction_max_concurrency == 4
     assert settings.fact_extraction_max_preceding_chunks == 2

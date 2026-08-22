@@ -1,9 +1,6 @@
-enum RelationType {
-  ComplementaryRule
-  RuleToException
-  RuleToAuthority
-  AmendedBy
-  ProcedureSequence
+enum RelationBundleKind {
+  MultiHop
+  Temporal
 }
 
 class LegalFactSummary {
@@ -20,20 +17,14 @@ class ConfirmedRelation {
     False nếu chỉ giống nhau bề mặt, cùng chủ đề chung chung, hoặc không có
     căn cứ rõ ràng để nối chúng lại.
   "#)
-  relation_type RelationType? @description(#"
-    Bắt buộc khi is_related=true, null khi is_related=false.
+  bundle_kind RelationBundleKind? @description(#"
+    MultiHop nếu hai fact bổ sung nhau cho cùng một câu hỏi. Temporal nếu hai
+    fact thể hiện thay đổi quy định hoặc hai chế độ hiệu lực cần phân biệt
+    theo thời gian. Null khi is_related=false.
   "#)
-  from_fact_id string? @description(#"
-    Bắt buộc khi is_related=true và phải là fact_id của một trong hai fact
-    đầu vào. Đây là đầu nguồn theo hướng ngữ nghĩa của relation.
-  "#)
-  to_fact_id string? @description(#"
-    Bắt buộc khi is_related=true và phải là fact_id còn lại. Đây là đầu đích
-    theo hướng ngữ nghĩa của relation.
-  "#)
-  bridge string[] @description(#"
-    Cụm ngắn mô tả tình huống, quy tắc hoặc đối tượng thực sự nối hai fact.
-    Rỗng khi is_related=false.
+  bridge string? @description(#"
+    Một cụm ngắn mô tả chính xác nội dung thực sự nối hai fact. Null khi
+    is_related=false.
   "#)
 }
 
@@ -58,23 +49,21 @@ function ConfirmEvidenceRelationBatch(items: EvidenceRelationBatchItem[]) -> Evi
     nguyên pair_id.
 
     Chỉ đặt is_related=true khi kết hợp hai statement tạo ra một liên hệ pháp
-    lý hữu ích để hỏi đáp và thuộc đúng một loại:
-    - ComplementaryRule: quy tắc nền -> quy tắc bổ sung cho cùng tình huống,
-      như điều kiện áp dụng, chế tài khác, biện pháp hoặc cách thực hiện.
-    - RuleToException: quy tắc chung -> trường hợp loại trừ hoặc ngoại lệ.
-    - RuleToAuthority: quy tắc được xử lý -> chủ thể có thẩm quyền xử lý.
-    - AmendedBy: quy định cũ -> quy định sửa đổi, thay thế hoặc làm thay đổi
-      cách áp dụng quy định cũ.
-    - ProcedureSequence: bước trước -> bước sau trong cùng quy trình xử lý.
+    lý hữu ích và thực sự cần cả hai fact để tạo một câu hỏi đúng grounded.
+
+    Khi related, chọn bundle_kind:
+    - MultiHop: hai fact bổ sung trực tiếp cho cùng tình huống, như quy tắc với
+      điều kiện, ngoại lệ, thẩm quyền, bước thủ tục, chế tài hoặc hệ quả khác.
+    - Temporal: hai fact thể hiện quy định thay đổi, thay thế hoặc các chế độ
+      hiệu lực khác nhau cần phân biệt theo thời gian.
 
     Không xác nhận nếu hai fact chỉ trùng từ, cùng loại phương tiện, cùng văn
-    bản/chủ đề, diễn đạt lặp lại, hoặc không đủ căn cứ xác định hướng. Metadata
-    thời gian chỉ hỗ trợ, không tự chứng minh quan hệ sửa đổi.
+    bản/chủ đề, diễn đạt lặp lại, hoặc một fact đã đủ cho câu hỏi. Metadata
+    thời gian chỉ hỗ trợ, không tự chứng minh quan hệ temporal.
 
-    Khi related: chọn một relation_type; đặt from_fact_id/to_fact_id theo hướng
-    mô tả trên; bridge gồm 1-3 cụm ngắn nêu đúng hành vi, tình huống, thủ tục
-    hoặc quy định chung nối hai fact, không chỉ ghi số Điều. Khi không related:
-    relation_type, from_fact_id, to_fact_id=null và bridge=[].
+    Khi related: bridge là một cụm ngắn nêu đúng hành vi, tình huống, thủ tục
+    hoặc thay đổi nối hai fact, không chỉ ghi số Điều. Khi không related:
+    bundle_kind=null và bridge=null.
 
     Các cặp cần xác nhận:
 

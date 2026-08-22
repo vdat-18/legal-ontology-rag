@@ -11,13 +11,12 @@ import numpy as np
 import pytest
 
 from legal_rag.baml_client.types import ConfirmedRelation as BamlConfirmedRelation
-from legal_rag.baml_client.types import RelationType as BamlRelationType
+from legal_rag.baml_client.types import RelationBundleKind as BamlRelationBundleKind
 from legal_rag.benchmark_synthesis import evidence_graph
 from legal_rag.benchmark_synthesis.config import EvidenceRetrievalSettings, LlmStageSettings, SynthesisSettings
 from legal_rag.benchmark_synthesis.evidence_graph import (
     BamlEvidenceRelationClient,
     EvidenceRelation,
-    classify_bundle_kind,
     confirm_evidence_relations,
     find_candidate_fact_pairs,
     sample_bundles,
@@ -228,17 +227,16 @@ class _FakeRelationClient:
 
 
 def _relation(
-    from_fact_id: str = "fact-a",
-    to_fact_id: str = "fact-b",
-    relation_type: str = "complementary_rule",
+    fact_id_a: str = "fact-a",
+    fact_id_b: str = "fact-b",
+    bundle_kind: str = "multi_hop",
 ) -> EvidenceRelation:
     """Build one confirmed evidence relation for tests."""
     return EvidenceRelation(
         relation_id="relation-1",
-        relation_type=relation_type,
-        from_fact_id=from_fact_id,
-        to_fact_id=to_fact_id,
-        bridge=("Điều 6",),
+        fact_ids=tuple(sorted((fact_id_a, fact_id_b))),
+        bundle_kind=bundle_kind,
+        bridge="Cùng tình huống xử lý vi phạm",
         confirmed_by_model="provider/test-model",
         run_id="run-1",
     )
@@ -354,18 +352,15 @@ def test_confirm_evidence_relations_reports_a_pair_that_fails_every_attempt_as_a
     assert persisted == [("fact-a", "fact-c")]
 
 
-def test_classify_bundle_kind_amended_by_is_always_temporal() -> None:
-    """An amendment relation is temporal."""
-    relation = _relation("a", "b", relation_type="amended_by")
+def test_sample_bundles_preserves_confirmed_bundle_kind() -> None:
+    """Relation confirmation directly controls whether a two-fact bundle is temporal."""
+    bundles = sample_bundles(
+        [_fact("a"), _fact("b")],
+        [_relation("a", "b", bundle_kind="temporal")],
+        overlap_threshold=0.5,
+    )
 
-    assert classify_bundle_kind(relation) == "temporal"
-
-
-def test_classify_bundle_kind_non_amendment_is_multi_hop() -> None:
-    """Every non-amendment two-fact relation is multi-hop."""
-    relation = _relation("a", "b", relation_type="complementary_rule")
-
-    assert classify_bundle_kind(relation) == "multi_hop"
+    assert [bundle.kind for bundle in bundles if bundle.kind != "single_hop"] == ["temporal"]
 
 
 def test_sample_bundles_includes_one_single_hop_bundle_per_fact() -> None:
@@ -381,7 +376,7 @@ def test_sample_bundles_includes_one_single_hop_bundle_per_fact() -> None:
 def test_sample_bundles_excludes_relation_bundle_exceeding_overlap_threshold() -> None:
     """A relation bundle that duplicates an already-selected bundle is dropped."""
     facts = [_fact("a"), _fact("b")]
-    duplicate_relations = [_relation("a", "b"), _relation("a", "b", relation_type="rule_to_exception")]
+    duplicate_relations = [_relation("a", "b"), replace(_relation("a", "b"), relation_id="relation-2")]
 
     bundles = sample_bundles(facts, duplicate_relations, overlap_threshold=0.5)
 
@@ -431,9 +426,8 @@ def test_baml_evidence_relation_client_translates_confirmed_relation(monkeypatch
         evidence_graph,
         "execute_baml_request",
         lambda *args, **kwargs: (
-            '[{"pair_id":"fact-a::fact-b","relation":{"is_related":true,"relation_type":"AmendedBy",'
-            '"from_fact_id":"fact-b","to_fact_id":"fact-a",'
-            '"bridge":["Điều 6 khoản 9 điểm b"]}}]'
+            '[{"pair_id":"fact-a::fact-b","relation":{"is_related":true,'
+            '"bundle_kind":"Temporal","bridge":"Quy định mới thay đổi quy định cũ"}}]'
         ),
     )
 
@@ -442,10 +436,9 @@ def test_baml_evidence_relation_client_translates_confirmed_relation(monkeypatch
     assert len(relations) == 1
     relation = relations[0]
     assert relation is not None
-    assert relation.relation_type == "amended_by"
-    assert relation.from_fact_id == "fact-b"
-    assert relation.to_fact_id == "fact-a"
-    assert relation.bridge == ("Điều 6 khoản 9 điểm b",)
+    assert relation.fact_ids == ("fact-a", "fact-b")
+    assert relation.bundle_kind == "temporal"
+    assert relation.bridge == "Quy định mới thay đổi quy định cũ"
     assert relation.confirmed_by_model == "provider/test-model"
     assert relation.run_id == "run-1"
 
@@ -457,8 +450,7 @@ def test_baml_evidence_relation_client_returns_none_when_unrelated(monkeypatch: 
         evidence_graph,
         "execute_baml_request",
         lambda *args, **kwargs: (
-            '[{"pair_id":"fact-a::fact-b","relation":'
-            '{"is_related":false,"relation_type":null,"from_fact_id":null,"to_fact_id":null,"bridge":[]}}]'
+            '[{"pair_id":"fact-a::fact-b","relation":{"is_related":false,"bundle_kind":null,"bridge":null}}]'
         ),
     )
 
@@ -493,8 +485,7 @@ def test_baml_evidence_relation_client_sends_statements_and_document_metadata(
         evidence_graph,
         "execute_baml_request",
         lambda received_request, *args, **kwargs: (
-            '[{"pair_id":"fact-a::fact-b","relation":'
-            '{"is_related":false,"relation_type":null,"from_fact_id":null,"to_fact_id":null,"bridge":[]}}]'
+            '[{"pair_id":"fact-a::fact-b","relation":{"is_related":false,"bundle_kind":null,"bridge":null}}]'
             if received_request is request
             else pytest.fail("BAML request object was not forwarded to the transport")
         ),
@@ -518,10 +509,8 @@ def test_build_relation_is_deterministic_for_identical_inputs() -> None:
     fact_a, fact_b = _fact("fact-a"), _fact("fact-b")
     result = BamlConfirmedRelation(
         is_related=True,
-        relation_type=BamlRelationType.AmendedBy,
-        from_fact_id="fact-a",
-        to_fact_id="fact-b",
-        bridge=["Điều 6"],
+        bundle_kind=BamlRelationBundleKind.Temporal,
+        bridge="Quy định mới thay đổi quy định cũ",
     )
 
     first = evidence_graph._build_relation(result, fact_a, fact_b, "provider/test-model", "run-1")
@@ -532,25 +521,21 @@ def test_build_relation_is_deterministic_for_identical_inputs() -> None:
     assert first.relation_id == second.relation_id
 
 
-@pytest.mark.parametrize(
-    ("from_fact_id", "to_fact_id"),
-    [("fact-a", "fact-a"), ("fact-a", "fact-c")],
-)
-def test_build_relation_rejects_invalid_direction(from_fact_id: str, to_fact_id: str) -> None:
-    """A confirmed direction must contain each input fact exactly once."""
+def test_build_relation_stores_the_input_pair_without_direction() -> None:
+    """The persisted relation keeps the sorted input pair without model-provided direction."""
     result = BamlConfirmedRelation(
         is_related=True,
-        relation_type=BamlRelationType.AmendedBy,
-        from_fact_id=from_fact_id,
-        to_fact_id=to_fact_id,
-        bridge=["Điều 6"],
+        bundle_kind=BamlRelationBundleKind.MultiHop,
+        bridge="Cùng tình huống xử lý vi phạm",
     )
 
-    with pytest.raises(ValueError, match="direction must contain each input fact_id exactly once"):
-        evidence_graph._build_relation(
-            result,
-            _fact("fact-a"),
-            _fact("fact-b"),
-            "provider/test-model",
-            "run-1",
-        )
+    relation = evidence_graph._build_relation(
+        result,
+        _fact("fact-b"),
+        _fact("fact-a"),
+        "provider/test-model",
+        "run-1",
+    )
+
+    assert relation is not None
+    assert relation.fact_ids == ("fact-a", "fact-b")

@@ -54,7 +54,7 @@ def _scenario(fact_ids: tuple[str, ...] = ("fact-1",)) -> Scenario:
         reasoning_hops=len(fact_ids),
         as_of_date=None,
         fact_ids=fact_ids,
-        bridge=(),
+        bridge=None,
         gold_chunk_ids=("chunk-1", "chunk-2"),
     )
 
@@ -312,7 +312,7 @@ def test_baml_candidate_generation_client_parses_typed_result(monkeypatch: pytes
         "Mức phạt",
         "answerable",
         "single_hop",
-        [],
+        None,
         1,
         None,
     )

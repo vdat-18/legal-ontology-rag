@@ -169,10 +169,9 @@ def read_evidence_relations(input_path: Path) -> tuple[EvidenceRelation, ...]:
             relations.append(
                 EvidenceRelation(
                     relation_id=payload["relation_id"],
-                    relation_type=payload["relation_type"],
-                    from_fact_id=payload["from_fact_id"],
-                    to_fact_id=payload["to_fact_id"],
-                    bridge=tuple(payload["bridge"]),
+                    fact_ids=tuple(payload["fact_ids"]),
+                    bundle_kind=payload["bundle_kind"],
+                    bridge=payload["bridge"],
                     confirmed_by_model=payload["confirmed_by_model"],
                     run_id=payload["run_id"],
                 )
@@ -261,7 +260,7 @@ def read_scenarios(input_path: Path) -> tuple[Scenario, ...]:
                     reasoning_hops=payload["reasoning_hops"],
                     as_of_date=_parse_date(payload["as_of_date"]),
                     fact_ids=tuple(payload["fact_ids"]),
-                    bridge=tuple(payload["bridge"]),
+                    bridge=payload["bridge"],
                     gold_chunk_ids=tuple(payload["gold_chunk_ids"]),
                 )
             )
@@ -318,7 +317,7 @@ def _parse_candidate_draft(payload: dict[str, object]) -> CandidateDraft:
         sample_id=payload["sample_id"],
         scenario_id=payload["scenario_id"],
         bundle_kind=payload["bundle_kind"],
-        bridge=tuple(payload["bridge"]),
+        bridge=payload["bridge"],
         query_vi=payload["query_vi"],
         reference_answer_vi=payload["reference_answer_vi"],
         reasoning_vi=payload["reasoning_vi"],

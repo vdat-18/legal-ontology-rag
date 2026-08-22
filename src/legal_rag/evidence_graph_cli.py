@@ -86,9 +86,7 @@ def _validate_resume_state(
     if not checked_pairs <= candidate_pair_set:
         msg = "Evidence-relation progress contains pairs outside the current candidate set"
         raise ValueError(msg)
-    existing_relation_pairs = {
-        tuple(sorted((relation.from_fact_id, relation.to_fact_id))) for relation in existing_relations
-    }
+    existing_relation_pairs = {relation.fact_ids for relation in existing_relations}
     if len(existing_relation_pairs) != len(existing_relations):
         msg = "Existing evidence relations contain multiple results for one candidate pair"
         raise ValueError(msg)
@@ -363,9 +361,7 @@ def main() -> None:
     def _persist_pair(pair: tuple[str, str], relation: EvidenceRelation | None) -> None:
         """Rewrite the relations file, then record the pair as checked, so a crash between the two only costs a retry."""
         stale_relation_ids = [
-            relation_id
-            for relation_id, existing in relations_by_id.items()
-            if tuple(sorted((existing.from_fact_id, existing.to_fact_id))) == pair
+            relation_id for relation_id, existing in relations_by_id.items() if existing.fact_ids == pair
         ]
         for relation_id in stale_relation_ids:
             del relations_by_id[relation_id]

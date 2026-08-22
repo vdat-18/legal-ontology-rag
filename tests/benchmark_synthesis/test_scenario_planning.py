@@ -51,7 +51,7 @@ def _fact(fact_id: str, statement: str, *, valid_from: date | None = None) -> Le
 
 def _bundle(*fact_ids: str, kind: str = "single_hop") -> EvidenceBundle:
     """Build one deterministic evidence bundle."""
-    return EvidenceBundle(bundle_id="bundle-1", kind=kind, fact_ids=tuple(fact_ids), bridge=("vượt đèn đỏ",))
+    return EvidenceBundle(bundle_id="bundle-1", kind=kind, fact_ids=tuple(fact_ids), bridge="Vượt đèn đỏ")
 
 
 def _taxonomy() -> QueryTaxonomy:
@@ -99,6 +99,7 @@ def test_build_scenario_planning_item_sends_statements_candidates_and_dates() ->
     item = build_scenario_planning_item(_bundle("fact-a"), {fact.fact_id: fact}, _taxonomy(), _descriptions())
 
     assert item.facts[0].statement == fact.statement
+    assert item.bridge == "Vượt đèn đỏ"
     assert [candidate.query_type_id for candidate in item.query_type_candidates] == [
         "legal_rule",
         "penalty_for_conduct",

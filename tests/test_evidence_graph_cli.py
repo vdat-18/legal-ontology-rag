@@ -58,10 +58,9 @@ class _AlwaysRelatedClient:
         return [
             evidence_graph.EvidenceRelation(
                 relation_id=f"relation-{fact_a.fact_id}-{fact_b.fact_id}",
-                relation_type="complementary_rule",
-                from_fact_id=fact_a.fact_id,
-                to_fact_id=fact_b.fact_id,
-                bridge=("Điều 6",),
+                fact_ids=tuple(sorted((fact_a.fact_id, fact_b.fact_id))),
+                bundle_kind="multi_hop",
+                bridge="Cùng tình huống xử lý vi phạm",
                 confirmed_by_model="provider/test-model",
                 run_id=self._run_id,
             )
@@ -203,8 +202,7 @@ def test_evidence_graph_cli_confirms_relations_and_samples_scenarios(
     relations = read_evidence_relations(relations_path)
     scenarios = read_scenarios(scenarios_path)
     assert len(relations) == 1
-    assert relations[0].from_fact_id == "fact-a"
-    assert relations[0].to_fact_id == "fact-b"
+    assert relations[0].fact_ids == ("fact-a", "fact-b")
     assert len(scenarios) > 0
     assert all(scenario.fact_ids for scenario in scenarios)
 
@@ -271,10 +269,9 @@ def test_evidence_graph_cli_allow_incomplete_relations_samples_from_confirmed_pa
             return [
                 evidence_graph.EvidenceRelation(
                     relation_id=f"relation-{fact_x.fact_id}-{fact_y.fact_id}",
-                    relation_type="complementary_rule",
-                    from_fact_id=fact_x.fact_id,
-                    to_fact_id=fact_y.fact_id,
-                    bridge=("Điều 6",),
+                    fact_ids=tuple(sorted((fact_x.fact_id, fact_y.fact_id))),
+                    bundle_kind="multi_hop",
+                    bridge="Cùng tình huống xử lý vi phạm",
                     confirmed_by_model="provider/test-model",
                     run_id=self._run_id,
                 )
@@ -327,10 +324,9 @@ def test_evidence_graph_cli_does_not_recheck_a_pair_already_processed(
                 relations.append(
                     evidence_graph.EvidenceRelation(
                         relation_id=f"relation-{fact_x.fact_id}-{fact_y.fact_id}",
-                        relation_type="complementary_rule",
-                        from_fact_id=fact_x.fact_id,
-                        to_fact_id=fact_y.fact_id,
-                        bridge=("Điều 6",),
+                        fact_ids=tuple(sorted((fact_x.fact_id, fact_y.fact_id))),
+                        bundle_kind="multi_hop",
+                        bridge="Cùng tình huống xử lý vi phạm",
                         confirmed_by_model="provider/test-model",
                         run_id=self._run_id,
                     )
@@ -375,10 +371,9 @@ def test_evidence_graph_cli_persists_progress_if_interrupted_mid_run(
             return [
                 evidence_graph.EvidenceRelation(
                     relation_id=f"relation-{fact_x.fact_id}-{fact_y.fact_id}",
-                    relation_type="complementary_rule",
-                    from_fact_id=fact_x.fact_id,
-                    to_fact_id=fact_y.fact_id,
-                    bridge=("Điều 6",),
+                    fact_ids=tuple(sorted((fact_x.fact_id, fact_y.fact_id))),
+                    bundle_kind="multi_hop",
+                    bridge="Cùng tình huống xử lý vi phạm",
                     confirmed_by_model="provider/test-model",
                     run_id=self._run_id,
                 )
@@ -475,10 +470,9 @@ def test_evidence_graph_cli_replaces_relation_written_before_progress(
         [
             evidence_graph.EvidenceRelation(
                 relation_id="relation-before-crash",
-                relation_type="complementary_rule",
-                from_fact_id="fact-a",
-                to_fact_id="fact-b",
-                bridge=("Điều 6",),
+                fact_ids=("fact-a", "fact-b"),
+                bundle_kind="multi_hop",
+                bridge="Cùng tình huống xử lý vi phạm",
                 confirmed_by_model="provider/test-model",
                 run_id=run_id,
             )

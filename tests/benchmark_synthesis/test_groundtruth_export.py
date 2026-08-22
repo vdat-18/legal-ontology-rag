@@ -41,6 +41,7 @@ def _candidate() -> CandidateDraft:
         as_of_date=date(2025, 1, 1),
         source_fact_ids=("fact-1",),
         generator_model="provider/model",
+        bridge="Cùng hành vi vượt đèn đỏ",
     )
 
 
@@ -60,3 +61,4 @@ def test_export_ground_truth_maps_evaluation_fields_and_preserves_metadata() -> 
     assert record["answerability"] == candidate.answerability
     assert record["required_claims"] == [candidate.required_claims[0].to_dict()]
     assert record["as_of_date"] == "2025-01-01"
+    assert record["bridge"] == "Cùng hành vi vượt đèn đỏ"

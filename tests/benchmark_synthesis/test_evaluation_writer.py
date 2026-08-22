@@ -101,10 +101,9 @@ def test_evidence_relations_round_trip_through_jsonl(tmp_path: Path) -> None:
     output_path = tmp_path / "evidence_relations.jsonl"
     relation = EvidenceRelation(
         relation_id="relation-1",
-        relation_type="amended_by",
-        from_fact_id="fact-1",
-        to_fact_id="fact-2",
-        bridge=("Điều 6 khoản 9 điểm b",),
+        fact_ids=("fact-1", "fact-2"),
+        bundle_kind="temporal",
+        bridge="Quy định mới thay đổi quy định cũ",
         confirmed_by_model="provider/test-model",
         run_id="run-1",
     )
@@ -155,7 +154,7 @@ def test_scenarios_round_trip_through_jsonl(tmp_path: Path) -> None:
         reasoning_hops=2,
         as_of_date=date(2025, 2, 10),
         fact_ids=("fact-1", "fact-2"),
-        bridge=("Điều 6",),
+        bridge="Cùng tình huống xử lý vi phạm",
         gold_chunk_ids=("chunk-1", "chunk-2"),
     )
 
@@ -179,7 +178,7 @@ def test_scenarios_round_trip_preserves_null_as_of_date(tmp_path: Path) -> None:
         reasoning_hops=1,
         as_of_date=None,
         fact_ids=("fact-1",),
-        bridge=(),
+        bridge=None,
         gold_chunk_ids=("chunk-1",),
     )
 
@@ -216,6 +215,7 @@ def _candidate_draft() -> CandidateDraft:
         as_of_date=date(2025, 2, 10),
         source_fact_ids=("fact-1",),
         generator_model="provider/generator-model",
+        bridge="Cùng tình huống xử lý vi phạm",
     )
 
 

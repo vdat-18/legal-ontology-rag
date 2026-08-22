@@ -29,8 +29,8 @@ from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
-CANDIDATE_SCHEMA_VERSION = "2.0.0"
-CANDIDATE_GENERATION_PROMPT_VERSION = "3.0.0"
+CANDIDATE_SCHEMA_VERSION = "3.0.0"
+CANDIDATE_GENERATION_PROMPT_VERSION = "4.0.0"
 
 _EVOLUTION_OPERATION_BY_ID: dict[str, EvolutionOperation] = {
     "concretizing": EvolutionOperation.Concretizing,
@@ -92,7 +92,7 @@ class CandidateDraft:
     source_fact_ids: tuple[str, ...]
     generator_model: str
     bundle_kind: str = "single_hop"
-    bridge: tuple[str, ...] = ()
+    bridge: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable candidate-draft record."""
@@ -102,7 +102,7 @@ class CandidateDraft:
             "interaction_type": "single_turn",
             "scenario_id": self.scenario_id,
             "bundle_kind": self.bundle_kind,
-            "bridge": list(self.bridge),
+            "bridge": self.bridge,
             "query_vi": self.query_vi,
             "reference_answer_vi": self.reference_answer_vi,
             "reasoning_vi": self.reasoning_vi,
@@ -153,7 +153,7 @@ class CandidateGenerationClient(Protocol):
         query_type_description: str,
         answerability: str,
         bundle_kind: str,
-        bridge: Sequence[str],
+        bridge: str | None,
         reasoning_hops: int,
         as_of_date: str | None,
     ) -> BamlGeneratedCandidate:
@@ -213,7 +213,7 @@ class BamlCandidateGenerationClient:
         query_type_description: str,
         answerability: str,
         bundle_kind: str,
-        bridge: Sequence[str],
+        bridge: str | None,
         reasoning_hops: int,
         as_of_date: str | None,
     ) -> BamlGeneratedCandidate:
@@ -228,7 +228,7 @@ class BamlCandidateGenerationClient:
             query_type_description=query_type_description,
             answerability=answerability,
             bundle_kind=bundle_kind,
-            bridge=list(bridge),
+            bridge=bridge,
             reasoning_hops=reasoning_hops,
             as_of_date=as_of_date,
         )
@@ -324,7 +324,7 @@ def generate_candidate_batch(
             query_type_description=query_type_descriptions[scenario.query_type],
             answerability=scenario.answerability,
             bundle_kind=scenario.bundle_kind,
-            bridge=list(scenario.bridge),
+            bridge=scenario.bridge,
             reasoning_hops=scenario.reasoning_hops,
             as_of_date=scenario.as_of_date.isoformat() if scenario.as_of_date else None,
         )

@@ -81,8 +81,8 @@ Các chunk có `record_scope == "root"`, được sắp theo:
 
 Sau đó code lấy đúng thứ tự:
 
-- 5 chunk đầu của thân văn bản;
-- 5 chunk cuối của thân văn bản.
+- 10 chunk đầu của thân văn bản;
+- 10 chunk cuối của thân văn bản.
 
 Các số lượng này nằm trong typed config, không hardcode trong logic:
 `stages.document_metadata.opening_chunk_count` và
@@ -207,28 +207,24 @@ lexical retrieval trên duy nhất `statement`, rồi gộp thứ hạng bằng 
 chỉ là bước đề xuất ứng viên.
 
 LLM đọc `fact_id`, `statement`, `document_number`, `valid_from` và `valid_to`
-để quyết định hai fact có thực sự liên quan hay không, loại quan hệ, hướng
-quan hệ và `bridge`. Evidence chunk IDs không được gửi vì ID không mang nội
-dung ngữ nghĩa; chúng vẫn được giữ trong fact để tạo gold chunks. Retrieval
-score hoặc keyword không phải quyết định cuối.
+để quyết định hai fact có thực sự cần nhau cho một câu hỏi grounded hay không.
+Nếu có, LLM chọn trực tiếp `bundle_kind` là `multi_hop` hoặc `temporal` và viết
+một `bridge` ngắn giải thích nội dung nối hai fact. Không còn taxonomy loại
+quan hệ hoặc hướng `from_fact_id`/`to_fact_id`.
 
-Relation taxonomy dành cho các statement tự đầy đủ:
-
-- `complementary_rule`: quy tắc nền và quy tắc bổ sung cho cùng tình huống;
-- `rule_to_exception`: quy định chung và ngoại lệ;
-- `rule_to_authority`: quy định và thẩm quyền xử phạt;
-- `amended_by`: quy định cũ và quy định sửa đổi/thay thế;
-- `procedure_sequence`: hai bước liên tiếp trong một thủ tục.
+Evidence chunk IDs không được gửi vì ID không mang nội dung ngữ nghĩa; chúng
+vẫn được giữ trong fact để tạo gold chunks. Retrieval score hoặc keyword
+không phải quyết định cuối.
 
 Các relation đã xác nhận được chuyển thành:
 
 - `single_hop` bundle: một fact;
-- `multi_hop` bundle: hai fact có quan hệ và bridge;
-- `temporal` bundle: hai fact nối bằng quan hệ sửa đổi.
+- `multi_hop` bundle: hai fact bổ sung trực tiếp cho cùng câu hỏi;
+- `temporal` bundle: hai fact thể hiện thay đổi hoặc chế độ hiệu lực khác nhau.
 
-Không còn bundle kind `synthesis`. Mọi relation hai fact không phải sửa đổi
-đều là `multi_hop`, không suy luận loại bundle từ việc hai fact cùng hay khác
-văn bản.
+`bridge` là một string do LLM tạo, không phải danh sách nhãn hoặc số Điều.
+Không còn bundle kind `synthesis` và không suy luận loại bundle từ việc hai
+fact cùng hay khác văn bản.
 
 Bundle giữ `fact_ids`; gold chunks được suy ra trực tiếp từ `evidence` của các
 fact trong bundle.
@@ -355,8 +351,9 @@ claims, evolutions và source fact IDs vẫn được giữ để phân tích th
   hoặc upstream run khác nhau.
 - Cấu hình synthesis nằm tại
   `data/config/groundtruth/synthesis_v1.json`.
-- Các JSONL synthesis cũ theo schema trước `LegalFact 3.0.0` phải được sinh
-  lại; không sửa tay hoặc tự động migrate chúng.
+- Các JSONL synthesis cũ theo schema trước `LegalFact 3.0.0`, `EvidenceRelation
+  3.0.0`, `EvidenceBundle 3.0.0`, `Scenario 3.0.0` hoặc `Candidate 3.0.0` phải
+  được sinh lại; không sửa tay hoặc tự động migrate chúng.
 
 ## Giới hạn hiện tại
 

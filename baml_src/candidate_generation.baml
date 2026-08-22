@@ -36,7 +36,7 @@ class CandidateGenerationBatchInput {
   query_type_description string
   answerability string
   bundle_kind string
-  bridge string[]
+  bridge string?
   reasoning_hops int
   as_of_date string?
 }

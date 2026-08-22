@@ -50,7 +50,7 @@ def _bundle(
     fact_ids: tuple[str, ...],
     *,
     kind: str = "single_hop",
-    bridge: tuple[str, ...] = ("Điều 6",),
+    bridge: str | None = "Cùng tình huống xử lý vi phạm",
 ) -> EvidenceBundle:
     """Build one evidence bundle for scenario-sampling tests."""
     return EvidenceBundle(bundle_id=bundle_id, kind=kind, fact_ids=fact_ids, bridge=bridge)
@@ -354,8 +354,8 @@ def test_sample_scenarios_is_invariant_to_bundle_input_order() -> None:
 def test_sample_scenarios_scenario_id_changes_with_bridge() -> None:
     """Changing relation semantics changes scenario identity even when the bundle ID is unchanged."""
     facts_by_id = {"a": _fact("a")}
-    first_bundle = _bundle("bundle-a", ("a",), bridge=("same_subject",))
-    second_bundle = _bundle("bundle-a", ("a",), bridge=("supersedes",))
+    first_bundle = _bundle("bundle-a", ("a",), bridge="Cùng chủ thể")
+    second_bundle = _bundle("bundle-a", ("a",), bridge="Quy định thay thế")
 
     first = _sample_scenarios([first_bundle], facts_by_id, _config(), total_samples=1)
     second = _sample_scenarios([second_bundle], facts_by_id, _config(), total_samples=1)
@@ -389,7 +389,7 @@ def test_scenario_to_dict_serializes_stable_output_schema() -> None:
         reasoning_hops=2,
         as_of_date=date(2025, 2, 10),
         fact_ids=("fact-1", "fact-2"),
-        bridge=("Điều 6",),
+        bridge="Cùng tình huống xử lý vi phạm",
         gold_chunk_ids=("chunk-1", "chunk-2"),
     )
 
@@ -397,3 +397,4 @@ def test_scenario_to_dict_serializes_stable_output_schema() -> None:
 
     assert record["as_of_date"] == "2025-02-10"
     assert record["fact_ids"] == ["fact-1", "fact-2"]
+    assert record["bridge"] == "Cùng tình huống xử lý vi phạm"

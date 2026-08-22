@@ -21,7 +21,7 @@ from legal_rag.benchmark_synthesis.evidence_graph import BundleKind, EvidenceBun
 from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.parser.hashing import sha256_json
 
-SCENARIO_SCHEMA_VERSION = "2.0.0"
+SCENARIO_SCHEMA_VERSION = "3.0.0"
 SCENARIO_DISTRIBUTION_SCHEMA_VERSION = "2.0.0"
 SCENARIO_PLAN_SCHEMA_VERSION = "1.0.0"
 
@@ -129,7 +129,7 @@ class Scenario:
     reasoning_hops: int
     as_of_date: date | None
     fact_ids: tuple[str, ...]
-    bridge: tuple[str, ...]
+    bridge: str | None
     gold_chunk_ids: tuple[str, ...]
     bundle_kind: BundleKind = "single_hop"
 
@@ -148,7 +148,7 @@ class Scenario:
             "reasoning_hops": self.reasoning_hops,
             "as_of_date": self.as_of_date.isoformat() if self.as_of_date else None,
             "fact_ids": list(self.fact_ids),
-            "bridge": list(self.bridge),
+            "bridge": self.bridge,
             "gold_chunk_ids": list(self.gold_chunk_ids),
         }
 
@@ -296,7 +296,7 @@ def sample_scenarios(
                         "answerability": answerability,
                         "as_of_date": as_of_date.isoformat() if as_of_date else None,
                         "attempt_index": attempt_index,
-                        "bridge": list(bundle.bridge),
+                        "bridge": bundle.bridge,
                         "bundle_id": bundle.bundle_id,
                         "bundle_kind": bundle.kind,
                         "facts": [fact.fact_id for fact in facts],

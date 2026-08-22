@@ -7,7 +7,7 @@ from typing import Any
 
 from legal_rag.benchmark_synthesis.candidate_generation import CandidateDraft
 
-CANDIDATE_PROGRESS_SCHEMA_VERSION = "1.0.0"
+CANDIDATE_PROGRESS_SCHEMA_VERSION = "2.0.0"
 
 
 @dataclass(frozen=True, slots=True)

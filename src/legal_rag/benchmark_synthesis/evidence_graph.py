@@ -32,30 +32,20 @@ from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
-EVIDENCE_RELATION_SCHEMA_VERSION = "2.0.0"
-EVIDENCE_BUNDLE_SCHEMA_VERSION = "2.0.0"
+EVIDENCE_RELATION_SCHEMA_VERSION = "3.0.0"
+EVIDENCE_BUNDLE_SCHEMA_VERSION = "3.0.0"
 EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.1.0"
-EVIDENCE_RELATION_PROMPT_VERSION = "3.0.0"
+EVIDENCE_RELATION_PROMPT_VERSION = "4.0.0"
 EVIDENCE_CANDIDATE_SELECTION_VERSION = "4.1.0"
 EVIDENCE_CANDIDATE_SET_SCHEMA_VERSION = "1.0.0"
 FACT_RETRIEVAL_TEXT_VERSION = "4.0.0"
 
-RelationType = Literal[
-    "complementary_rule",
-    "rule_to_exception",
-    "rule_to_authority",
-    "amended_by",
-    "procedure_sequence",
-]
-
 BundleKind = Literal["single_hop", "multi_hop", "temporal"]
+RelationBundleKind = Literal["multi_hop", "temporal"]
 
-_RELATION_TYPE_BY_BAML_ENUM: dict[str, RelationType] = {
-    "ComplementaryRule": "complementary_rule",
-    "RuleToException": "rule_to_exception",
-    "RuleToAuthority": "rule_to_authority",
-    "AmendedBy": "amended_by",
-    "ProcedureSequence": "procedure_sequence",
+_BUNDLE_KIND_BY_BAML_ENUM: dict[str, RelationBundleKind] = {
+    "MultiHop": "multi_hop",
+    "Temporal": "temporal",
 }
 
 
@@ -64,10 +54,9 @@ class EvidenceRelation:
     """One confirmed relation between two legal facts."""
 
     relation_id: str
-    relation_type: RelationType
-    from_fact_id: str
-    to_fact_id: str
-    bridge: tuple[str, ...]
+    fact_ids: tuple[str, str]
+    bundle_kind: RelationBundleKind
+    bridge: str
     confirmed_by_model: str
     run_id: str
 
@@ -76,10 +65,9 @@ class EvidenceRelation:
         return {
             "schema_version": EVIDENCE_RELATION_SCHEMA_VERSION,
             "relation_id": self.relation_id,
-            "relation_type": self.relation_type,
-            "from_fact_id": self.from_fact_id,
-            "to_fact_id": self.to_fact_id,
-            "bridge": list(self.bridge),
+            "fact_ids": list(self.fact_ids),
+            "bundle_kind": self.bundle_kind,
+            "bridge": self.bridge,
             "confirmed_by_model": self.confirmed_by_model,
             "run_id": self.run_id,
         }
@@ -92,7 +80,7 @@ class EvidenceBundle:
     bundle_id: str
     kind: BundleKind
     fact_ids: tuple[str, ...]
-    bridge: tuple[str, ...]
+    bridge: str | None
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable evidence-bundle record."""
@@ -101,7 +89,7 @@ class EvidenceBundle:
             "bundle_id": self.bundle_id,
             "kind": self.kind,
             "fact_ids": list(self.fact_ids),
-            "bridge": list(self.bridge),
+            "bridge": self.bridge,
         }
 
 
@@ -376,38 +364,23 @@ def _build_relation(
 ) -> EvidenceRelation | None:
     """Translate one BAML confirmation result into a persisted relation, or None."""
     if not result.is_related:
-        if result.relation_type is not None or result.from_fact_id is not None or result.to_fact_id is not None:
-            msg = "An unrelated evidence pair must not declare a relation type or direction"
-            raise ValueError(msg)
-        if result.bridge:
-            msg = "An unrelated evidence pair must not declare a bridge"
-            raise ValueError(msg)
         return None
-    if result.relation_type is None or result.from_fact_id is None or result.to_fact_id is None:
-        msg = "A related evidence pair must declare its relation type and direction"
+    if result.bundle_kind is None or result.bridge is None:
+        msg = "A related evidence pair must declare its bundle kind and bridge"
         raise ValueError(msg)
-    fact_ids = {fact_a.fact_id, fact_b.fact_id}
-    oriented_ids = {result.from_fact_id, result.to_fact_id}
-    if len(oriented_ids) != 2 or oriented_ids != fact_ids:
-        msg = "Evidence relation direction must contain each input fact_id exactly once"
-        raise ValueError(msg)
-    if not result.bridge:
-        msg = "A related evidence pair must declare at least one bridge"
-        raise ValueError(msg)
-    relation_type = _RELATION_TYPE_BY_BAML_ENUM[result.relation_type.value]
+    fact_ids = tuple(sorted((fact_a.fact_id, fact_b.fact_id)))
+    bundle_kind = _BUNDLE_KIND_BY_BAML_ENUM[result.bundle_kind.value]
     identity = {
-        "from_fact_id": result.from_fact_id,
-        "to_fact_id": result.to_fact_id,
-        "relation_type": relation_type,
-        "bridge": list(result.bridge),
+        "fact_ids": list(fact_ids),
+        "bundle_kind": bundle_kind,
+        "bridge": result.bridge,
         "run_id": run_id,
     }
     return EvidenceRelation(
         relation_id=sha256_json(identity),
-        relation_type=relation_type,
-        from_fact_id=result.from_fact_id,
-        to_fact_id=result.to_fact_id,
-        bridge=tuple(result.bridge),
+        fact_ids=fact_ids,
+        bundle_kind=bundle_kind,
+        bridge=result.bridge,
         confirmed_by_model=model,
         run_id=run_id,
     )
@@ -480,20 +453,11 @@ def confirm_evidence_relations(
     return tuple(relations), tuple(failures)
 
 
-def classify_bundle_kind(relation: EvidenceRelation) -> BundleKind:
-    """Classify amendments as temporal and every other two-fact relation as multi-hop."""
-    if relation.relation_type == "amended_by":
-        return "temporal"
-    return "multi_hop"
-
-
 def evidence_relation_sort_key(relation: EvidenceRelation) -> tuple[object, ...]:
     """Return a semantic ordering key independent of run-specific relation identity."""
     return (
-        tuple(sorted((relation.from_fact_id, relation.to_fact_id))),
-        relation.relation_type,
-        relation.from_fact_id,
-        relation.to_fact_id,
+        relation.fact_ids,
+        relation.bundle_kind,
         relation.bridge,
     )
 
@@ -515,26 +479,23 @@ def sample_bundles(
             bundle_id=sha256_json({"fact_ids": [fact.fact_id]}),
             kind="single_hop",
             fact_ids=(fact.fact_id,),
-            bridge=(),
+            bridge=None,
         )
         for fact in sorted(facts, key=lambda item: item.fact_id)
     )
 
     selected: list[EvidenceBundle] = list(single_hop_bundles)
     for relation in sorted(relations, key=evidence_relation_sort_key):
-        fact_ids = tuple(sorted((relation.from_fact_id, relation.to_fact_id)))
-        kind = classify_bundle_kind(relation)
         candidate = EvidenceBundle(
             bundle_id=sha256_json(
                 {
-                    "bridge": list(relation.bridge),
-                    "fact_ids": list(fact_ids),
-                    "kind": kind,
-                    "relation_type": relation.relation_type,
+                    "bridge": relation.bridge,
+                    "fact_ids": list(relation.fact_ids),
+                    "kind": relation.bundle_kind,
                 }
             ),
-            kind=kind,
-            fact_ids=fact_ids,
+            kind=relation.bundle_kind,
+            fact_ids=relation.fact_ids,
             bridge=relation.bridge,
         )
         if not _exceeds_overlap(candidate, selected, threshold=overlap_threshold):

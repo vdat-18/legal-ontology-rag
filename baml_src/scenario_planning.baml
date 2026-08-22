@@ -14,7 +14,7 @@ class ScenarioQueryTypeCandidate {
 class ScenarioPlanningBatchItem {
   bundle_id string
   bundle_kind string
-  bridge string[]
+  bridge string?
   facts ScenarioPlanningFact[]
   query_type_candidates ScenarioQueryTypeCandidate[]
   candidate_as_of_dates string[]

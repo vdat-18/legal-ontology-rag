@@ -47,7 +47,7 @@ def _scenario(scenario_id: str) -> Scenario:
         reasoning_hops=1,
         as_of_date=None,
         fact_ids=("fact-1",),
-        bridge=(),
+        bridge=None,
         gold_chunk_ids=("chunk-1",),
     )
 

@@ -502,7 +502,7 @@ repository artifacts are candidate evidence only:
 | --- | --- | --- |
 | Rule, conduct, subject, condition, consequence | Mandatory CQs, `LegalFact` fields, and selected NĐ 168/NĐ 118 pilot records | Complete cited provisions and any applicable definitions in the governing legal documents |
 | Source and provenance | `EvidenceReference`, document metadata, provision paths, chunks, and exact quoted spans | Official document identity/structure plus comparison with ELI, Akoma Ntoso, and PROV-O |
-| Temporal change | Corpus metadata and candidate `amended_by` relations | Promulgation/effective clauses, explicit amendment text, consolidated sources, and OWL-Time patterns |
+| Temporal change | Corpus metadata and candidate `temporal` evidence bundles | Promulgation/effective clauses, explicit amendment text, consolidated sources, and OWL-Time patterns |
 
 Candidate synonyms are discovery aids, not equivalence axioms:
 
