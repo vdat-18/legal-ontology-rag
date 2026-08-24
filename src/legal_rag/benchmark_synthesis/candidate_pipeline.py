@@ -32,7 +32,6 @@ class CandidatePipelineContext:
 
     facts_by_id: Mapping[str, LegalFact]
     persona_descriptions: Mapping[str, str]
-    query_type_descriptions: Mapping[str, str]
     evolution_operations: Sequence[str]
     generation_client: CandidateGenerationClient
     generator_model: str
@@ -56,7 +55,6 @@ def process_candidate_task(
                 scenario,
                 context.facts_by_id,
                 context.persona_descriptions[scenario.persona],
-                context.query_type_descriptions[scenario.query_type],
                 context.generation_client,
                 generator_model=context.generator_model,
             ),
@@ -140,7 +138,6 @@ def process_candidate_batch(
                 generation_tasks,
                 context.facts_by_id,
                 context.persona_descriptions,
-                context.query_type_descriptions,
                 context.generation_client,
                 generator_model=context.generator_model,
             ),

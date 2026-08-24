@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from datetime import date
 from pathlib import Path
 
 import pytest
@@ -26,14 +25,12 @@ def _candidate() -> CandidateDraft:
         required_claims=(),
         evolutions=(),
         gold_chunk_ids=("chunk-1",),
-        query_type="penalty_for_conduct",
         query_form="specific",
         persona="tai_xe_ca_nhan",
         query_style="standard",
         query_length="short",
         answerability="answerable",
         reasoning_hops=1,
-        as_of_date=date(2025, 1, 1),
         source_fact_ids=("fact-1",),
         generator_model="provider/model",
     )

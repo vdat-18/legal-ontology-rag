@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import threading
 import time
-from datetime import date
 
 from legal_rag.baml_client.types import (
     CandidateEvolutionBatchInput,
@@ -38,14 +37,12 @@ def _scenario(scenario_id: str) -> Scenario:
     """Build one minimal scenario for pipeline tests."""
     return Scenario(
         scenario_id=scenario_id,
-        query_type="penalty_for_conduct",
         query_form="specific",
         answerability="answerable",
         persona="tai_xe_ca_nhan",
         query_style="standard",
         query_length="short",
         reasoning_hops=1,
-        as_of_date=None,
         fact_ids=("fact-1",),
         bridge=None,
         gold_chunk_ids=("chunk-1",),
@@ -57,7 +54,6 @@ def _context(generation_client: object, evolution_operations: tuple[str, ...] = 
     return CandidatePipelineContext(
         facts_by_id={"fact-1": _fact()},
         persona_descriptions={"tai_xe_ca_nhan": "Tài xế cá nhân"},
-        query_type_descriptions={"penalty_for_conduct": "Mức phạt của một hành vi"},
         evolution_operations=evolution_operations,
         generation_client=generation_client,
         generator_model="m",
@@ -123,14 +119,12 @@ def _draft(scenario_id: str) -> CandidateDraft:
         required_claims=(),
         evolutions=(),
         gold_chunk_ids=("chunk-1",),
-        query_type="penalty_for_conduct",
         query_form="specific",
         persona="tai_xe_ca_nhan",
         query_style="standard",
         query_length="short",
         answerability="answerable",
         reasoning_hops=1,
-        as_of_date=date(2025, 1, 1),
         source_fact_ids=("fact-1",),
         generator_model="m",
     )

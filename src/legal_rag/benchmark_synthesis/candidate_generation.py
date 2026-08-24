@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
-from datetime import date
 from functools import partial
 from typing import Any, Protocol
 
@@ -29,8 +28,8 @@ from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
-CANDIDATE_SCHEMA_VERSION = "3.0.0"
-CANDIDATE_GENERATION_PROMPT_VERSION = "4.1.0"
+CANDIDATE_SCHEMA_VERSION = "4.0.0"
+CANDIDATE_GENERATION_PROMPT_VERSION = "5.0.0"
 
 _EVOLUTION_OPERATION_BY_ID: dict[str, EvolutionOperation] = {
     "concretizing": EvolutionOperation.Concretizing,
@@ -81,14 +80,12 @@ class CandidateDraft:
     required_claims: tuple[RequiredClaim, ...]
     evolutions: tuple[str, ...]
     gold_chunk_ids: tuple[str, ...]
-    query_type: str
     query_form: str
     persona: str
     query_style: str
     query_length: str
     answerability: str
     reasoning_hops: int
-    as_of_date: date | None
     source_fact_ids: tuple[str, ...]
     generator_model: str
     bundle_kind: str = "single_hop"
@@ -109,14 +106,12 @@ class CandidateDraft:
             "required_claims": [claim.to_dict() for claim in self.required_claims],
             "evolutions": list(self.evolutions),
             "gold_chunk_ids": list(self.gold_chunk_ids),
-            "query_type": self.query_type,
             "query_form": self.query_form,
             "persona": self.persona,
             "query_style": self.query_style,
             "query_length": self.query_length,
             "answerability": self.answerability,
             "reasoning_hops": self.reasoning_hops,
-            "as_of_date": self.as_of_date.isoformat() if self.as_of_date else None,
             "source_fact_ids": list(self.source_fact_ids),
             "generator_model": self.generator_model,
         }
@@ -150,12 +145,10 @@ class CandidateGenerationClient(Protocol):
         query_style: str,
         query_length: str,
         query_form: str,
-        query_type_description: str,
         answerability: str,
         bundle_kind: str,
         bridge: str | None,
         reasoning_hops: int,
-        as_of_date: str | None,
     ) -> BamlGeneratedCandidate:
         """Return one typed generated candidate."""
 
@@ -210,12 +203,10 @@ class BamlCandidateGenerationClient:
         query_style: str,
         query_length: str,
         query_form: str,
-        query_type_description: str,
         answerability: str,
         bundle_kind: str,
         bridge: str | None,
         reasoning_hops: int,
-        as_of_date: str | None,
     ) -> BamlGeneratedCandidate:
         """Run one candidate through the batch endpoint."""
         item = CandidateGenerationBatchInput(
@@ -225,12 +216,10 @@ class BamlCandidateGenerationClient:
             query_style=query_style,
             query_length=query_length,
             query_form=query_form,
-            query_type_description=query_type_description,
             answerability=answerability,
             bundle_kind=bundle_kind,
             bridge=bridge,
             reasoning_hops=reasoning_hops,
-            as_of_date=as_of_date,
         )
         return self.generate_batch((item,))[0].candidate
 
@@ -280,7 +269,6 @@ def generate_candidate(
     scenario: Scenario,
     facts_by_id: Mapping[str, LegalFact],
     persona_description: str,
-    query_type_description: str,
     client: CandidateGenerationClient,
     *,
     generator_model: str,
@@ -293,12 +281,10 @@ def generate_candidate(
         scenario.query_style,
         scenario.query_length,
         scenario.query_form,
-        query_type_description,
         scenario.answerability,
         scenario.bundle_kind,
         scenario.bridge,
         scenario.reasoning_hops,
-        scenario.as_of_date.isoformat() if scenario.as_of_date else None,
     )
     return _candidate_from_generated(scenario, raw, facts_by_id, generator_model)
 
@@ -307,7 +293,6 @@ def generate_candidate_batch(
     tasks: Sequence[tuple[str, Scenario]],
     facts_by_id: Mapping[str, LegalFact],
     persona_descriptions: Mapping[str, str],
-    query_type_descriptions: Mapping[str, str],
     client: CandidateGenerationClient,
     *,
     generator_model: str,
@@ -321,12 +306,10 @@ def generate_candidate_batch(
             query_style=scenario.query_style,
             query_length=scenario.query_length,
             query_form=scenario.query_form,
-            query_type_description=query_type_descriptions[scenario.query_type],
             answerability=scenario.answerability,
             bundle_kind=scenario.bundle_kind,
             bridge=scenario.bridge,
             reasoning_hops=scenario.reasoning_hops,
-            as_of_date=scenario.as_of_date.isoformat() if scenario.as_of_date else None,
         )
         for task_id, scenario in tasks
     ]
@@ -372,14 +355,12 @@ def _candidate_from_generated(
             required_claims=required_claims,
             evolutions=(),
             gold_chunk_ids=scenario.gold_chunk_ids,
-            query_type=scenario.query_type,
             query_form=scenario.query_form,
             persona=scenario.persona,
             query_style=scenario.query_style,
             query_length=scenario.query_length,
             answerability=scenario.answerability,
             reasoning_hops=scenario.reasoning_hops,
-            as_of_date=scenario.as_of_date,
             source_fact_ids=scenario.fact_ids,
             generator_model=generator_model,
         )

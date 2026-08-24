@@ -11,20 +11,14 @@ import numpy as np
 import pytest
 
 from legal_rag import evidence_graph_cli
-from legal_rag.baml_client.types import (
-    PlannedScenarioQueryType,
-    ScenarioPlanningBatchItem,
-    ScenarioPlanningBatchResult,
-)
 from legal_rag.benchmark_synthesis import embedding as synthesis_embedding
-from legal_rag.benchmark_synthesis import evidence_graph, scenario_planning, vietnamese_lexical
+from legal_rag.benchmark_synthesis import evidence_graph, vietnamese_lexical
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.evidence_graph import EvidenceRelationProgressRecord
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.writer import (
     read_evidence_relation_progress,
     read_evidence_relations,
-    read_scenario_plans,
     read_scenarios,
     write_evidence_relation_progress,
     write_evidence_relations,
@@ -79,26 +73,6 @@ class _FakeSynthesisEmbeddingEncoder:
         return np.array([[1.0, 0.0] for _ in sentences])
 
 
-class _AllSupportedScenarioPlanningClient:
-    """Mark every structurally available query type as semantically supported."""
-
-    def __init__(self, settings: object, synthesis_settings: object) -> None:
-        return None
-
-    def plan_batch(self, items: Sequence[ScenarioPlanningBatchItem]) -> list[ScenarioPlanningBatchResult]:
-        """Return every query-type candidate without forcing an evaluation date."""
-        return [
-            ScenarioPlanningBatchResult(
-                bundle_id=item.bundle_id,
-                supported_query_types=[
-                    PlannedScenarioQueryType(query_type_id=candidate.query_type_id, as_of_date=None)
-                    for candidate in item.query_type_candidates
-                ],
-            )
-            for item in items
-        ]
-
-
 class _FakeVnCoreNlpWordSegmenter:
     """Return deterministic tokens without Java or model assets."""
 
@@ -133,7 +107,6 @@ def _configure_cli(
     monkeypatch.setenv("SYNTHESIS_VNCORENLP_DIR", "C:/vncorenlp-1.2")
     monkeypatch.setattr(llm_execution.time, "sleep", lambda _seconds: None)
     monkeypatch.setattr(evidence_graph, "BamlEvidenceRelationClient", _AlwaysRelatedClient)
-    monkeypatch.setattr(scenario_planning, "BamlScenarioPlanningClient", _AllSupportedScenarioPlanningClient)
     monkeypatch.setattr(synthesis_embedding, "SynthesisEmbeddingEncoder", _FakeSynthesisEmbeddingEncoder)
     monkeypatch.setattr(vietnamese_lexical, "VnCoreNlpWordSegmenter", _FakeVnCoreNlpWordSegmenter)
     monkeypatch.setattr(
@@ -145,8 +118,6 @@ def _configure_cli(
             str(relations_output_path),
             str(relations_progress_path),
             str(scenarios_output_path),
-            "--query-taxonomy",
-            str(_REPO_CONFIG_DIR / "query_taxonomy.json"),
             "--personas",
             str(_REPO_CONFIG_DIR / "personas.json"),
             "--scenario-distribution",
@@ -511,54 +482,6 @@ def test_evidence_graph_cli_writes_empty_progress_when_no_pairs_exist(
     assert relations_path.exists()
     assert progress_path.exists()
     assert read_evidence_relation_progress(progress_path) == ()
-
-
-def test_evidence_graph_cli_resumes_completed_scenario_plans(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """A compatible semantic plan is not sent to the planner again."""
-    facts_path = tmp_path / "legal_facts.jsonl"
-    relations_path = tmp_path / "evidence_relations.jsonl"
-    scenarios_path = tmp_path / "scenarios.jsonl"
-    write_legal_facts(facts_path, [_fact("fact-a", "Vượt đèn đỏ")])
-    _configure_cli(monkeypatch, facts_path, relations_path, scenarios_path, total_samples=1)
-
-    evidence_graph_cli.main()
-
-    scenario_plans_path = tmp_path / "scenario_plans.jsonl"
-    assert len(read_scenario_plans(scenario_plans_path)) == 1
-
-    def _fail(*args: object, **kwargs: object) -> None:
-        msg = "BamlScenarioPlanningClient must not be constructed for completed plans"
-        raise AssertionError(msg)
-
-    monkeypatch.setattr(scenario_planning, "BamlScenarioPlanningClient", _fail)
-
-    evidence_graph_cli.main()
-
-
-def test_evidence_graph_cli_stops_before_sampling_when_scenario_planning_fails(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """An exhausted planning batch remains resumable and blocks downstream sampling."""
-    facts_path = tmp_path / "legal_facts.jsonl"
-    relations_path = tmp_path / "evidence_relations.jsonl"
-    scenarios_path = tmp_path / "scenarios.jsonl"
-    write_legal_facts(facts_path, [_fact("fact-a", "Vượt đèn đỏ")])
-    _configure_cli(monkeypatch, facts_path, relations_path, scenarios_path, total_samples=1)
-
-    class _FailingScenarioPlanningClient:
-        def __init__(self, settings: object, synthesis_settings: object) -> None:
-            return None
-
-        def plan_batch(self, items: Sequence[ScenarioPlanningBatchItem]) -> list[ScenarioPlanningBatchResult]:
-            msg = "invalid typed planner output"
-            raise ValueError(msg)
-
-    monkeypatch.setattr(scenario_planning, "BamlScenarioPlanningClient", _FailingScenarioPlanningClient)
-
-    with pytest.raises(RuntimeError, match="scenario planning left 1 incomplete"):
-        evidence_graph_cli.main()
-
-    assert not scenarios_path.exists()
 
 
 def test_evidence_graph_cli_can_prepare_candidates_without_llm_calls(

@@ -36,8 +36,6 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.fact_extraction.max_output_tokens == 32_768
     assert settings.evidence_relation_batch_size == 10
     assert settings.evidence_relation_max_concurrency == 10
-    assert settings.scenario_planning_batch_size == 10
-    assert settings.scenario_planning_max_concurrency == 10
     assert settings.candidate_generation_batch_size == 5
     assert settings.candidate_generation_max_concurrency == 10
     assert settings.evidence_retrieval.retrieval_pool_size == 30
@@ -47,7 +45,6 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.evidence_retrieval.bm25_b == 0.4
     assert settings.evidence_retrieval.bm25_delta == 0.5
     assert settings.evidence_relation.max_output_tokens == 4096
-    assert settings.scenario_planning.max_output_tokens == 4096
     assert settings.candidate_generation.max_output_tokens == 8192
     assert settings.candidate_evolution.max_output_tokens == 8192
 
@@ -55,7 +52,7 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
 def test_synthesis_settings_reject_unknown_schema(tmp_path: Path) -> None:
     """A config written for another schema cannot silently start a run."""
     config_path = tmp_path / "synthesis.json"
-    config_path.write_text(json.dumps({"schema_version": "2.0.0"}), encoding="utf-8")
+    config_path.write_text(json.dumps({"schema_version": "99.0.0"}), encoding="utf-8")
 
     with pytest.raises(ValueError, match="Unsupported synthesis config schema"):
         SynthesisSettings.from_path(config_path)

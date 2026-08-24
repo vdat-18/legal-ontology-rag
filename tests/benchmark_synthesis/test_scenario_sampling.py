@@ -2,25 +2,18 @@
 
 from __future__ import annotations
 
-from datetime import date
 from pathlib import Path
 
 from legal_rag.benchmark_synthesis.evidence_graph import EvidenceBundle
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import (
     PersonaCatalog,
-    QueryTaxonomy,
-    QueryTypeDefinition,
     Scenario,
-    ScenarioBundlePlan,
     ScenarioDistribution,
-    ScenarioQueryTypePlan,
     ScenarioSamplingConfig,
     load_evolution_config,
     load_persona_descriptions,
     load_personas,
-    load_query_taxonomy,
-    load_query_type_descriptions,
     load_scenario_distribution,
     sample_scenarios,
 )
@@ -28,18 +21,13 @@ from legal_rag.benchmark_synthesis.scenario_sampling import (
 _REPO_CONFIG_DIR = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth"
 
 
-def _fact(
-    fact_id: str,
-    *,
-    valid_from: date | None = None,
-    valid_to: date | None = None,
-) -> LegalFact:
+def _fact(fact_id: str) -> LegalFact:
     """Build one minimal legal fact for scenario-sampling tests."""
     return LegalFact(
         fact_id=fact_id,
         statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền.",
-        valid_from=valid_from,
-        valid_to=valid_to,
+        valid_from=None,
+        valid_to=None,
         document_number="168/2024/NĐ-CP",
         evidence=(EvidenceReference(chunk_id=f"chunk-{fact_id}"),),
     )
@@ -58,7 +46,6 @@ def _bundle(
 
 def _config(
     *,
-    query_type_ids: tuple[str, ...] = ("penalty_for_conduct",),
     persona_ids: tuple[str, ...] = ("tai_xe_ca_nhan", "luat_su"),
     query_styles: tuple[str, ...] = ("standard", "no_diacritics"),
     query_lengths: tuple[str, ...] = ("short", "long"),
@@ -66,27 +53,13 @@ def _config(
 ) -> ScenarioSamplingConfig:
     """Build one scenario sampling configuration for tests."""
     return ScenarioSamplingConfig(
-        query_taxonomy=QueryTaxonomy(
-            definitions=tuple(
-                QueryTypeDefinition(
-                    query_type_id=query_type_id,
-                    bundle_kinds=("single_hop", "multi_hop", "temporal"),
-                    minimum_facts=1,
-                )
-                for query_type_id in query_type_ids
-            )
-        ),
         personas=PersonaCatalog(persona_ids=persona_ids),
         distribution=ScenarioDistribution(
             query_styles=query_styles,
             query_lengths=query_lengths,
             query_forms=query_forms,
             bundle_answerability_values=("answerable", "partially_answerable"),
-            bundle_kind_weights=(
-                ("single_hop", 0.4),
-                ("multi_hop", 0.4),
-                ("temporal", 0.2),
-            ),
+            bundle_kind_weights=(("single_hop", 0.4), ("multi_hop", 0.4), ("temporal", 0.2)),
         ),
     )
 
@@ -97,34 +70,9 @@ def _sample_scenarios(
     config: ScenarioSamplingConfig,
     *,
     total_samples: int,
-    as_of_dates: dict[str, date | None] | None = None,
-):
-    """Sample scenarios from one supported query type per bundle."""
-    query_type_id = config.query_taxonomy.query_type_ids[0]
-    planned_dates = as_of_dates or {}
-    plans = {
-        bundle.bundle_id: ScenarioBundlePlan(
-            bundle_id=bundle.bundle_id,
-            query_types=(
-                ScenarioQueryTypePlan(
-                    query_type_id=query_type_id,
-                    as_of_date=planned_dates.get(bundle.bundle_id),
-                ),
-            ),
-            run_id="run-1",
-        )
-        for bundle in bundles
-    }
-    return sample_scenarios(bundles, facts_by_id, plans, config, total_samples=total_samples)
-
-
-def test_load_query_taxonomy_reads_repo_config() -> None:
-    """The versioned query-taxonomy file in the repo loads without error."""
-    taxonomy = load_query_taxonomy(_REPO_CONFIG_DIR / "query_taxonomy.json")
-
-    assert "legal_rule" in taxonomy.query_type_ids
-    assert "penalty_for_conduct" in taxonomy.query_type_ids
-    assert "out_of_scope" not in taxonomy.query_type_ids
+) -> tuple[Scenario, ...]:
+    """Sample scenarios directly from evidence bundles."""
+    return sample_scenarios(bundles, facts_by_id, config, total_samples=total_samples)
 
 
 def test_load_personas_reads_repo_config() -> None:
@@ -140,11 +88,7 @@ def test_load_scenario_distribution_reads_repo_config() -> None:
 
     assert "no_diacritics" in distribution.query_styles
     assert distribution.bundle_answerability_values == ("answerable", "partially_answerable")
-    assert dict(distribution.bundle_kind_weights) == {
-        "single_hop": 0.4,
-        "multi_hop": 0.4,
-        "temporal": 0.2,
-    }
+    assert dict(distribution.bundle_kind_weights) == {"single_hop": 0.4, "multi_hop": 0.4, "temporal": 0.2}
 
 
 def test_load_evolution_config_reads_repo_config() -> None:
@@ -155,18 +99,8 @@ def test_load_evolution_config_reads_repo_config() -> None:
     assert config.max_rounds == 1
 
 
-def test_load_query_type_descriptions_reads_repo_config() -> None:
-    """Every query_type_id in the repo config maps to a non-empty description."""
-    descriptions = load_query_type_descriptions(_REPO_CONFIG_DIR / "query_taxonomy.json")
-
-    assert descriptions["legal_rule"] == (
-        "Hỏi nội dung, điều kiện, ngoại lệ, thẩm quyền hoặc thủ tục của quy định được cung cấp"
-    )
-    assert descriptions["penalty_for_conduct"] == ("Xác định mức hoặc hình thức xử phạt đối với một hành vi cụ thể")
-
-
 def test_load_persona_descriptions_reads_repo_config() -> None:
-    """Every persona_id in the repo config maps to a non-empty description."""
+    """Every persona ID in the repo config maps to a non-empty description."""
     descriptions = load_persona_descriptions(_REPO_CONFIG_DIR / "personas.json")
 
     assert descriptions["tai_xe_ca_nhan"] == "Tài xế cá nhân hỏi ngắn gọn về tình huống thực tế của mình"
@@ -174,13 +108,11 @@ def test_load_persona_descriptions_reads_repo_config() -> None:
 
 def test_sample_scenarios_returns_empty_for_no_bundles() -> None:
     """Sampling with no bundles produces no scenarios, not an error."""
-    scenarios = _sample_scenarios([], {}, _config(), total_samples=10)
-
-    assert scenarios == ()
+    assert _sample_scenarios([], {}, _config(), total_samples=10) == ()
 
 
 def test_sample_scenarios_stops_at_the_requested_total() -> None:
-    """Ceiling quotas distribute coverage without exceeding the requested total."""
+    """Sampling never exceeds the requested total."""
     facts_by_id = {"a": _fact("a"), "b": _fact("b")}
     bundles = [_bundle("bundle-a", ("a",)), _bundle("bundle-b", ("b",))]
 
@@ -200,117 +132,32 @@ def test_sample_scenarios_balances_bundle_kinds_for_small_totals() -> None:
 
     scenarios = _sample_scenarios(bundles, facts_by_id, _config(), total_samples=3)
 
-    assert {scenario.bundle_kind for scenario in scenarios} == {
-        "single_hop",
-        "multi_hop",
-        "temporal",
-    }
+    assert {scenario.bundle_kind for scenario in scenarios} == {"single_hop", "multi_hop", "temporal"}
 
 
-def test_sample_scenarios_sets_reasoning_hops_to_bundle_size() -> None:
-    """A two-fact bundle produces scenarios with reasoning_hops=2."""
+def test_sample_scenarios_uses_every_bundle_without_semantic_planning() -> None:
+    """Every evidence bundle remains eligible without a query taxonomy or planner result."""
+    facts_by_id = {"a": _fact("a"), "b": _fact("b")}
+    bundles = [_bundle("bundle-a", ("a",)), _bundle("bundle-b", ("b",))]
+
+    scenarios = _sample_scenarios(bundles, facts_by_id, _config(), total_samples=2)
+
+    assert {scenario.fact_ids for scenario in scenarios} == {("a",), ("b",)}
+
+
+def test_sample_scenarios_sets_reasoning_hops_and_gold_chunks_from_bundle() -> None:
+    """Scenario reasoning and provenance come directly from the selected bundle."""
     facts_by_id = {"a": _fact("a"), "b": _fact("b")}
     bundle = _bundle("bundle-ab", ("a", "b"), kind="multi_hop")
 
-    scenarios = _sample_scenarios([bundle], facts_by_id, _config(), total_samples=1)
+    scenario = _sample_scenarios([bundle], facts_by_id, _config(), total_samples=1)[0]
 
-    assert scenarios[0].reasoning_hops == 2
-
-
-def test_sample_scenarios_collects_deduplicated_sorted_gold_chunk_ids() -> None:
-    """gold_chunk_ids is the sorted union of evidence chunk_ids across the bundle's facts."""
-    facts_by_id = {"a": _fact("a"), "b": _fact("b")}
-    bundle = _bundle("bundle-ab", ("a", "b"), kind="multi_hop")
-
-    scenarios = _sample_scenarios([bundle], facts_by_id, _config(), total_samples=1)
-
-    assert scenarios[0].gold_chunk_ids == ("chunk-a", "chunk-b")
-
-
-def test_sample_scenarios_picks_date_inside_shared_validity_interval() -> None:
-    """as_of_date is the latest valid_from when it falls inside every validity interval."""
-    facts_by_id = {
-        "a": _fact("a", valid_from=date(2024, 1, 1), valid_to=date(2025, 12, 31)),
-        "b": _fact("b", valid_from=date(2025, 1, 1), valid_to=date(2026, 12, 31)),
-    }
-    bundle = _bundle("bundle-ab", ("a", "b"), kind="multi_hop")
-
-    scenarios = _sample_scenarios(
-        [bundle],
-        facts_by_id,
-        _config(),
-        total_samples=1,
-        as_of_dates={bundle.bundle_id: date(2025, 1, 1)},
-    )
-
-    assert scenarios[0].as_of_date == date(2025, 1, 1)
-
-
-def test_sample_scenarios_as_of_date_is_none_for_disjoint_validity_intervals() -> None:
-    """as_of_date is None when the facts have no shared validity date."""
-    facts_by_id = {
-        "a": _fact("a", valid_from=date(2024, 1, 1), valid_to=date(2024, 12, 31)),
-        "b": _fact("b", valid_from=date(2025, 1, 1), valid_to=date(2025, 12, 31)),
-    }
-    bundle = _bundle("bundle-ab", ("a", "b"), kind="temporal")
-
-    scenarios = _sample_scenarios([bundle], facts_by_id, _config(), total_samples=1)
-
-    assert scenarios[0].as_of_date is None
-
-
-def test_sample_scenarios_as_of_date_is_none_without_any_valid_from() -> None:
-    """as_of_date is None when no fact in the bundle has a valid_from."""
-    facts_by_id = {"a": _fact("a")}
-    bundle = _bundle("bundle-a", ("a",))
-
-    scenarios = _sample_scenarios([bundle], facts_by_id, _config(), total_samples=1)
-
-    assert scenarios[0].as_of_date is None
-
-
-def test_sample_scenarios_uses_only_planner_approved_query_types() -> None:
-    """Sampling cannot assign a semantic query type absent from the bundle plan."""
-    facts_by_id = {"a": _fact("a")}
-    bundle = _bundle("bundle-a", ("a",))
-    plans = {
-        bundle.bundle_id: ScenarioBundlePlan(
-            bundle_id=bundle.bundle_id,
-            query_types=(ScenarioQueryTypePlan(query_type_id="legal_rule", as_of_date=None),),
-            run_id="run-1",
-        )
-    }
-
-    scenarios = sample_scenarios(
-        [bundle],
-        facts_by_id,
-        plans,
-        _config(query_type_ids=("legal_rule", "penalty_for_conduct")),
-        total_samples=3,
-    )
-
-    assert {scenario.query_type for scenario in scenarios} == {"legal_rule"}
-
-
-def test_sample_scenarios_skips_bundle_with_empty_semantic_plan() -> None:
-    """A completed bundle with no supported query type produces no scenario."""
-    facts_by_id = {"a": _fact("a")}
-    bundle = _bundle("bundle-a", ("a",))
-    plans = {
-        bundle.bundle_id: ScenarioBundlePlan(
-            bundle_id=bundle.bundle_id,
-            query_types=(),
-            run_id="run-1",
-        )
-    }
-
-    scenarios = sample_scenarios([bundle], facts_by_id, plans, _config(), total_samples=1)
-
-    assert scenarios == ()
+    assert scenario.reasoning_hops == 2
+    assert scenario.gold_chunk_ids == ("chunk-a", "chunk-b")
 
 
 def test_sample_scenarios_prioritizes_unused_persona_bundle_pairing() -> None:
-    """Within one bundle's quota, each sample gets a different persona until exhausted."""
+    """Each sample gets a different persona for one bundle until personas are exhausted."""
     facts_by_id = {"a": _fact("a")}
     bundle = _bundle("bundle-a", ("a",))
 
@@ -319,29 +166,19 @@ def test_sample_scenarios_prioritizes_unused_persona_bundle_pairing() -> None:
     assert {scenario.persona for scenario in scenarios} == {"tai_xe_ca_nhan", "luat_su"}
 
 
-def test_sample_scenarios_rotates_least_used_query_style() -> None:
-    """Across scenarios, each configured query_style is used before any repeats."""
+def test_sample_scenarios_rotates_least_used_surface_axes() -> None:
+    """Configured surface values are used before any value repeats."""
     facts_by_id = {"a": _fact("a"), "b": _fact("b")}
     bundles = [_bundle("bundle-a", ("a",)), _bundle("bundle-b", ("b",))]
 
     scenarios = _sample_scenarios(bundles, facts_by_id, _config(), total_samples=2)
 
     assert {scenario.query_style for scenario in scenarios} == {"standard", "no_diacritics"}
+    assert {scenario.query_form for scenario in scenarios} == {"specific", "abstract"}
 
 
-def test_sample_scenarios_scenario_id_is_deterministic() -> None:
-    """Two runs with identical inputs produce identical scenario_id values."""
-    facts_by_id = {"a": _fact("a")}
-    bundle = _bundle("bundle-a", ("a",))
-
-    first = _sample_scenarios([bundle], facts_by_id, _config(), total_samples=1)
-    second = _sample_scenarios([bundle], facts_by_id, _config(), total_samples=1)
-
-    assert first[0].scenario_id == second[0].scenario_id
-
-
-def test_sample_scenarios_is_invariant_to_bundle_input_order() -> None:
-    """Reordering equivalent bundle input does not change sampled scenarios."""
+def test_sample_scenarios_is_deterministic_and_input_order_invariant() -> None:
+    """Equivalent inputs produce identical scenarios regardless of bundle order."""
     facts_by_id = {fact_id: _fact(fact_id) for fact_id in ("a", "b")}
     bundles = [_bundle("bundle-b", ("b",)), _bundle("bundle-a", ("a",))]
 
@@ -351,43 +188,28 @@ def test_sample_scenarios_is_invariant_to_bundle_input_order() -> None:
     assert first == second
 
 
-def test_sample_scenarios_scenario_id_changes_with_bridge() -> None:
-    """Changing relation semantics changes scenario identity even when the bundle ID is unchanged."""
-    facts_by_id = {"a": _fact("a")}
-    first_bundle = _bundle("bundle-a", ("a",), bridge="Cùng chủ thể")
-    second_bundle = _bundle("bundle-a", ("a",), bridge="Quy định thay thế")
-
-    first = _sample_scenarios([first_bundle], facts_by_id, _config(), total_samples=1)
-    second = _sample_scenarios([second_bundle], facts_by_id, _config(), total_samples=1)
-
-    assert first[0].scenario_id != second[0].scenario_id
-
-
-def test_sample_scenarios_scenario_id_changes_with_fact_identity() -> None:
-    """Changing the content-derived fact identity invalidates scenario identity."""
-    first_bundle = _bundle("bundle-a", ("a",))
-    second_bundle = _bundle("bundle-a", ("b",))
-    first_facts = {"a": _fact("a")}
-    second_facts = {"b": _fact("b")}
-
-    first = _sample_scenarios([first_bundle], first_facts, _config(), total_samples=1)
-    second = _sample_scenarios([second_bundle], second_facts, _config(), total_samples=1)
+def test_sample_scenarios_scenario_id_changes_with_evidence() -> None:
+    """Changing relation context or fact identity invalidates scenario identity."""
+    first = _sample_scenarios(
+        [_bundle("bundle-a", ("a",), bridge="Cùng chủ thể")], {"a": _fact("a")}, _config(), total_samples=1
+    )
+    second = _sample_scenarios(
+        [_bundle("bundle-a", ("b",), bridge="Quy định thay thế")], {"b": _fact("b")}, _config(), total_samples=1
+    )
 
     assert first[0].scenario_id != second[0].scenario_id
 
 
 def test_scenario_to_dict_serializes_stable_output_schema() -> None:
-    """Scenario tuples and dates serialize to JSON-compatible values."""
+    """Scenario tuples serialize to JSON-compatible values without semantic planning fields."""
     scenario = Scenario(
         scenario_id="scenario-1",
-        query_type="penalty_for_conduct",
         query_form="specific",
         answerability="answerable",
         persona="tai_xe_ca_nhan",
         query_style="no_diacritics",
         query_length="short",
         reasoning_hops=2,
-        as_of_date=date(2025, 2, 10),
         fact_ids=("fact-1", "fact-2"),
         bridge="Cùng tình huống xử lý vi phạm",
         gold_chunk_ids=("chunk-1", "chunk-2"),
@@ -395,6 +217,7 @@ def test_scenario_to_dict_serializes_stable_output_schema() -> None:
 
     record = scenario.to_dict()
 
-    assert record["as_of_date"] == "2025-02-10"
+    assert "query_type" not in record
+    assert "as_of_date" not in record
     assert record["fact_ids"] == ["fact-1", "fact-2"]
     assert record["bridge"] == "Cùng tình huống xử lý vi phạm"

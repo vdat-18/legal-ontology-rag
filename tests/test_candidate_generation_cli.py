@@ -48,14 +48,12 @@ def _scenario() -> Scenario:
     """Build one scenario referencing the approved fact."""
     return Scenario(
         scenario_id="scenario-1",
-        query_type="penalty_for_conduct",
         query_form="specific",
         answerability="answerable",
         persona="tai_xe_ca_nhan",
         query_style="standard",
         query_length="short",
         reasoning_hops=1,
-        as_of_date=None,
         fact_ids=("fact-1",),
         bridge=None,
         gold_chunk_ids=("chunk-1",),
@@ -140,8 +138,6 @@ def _configure_cli(
             str(facts_path),
             str(scenarios_path),
             str(candidates_output_path),
-            "--query-taxonomy",
-            str(_REPO_CONFIG_DIR / "query_taxonomy.json"),
             "--personas",
             str(_REPO_CONFIG_DIR / "personas.json"),
             "--evolution",

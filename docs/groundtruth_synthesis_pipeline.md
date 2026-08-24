@@ -229,45 +229,27 @@ fact cùng hay khác văn bản.
 Bundle giữ `fact_ids`; gold chunks được suy ra trực tiếp từ `evidence` của các
 fact trong bundle.
 
-## 5. Lập kế hoạch và lấy mẫu scenario
+## 5. Lấy mẫu scenario
 
-### 5A. LLM xác nhận query type được hỗ trợ
+Mọi evidence bundle đã được Step 4 xác nhận đều có thể đi trực tiếp vào
+sampling. Không còn query taxonomy, query-type candidate, LLM planner hoặc
+`scenario_plans.jsonl`; vì vậy không có danh sách loại câu hỏi định trước làm
+giới hạn độ bao phủ.
 
-LLM nhận từng bundle cùng `kind`, `bridge`, các fact statement, metadata hiệu
-lực và danh sách query type ứng viên đã lọc theo hình dạng bundle. LLM chỉ
-chọn query type mà nội dung fact thực sự đủ căn cứ để sinh câu hỏi và đáp án,
-không chọn theo từ khóa, cùng chủ đề hoặc chỉ vì bundle có đủ số fact.
+Code chỉ cân bằng các trục cấu hình không mang quyết định pháp lý:
 
-Với `multi_hop` và `temporal`, query type chỉ được chọn khi câu hỏi thực sự
-cần mọi fact và bridge. Planner có thể trả danh sách rỗng; bundle đó được ghi
-nhận là đã xử lý nhưng không đi vào sampling. Nếu câu hỏi cần mốc thời gian,
-planner chỉ được chọn `as_of_date` từ các ngày hiệu lực đã cung cấp.
-
-Output trung gian `scenario_plans.jsonl` là checkpoint semantic theo
-`bundle_id`, gồm các query type được duyệt và `as_of_date` tương ứng. Run ID
-bao gồm bundles, facts, taxonomy, prompt, model và stage config để không resume
-nhầm dữ liệu cũ.
-
-### 5B. Code cân bằng phân bố
-
-Scenario sampling chỉ dùng query type đã được LLM duyệt, sau đó cân bằng các
-trục cấu hình:
-
-- query type và query form;
+- query form;
 - persona;
 - query style và query length;
 - answerability;
-- single-hop, multi-hop hoặc temporal;
-- `as_of_date` gắn với query type đã chọn.
+- single-hop, multi-hop hoặc temporal.
 
-Code không tự quyết định một statement là mức phạt, thủ tục, thẩm quyền hay
-ngoại lệ. Phần code chỉ điều phối phân bố và provenance; quyết định tương
-thích ngữ nghĩa thuộc về LLM planner.
+Code không quyết định statement phải sinh loại câu hỏi nào. Mục tiêu câu hỏi
+được LLM chọn trực tiếp trong Step 6 từ các facts của bundle.
 
 Output của bước này:
 
 ```text
-data/benchmark_synthesis/scenario_plans.jsonl
 data/benchmark_synthesis/scenarios.jsonl
 ```
 
@@ -278,7 +260,7 @@ hỏi hay đáp án hoàn chỉnh.
 
 ### Input
 
-LLM nhận scenario và mỗi fact dưới dạng tối giản:
+LLM nhận các thuộc tính bề mặt của scenario và mỗi fact dưới dạng tối giản:
 
 ```text
 fact_id
@@ -297,7 +279,9 @@ LLM sinh:
 - `reasoning_vi`;
 - `required_claims`, mỗi claim trỏ về `fact_id` và evidence chunk IDs.
 
-Prompt buộc mọi con số, điều kiện, ngoại lệ và kết luận phải có trong facts.
+LLM tự chọn một câu hỏi pháp lý hữu ích được facts hỗ trợ, không nhận taxonomy
+hoặc question intent trung gian. Prompt buộc mọi con số, điều kiện, ngoại lệ
+và kết luận phải có trong facts.
 Với multi-hop, mọi fact phải cần thiết cho câu hỏi và đáp án. Với
 `partially_answerable`, đáp án chỉ nêu phần có căn cứ và phần chưa thể kết
 luận; không tự điền thông tin còn thiếu.
@@ -330,7 +314,7 @@ data/benchmark_synthesis/candidates/single_turn.progress.jsonl
 }
 ```
 
-Các metadata như scenario, query type, persona, answerability, reasoning,
+Các metadata như scenario, persona, answerability, reasoning,
 claims, evolutions và source fact IDs vẫn được giữ để phân tích theo lát cắt.
 
 Ý nghĩa khi evaluate:
@@ -351,9 +335,10 @@ claims, evolutions và source fact IDs vẫn được giữ để phân tích th
   hoặc upstream run khác nhau.
 - Cấu hình synthesis nằm tại
   `data/config/groundtruth/synthesis_v1.json`.
-- Các JSONL synthesis cũ theo schema trước `LegalFact 3.0.0`, `EvidenceRelation
-  3.0.0`, `EvidenceBundle 3.0.0`, `Scenario 3.0.0` hoặc `Candidate 3.0.0` phải
-  được sinh lại; không sửa tay hoặc tự động migrate chúng.
+- `LegalFact 3.0.0` và `EvidenceRelation 3.0.0` vẫn dùng lại được. Artifact
+  `Scenario 3.0.0`, `Candidate 3.0.0`, `CandidateProgress 2.0.0` và
+  `GroundTruth 2.0.0` không tương thích với flow mới; chạy lại từ scenario
+  sampling với synthesis config `2.0.0`, không sửa tay hoặc tự động migrate.
 
 ## Giới hạn hiện tại
 

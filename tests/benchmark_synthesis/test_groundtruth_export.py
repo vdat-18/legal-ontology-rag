@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import date
-
 from legal_rag.benchmark_synthesis.candidate_generation import (
     CandidateDraft,
     ClaimEvidence,
@@ -31,14 +29,12 @@ def _candidate() -> CandidateDraft:
         ),
         evolutions=("concretizing",),
         gold_chunk_ids=("chunk-1",),
-        query_type="penalty_for_conduct",
         query_form="specific",
         persona="tai_xe_ca_nhan",
         query_style="standard",
         query_length="short",
         answerability="answerable",
         reasoning_hops=1,
-        as_of_date=date(2025, 1, 1),
         source_fact_ids=("fact-1",),
         generator_model="provider/model",
         bridge="Cùng hành vi vượt đèn đỏ",
@@ -60,5 +56,6 @@ def test_export_ground_truth_maps_evaluation_fields_and_preserves_metadata() -> 
     assert record["question_id"] == candidate.sample_id
     assert record["answerability"] == candidate.answerability
     assert record["required_claims"] == [candidate.required_claims[0].to_dict()]
-    assert record["as_of_date"] == "2025-01-01"
+    assert "query_type" not in record
+    assert "as_of_date" not in record
     assert record["bridge"] == "Cùng hành vi vượt đèn đỏ"

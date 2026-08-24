@@ -45,14 +45,12 @@ def _scenario(fact_ids: tuple[str, ...] = ("fact-1",)) -> Scenario:
     """Build one minimal scenario for candidate-generation tests."""
     return Scenario(
         scenario_id="scenario-1",
-        query_type="penalty_for_conduct",
         query_form="specific",
         answerability="answerable",
         persona="tai_xe_ca_nhan",
         query_style="standard",
         query_length="short",
         reasoning_hops=len(fact_ids),
-        as_of_date=None,
         fact_ids=fact_ids,
         bridge=None,
         gold_chunk_ids=("chunk-1", "chunk-2"),
@@ -103,9 +101,7 @@ def test_generate_candidate_cross_references_real_evidence_chunks() -> None:
     )
     client = _FakeGenerationClient(generated)
 
-    candidate = generate_candidate(
-        _scenario(), {"fact-1": fact}, "Tài xế cá nhân", "Mức phạt của một hành vi", client, generator_model="m"
-    )
+    candidate = generate_candidate(_scenario(), {"fact-1": fact}, "Tài xế cá nhân", client, generator_model="m")
 
     assert len(candidate.required_claims) == 1
     assert len(candidate.required_claims[0].evidence) == 1
@@ -125,9 +121,7 @@ def test_generate_candidate_drops_hallucinated_chunk_id() -> None:
     )
     client = _FakeGenerationClient(generated)
 
-    candidate = generate_candidate(
-        _scenario(), {"fact-1": fact}, "Tài xế cá nhân", "Mức phạt của một hành vi", client, generator_model="m"
-    )
+    candidate = generate_candidate(_scenario(), {"fact-1": fact}, "Tài xế cá nhân", client, generator_model="m")
 
     assert candidate.required_claims[0].evidence == ()
 
@@ -139,11 +133,8 @@ def test_generate_candidate_carries_declared_scenario_labels_unchanged() -> None
     client = _FakeGenerationClient(generated)
     scenario = _scenario()
 
-    candidate = generate_candidate(
-        scenario, {"fact-1": fact}, "Tài xế cá nhân", "Mức phạt của một hành vi", client, generator_model="m"
-    )
+    candidate = generate_candidate(scenario, {"fact-1": fact}, "Tài xế cá nhân", client, generator_model="m")
 
-    assert candidate.query_type == scenario.query_type
     assert candidate.persona == scenario.persona
     assert candidate.answerability == scenario.answerability
     assert candidate.reasoning_hops == scenario.reasoning_hops
@@ -156,12 +147,8 @@ def test_generate_candidate_sample_id_is_deterministic() -> None:
     generated = BamlGeneratedCandidate(query_vi="q", reference_answer_vi="a", reasoning_vi="r", required_claims=[])
     client = _FakeGenerationClient(generated)
 
-    first = generate_candidate(
-        _scenario(), {"fact-1": fact}, "Tài xế cá nhân", "Mức phạt của một hành vi", client, generator_model="m"
-    )
-    second = generate_candidate(
-        _scenario(), {"fact-1": fact}, "Tài xế cá nhân", "Mức phạt của một hành vi", client, generator_model="m"
-    )
+    first = generate_candidate(_scenario(), {"fact-1": fact}, "Tài xế cá nhân", client, generator_model="m")
+    second = generate_candidate(_scenario(), {"fact-1": fact}, "Tài xế cá nhân", client, generator_model="m")
 
     assert first.sample_id == second.sample_id
 
@@ -178,9 +165,7 @@ def _draft_for_evolution() -> candidate_generation.CandidateDraft:
         ],
     )
     client = _FakeGenerationClient(generated)
-    return generate_candidate(
-        _scenario(), {"fact-1": fact}, "Tài xế cá nhân", "Mức phạt của một hành vi", client, generator_model="m"
-    )
+    return generate_candidate(_scenario(), {"fact-1": fact}, "Tài xế cá nhân", client, generator_model="m")
 
 
 class _FakeEvolutionClient:
@@ -309,12 +294,10 @@ def test_baml_candidate_generation_client_parses_typed_result(monkeypatch: pytes
         "standard",
         "short",
         "specific",
-        "Mức phạt",
         "answerable",
         "single_hop",
         None,
         1,
-        None,
     )
 
     assert result.query_vi == "q"

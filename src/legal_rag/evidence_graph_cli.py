@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 if TYPE_CHECKING:
-    from legal_rag.benchmark_synthesis.config import SynthesisSettings
     from legal_rag.benchmark_synthesis.evidence_graph import (
         EvidenceBundle,
         EvidenceRelation,
@@ -18,8 +17,6 @@ if TYPE_CHECKING:
     )
     from legal_rag.benchmark_synthesis.llm_execution import LlmTaskFailure
     from legal_rag.benchmark_synthesis.models import LegalFact
-    from legal_rag.benchmark_synthesis.scenario_sampling import ScenarioBundlePlan
-    from legal_rag.settings import Settings
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -31,11 +28,6 @@ def _parser() -> argparse.ArgumentParser:
         "relations_progress_output_path", type=Path, help="Destination evidence-relation-progress JSONL path"
     )
     parser.add_argument("scenarios_output_path", type=Path, help="Destination scenarios JSONL path")
-    parser.add_argument(
-        "--scenario-plans-output",
-        type=Path,
-        help="Checkpointed semantic bundle plans; defaults beside scenarios_output_path",
-    )
     parser.add_argument(
         "--candidate-pairs-cache",
         type=Path,
@@ -51,7 +43,6 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Sample scenarios from confirmed relations even if some candidate pairs failed after retries",
     )
-    parser.add_argument("--query-taxonomy", type=Path, required=True, help="Query-taxonomy config JSON path")
     parser.add_argument("--personas", type=Path, required=True, help="Persona config JSON path")
     parser.add_argument(
         "--scenario-distribution", type=Path, required=True, help="Scenario-distribution config JSON path"
@@ -108,117 +99,28 @@ def _log_relation_confirmation_failures(failures: Sequence[LlmTaskFailure]) -> b
     return True
 
 
-def _validate_scenario_plans(
-    plans: Sequence[ScenarioBundlePlan],
-    bundle_ids: set[str],
-    run_id: str,
-) -> dict[str, ScenarioBundlePlan]:
-    """Validate resumable scenario plans and index them by bundle ID."""
-    if any(plan.run_id != run_id for plan in plans):
-        msg = "Existing scenario plans belong to a different synthesis run"
-        raise ValueError(msg)
-    plans_by_bundle_id = {plan.bundle_id: plan for plan in plans}
-    if len(plans_by_bundle_id) != len(plans):
-        msg = "Existing scenario plans contain duplicate bundle IDs"
-        raise ValueError(msg)
-    if not set(plans_by_bundle_id) <= bundle_ids:
-        msg = "Existing scenario plans contain bundles outside the current evidence graph"
-        raise ValueError(msg)
-    return plans_by_bundle_id
-
-
-def _plan_and_sample_scenarios(
+def _sample_scenarios(
     arguments: argparse.Namespace,
     bundles: Sequence[EvidenceBundle],
     facts: Sequence[LegalFact],
-    settings: Settings,
-    synthesis_settings: SynthesisSettings,
 ) -> None:
-    """Plan semantic bundle capabilities, then sample and persist scenarios."""
-    from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError
-    from legal_rag.benchmark_synthesis.scenario_planning import (
-        BamlScenarioPlanningClient,
-        build_scenario_planning_run_id,
-        plan_scenario_bundles,
-    )
+    """Sample surface-diverse scenarios directly from evidence bundles."""
     from legal_rag.benchmark_synthesis.scenario_sampling import (
         ScenarioSamplingConfig,
         load_personas,
-        load_query_taxonomy,
-        load_query_type_descriptions,
         load_scenario_distribution,
         sample_scenarios,
     )
-    from legal_rag.benchmark_synthesis.writer import (
-        read_scenario_plans,
-        write_scenario_plans,
-        write_scenarios,
-    )
+    from legal_rag.benchmark_synthesis.writer import write_scenarios
 
     facts_by_id = {fact.fact_id: fact for fact in facts}
-    query_taxonomy = load_query_taxonomy(arguments.query_taxonomy)
-    query_type_descriptions = load_query_type_descriptions(arguments.query_taxonomy)
-    run_id = build_scenario_planning_run_id(
-        bundles,
-        facts_by_id,
-        query_taxonomy,
-        query_type_descriptions,
-        synthesis_settings,
-        llm_base_url=settings.llm_base_url,
-        llm_model=settings.llm_model,
-    )
-    plans_output_path = arguments.scenario_plans_output or arguments.scenarios_output_path.with_name(
-        "scenario_plans.jsonl"
-    )
-    existing_plans = read_scenario_plans(plans_output_path) if plans_output_path.exists() else ()
-    plans_by_bundle_id = _validate_scenario_plans(
-        existing_plans,
-        {bundle.bundle_id for bundle in bundles},
-        run_id,
-    )
-    remaining_bundles = tuple(bundle for bundle in bundles if bundle.bundle_id not in plans_by_bundle_id)
-
-    def _persist_batch(plans: Sequence[ScenarioBundlePlan]) -> None:
-        """Persist one completed semantic-planning batch in stable bundle order."""
-        plans_by_bundle_id.update((plan.bundle_id, plan) for plan in plans)
-        write_scenario_plans(
-            plans_output_path,
-            tuple(plans_by_bundle_id[bundle.bundle_id] for bundle in bundles if bundle.bundle_id in plans_by_bundle_id),
-        )
-
-    if remaining_bundles:
-        planning_client = BamlScenarioPlanningClient(settings, synthesis_settings)
-        _, failures = plan_scenario_bundles(
-            remaining_bundles,
-            facts_by_id,
-            query_taxonomy,
-            query_type_descriptions,
-            planning_client,
-            run_id=run_id,
-            batch_size=synthesis_settings.scenario_planning_batch_size,
-            max_concurrency=synthesis_settings.scenario_planning_max_concurrency,
-            max_retries=synthesis_settings.llm_max_retries,
-            retry_delay_seconds=synthesis_settings.llm_retry_delay_seconds,
-            on_batch_completed=_persist_batch,
-        )
-        if failures:
-            incomplete_error = IncompleteLlmTasksError.for_stage("scenario planning", failures)
-            raise incomplete_error
-    else:
-        write_scenario_plans(
-            plans_output_path,
-            tuple(plans_by_bundle_id[bundle.bundle_id] for bundle in bundles),
-        )
-
     scenario_config = ScenarioSamplingConfig(
-        query_taxonomy=query_taxonomy,
         personas=load_personas(arguments.personas),
         distribution=load_scenario_distribution(arguments.scenario_distribution),
     )
     scenarios = sample_scenarios(
         bundles,
         facts_by_id,
-        plans_by_bundle_id,
         scenario_config,
         total_samples=arguments.total_samples,
     )
@@ -423,7 +325,7 @@ def main() -> None:
     )
 
     bundles = sample_bundles(facts, relations, overlap_threshold=synthesis_settings.bundle_overlap_threshold)
-    _plan_and_sample_scenarios(arguments, bundles, facts, settings, synthesis_settings)
+    _sample_scenarios(arguments, bundles, facts)
 
 
 if __name__ == "__main__":

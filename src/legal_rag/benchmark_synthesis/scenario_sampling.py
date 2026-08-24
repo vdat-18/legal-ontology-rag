@@ -13,7 +13,6 @@ import json
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -21,30 +20,8 @@ from legal_rag.benchmark_synthesis.evidence_graph import BundleKind, EvidenceBun
 from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.parser.hashing import sha256_json
 
-SCENARIO_SCHEMA_VERSION = "3.0.0"
+SCENARIO_SCHEMA_VERSION = "4.0.0"
 SCENARIO_DISTRIBUTION_SCHEMA_VERSION = "2.0.0"
-SCENARIO_PLAN_SCHEMA_VERSION = "1.0.0"
-
-
-@dataclass(frozen=True, slots=True)
-class QueryTypeDefinition:
-    """One query type and the evidence-bundle shapes capable of supporting it."""
-
-    query_type_id: str
-    bundle_kinds: tuple[BundleKind, ...]
-    minimum_facts: int
-
-
-@dataclass(frozen=True, slots=True)
-class QueryTaxonomy:
-    """Versioned catalog of query type identifiers."""
-
-    definitions: tuple[QueryTypeDefinition, ...]
-
-    @property
-    def query_type_ids(self) -> tuple[str, ...]:
-        """Return query type identifiers in configured order."""
-        return tuple(definition.query_type_id for definition in self.definitions)
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,7 +46,6 @@ class ScenarioDistribution:
 class ScenarioSamplingConfig:
     """Combined configuration needed to sample scenarios."""
 
-    query_taxonomy: QueryTaxonomy
     personas: PersonaCatalog
     distribution: ScenarioDistribution
 
@@ -83,51 +59,16 @@ class EvolutionConfig:
 
 
 @dataclass(frozen=True, slots=True)
-class ScenarioQueryTypePlan:
-    """One semantically supported query type and its optional evaluation date."""
-
-    query_type_id: str
-    as_of_date: date | None
-
-    def to_dict(self) -> dict[str, str | None]:
-        """Return one JSON-serializable planned query type."""
-        return {
-            "query_type_id": self.query_type_id,
-            "as_of_date": self.as_of_date.isoformat() if self.as_of_date else None,
-        }
-
-
-@dataclass(frozen=True, slots=True)
-class ScenarioBundlePlan:
-    """Semantic query capabilities confirmed for one evidence bundle."""
-
-    bundle_id: str
-    query_types: tuple[ScenarioQueryTypePlan, ...]
-    run_id: str
-
-    def to_dict(self) -> dict[str, Any]:
-        """Return one JSON-serializable scenario-planning record."""
-        return {
-            "schema_version": SCENARIO_PLAN_SCHEMA_VERSION,
-            "bundle_id": self.bundle_id,
-            "query_types": [query_type.to_dict() for query_type in self.query_types],
-            "run_id": self.run_id,
-        }
-
-
-@dataclass(frozen=True, slots=True)
 class Scenario:
     """One structured scenario, generated before any question text exists."""
 
     scenario_id: str
-    query_type: str
     query_form: str
     answerability: str
     persona: str
     query_style: str
     query_length: str
     reasoning_hops: int
-    as_of_date: date | None
     fact_ids: tuple[str, ...]
     bridge: str | None
     gold_chunk_ids: tuple[str, ...]
@@ -139,34 +80,16 @@ class Scenario:
             "schema_version": SCENARIO_SCHEMA_VERSION,
             "scenario_id": self.scenario_id,
             "bundle_kind": self.bundle_kind,
-            "query_type": self.query_type,
             "query_form": self.query_form,
             "answerability": self.answerability,
             "persona": self.persona,
             "query_style": self.query_style,
             "query_length": self.query_length,
             "reasoning_hops": self.reasoning_hops,
-            "as_of_date": self.as_of_date.isoformat() if self.as_of_date else None,
             "fact_ids": list(self.fact_ids),
             "bridge": self.bridge,
             "gold_chunk_ids": list(self.gold_chunk_ids),
         }
-
-
-def load_query_taxonomy(config_path: Path) -> QueryTaxonomy:
-    """Load the versioned query-taxonomy configuration."""
-    config = json.loads(config_path.read_text(encoding="utf-8"))
-    return QueryTaxonomy(
-        definitions=tuple(
-            QueryTypeDefinition(
-                query_type_id=entry["id"],
-                bundle_kinds=tuple(entry["bundle_kinds"]),
-                minimum_facts=entry.get("minimum_facts", 1),
-            )
-            for entry in config["query_types"]
-            if entry.get("mvp_enabled", True)
-        )
-    )
 
 
 def load_personas(config_path: Path) -> PersonaCatalog:
@@ -201,12 +124,6 @@ def load_evolution_config(config_path: Path) -> EvolutionConfig:
     )
 
 
-def load_query_type_descriptions(config_path: Path) -> Mapping[str, str]:
-    """Load a query_type_id to human-readable Vietnamese description mapping."""
-    config = json.loads(config_path.read_text(encoding="utf-8"))
-    return {entry["id"]: entry["description_vi"] for entry in config["query_types"]}
-
-
 def load_persona_descriptions(config_path: Path) -> Mapping[str, str]:
     """Load a persona_id to human-readable Vietnamese description mapping."""
     config = json.loads(config_path.read_text(encoding="utf-8"))
@@ -216,7 +133,6 @@ def load_persona_descriptions(config_path: Path) -> Mapping[str, str]:
 def sample_scenarios(
     bundles: Sequence[EvidenceBundle],
     facts_by_id: Mapping[str, LegalFact],
-    plans_by_bundle_id: Mapping[str, ScenarioBundlePlan],
     config: ScenarioSamplingConfig,
     *,
     total_samples: int,
@@ -230,18 +146,12 @@ def sample_scenarios(
         "query_style": Counter(),
         "query_length": Counter(),
         "query_form": Counter(),
-        "query_type": Counter(),
         "answerability": Counter(),
     }
-    bundles_by_kind: dict[
-        BundleKind,
-        list[tuple[EvidenceBundle, tuple[LegalFact, ...], tuple[ScenarioQueryTypePlan, ...]]],
-    ] = {}
+    bundles_by_kind: dict[BundleKind, list[tuple[EvidenceBundle, tuple[LegalFact, ...]]]] = {}
     for bundle in bundles:
         facts = tuple(facts_by_id[fact_id] for fact_id in bundle.fact_ids)
-        query_type_plans = plans_by_bundle_id[bundle.bundle_id].query_types
-        if query_type_plans:
-            bundles_by_kind.setdefault(bundle.kind, []).append((bundle, facts, query_type_plans))
+        bundles_by_kind.setdefault(bundle.kind, []).append((bundle, facts))
     for kind_bundles in bundles_by_kind.values():
         kind_bundles.sort(key=lambda item: item[0].bundle_id)
     weighted_kinds = tuple(
@@ -265,7 +175,7 @@ def sample_scenarios(
             key=lambda kind: (kind_usage[kind] / weights[kind], kind_order[kind]),
         )
         kind_bundles = bundles_by_kind[bundle_kind]
-        bundle, facts, query_type_plans = kind_bundles[bundle_offsets[bundle_kind] % len(kind_bundles)]
+        bundle, facts = kind_bundles[bundle_offsets[bundle_kind] % len(kind_bundles)]
         bundle_offsets[bundle_kind] += 1
         attempt_index = bundle_attempts[bundle.bundle_id]
         bundle_attempts[bundle.bundle_id] += 1
@@ -274,19 +184,13 @@ def sample_scenarios(
         query_style = _pick_least_used(config.distribution.query_styles, usage_counts["query_style"])
         query_length = _pick_least_used(config.distribution.query_lengths, usage_counts["query_length"])
         query_form = _pick_least_used(config.distribution.query_forms, usage_counts["query_form"])
-        query_type = _pick_least_used(
-            tuple(plan.query_type_id for plan in query_type_plans), usage_counts["query_type"]
-        )
         answerability = _pick_least_used(config.distribution.bundle_answerability_values, usage_counts["answerability"])
-        query_type_plan = next(plan for plan in query_type_plans if plan.query_type_id == query_type)
-        as_of_date = query_type_plan.as_of_date
 
         used_persona_bundle_pairs.add((persona, bundle.bundle_id))
         kind_usage[bundle_kind] += 1
         usage_counts["query_style"][query_style] += 1
         usage_counts["query_length"][query_length] += 1
         usage_counts["query_form"][query_form] += 1
-        usage_counts["query_type"][query_type] += 1
         usage_counts["answerability"][answerability] += 1
 
         scenarios.append(
@@ -294,7 +198,6 @@ def sample_scenarios(
                 scenario_id=sha256_json(
                     {
                         "answerability": answerability,
-                        "as_of_date": as_of_date.isoformat() if as_of_date else None,
                         "attempt_index": attempt_index,
                         "bridge": bundle.bridge,
                         "bundle_id": bundle.bundle_id,
@@ -304,19 +207,16 @@ def sample_scenarios(
                         "query_form": query_form,
                         "query_length": query_length,
                         "query_style": query_style,
-                        "query_type": query_type,
                         "reasoning_hops": len(bundle.fact_ids),
                     }
                 ),
                 bundle_kind=bundle.kind,
-                query_type=query_type,
                 query_form=query_form,
                 answerability=answerability,
                 persona=persona,
                 query_style=query_style,
                 query_length=query_length,
                 reasoning_hops=len(bundle.fact_ids),
-                as_of_date=as_of_date,
                 fact_ids=bundle.fact_ids,
                 bridge=bundle.bridge,
                 gold_chunk_ids=tuple(sorted({evidence.chunk_id for fact in facts for evidence in fact.evidence})),

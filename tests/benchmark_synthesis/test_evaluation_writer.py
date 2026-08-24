@@ -141,18 +141,16 @@ def test_evidence_relation_progress_round_trips_through_jsonl(tmp_path: Path) ->
 
 
 def test_scenarios_round_trip_through_jsonl(tmp_path: Path) -> None:
-    """A written scenario reads back with identical field values, including its date."""
+    """A written scenario reads back with identical field values."""
     output_path = tmp_path / "scenarios.jsonl"
     scenario = Scenario(
         scenario_id="scenario-1",
-        query_type="penalty_for_conduct",
         query_form="specific",
         answerability="answerable",
         persona="tai_xe_ca_nhan",
         query_style="no_diacritics",
         query_length="short",
         reasoning_hops=2,
-        as_of_date=date(2025, 2, 10),
         fact_ids=("fact-1", "fact-2"),
         bridge="Cùng tình huống xử lý vi phạm",
         gold_chunk_ids=("chunk-1", "chunk-2"),
@@ -162,30 +160,6 @@ def test_scenarios_round_trip_through_jsonl(tmp_path: Path) -> None:
     scenarios = read_scenarios(output_path)
 
     assert scenarios == (scenario,)
-
-
-def test_scenarios_round_trip_preserves_null_as_of_date(tmp_path: Path) -> None:
-    """A scenario without a temporal anchor keeps as_of_date as None through the round trip."""
-    output_path = tmp_path / "scenarios.jsonl"
-    scenario = Scenario(
-        scenario_id="scenario-1",
-        query_type="penalty_for_conduct",
-        query_form="specific",
-        answerability="answerable",
-        persona="tai_xe_ca_nhan",
-        query_style="standard",
-        query_length="short",
-        reasoning_hops=1,
-        as_of_date=None,
-        fact_ids=("fact-1",),
-        bridge=None,
-        gold_chunk_ids=("chunk-1",),
-    )
-
-    write_scenarios(output_path, [scenario])
-    scenarios = read_scenarios(output_path)
-
-    assert scenarios[0].as_of_date is None
 
 
 def _candidate_draft() -> CandidateDraft:
@@ -205,14 +179,12 @@ def _candidate_draft() -> CandidateDraft:
         ),
         evolutions=("concretizing",),
         gold_chunk_ids=("chunk-1",),
-        query_type="penalty_for_conduct",
         query_form="specific",
         persona="tai_xe_ca_nhan",
         query_style="standard",
         query_length="short",
         answerability="answerable",
         reasoning_hops=1,
-        as_of_date=date(2025, 2, 10),
         source_fact_ids=("fact-1",),
         generator_model="provider/generator-model",
         bridge="Cùng tình huống xử lý vi phạm",

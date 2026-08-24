@@ -33,12 +33,10 @@ class CandidateGenerationBatchInput {
   query_style string
   query_length string
   query_form string
-  query_type_description string
   answerability string
   bundle_kind string
   bridge string?
   reasoning_hops int
-  as_of_date string?
 }
 
 class GeneratedSingleTurnCandidateBatchItem {
@@ -61,21 +59,19 @@ function GenerateSingleTurnCandidateBatch(
     ===== TASK {{ item.task_id }} =====
     Yêu cầu scenario:
     - Người hỏi: {{ item.persona_description }}
-    - Mục tiêu câu hỏi: {{ item.query_type_description }}
     - Answerability: {{ item.answerability }}
     - Evidence shape: {{ item.bundle_kind }}, reasoning_hops={{ item.reasoning_hops }}
     {% if item.bridge %}- Nội dung nối các fact: {{ item.bridge }}{% endif %}
     - Form={{ item.query_form }}, style={{ item.query_style }}, length={{ item.query_length }}
-    {% if item.as_of_date %}- Thời điểm phải áp dụng: {{ item.as_of_date }}{% endif %}
 
     Grounding và coverage:
+    - Tự chọn một câu hỏi pháp lý hữu ích, tự nhiên và đủ cụ thể được facts
+      trực tiếp hỗ trợ; không ép facts vào một loại câu hỏi định trước.
     - Mọi kết luận, con số, điều kiện, ngoại lệ và mốc thời gian phải có trong
       facts. Không thêm kiến thức pháp luật, tình tiết làm đổi kết luận, số
       Điều/khoản/điểm hoặc chunk_id không được cung cấp.
     - Bridge chỉ mô tả cách các fact được nối, không phải nguồn pháp lý. Không
       đưa nội dung chỉ xuất hiện trong bridge vào query, answer hoặc claims.
-    - Mục tiêu câu hỏi phải được diễn giải trong giới hạn facts; không ép đúng
-      loại bằng cách bịa nội dung mà facts không hỗ trợ.
     - Với reasoning_hops=1, một fact phải đủ để trả lời. Với reasoning_hops>1,
       câu hỏi và đáp án phải thực sự cần mọi fact, required_claims bao phủ mọi
       fact và thể hiện đúng mối nối có căn cứ trong facts; không ghép nhiều

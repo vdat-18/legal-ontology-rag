@@ -20,7 +20,6 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         help="Candidate-stage checkpoint JSONL path; defaults beside candidates_output_path",
     )
-    parser.add_argument("--query-taxonomy", type=Path, required=True, help="Query-taxonomy config JSON path")
     parser.add_argument("--personas", type=Path, required=True, help="Persona config JSON path")
     parser.add_argument("--evolution", type=Path, required=True, help="Evolution-operation config JSON path")
     parser.add_argument(
@@ -45,7 +44,6 @@ def main() -> None:
     from legal_rag.benchmark_synthesis.scenario_sampling import (
         load_evolution_config,
         load_persona_descriptions,
-        load_query_type_descriptions,
     )
     from legal_rag.benchmark_synthesis.writer import (
         read_candidate_progress,
@@ -67,7 +65,6 @@ def main() -> None:
     facts_by_id = {fact.fact_id: fact for fact in read_legal_facts(arguments.facts_path)}
     scenarios = read_scenarios(arguments.scenarios_path)
 
-    query_type_descriptions = load_query_type_descriptions(arguments.query_taxonomy)
     persona_descriptions = load_persona_descriptions(arguments.personas)
     evolution_config = load_evolution_config(arguments.evolution)
     evolution_operations = evolution_config.operation_ids[: evolution_config.max_rounds]
@@ -76,7 +73,6 @@ def main() -> None:
     context = CandidatePipelineContext(
         facts_by_id=facts_by_id,
         persona_descriptions=persona_descriptions,
-        query_type_descriptions=query_type_descriptions,
         evolution_operations=evolution_operations,
         generation_client=generation_client,
         generator_model=settings.llm_model,
