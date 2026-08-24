@@ -33,20 +33,29 @@ bài toán, domain và contract được tách khỏi source text của từng r
 ```text
 Document chunks
     |
-    +-- 1A. Screen target chunks
-    +-- 1B. Resolve document metadata
+    v
+1A. Screen target chunks
     |
-    `-- 2. Extract legal facts
-            |
-            `-- 3. Assemble corpus facts
-                    |
-                    `-- 4. Build evidence graph and bundles
-                            |
-                            `-- 5. Plan and sample scenarios
-                                    |
-                                    `-- 6. Generate candidates
-                                            |
-                                            `-- 7. Export evaluation ground truth
+    v
+1B. Resolve document metadata
+    |
+    v
+2. Extract legal facts
+    |
+    v
+3. Assemble corpus facts
+    |
+    v
+4. Build evidence graph and bundles
+    |
+    v
+5. Plan and sample scenarios
+    |
+    v
+6. Generate candidates
+    |
+    v
+7. Export evaluation ground truth
 ```
 
 ## 1A. Sàng lọc target chunk

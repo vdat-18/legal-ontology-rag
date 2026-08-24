@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from loguru import logger
@@ -94,25 +93,24 @@ def prepare_document_artifacts(
     metadata_client_factory: Callable[[], DocumentMetadataClient],
     settings: SynthesisSettings,
 ) -> tuple[tuple[ChunkScreeningRecord, ...], DocumentMetadataRecord]:
-    """Prepare screening and metadata concurrently as independent work units."""
+    """Prepare screening before resolving document metadata."""
     source_name = chunks[0].source_name if chunks else "empty-document"
-    logger.info("Step 1 started for {}: screening and metadata run concurrently", source_name)
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        screening_future = executor.submit(
-            prepare_chunk_screening,
-            chunks,
-            screening_output_path,
-            screening_client_factory,
-            settings,
-        )
-        metadata_future = executor.submit(
-            prepare_document_metadata,
-            chunks,
-            metadata_output_path,
-            metadata_client_factory,
-            settings,
-        )
-        records = screening_future.result()
-        metadata = metadata_future.result()
-    logger.info("Step 1 work units completed for {}", source_name)
+    logger.info("Step 1 started for {}: Step 1A runs before Step 1B", source_name)
+    logger.info("Step 1A chunk screening started for {}", source_name)
+    records = prepare_chunk_screening(
+        chunks,
+        screening_output_path,
+        screening_client_factory,
+        settings,
+    )
+    logger.info("Step 1A chunk screening completed for {}", source_name)
+    logger.info("Step 1B document metadata started for {}", source_name)
+    metadata = prepare_document_metadata(
+        chunks,
+        metadata_output_path,
+        metadata_client_factory,
+        settings,
+    )
+    logger.info("Step 1B document metadata completed for {}", source_name)
+    logger.info("Step 1 completed for {}", source_name)
     return records, metadata

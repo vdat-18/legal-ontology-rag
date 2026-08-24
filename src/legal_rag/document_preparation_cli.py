@@ -1,4 +1,4 @@
-"""Command-line interface for concurrent screening and metadata preparation."""
+"""Command-line interface for sequential screening and metadata preparation."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from loguru import logger
 
 def _parser() -> argparse.ArgumentParser:
     """Build the document-preparation command-line interface."""
-    parser = argparse.ArgumentParser(description="Prepare screening and metadata artifacts concurrently.")
+    parser = argparse.ArgumentParser(description="Prepare screening before document metadata.")
     parser.add_argument("chunks_path", type=Path, help="Chunk JSONL path for one document")
     parser.add_argument("screening_output_path", type=Path, help="Destination chunk-screening JSONL path")
     parser.add_argument("metadata_output_path", type=Path, help="Destination document-metadata JSONL path")
@@ -19,7 +19,7 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    """Prepare independent screening and metadata work units in parallel."""
+    """Prepare chunk screening and then document metadata."""
     from dotenv import find_dotenv, load_dotenv
 
     from legal_rag.benchmark_synthesis.chunk_screening import BamlChunkScreeningClient
