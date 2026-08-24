@@ -69,8 +69,10 @@ context.
 
 LLM quyết định chunk có nội dung pháp lý đáng trích xuất cho domain hay không.
 Screening chạy theo batch và trả kết quả theo `chunk_id`. Đây là quyết định
-ngữ nghĩa của LLM, không phải keyword rule. Screening ưu tiên recall cho mọi
-quy định có thể làm căn cứ hỏi đáp, không chỉ các chunk chứa mức phạt tiền.
+ngữ nghĩa của LLM, không phải keyword rule. Model chỉ giữ nội dung trực tiếp
+giúp xác định hành vi/tình huống vi phạm, phạm vi áp dụng hoặc cách phát hiện,
+ngăn chặn và xử lý. Nội dung quản lý giao thông nói chung hoặc thủ tục hành
+chính độc lập không đủ; recall chỉ được ưu tiên sau khi vượt qua boundary này.
 Runtime log hiển thị tổng batch, `batch_size`, `max_concurrency`, thời điểm
 mỗi batch bắt đầu và tiến độ sau khi batch đã checkpoint thành công.
 Mỗi response checkpoint ngay các verdict có `chunk_id` khớp duy nhất, theo

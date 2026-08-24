@@ -9,7 +9,7 @@ class ChunkScreeningItem {
 class ChunkScreeningResult {
   chunk_id string @description(#"Phải trùng với một chunk_id trong danh sách đầu vào."#)
   has_penalty_content bool @description(#"
-    True nếu target có nội dung có thể trích thành legal fact trong domain.
+    True nếu target có fact trực tiếp giúp xác định hoặc xử lý vi phạm trong domain.
   "#)
   reason string @description(#"Một câu tiếng Việt ngắn giải thích quyết định."#)
 }
@@ -22,21 +22,33 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     Bối cảnh: chuẩn bị nguồn sự thật cho benchmark RAG hỏi đáp về
     xử lý vi phạm giao thông đường bộ tại Việt Nam.
 
-    Nhiệm vụ: sàng lọc độc lập từng target chunk trước khi trích
-    legal fact. Domain gồm quy định trực tiếp về hành vi/nghĩa vụ;
-    chủ thể, phương tiện, điều kiện/ngoại lệ; chế tài và khắc
-    phục hậu quả; thẩm quyền, thủ tục; hiệu lực hoặc chuyển tiếp
-    ảnh hưởng trực tiếp đến việc xử lý vi phạm.
+    Nhiệm vụ: sàng lọc độc lập từng target chunk trước khi trích legal
+    fact. Chỉ giữ nội dung trực tiếp giúp trả lời: hành vi hoặc tình huống
+    nào vi phạm, áp dụng cho ai/phương tiện nào, trong điều kiện hay ngoại
+    lệ nào, và vi phạm được phát hiện, ngăn chặn hoặc xử lý ra sao.
 
-    Đặt has_penalty_content=true khi Target text có nội dung có thể trích
-    thành fact trong domain. Không cần quy định trọn vẹn; ưu tiên recall
-    cho mảnh bị chia chunk hoặc nằm trong bảng. Ngược lại, đặt false;
-    mục lục, tiêu đề, lời dẫn, căn cứ ban hành, chữ ký, thông tin
-    hành chính hoặc nội dung ngoài domain tự chúng không đủ.
+    Đặt has_penalty_content=true khi Target text chứa ít nhất một fact về:
+    hành vi/nghĩa vụ; chủ thể, phương tiện, điều kiện/ngoại lệ xác định
+    phạm vi áp dụng; chế tài, hậu quả pháp lý hoặc khắc phục hậu quả; thẩm
+    quyền, chứng cứ, biện pháp, trình tự/thời hạn/quyền/nghĩa vụ khi xử lý;
+    hiệu lực hoặc chuyển tiếp làm thay đổi việc áp dụng các nội dung này.
+
+    Đặt false nếu nội dung chỉ thuộc quản lý hoặc hoạt động giao thông nói
+    chung mà không trực tiếp giúp xác định hay xử lý một vi phạm, như chính
+    sách, tuyên truyền, tổ chức quản lý, dữ liệu/thống kê, hợp tác, tài
+    chính/hỗ trợ hoặc thủ tục hành chính độc lập. Định nghĩa/phân loại chỉ
+    được giữ khi cần xác định trực tiếp chủ thể, phương tiện, điều kiện hoặc
+    phạm vi áp dụng của quy định vi phạm. Không giữ chỉ vì nội dung thuộc
+    pháp luật giao thông đường bộ.
+
+    Sau khi đã đúng domain, ưu tiên recall cho quy định chưa trọn vẹn do bị
+    chia chunk hoặc nằm trong bảng. Mục lục, tiêu đề, lời dẫn, căn cứ ban
+    hành, chữ ký và thông tin hành chính tự chúng không đủ.
 
     Chỉ Target text làm căn cứ. Structural context chỉ giúp hiểu cấu trúc,
-    không tự tạo nội dung pháp lý. Trả đúng một kết quả cho mỗi
-    input, giữ nguyên chunk_id và viết reason bằng một câu ngắn.
+    không tự tạo nội dung pháp lý. Trả đúng một kết quả cho mỗi input, giữ
+    nguyên chunk_id. Reason phải là một câu ngắn nêu rõ liên hệ hoặc lý do
+    không có liên hệ trực tiếp với việc xác định hay xử lý vi phạm.
 
     {{ _.role("user") }}
 
