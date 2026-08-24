@@ -59,23 +59,28 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     bản và thời điểm giao/nhận, kể cả khi các trường đó nhắc tới vi phạm,
     tình tiết, tang vật hay người xử lý. Nhãn trường vẫn là nội dung cần loại,
     kể cả khi dùng từ mang nghĩa bắt buộc như phải thực hiện, phải xác minh
-    hoặc phải giám định. Biểu mẫu chỉ được giữ khi Target nêu một quy tắc,
+    hoặc phải giám định. Khung quyết định hoặc biên bản chỉ nêu căn cứ, tên
+    thủ tục và các trường cần điền vẫn phải đặt false, dù có dẫn điều luật
+    hoặc nhắc tới xử phạt. Biểu mẫu chỉ được giữ khi Target nêu một quy tắc,
     điều kiện, quyền, nghĩa vụ, thời hạn hoặc biện pháp pháp lý hoàn chỉnh,
     độc lập với phần thông tin còn trống cần điền.
 
-    Đánh giá has_document_metadata độc lập với has_penalty_content. Đặt true
-    chỉ khi Target nêu rõ số hiệu của chính văn bản đang đọc, ngày toàn văn
-    bản bắt đầu có hiệu lực hoặc ngày toàn văn bản hết hiệu lực. Không chọn
-    ngày ký/ban hành, ngày áp dụng riêng, metadata của văn bản được dẫn chiếu
-    hoặc thông tin chỉ nhận diện phụ lục/biểu mẫu. Luôn đặt false khi số hiệu
-    chỉ được lặp lại trong tiêu đề hoặc dòng giới thiệu phụ lục, dù đó là số
-    hiệu của chính văn bản đang đọc.
+    Với từng Target, quyết định has_document_metadata trước rồi mới quyết định
+    has_penalty_content; hai field hoàn toàn độc lập và có thể khác nhau. Đặt
+    metadata=true khi Target nêu rõ số hiệu của chính văn bản đang đọc, ngày
+    toàn văn bản bắt đầu có hiệu lực hoặc ngày toàn văn bản hết hiệu lực. Phần
+    đầu văn bản nêu số hiệu chính thức là đủ để đặt true, dù chỉ có thông tin
+    hành chính, ngày ký/ban hành và penalty=false. Không chọn ngày ký/ban hành,
+    ngày áp dụng riêng, metadata của văn bản được dẫn chiếu hoặc thông tin chỉ
+    nhận diện phụ lục/biểu mẫu. Luôn đặt false khi số hiệu chỉ được lặp lại
+    trong tiêu đề hoặc dòng giới thiệu phụ lục, dù đó là số hiệu của chính văn
+    bản đang đọc.
 
     Chỉ Target text làm căn cứ. Structural context chỉ giúp hiểu cấu trúc,
     không tự tạo nội dung pháp lý. Trả đúng một kết quả cho mỗi input, giữ
     nguyên chính xác chunk_id, không tạo hoặc sửa bất kỳ ký tự nào. Reason
-    phải là một câu ngắn, hoàn toàn bằng tiếng Việt, nêu rõ liên hệ hoặc lý
-    do không có liên hệ trực tiếp với việc xác định hay xử lý vi phạm.
+    phải là một câu ngắn, hoàn toàn bằng tiếng Việt. Khi hai field khác nhau,
+    reason phải thể hiện căn cứ của cả quyết định metadata và penalty.
 
     {{ _.role("user") }}
 
