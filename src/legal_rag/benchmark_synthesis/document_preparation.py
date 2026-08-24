@@ -6,6 +6,8 @@ from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from loguru import logger
+
 from legal_rag.benchmark_synthesis.chunk_screening import (
     ChunkScreeningClient,
     ChunkScreeningRecord,
@@ -36,6 +38,8 @@ def prepare_chunk_screening(
     existing_records = read_chunk_screening(output_path) if output_path.exists() else ()
     records_by_chunk_id = {record.chunk_id: record for record in existing_records}
     chunks_to_screen = tuple(chunk for chunk in chunks if chunk.chunk_id not in records_by_chunk_id)
+    if existing_records:
+        logger.info("Chunk screening resumed: {}/{} chunks already completed", len(existing_records), len(chunks))
 
     def _persist_batch(batch_records: Sequence[ChunkScreeningRecord]) -> None:
         records_by_chunk_id.update({record.chunk_id: record for record in batch_records})
@@ -68,6 +72,7 @@ def prepare_document_metadata(
 ) -> DocumentMetadataRecord:
     """Reuse complete metadata or resolve and persist it once."""
     if output_path.exists():
+        logger.info("Document metadata reused from {}", output_path)
         return read_document_metadata(output_path)
     record = resolve_document_metadata(
         chunks,
@@ -90,6 +95,8 @@ def prepare_document_artifacts(
     settings: SynthesisSettings,
 ) -> tuple[tuple[ChunkScreeningRecord, ...], DocumentMetadataRecord]:
     """Prepare screening and metadata concurrently as independent work units."""
+    source_name = chunks[0].source_name if chunks else "empty-document"
+    logger.info("Step 1 started for {}: screening and metadata run concurrently", source_name)
     with ThreadPoolExecutor(max_workers=2) as executor:
         screening_future = executor.submit(
             prepare_chunk_screening,
@@ -105,4 +112,7 @@ def prepare_document_artifacts(
             metadata_client_factory,
             settings,
         )
-        return screening_future.result(), metadata_future.result()
+        records = screening_future.result()
+        metadata = metadata_future.result()
+    logger.info("Step 1 work units completed for {}", source_name)
+    return records, metadata

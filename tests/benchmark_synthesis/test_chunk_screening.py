@@ -162,6 +162,46 @@ def test_screen_chunks_runs_batches_concurrently_and_preserves_output_order() ->
     assert [record.chunk_id for record in records] == ["chunk-0", "chunk-1"]
 
 
+def test_screen_chunks_logs_batch_lifecycle(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Operators can follow batch starts, completions, verdict counts, and overall progress."""
+    chunks = [_chunk(f"chunk-{index}", f"Nội dung {index}.") for index in range(3)]
+    messages: list[str] = []
+
+    class _RecordingLogger:
+        def info(self, message: str, *args: object) -> None:
+            messages.append(message.format(*args))
+
+        def error(self, message: str, *args: object) -> None:
+            messages.append(message.format(*args))
+
+    monkeypatch.setattr(chunk_screening, "logger", _RecordingLogger())
+    client = _FakeScreeningClient(
+        {
+            chunk.chunk_id: ChunkScreeningResult(
+                chunk_id=chunk.chunk_id,
+                has_penalty_content=True,
+                reason="Contains legal content.",
+            )
+            for chunk in chunks
+        }
+    )
+
+    screen_chunks(
+        chunks,
+        client,
+        batch_size=2,
+        max_concurrency=1,
+        max_retries=0,
+        retry_delay_seconds=0,
+    )
+
+    assert "Chunk screening started: 3 chunks, 2 batches, batch_size=2, max_concurrency=1" in messages
+    assert "Chunk screening batch 1/2 started: chunks=2" in messages
+    assert "Chunk screening batch 1/2 completed: accepted=2, excluded=0, progress=2/3 chunks" in messages
+    assert "Chunk screening batch 2/2 started: chunks=1" in messages
+    assert "Chunk screening batch 2/2 completed: accepted=1, excluded=0, progress=3/3 chunks" in messages
+
+
 def test_screen_chunks_calls_on_batch_screened_after_each_batch() -> None:
     """on_batch_screened receives just the newly screened batch's records, once per batch."""
     chunks = [_chunk(f"chunk-{i}", f"Nội dung {i}") for i in range(5)]

@@ -8,6 +8,7 @@ from datetime import date
 from typing import Any, Protocol
 
 from baml_py.logging import set_log_level
+from loguru import logger
 
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import DocumentMetadata as BamlDocumentMetadata
@@ -88,18 +89,27 @@ def resolve_document_metadata(
     )
     body = [chunk.text for chunk in body_chunks]
     source_key = chunks[0].source_sha256 if chunks else "empty-document"
+    opening_sections = body[:opening_chunk_count]
+    closing_sections = body[-closing_chunk_count:]
+    logger.info(
+        "Document metadata started: opening_chunks={}, closing_chunks={}",
+        len(opening_sections),
+        len(closing_sections),
+    )
 
     def _resolve() -> DocumentMetadataRecord:
-        resolved = client.resolve(body[:opening_chunk_count], body[-closing_chunk_count:])
+        resolved = client.resolve(opening_sections, closing_sections)
         return DocumentMetadataRecord(
             document_number=resolved.document_number,
             valid_from=date.fromisoformat(resolved.valid_from) if resolved.valid_from else None,
             valid_to=date.fromisoformat(resolved.valid_to) if resolved.valid_to else None,
         )
 
-    return execute_llm_task(
+    metadata = execute_llm_task(
         f"document_metadata:{source_key}",
         _resolve,
         max_retries=max_retries,
         retry_delay_seconds=retry_delay_seconds,
     )
+    logger.info("Document metadata completed: {}", metadata.document_number)
+    return metadata

@@ -62,6 +62,8 @@ LLM quyết định chunk có nội dung pháp lý đáng trích xuất cho doma
 Screening chạy theo batch và trả kết quả theo `chunk_id`. Đây là quyết định
 ngữ nghĩa của LLM, không phải keyword rule. Screening ưu tiên recall cho mọi
 quy định có thể làm căn cứ hỏi đáp, không chỉ các chunk chứa mức phạt tiền.
+Runtime log hiển thị tổng batch, `batch_size`, `max_concurrency`, thời điểm
+mỗi batch bắt đầu và tiến độ sau khi batch đã checkpoint thành công.
 
 Chỉ chunk được chấp nhận mới trở thành `Target` ở bước trích fact. Tuy nhiên,
 mọi chunk gốc vẫn có thể được dùng làm context liền kề cho một target.

@@ -12,7 +12,7 @@ import pytest
 from legal_rag import document_preparation_cli
 from legal_rag.baml_client.types import ChunkScreeningItem, ChunkScreeningResult
 from legal_rag.baml_client.types import DocumentMetadata as BamlDocumentMetadata
-from legal_rag.benchmark_synthesis import chunk_screening, document_metadata
+from legal_rag.benchmark_synthesis import chunk_screening, document_metadata, document_preparation
 from legal_rag.benchmark_synthesis.stage_cache import stage_cache_path
 from legal_rag.benchmark_synthesis.writer import read_chunk_screening, read_document_metadata
 from legal_rag.chunker.models import Chunk
@@ -61,6 +61,13 @@ def test_document_preparation_cli_runs_concurrently_and_reuses_completed_outputs
     metadata_path = tmp_path / "document_metadata.jsonl"
     barrier = threading.Barrier(2)
     calls: list[str] = []
+    log_messages: list[str] = []
+
+    class _RecordingLogger:
+        def info(self, message: str, *args: object) -> None:
+            log_messages.append(message.format(*args))
+
+    monkeypatch.setattr(document_preparation, "logger", _RecordingLogger())
     write_chunks(
         chunks_path,
         (
@@ -120,6 +127,8 @@ def test_document_preparation_cli_runs_concurrently_and_reuses_completed_outputs
     assert read_document_metadata(metadata_path).document_number == "168/2024/NĐ-CP"
     assert stage_cache_path(screening_path).exists()
     assert stage_cache_path(metadata_path).exists()
+    assert "Step 1 started for 168_2024_ND-CP.docx: screening and metadata run concurrently" in log_messages
+    assert "Step 1 work units completed for 168_2024_ND-CP.docx" in log_messages
 
     def _fail(*_args: object, **_kwargs: object) -> None:
         pytest.fail("Completed document-preparation outputs must bypass both LLM clients")
@@ -128,3 +137,6 @@ def test_document_preparation_cli_runs_concurrently_and_reuses_completed_outputs
     monkeypatch.setattr(document_metadata, "BamlDocumentMetadataClient", _fail)
 
     document_preparation_cli.main()
+
+    assert "Chunk screening resumed: 2/2 chunks already completed" in log_messages
+    assert f"Document metadata reused from {metadata_path}" in log_messages

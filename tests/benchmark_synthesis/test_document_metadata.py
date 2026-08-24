@@ -114,6 +114,33 @@ def test_resolve_document_metadata_reads_the_opening_and_closing_of_the_document
     assert client.closing_sections == ("Đoạn 7", "Đoạn 8", "Đoạn 9")
 
 
+def test_resolve_document_metadata_logs_window_and_completion(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Operators can see the metadata reading-window size and completed document identity."""
+    chunks = [_chunk(f"c{index}", f"Đoạn {index}") for index in range(3)]
+    client = _RecordingMetadataClient(_baml_metadata())
+    messages: list[str] = []
+
+    class _RecordingLogger:
+        def info(self, message: str, *args: object) -> None:
+            messages.append(message.format(*args))
+
+    monkeypatch.setattr(document_metadata, "logger", _RecordingLogger())
+
+    resolve_document_metadata(
+        chunks,
+        client,
+        opening_chunk_count=2,
+        closing_chunk_count=1,
+        max_retries=0,
+        retry_delay_seconds=0,
+    )
+
+    assert messages == [
+        "Document metadata started: opening_chunks=2, closing_chunks=1",
+        "Document metadata completed: 168/2024/NĐ-CP",
+    ]
+
+
 def test_resolve_document_metadata_orders_root_chunks_by_chunk_index() -> None:
     """Opening and closing sections follow document order even when input chunks are shuffled."""
     chunks = [_chunk(f"c{index}", f"Đoạn {index}", chunk_index=index) for index in range(10)]
