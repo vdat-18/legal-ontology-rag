@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Sequence
 
 from legal_rag.baml_client.types import (
     CandidateGenerationBatchInput,
@@ -121,7 +122,7 @@ def test_generate_candidates_skips_already_completed_tasks() -> None:
         1,
         progress_by_task_id,
         _context(_CountingClient()),
-        lambda record: progress_by_task_id.__setitem__(record.task_id, record),
+        lambda records: progress_by_task_id.update({record.task_id: record for record in records}),
         batch_size=1,
         max_concurrency=1,
     )
@@ -142,7 +143,7 @@ def test_generate_candidates_respects_candidates_per_scenario() -> None:
         3,
         progress_by_task_id,
         _context(_FakeGenerationClient()),
-        lambda record: progress_by_task_id.__setitem__(record.task_id, record),
+        lambda records: progress_by_task_id.update({record.task_id: record for record in records}),
         batch_size=2,
         max_concurrency=2,
     )
@@ -176,7 +177,7 @@ def test_generate_candidates_reports_a_task_that_fails_every_attempt_as_a_failur
         1,
         progress_by_task_id,
         _context(_FailsOnFirstCallClient()),
-        lambda record: progress_by_task_id.__setitem__(record.task_id, record),
+        lambda records: progress_by_task_id.update({record.task_id: record for record in records}),
         batch_size=1,
         max_concurrency=1,
     )
@@ -211,7 +212,7 @@ def test_generate_candidates_bounds_concurrent_generation_calls() -> None:
         1,
         progress_by_task_id,
         _context(_TrackingClient()),
-        lambda record: progress_by_task_id.__setitem__(record.task_id, record),
+        lambda records: progress_by_task_id.update({record.task_id: record for record in records}),
         batch_size=1,
         max_concurrency=2,
     )
@@ -226,6 +227,7 @@ def test_generate_candidates_batches_generation_calls() -> None:
     scenarios = [_scenario(f"scenario-{index}") for index in range(12)]
     progress_by_task_id: dict[str, CandidateProgressRecord] = {}
     generation_batch_sizes: list[int] = []
+    checkpoint_batch_sizes: list[int] = []
 
     class _BatchTrackingClient(_FakeGenerationClient):
         def generate_batch(
@@ -234,16 +236,21 @@ def test_generate_candidates_batches_generation_calls() -> None:
             generation_batch_sizes.append(len(items))
             return super().generate_batch(items)
 
+    def _checkpoint(records: Sequence[CandidateProgressRecord]) -> None:
+        checkpoint_batch_sizes.append(len(records))
+        progress_by_task_id.update({record.task_id: record for record in records})
+
     failures = generate_candidates(
         scenarios,
         1,
         progress_by_task_id,
         _context(_BatchTrackingClient()),
-        lambda record: progress_by_task_id.__setitem__(record.task_id, record),
+        _checkpoint,
         batch_size=5,
         max_concurrency=1,
     )
 
     assert failures == ()
     assert generation_batch_sizes == [5, 5, 2]
+    assert checkpoint_batch_sizes == [5, 5, 2]
     assert all(record.completed for record in progress_by_task_id.values())

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import threading
+from collections.abc import Sequence
 from pathlib import Path
 
 from loguru import logger
@@ -41,6 +42,11 @@ def main() -> None:
     from legal_rag.benchmark_synthesis.config import SynthesisSettings
     from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError
     from legal_rag.benchmark_synthesis.scenario_sampling import load_persona_descriptions
+    from legal_rag.benchmark_synthesis.stage_cache import (
+        build_candidate_generation_fingerprint,
+        initialize_stage_cache,
+        stage_cache_path,
+    )
     from legal_rag.benchmark_synthesis.writer import (
         read_candidate_progress,
         read_legal_facts,
@@ -58,10 +64,24 @@ def main() -> None:
     synthesis_settings = SynthesisSettings.from_path(arguments.synthesis_config)
     progress_output_path = arguments.progress_output or arguments.candidates_output_path.with_suffix(".progress.jsonl")
 
-    facts_by_id = {fact.fact_id: fact for fact in read_legal_facts(arguments.facts_path)}
+    facts = read_legal_facts(arguments.facts_path)
+    facts_by_id = {fact.fact_id: fact for fact in facts}
     scenarios = read_scenarios(arguments.scenarios_path)
 
     persona_descriptions = load_persona_descriptions(arguments.personas)
+    initialize_stage_cache(
+        stage_cache_path(arguments.candidates_output_path),
+        (arguments.candidates_output_path, progress_output_path),
+        build_candidate_generation_fingerprint(
+            facts,
+            scenarios,
+            persona_descriptions,
+            synthesis_settings,
+            candidates_per_scenario=arguments.candidates_per_scenario,
+            llm_base_url=settings.llm_base_url,
+            llm_model=settings.llm_model,
+        ),
+    )
 
     generation_client = BamlCandidateGenerationClient(settings, synthesis_settings)
     context = CandidatePipelineContext(
@@ -83,14 +103,14 @@ def main() -> None:
 
     progress_lock = threading.Lock()
 
-    def _persist(record: CandidateProgressRecord) -> None:
-        """Persist one stage checkpoint and every completed candidate atomically per file.
+    def _persist(records: Sequence[CandidateProgressRecord]) -> None:
+        """Persist one completed batch and its candidates atomically per file.
 
         Runs from worker threads under generate_candidates' bounded concurrency, so the
         shared progress dict and the two output files are serialized behind progress_lock.
         """
         with progress_lock:
-            progress_by_task_id[record.task_id] = record
+            progress_by_task_id.update({record.task_id: record for record in records})
             ordered_progress = tuple(
                 progress_by_task_id[task_id] for task_id in task_order if task_id in progress_by_task_id
             )

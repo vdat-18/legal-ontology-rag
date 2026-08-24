@@ -13,7 +13,7 @@ from legal_rag import fact_extraction_cli
 from legal_rag.baml_client.types import EvidenceEntry as BamlEvidenceEntry
 from legal_rag.baml_client.types import FactExtractionBatchItem, FactExtractionBatchResult
 from legal_rag.baml_client.types import LegalFact as BamlLegalFact
-from legal_rag.benchmark_synthesis import fact_extraction
+from legal_rag.benchmark_synthesis import fact_extraction, writer
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
@@ -511,6 +511,63 @@ def test_fact_extraction_cli_persists_progress_if_interrupted_mid_document(
     facts = read_legal_facts(facts_path)
     assert len(facts) == 1
     assert facts[0].source_chunk_id == "chunk-1"
+    assert read_extraction_progress(tmp_path / "extraction_progress.jsonl") == (
+        ExtractionProgressRecord(chunk_id="chunk-1"),
+    )
+
+
+def test_fact_extraction_cli_replaces_facts_replayed_after_progress_write_crash(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A replay replaces facts written before the interrupted progress checkpoint."""
+    chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
+    screening_path = tmp_path / "chunk_screening.jsonl"
+    facts_path = tmp_path / "legal_facts.jsonl"
+    write_chunks(chunks_path, (_chunk("chunk-1", "Phạt tiền đối với hành vi vi phạm."),))
+    write_chunk_screening(
+        screening_path,
+        [ChunkScreeningRecord(chunk_id="chunk-1", has_penalty_content=True, reason="Penalty.")],
+    )
+    statement = "Kết quả trước khi tiến trình bị gián đoạn."
+
+    class _ChangingClient:
+        def __init__(self, settings: object, synthesis_settings: object) -> None:
+            return None
+
+        def extract_batch(self, items: list[FactExtractionBatchItem]) -> tuple[FactExtractionBatchResult, ...]:
+            return tuple(
+                FactExtractionBatchResult(
+                    target_chunk_id=item.target_chunk_id,
+                    facts=[
+                        BamlLegalFact(
+                            statement=statement,
+                            evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id)],
+                        )
+                    ],
+                )
+                for item in items
+            )
+
+    _configure_cli(monkeypatch, chunks_path, screening_path, facts_path)
+    monkeypatch.setattr(fact_extraction, "BamlFactExtractionClient", _ChangingClient)
+    original_write_progress = writer.write_extraction_progress
+
+    def _crash_progress(*_args: object, **_kwargs: object) -> None:
+        raise SystemExit
+
+    monkeypatch.setattr(writer, "write_extraction_progress", _crash_progress)
+
+    with pytest.raises(SystemExit):
+        fact_extraction_cli.main()
+
+    assert [fact.statement for fact in read_legal_facts(facts_path)] == [statement]
+    statement = "Kết quả mới sau khi replay target chunk."
+    monkeypatch.setattr(writer, "write_extraction_progress", original_write_progress)
+
+    fact_extraction_cli.main()
+
+    facts = read_legal_facts(facts_path)
+    assert [fact.statement for fact in facts] == [statement]
     assert read_extraction_progress(tmp_path / "extraction_progress.jsonl") == (
         ExtractionProgressRecord(chunk_id="chunk-1"),
     )

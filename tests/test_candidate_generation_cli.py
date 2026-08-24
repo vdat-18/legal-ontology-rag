@@ -14,10 +14,12 @@ from legal_rag.baml_client.types import (
 )
 from legal_rag.baml_client.types import ClaimReference as BamlClaimReference
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
-from legal_rag.benchmark_synthesis import candidate_generation
+from legal_rag.benchmark_synthesis import candidate_generation, writer
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
+from legal_rag.benchmark_synthesis.stage_cache import stage_cache_path
 from legal_rag.benchmark_synthesis.writer import (
+    read_candidate_progress,
     read_candidates,
     write_legal_facts,
     write_scenarios,
@@ -130,6 +132,7 @@ def test_candidate_generation_cli_produces_candidate_from_scenario(
     assert len(drafts) == 1
     assert drafts[0].answerability == "answerable"
     assert drafts[0].query == "oto vuot den do bi phat bao nhieu"
+    assert stage_cache_path(candidates_path).exists()
 
 
 def test_candidate_generation_cli_generates_multiple_attempts_per_scenario(
@@ -148,3 +151,58 @@ def test_candidate_generation_cli_generates_multiple_attempts_per_scenario(
 
     drafts = read_candidates(candidates_path)
     assert len(drafts) == 3
+
+
+def test_candidate_generation_cli_rejects_progress_from_a_different_model(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Candidate progress cannot be resumed after a prompt-facing runtime input changes."""
+    facts_path = tmp_path / "legal_facts.jsonl"
+    scenarios_path = tmp_path / "scenarios.jsonl"
+    candidates_path = tmp_path / "single_turn.jsonl"
+    write_legal_facts(facts_path, [_fact()])
+    write_scenarios(scenarios_path, [_scenario()])
+    _configure_cli(monkeypatch, facts_path, scenarios_path, candidates_path, candidates_per_scenario=1)
+
+    candidate_generation_cli.main()
+    monkeypatch.setenv("LLM_MODEL", "provider/changed-model")
+
+    with pytest.raises(ValueError, match="different synthesis run"):
+        candidate_generation_cli.main()
+
+
+def test_candidate_generation_cli_rebuilds_candidates_from_progress_after_output_write_crash(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Completed progress prevents an LLM replay if the derived candidates file was not written."""
+    facts_path = tmp_path / "legal_facts.jsonl"
+    scenarios_path = tmp_path / "scenarios.jsonl"
+    candidates_path = tmp_path / "single_turn.jsonl"
+    progress_path = tmp_path / "single_turn.progress.jsonl"
+    write_legal_facts(facts_path, [_fact()])
+    write_scenarios(scenarios_path, [_scenario()])
+    _configure_cli(monkeypatch, facts_path, scenarios_path, candidates_path, candidates_per_scenario=1)
+    original_write_candidates = writer.write_candidates
+
+    def _crash_candidates(*_args: object, **_kwargs: object) -> None:
+        raise SystemExit
+
+    monkeypatch.setattr(writer, "write_candidates", _crash_candidates)
+
+    with pytest.raises(SystemExit):
+        candidate_generation_cli.main()
+
+    assert read_candidate_progress(progress_path)[0].completed is True
+    monkeypatch.setattr(writer, "write_candidates", original_write_candidates)
+
+    class _NoReplayClient(_FakeGenerationClient):
+        def generate_batch(
+            self, items: list[CandidateGenerationBatchInput]
+        ) -> list[GeneratedSingleTurnCandidateBatchItem]:
+            pytest.fail("Completed candidate progress must bypass generation")
+
+    monkeypatch.setattr(candidate_generation, "BamlCandidateGenerationClient", _NoReplayClient)
+
+    candidate_generation_cli.main()
+
+    assert len(read_candidates(candidates_path)) == 1

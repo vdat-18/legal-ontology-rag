@@ -99,6 +99,21 @@ def _log_relation_confirmation_failures(failures: Sequence[LlmTaskFailure]) -> b
     return True
 
 
+def _replace_relation_batch(
+    relations_by_id: dict[str, EvidenceRelation],
+    batch_results: Sequence[tuple[tuple[str, str], EvidenceRelation | None]],
+) -> set[tuple[str, str]]:
+    """Replace persisted relation outcomes for one replay-safe completed batch."""
+    batch_pairs = {pair for pair, _ in batch_results}
+    stale_relation_ids = [
+        relation_id for relation_id, existing in relations_by_id.items() if existing.fact_ids in batch_pairs
+    ]
+    for relation_id in stale_relation_ids:
+        del relations_by_id[relation_id]
+    relations_by_id.update({relation.relation_id: relation for _, relation in batch_results if relation is not None})
+    return batch_pairs
+
+
 def _sample_scenarios(
     arguments: argparse.Namespace,
     bundles: Sequence[EvidenceBundle],
@@ -260,20 +275,16 @@ def main() -> None:
         len(remaining_pairs),
     )
 
-    def _persist_pair(pair: tuple[str, str], relation: EvidenceRelation | None) -> None:
-        """Rewrite the relations file, then record the pair as checked, so a crash between the two only costs a retry."""
-        stale_relation_ids = [
-            relation_id for relation_id, existing in relations_by_id.items() if existing.fact_ids == pair
-        ]
-        for relation_id in stale_relation_ids:
-            del relations_by_id[relation_id]
-        if relation is not None:
-            relations_by_id[relation.relation_id] = relation
+    def _persist_batch(
+        batch_results: Sequence[tuple[tuple[str, str], EvidenceRelation | None]],
+    ) -> None:
+        """Replace one batch's outcomes before atomically checkpointing all its pairs."""
+        batch_pairs = _replace_relation_batch(relations_by_id, batch_results)
         write_evidence_relations(
             arguments.relations_output_path,
             tuple(sorted(relations_by_id.values(), key=evidence_relation_sort_key)),
         )
-        checked_pairs.add(pair)
+        checked_pairs.update(batch_pairs)
         write_evidence_relation_progress(
             arguments.relations_progress_output_path,
             tuple(
@@ -282,9 +293,7 @@ def main() -> None:
                 if (fact_id_a, fact_id_b) in checked_pairs
             ),
         )
-        logger.debug(
-            "Checked pair ({}, {}): {}", pair[0], pair[1], "related" if relation is not None else "not related"
-        )
+        logger.debug("Checkpointed {} evidence-relation pair(s)", len(batch_results))
 
     if remaining_pairs:
         relation_client = BamlEvidenceRelationClient(settings, synthesis_settings, run_id=relation_run_id)
@@ -296,7 +305,7 @@ def main() -> None:
             max_concurrency=synthesis_settings.evidence_relation_max_concurrency,
             max_retries=synthesis_settings.llm_max_retries,
             retry_delay_seconds=synthesis_settings.llm_retry_delay_seconds,
-            on_pair_confirmed=_persist_pair,
+            on_batch_confirmed=_persist_batch,
         )
         if _log_relation_confirmation_failures(failures) and not arguments.allow_incomplete_relations:
             incomplete_error = IncompleteLlmTasksError.for_stage("evidence relation confirmation", failures)

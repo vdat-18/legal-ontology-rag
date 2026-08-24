@@ -122,7 +122,11 @@ def main() -> None:
     )
 
     def _persist_batch(batch_results: Sequence[tuple[str, tuple[LegalFact, ...]]]) -> None:
-        """Write batch facts before progress so an interrupted write can only cause a safe replay."""
+        """Replace each target's prior facts before checkpointing the completed batch."""
+        target_chunk_ids = {chunk_id for chunk_id, _ in batch_results}
+        stale_fact_ids = [fact_id for fact_id, fact in facts_by_id.items() if fact.source_chunk_id in target_chunk_ids]
+        for fact_id in stale_fact_ids:
+            del facts_by_id[fact_id]
         for _, target_facts in batch_results:
             _merge_facts(target_facts)
         write_legal_facts(

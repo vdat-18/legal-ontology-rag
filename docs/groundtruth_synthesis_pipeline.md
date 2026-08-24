@@ -177,6 +177,10 @@ Code chỉ yêu cầu evidence không rỗng và `chunk_id` thuộc reading wind
 không xác minh lại ý nghĩa của statement, không yêu cầu trích dẫn nguyên văn
 và không dùng exact-span gate.
 
+Resume được checkpoint theo batch target. Nếu tiến trình dừng sau khi facts đã
+được ghi nhưng trước progress, lần replay thay thế toàn bộ facts có cùng
+`source_chunk_id` trước khi ghi kết quả mới, không tích lũy hai phiên bản LLM.
+
 ### Output
 
 Theo từng văn bản:
@@ -215,6 +219,10 @@ quan hệ hoặc hướng `from_fact_id`/`to_fact_id`.
 Evidence chunk IDs không được gửi vì ID không mang nội dung ngữ nghĩa; chúng
 vẫn được giữ trong fact để tạo gold chunks. Retrieval score hoặc keyword
 không phải quyết định cuối.
+
+Relation confirmation checkpoint một batch hoàn chỉnh mỗi lần. Khi replay,
+kết quả cũ của các pair trong batch được thay thế trước khi progress được đánh
+dấu. Candidate-pair cache và relation progress đều gắn run ID.
 
 Các relation đã xác nhận được chuyển thành:
 
@@ -319,6 +327,11 @@ data/benchmark_synthesis/candidates/single_turn.jsonl
 data/benchmark_synthesis/candidates/single_turn.progress.jsonl
 ```
 
+Candidate progress được checkpoint một lần cho mỗi LLM batch. Sidecar
+`single_turn.run.json` fingerprint facts, scenarios, mô tả persona, số
+attempt, candidate config, prompt, endpoint và model; progress của run khác
+không được resume.
+
 ## 7. Export ground truth để evaluate
 
 `legal-export-groundtruth` map candidate sang schema evaluator:
@@ -349,8 +362,9 @@ fact IDs vẫn được giữ để phân tích theo lát cắt.
 - Mọi LLM work unit có retry hữu hạn và resume key ổn định.
 - Các artifact thành công được ghi atomically; task thất bại không bị đánh dấu
   hoàn thành.
-- Sidecar `*.run.json` bảo vệ resume khỏi trộn chunks, config, prompt, model
-  hoặc upstream run khác nhau.
+- Sidecar `*.run.json` bảo vệ Steps 1A, 1B, 2 và 6 khỏi trộn input, config,
+  prompt, model hoặc upstream run khác nhau. Step 4 dùng candidate/relation
+  run ID trực tiếp trong cache và progress.
 - Cấu hình synthesis nằm tại
   `data/config/groundtruth/synthesis_v1.json`.
 - Synthesis config hiện dùng schema `3.0.0`.
@@ -359,6 +373,8 @@ fact IDs vẫn được giữ để phân tích theo lát cắt.
 - `Candidate 6.0.0`, `CandidateProgress 5.0.0` và `GroundTruth 5.0.0` không
   tương thích với artifact Step 6-7 cũ; cần chạy lại Step 6 và Step 7, không
   sửa tay hoặc tự động migrate.
+- Candidate artifacts được tạo trước khi Step 6 có fingerprint sidecar không
+  được resume; chạy lại Step 6 để tạo một run nhất quán.
 
 ## Giới hạn hiện tại
 

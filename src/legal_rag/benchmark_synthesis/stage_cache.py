@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from legal_rag.benchmark_synthesis.candidate_generation import (
+    CANDIDATE_GENERATION_PROMPT_VERSION,
+    CANDIDATE_SCHEMA_VERSION,
+)
 from legal_rag.benchmark_synthesis.chunk_screening import CHUNK_SCREENING_PROMPT_VERSION
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.document_metadata import (
@@ -15,14 +19,15 @@ from legal_rag.benchmark_synthesis.document_metadata import (
     DocumentMetadataRecord,
 )
 from legal_rag.benchmark_synthesis.fact_extraction import FACT_EXTRACTION_PROMPT_VERSION
-from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION
+from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, LegalFact
+from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.chunker.models import Chunk
 from legal_rag.io_utils import write_json_atomic
 from legal_rag.parser.hashing import sha256_json
 
 STAGE_CACHE_SCHEMA_VERSION = "1.0.0"
 
-StageName = Literal["chunk_screening", "document_metadata", "fact_extraction"]
+StageName = Literal["chunk_screening", "document_metadata", "fact_extraction", "candidate_generation"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,6 +136,39 @@ def build_fact_extraction_fingerprint(
                 "max_preceding_chunks": settings.fact_extraction_max_preceding_chunks,
                 "max_following_chunks": settings.fact_extraction_max_following_chunks,
                 "generation": asdict(settings.fact_extraction),
+            },
+        },
+    )
+
+
+def build_candidate_generation_fingerprint(
+    facts: Sequence[LegalFact],
+    scenarios: Sequence[Scenario],
+    persona_descriptions: Mapping[str, str],
+    settings: SynthesisSettings,
+    *,
+    candidates_per_scenario: int,
+    llm_base_url: str,
+    llm_model: str,
+) -> StageCacheFingerprint:
+    """Fingerprint every input that can change generated candidates."""
+    facts_by_id = {fact.fact_id: fact for fact in facts}
+    referenced_fact_ids = sorted({fact_id for scenario in scenarios for fact_id in scenario.fact_ids})
+    referenced_personas = sorted({scenario.persona for scenario in scenarios})
+    return _build_fingerprint(
+        stage="candidate_generation",
+        prompt_version=CANDIDATE_GENERATION_PROMPT_VERSION,
+        model=llm_model,
+        identity={
+            "candidate_schema": CANDIDATE_SCHEMA_VERSION,
+            "candidates_per_scenario": candidates_per_scenario,
+            "facts": [facts_by_id[fact_id].to_dict() for fact_id in referenced_fact_ids],
+            "llm": {"base_url": llm_base_url, "model": llm_model},
+            "personas": {persona: persona_descriptions[persona] for persona in referenced_personas},
+            "scenarios": [scenario.to_dict() for scenario in scenarios],
+            "settings": {
+                "batch_size": settings.candidate_generation_batch_size,
+                "generation": asdict(settings.candidate_generation),
             },
         },
     )

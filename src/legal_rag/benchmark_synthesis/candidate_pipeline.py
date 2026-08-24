@@ -40,7 +40,7 @@ def process_candidate_task(
     attempt_index: int,
     progress: CandidateProgressRecord | None,
     context: CandidatePipelineContext,
-    checkpoint: Callable[[CandidateProgressRecord], None],
+    checkpoint: Callable[[Sequence[CandidateProgressRecord]], None],
 ) -> CandidateProgressRecord:
     """Resume one scenario attempt from its latest persisted stage and finish it."""
     task_id = f"{scenario.scenario_id}:{attempt_index}"
@@ -57,11 +57,11 @@ def process_candidate_task(
             max_retries=context.llm_max_retries,
             retry_delay_seconds=context.llm_retry_delay_seconds,
         )
-        progress = CandidateProgressRecord(task_id, scenario.scenario_id, attempt_index, "generated", draft)
-        checkpoint(progress)
+    else:
+        draft = progress.draft
 
-    completed = CandidateProgressRecord(task_id, scenario.scenario_id, attempt_index, "completed", progress.draft)
-    checkpoint(completed)
+    completed = CandidateProgressRecord(task_id, scenario.scenario_id, attempt_index, "completed", draft)
+    checkpoint((completed,))
     return completed
 
 
@@ -70,16 +70,15 @@ def generate_candidates(
     candidates_per_scenario: int,
     progress_by_task_id: Mapping[str, CandidateProgressRecord],
     context: CandidatePipelineContext,
-    checkpoint: Callable[[CandidateProgressRecord], None],
+    checkpoint: Callable[[Sequence[CandidateProgressRecord]], None],
     *,
     batch_size: int,
     max_concurrency: int,
 ) -> tuple[LlmTaskFailure, ...]:
     """Generate pending scenario attempts in bounded concurrent LLM batches.
 
-    process_candidate_batch persists each item after every internal stage, so checkpoint
-    runs from worker threads rather than only after a batch finishes; the caller must make
-    checkpoint safe for concurrent invocation (e.g. with a lock).
+    process_candidate_batch persists each completed batch, so checkpoint runs from worker
+    threads; the caller must make checkpoint safe for concurrent invocation (e.g. with a lock).
     """
     pending: list[tuple[Scenario, int]] = []
     for scenario in scenarios:
@@ -114,9 +113,9 @@ def process_candidate_batch(
     tasks: Sequence[tuple[Scenario, int]],
     progress_by_task_id: Mapping[str, CandidateProgressRecord],
     context: CandidatePipelineContext,
-    checkpoint: Callable[[CandidateProgressRecord], None],
+    checkpoint: Callable[[Sequence[CandidateProgressRecord]], None],
 ) -> None:
-    """Resume and complete one batch while checkpointing every task separately."""
+    """Resume and complete one batch with one consolidated checkpoint write."""
     task_metadata = {
         f"{scenario.scenario_id}:{attempt_index}": (scenario, attempt_index) for scenario, attempt_index in tasks
     }
@@ -139,16 +138,15 @@ def process_candidate_batch(
         )
         for task_id, draft in generated:
             scenario, attempt_index = task_metadata[task_id]
-            record = CandidateProgressRecord(
+            current[task_id] = CandidateProgressRecord(
                 task_id,
                 scenario.scenario_id,
                 attempt_index,
-                "generated",
+                "completed",
                 draft,
             )
-            current[task_id] = record
-            checkpoint(record)
 
+    completed_records: list[CandidateProgressRecord] = []
     for task_id, record in current.items():
         completed_record = cast(CandidateProgressRecord, record)
         completed = CandidateProgressRecord(
@@ -158,7 +156,8 @@ def process_candidate_batch(
             "completed",
             completed_record.draft,
         )
-        checkpoint(completed)
+        completed_records.append(completed)
+    checkpoint(completed_records)
 
 
 def _batch_task_key(task_ids: Sequence[str], stage: str) -> str:

@@ -3,13 +3,20 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import date
 from pathlib import Path
 
 import pytest
 
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
+from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.benchmark_synthesis.stage_cache import (
+    build_candidate_generation_fingerprint,
     build_chunk_screening_fingerprint,
+    build_document_metadata_fingerprint,
+    build_fact_extraction_fingerprint,
     initialize_stage_cache,
     read_stage_cache_fingerprint,
 )
@@ -44,6 +51,35 @@ def _chunk(content_sha256: str = "content-hash", *, context_text: str = "") -> C
         embedding_token_count=3,
         previous_chunk_id=None,
         next_chunk_id=None,
+    )
+
+
+def _fact() -> LegalFact:
+    """Build one fact referenced by the candidate-stage fingerprint."""
+    return LegalFact(
+        fact_id="fact-1",
+        statement="Người điều khiển ô tô vượt đèn đỏ bị phạt tiền.",
+        valid_from=date(2025, 1, 1),
+        valid_to=None,
+        document_number="168/2024/NĐ-CP",
+        evidence=(EvidenceReference(chunk_id="chunk-1"),),
+        source_chunk_id="chunk-1",
+    )
+
+
+def _scenario() -> Scenario:
+    """Build one scenario referenced by the candidate-stage fingerprint."""
+    return Scenario(
+        scenario_id="scenario-1",
+        query_form="specific",
+        answerability="answerable",
+        persona="tai_xe_ca_nhan",
+        query_style="standard",
+        query_length="short",
+        reasoning_hops=1,
+        fact_ids=("fact-1",),
+        bridge=None,
+        gold_chunk_ids=("chunk-1",),
     )
 
 
@@ -94,6 +130,88 @@ def test_screening_fingerprint_changes_with_stage_config() -> None:
     )
 
     assert original.run_id != changed_config.run_id
+
+
+def test_metadata_fingerprint_changes_with_reading_window_config() -> None:
+    """Metadata artifacts become stale when the configured opening window changes."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+    original = build_document_metadata_fingerprint(
+        (_chunk(),), settings, llm_base_url="https://llm.test/v1", llm_model="provider/model"
+    )
+    changed = build_document_metadata_fingerprint(
+        (_chunk(),),
+        replace(
+            settings,
+            document_metadata_opening_chunk_count=settings.document_metadata_opening_chunk_count + 1,
+        ),
+        llm_base_url="https://llm.test/v1",
+        llm_model="provider/model",
+    )
+
+    assert original.run_id != changed.run_id
+
+
+def test_fact_extraction_fingerprint_changes_with_upstream_run() -> None:
+    """Fact extraction cannot resume after either upstream artifact changes."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+    metadata = DocumentMetadataRecord("168/2024/NĐ-CP", date(2025, 1, 1), None)
+    original = build_fact_extraction_fingerprint(
+        (_chunk(),),
+        ("chunk-1",),
+        metadata,
+        settings,
+        screening_run_id="screening-a",
+        metadata_run_id="metadata-a",
+        llm_base_url="https://llm.test/v1",
+        llm_model="provider/model",
+    )
+    changed = build_fact_extraction_fingerprint(
+        (_chunk(),),
+        ("chunk-1",),
+        metadata,
+        settings,
+        screening_run_id="screening-b",
+        metadata_run_id="metadata-a",
+        llm_base_url="https://llm.test/v1",
+        llm_model="provider/model",
+    )
+
+    assert original.run_id != changed.run_id
+
+
+def test_candidate_fingerprint_changes_with_persona_or_model() -> None:
+    """Candidate progress becomes stale when prompt-facing persona text or the model changes."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+    original = build_candidate_generation_fingerprint(
+        (_fact(),),
+        (_scenario(),),
+        {"tai_xe_ca_nhan": "Tài xế cá nhân"},
+        settings,
+        candidates_per_scenario=1,
+        llm_base_url="https://llm.test/v1",
+        llm_model="provider/model-a",
+    )
+    changed_persona = build_candidate_generation_fingerprint(
+        (_fact(),),
+        (_scenario(),),
+        {"tai_xe_ca_nhan": "Người mới học lái"},
+        settings,
+        candidates_per_scenario=1,
+        llm_base_url="https://llm.test/v1",
+        llm_model="provider/model-a",
+    )
+    changed_model = build_candidate_generation_fingerprint(
+        (_fact(),),
+        (_scenario(),),
+        {"tai_xe_ca_nhan": "Tài xế cá nhân"},
+        settings,
+        candidates_per_scenario=1,
+        llm_base_url="https://llm.test/v1",
+        llm_model="provider/model-b",
+    )
+
+    assert original.run_id != changed_persona.run_id
+    assert original.run_id != changed_model.run_id
 
 
 def test_initialize_stage_cache_writes_and_validates_a_sidecar(tmp_path: Path) -> None:

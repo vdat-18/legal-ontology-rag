@@ -416,12 +416,12 @@ def confirm_evidence_relations(
     max_concurrency: int,
     max_retries: int,
     retry_delay_seconds: float,
-    on_pair_confirmed: Callable[[tuple[str, str], EvidenceRelation | None], None] | None = None,
+    on_batch_confirmed: Callable[[Sequence[tuple[tuple[str, str], EvidenceRelation | None]]], None] | None = None,
 ) -> tuple[tuple[EvidenceRelation, ...], tuple[LlmTaskFailure, ...]]:
-    """Confirm every candidate pair in bounded, concurrent batches; call on_pair_confirmed after each pair.
+    """Confirm candidate pairs concurrently and checkpoint each completed batch.
 
-    Batches are submitted to a bounded worker pool but their results are only ever read back and persisted
-    on this thread, one completed batch at a time, so on_pair_confirmed never runs concurrently with itself.
+    Batches are submitted to a bounded worker pool but their results are read and persisted
+    on this thread, so on_batch_confirmed never runs concurrently with itself.
     """
     facts_by_id = {fact.fact_id: fact for fact in facts}
     batches = [candidate_pairs[start : start + batch_size] for start in range(0, len(candidate_pairs), batch_size)]
@@ -445,11 +445,11 @@ def confirm_evidence_relations(
             except LlmTaskExhaustedError as error:
                 failures.append(LlmTaskFailure(task_key=_batch_task_key(batch), error=str(error)))
                 continue
-            for pair, relation in batch_results:
+            for _pair, relation in batch_results:
                 if relation is not None:
                     relations.append(relation)
-                if on_pair_confirmed is not None:
-                    on_pair_confirmed(pair, relation)
+            if on_batch_confirmed is not None:
+                on_batch_confirmed(batch_results)
     return tuple(relations), tuple(failures)
 
 

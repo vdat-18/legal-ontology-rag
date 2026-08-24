@@ -52,10 +52,10 @@ def _chunk(chunk_id: str, text: str) -> Chunk:
     )
 
 
-def test_document_preparation_cli_runs_screening_and_metadata_concurrently(
+def test_document_preparation_cli_runs_concurrently_and_reuses_completed_outputs(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """The combined CLI prepares both independent artifacts at the same time."""
+    """The combined CLI runs both calls concurrently and resumes without reconstructing either client."""
     chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
     screening_path = tmp_path / "chunk_screening.jsonl"
     metadata_path = tmp_path / "document_metadata.jsonl"
@@ -120,3 +120,11 @@ def test_document_preparation_cli_runs_screening_and_metadata_concurrently(
     assert read_document_metadata(metadata_path).document_number == "168/2024/NĐ-CP"
     assert stage_cache_path(screening_path).exists()
     assert stage_cache_path(metadata_path).exists()
+
+    def _fail(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("Completed document-preparation outputs must bypass both LLM clients")
+
+    monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _fail)
+    monkeypatch.setattr(document_metadata, "BamlDocumentMetadataClient", _fail)
+
+    document_preparation_cli.main()

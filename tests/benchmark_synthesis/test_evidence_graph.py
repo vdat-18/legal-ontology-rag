@@ -266,8 +266,8 @@ def test_confirm_evidence_relations_drops_unconfirmed_pairs() -> None:
     assert failures == ()
 
 
-def test_confirm_evidence_relations_calls_on_pair_confirmed_after_each_pair() -> None:
-    """on_pair_confirmed receives the pair and its relation (or None), once per candidate pair."""
+def test_confirm_evidence_relations_checkpoints_each_completed_batch() -> None:
+    """The checkpoint receives every pair outcome from one completed batch."""
     fact_a, fact_b, fact_c = _fact("fact-a"), _fact("fact-b"), _fact("fact-c")
     client = _FakeRelationClient(
         {
@@ -275,22 +275,24 @@ def test_confirm_evidence_relations_calls_on_pair_confirmed_after_each_pair() ->
             ("fact-a", "fact-c"): None,
         }
     )
-    calls: list[tuple[tuple[str, str], EvidenceRelation | None]] = []
+    calls: list[tuple[tuple[tuple[str, str], EvidenceRelation | None], ...]] = []
 
     confirm_evidence_relations(
         [fact_a, fact_b, fact_c],
         [("fact-a", "fact-b"), ("fact-a", "fact-c")],
         client,
-        batch_size=1,
+        batch_size=2,
         max_concurrency=1,
         max_retries=2,
         retry_delay_seconds=0,
-        on_pair_confirmed=lambda pair, relation: calls.append((pair, relation)),
+        on_batch_confirmed=lambda results: calls.append(tuple(results)),
     )
 
     assert calls == [
-        (("fact-a", "fact-b"), _relation("fact-a", "fact-b")),
-        (("fact-a", "fact-c"), None),
+        (
+            (("fact-a", "fact-b"), _relation("fact-a", "fact-b")),
+            (("fact-a", "fact-c"), None),
+        )
     ]
 
 
@@ -344,7 +346,7 @@ def test_confirm_evidence_relations_reports_a_pair_that_fails_every_attempt_as_a
         max_concurrency=1,
         max_retries=2,
         retry_delay_seconds=0,
-        on_pair_confirmed=lambda pair, _relation: persisted.append(pair),
+        on_batch_confirmed=lambda results: persisted.extend(pair for pair, _ in results),
     )
 
     assert len(failures) == 1
