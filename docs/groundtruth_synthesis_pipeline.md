@@ -290,9 +290,9 @@ provenance kỹ thuật, không giúp model hiểu nội dung pháp lý.
 
 LLM sinh:
 
-- `query_vi`;
-- `reference_answer_vi`;
-- `reasoning_vi`;
+- `query`;
+- `reference_answer`;
+- `reasoning`;
 - `required_claims`, mỗi claim chỉ gồm nội dung `claim` và `fact_id` hỗ trợ.
 
 LLM tự chọn một câu hỏi pháp lý hữu ích được facts hỗ trợ, không nhận taxonomy
@@ -356,7 +356,7 @@ fact IDs vẫn được giữ để phân tích theo lát cắt.
 - Synthesis config hiện dùng schema `3.0.0`.
 - `LegalFact 3.0.0`, `EvidenceRelation 3.0.0` và `Scenario 4.0.0` vẫn dùng lại
   được nếu đã được sinh bởi Steps 1-5 hiện tại.
-- `Candidate 5.0.0`, `CandidateProgress 4.0.0` và `GroundTruth 4.0.0` không
+- `Candidate 6.0.0`, `CandidateProgress 5.0.0` và `GroundTruth 5.0.0` không
   tương thích với artifact Step 6-7 cũ; cần chạy lại Step 6 và Step 7, không
   sửa tay hoặc tự động migrate.
 

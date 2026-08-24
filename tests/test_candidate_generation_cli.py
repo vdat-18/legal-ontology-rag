@@ -64,9 +64,9 @@ class _FakeGenerationClient:
     def generate(self, *args: object, **kwargs: object) -> BamlGeneratedCandidate:
         """Return one candidate grounded in the real chunk text."""
         return BamlGeneratedCandidate(
-            query_vi="oto vuot den do bi phat bao nhieu",
-            reference_answer_vi=_REFERENCE_ANSWER,
-            reasoning_vi="Theo Điều 6.",
+            query="oto vuot den do bi phat bao nhieu",
+            reference_answer=_REFERENCE_ANSWER,
+            reasoning="Theo Điều 6.",
             required_claims=[BamlClaimReference(claim="Mức phạt tiền áp dụng", fact_id="fact-1")],
         )
 
@@ -129,7 +129,7 @@ def test_candidate_generation_cli_produces_candidate_from_scenario(
     drafts = read_candidates(candidates_path)
     assert len(drafts) == 1
     assert drafts[0].answerability == "answerable"
-    assert drafts[0].query_vi == "oto vuot den do bi phat bao nhieu"
+    assert drafts[0].query == "oto vuot den do bi phat bao nhieu"
 
 
 def test_candidate_generation_cli_generates_multiple_attempts_per_scenario(

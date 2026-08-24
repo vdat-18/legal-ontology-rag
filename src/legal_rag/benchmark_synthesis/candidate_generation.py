@@ -22,8 +22,8 @@ from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
-CANDIDATE_SCHEMA_VERSION = "5.0.0"
-CANDIDATE_GENERATION_PROMPT_VERSION = "6.0.0"
+CANDIDATE_SCHEMA_VERSION = "6.0.0"
+CANDIDATE_GENERATION_PROMPT_VERSION = "7.0.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,9 +60,9 @@ class CandidateDraft:
 
     sample_id: str
     scenario_id: str
-    query_vi: str
-    reference_answer_vi: str
-    reasoning_vi: str
+    query: str
+    reference_answer: str
+    reasoning: str
     required_claims: tuple[RequiredClaim, ...]
     gold_chunk_ids: tuple[str, ...]
     query_form: str
@@ -85,9 +85,9 @@ class CandidateDraft:
             "scenario_id": self.scenario_id,
             "bundle_kind": self.bundle_kind,
             "bridge": self.bridge,
-            "query_vi": self.query_vi,
-            "reference_answer_vi": self.reference_answer_vi,
-            "reasoning_vi": self.reasoning_vi,
+            "query": self.query,
+            "reference_answer": self.reference_answer,
+            "reasoning": self.reasoning,
             "required_claims": [claim.to_dict() for claim in self.required_claims],
             "gold_chunk_ids": list(self.gold_chunk_ids),
             "query_form": self.query_form,
@@ -273,9 +273,9 @@ def _candidate_from_generated(
             scenario_id=scenario.scenario_id,
             bundle_kind=scenario.bundle_kind,
             bridge=scenario.bridge,
-            query_vi=raw.query_vi,
-            reference_answer_vi=raw.reference_answer_vi,
-            reasoning_vi=raw.reasoning_vi,
+            query=raw.query,
+            reference_answer=raw.reference_answer,
+            reasoning=raw.reasoning,
             required_claims=required_claims,
             gold_chunk_ids=scenario.gold_chunk_ids,
             query_form=scenario.query_form,
@@ -295,9 +295,9 @@ def _with_identity(draft: CandidateDraft) -> CandidateDraft:
     sample_id = sha256_json(
         {
             "scenario_id": draft.scenario_id,
-            "query_vi": draft.query_vi,
-            "reference_answer_vi": draft.reference_answer_vi,
-            "reasoning_vi": draft.reasoning_vi,
+            "query": draft.query,
+            "reference_answer": draft.reference_answer,
+            "reasoning": draft.reasoning,
             "required_claims": [claim.to_dict() for claim in draft.required_claims],
         }
     )

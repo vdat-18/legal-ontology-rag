@@ -19,9 +19,9 @@ def _candidate() -> CandidateDraft:
     return CandidateDraft(
         sample_id="sample-1",
         scenario_id="scenario-1",
-        query_vi="Xe máy vượt đèn đỏ bị phạt bao nhiêu?",
-        reference_answer_vi="Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.",
-        reasoning_vi="Áp dụng mức phạt tại Điều 7.",
+        query="Xe máy vượt đèn đỏ bị phạt bao nhiêu?",
+        reference_answer="Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.",
+        reasoning="Áp dụng mức phạt tại Điều 7.",
         required_claims=(),
         gold_chunk_ids=("chunk-1",),
         query_form="specific",
@@ -51,5 +51,5 @@ def test_groundtruth_export_cli_writes_evaluation_ready_jsonl(monkeypatch: pytes
 
     samples = load_jsonl_samples(output_path)
     assert len(samples) == 1
-    assert samples[0].question == _candidate().query_vi
+    assert samples[0].question == _candidate().query
     assert f'"schema_version":"{GROUND_TRUTH_EXPORT_SCHEMA_VERSION}"' in output_path.read_text(encoding="utf-8")

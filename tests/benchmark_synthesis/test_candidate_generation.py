@@ -83,9 +83,9 @@ def test_generate_candidate_attaches_all_provenance_from_the_claimed_fact() -> N
     """Claim provenance comes from the persisted fact rather than model-generated chunk IDs."""
     fact = _fact()
     generated = BamlGeneratedCandidate(
-        query_vi="oto vuot den do bi phat bao nhieu",
-        reference_answer_vi="Phạt tiền 4.000.000 đồng và trừ 4 điểm.",
-        reasoning_vi="Fact xác định mức phạt và số điểm bị trừ.",
+        query="oto vuot den do bi phat bao nhieu",
+        reference_answer="Phạt tiền 4.000.000 đồng và trừ 4 điểm.",
+        reasoning="Fact xác định mức phạt và số điểm bị trừ.",
         required_claims=[BamlClaimReference(claim="Mức phạt tiền áp dụng", fact_id="fact-1")],
     )
 
@@ -103,7 +103,7 @@ def test_generate_candidate_attaches_all_provenance_from_the_claimed_fact() -> N
 def test_generate_candidate_carries_declared_scenario_labels_unchanged() -> None:
     """Scenario labels pass through to the draft exactly as declared."""
     fact = _fact()
-    generated = BamlGeneratedCandidate(query_vi="q", reference_answer_vi="a", reasoning_vi="r", required_claims=[])
+    generated = BamlGeneratedCandidate(query="q", reference_answer="a", reasoning="r", required_claims=[])
     scenario = _scenario()
 
     candidate = generate_candidate(
@@ -123,7 +123,7 @@ def test_generate_candidate_carries_declared_scenario_labels_unchanged() -> None
 def test_generate_candidate_sample_id_is_deterministic() -> None:
     """Two identical generation results produce the same sample_id."""
     fact = _fact()
-    generated = BamlGeneratedCandidate(query_vi="q", reference_answer_vi="a", reasoning_vi="r", required_claims=[])
+    generated = BamlGeneratedCandidate(query="q", reference_answer="a", reasoning="r", required_claims=[])
     client = _FakeGenerationClient(generated)
 
     first = generate_candidate(_scenario(), {"fact-1": fact}, "Tài xế cá nhân", client, generator_model="m")
@@ -170,7 +170,7 @@ def test_baml_candidate_generation_client_parses_typed_result(monkeypatch: pytes
         candidate_generation,
         "execute_baml_request",
         lambda *args, **kwargs: (
-            '[{"task_id":"single","candidate":{"query_vi":"q","reference_answer_vi":"a","reasoning_vi":"r",'
+            '[{"task_id":"single","candidate":{"query":"q","reference_answer":"a","reasoning":"r",'
             '"required_claims":[{"claim":"c","fact_id":"fact-1"}]}}]'
         ),
     )
@@ -194,5 +194,5 @@ def test_baml_candidate_generation_client_parses_typed_result(monkeypatch: pytes
         1,
     )
 
-    assert result.query_vi == "q"
+    assert result.query == "q"
     assert result.required_claims[0].fact_id == "fact-1"

@@ -280,9 +280,9 @@ def _parse_candidate_draft(payload: dict[str, object]) -> CandidateDraft:
         scenario_id=payload["scenario_id"],
         bundle_kind=payload["bundle_kind"],
         bridge=payload["bridge"],
-        query_vi=payload["query_vi"],
-        reference_answer_vi=payload["reference_answer_vi"],
-        reasoning_vi=payload["reasoning_vi"],
+        query=payload["query"],
+        reference_answer=payload["reference_answer"],
+        reasoning=payload["reasoning"],
         required_claims=tuple(
             RequiredClaim(
                 claim=claim["claim"],

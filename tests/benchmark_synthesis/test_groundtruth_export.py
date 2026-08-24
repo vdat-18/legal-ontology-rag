@@ -16,9 +16,9 @@ def _candidate() -> CandidateDraft:
     return CandidateDraft(
         sample_id="sample-1",
         scenario_id="scenario-1",
-        query_vi="Xe máy vượt đèn đỏ bị phạt bao nhiêu?",
-        reference_answer_vi="Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.",
-        reasoning_vi="Áp dụng mức phạt tại Điều 7.",
+        query="Xe máy vượt đèn đỏ bị phạt bao nhiêu?",
+        reference_answer="Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.",
+        reasoning="Áp dụng mức phạt tại Điều 7.",
         required_claims=(
             RequiredClaim(
                 claim="Mức phạt tiền",
@@ -47,8 +47,8 @@ def test_export_ground_truth_maps_evaluation_fields_and_preserves_metadata() -> 
     sample = EvaluationSample.from_mapping(record)
 
     assert sample == EvaluationSample(
-        question=candidate.query_vi,
-        expected_answer=candidate.reference_answer_vi,
+        question=candidate.query,
+        expected_answer=candidate.reference_answer,
         expected_chunk_ids=candidate.gold_chunk_ids,
     )
     assert record["question_id"] == candidate.sample_id

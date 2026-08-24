@@ -12,9 +12,9 @@ class ClaimReference {
 }
 
 class GeneratedSingleTurnCandidate {
-  query_vi string @description(#"Câu hỏi tiếng Việt tự nhiên, đúng phong cách được yêu cầu."#)
-  reference_answer_vi string
-  reasoning_vi string @description(#"Chuỗi lập luận nối evidence tới đáp án, bằng tiếng Việt."#)
+  query string @description(#"Câu hỏi tự nhiên, đúng phong cách được yêu cầu."#)
+  reference_answer string
+  reasoning string @description(#"Chuỗi lập luận nối evidence tới đáp án."#)
   required_claims ClaimReference[] @description(#"Ít nhất một phần tử. Mỗi ý bắt buộc trong đáp án phải có một claim."#)
 }
 
@@ -73,7 +73,7 @@ function GenerateSingleTurnCandidateBatch(
       không xác định; đáp án nêu phần kết luận có căn cứ và phần chưa thể kết
       luận, không tự điền dữ kiện thiếu.
 
-    query_vi:
+    query:
     - Viết như người hỏi thật theo persona, không dùng thuật ngữ nội bộ, không
       lộ đáp án. Chỉ luật sư hoặc cán bộ xử phạt mới nên hỏi bằng số điều khoản
       khi số đó có trong facts.
@@ -104,9 +104,9 @@ function GenerateSingleTurnCandidateBatch(
     {% endif %}
 
     Đáp án, lập luận và claims:
-    - reference_answer_vi trả lời trực tiếp, đủ điều kiện/ngoại lệ và hệ quả
+    - reference_answer trả lời trực tiếp, đủ điều kiện/ngoại lệ và hệ quả
       cần thiết; dùng tiếng Việt chuẩn dù query có lỗi hoặc không dấu.
-    - reasoning_vi giải thích ngắn cách facts dẫn tới đáp án, theo đúng thứ tự
+    - reasoning giải thích ngắn cách facts dẫn tới đáp án, theo đúng thứ tự
       suy luận; không bịa citation và không nói "dữ liệu được cung cấp".
     - Mỗi required claim là một ý bắt buộc trong đáp án, trỏ đúng fact_id và
       được code gắn provenance từ evidence của fact đó. Không tạo claim cho

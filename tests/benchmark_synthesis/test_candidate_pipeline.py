@@ -61,9 +61,9 @@ def _context(generation_client: object) -> CandidatePipelineContext:
 def _generated() -> BamlGeneratedCandidate:
     """Build one fixed generated candidate."""
     return BamlGeneratedCandidate(
-        query_vi="q",
-        reference_answer_vi="a",
-        reasoning_vi="r",
+        query="q",
+        reference_answer="a",
+        reasoning="r",
         required_claims=[BamlClaimReference(claim="c", fact_id="fact-1")],
     )
 
@@ -87,9 +87,9 @@ def _draft(scenario_id: str) -> CandidateDraft:
     return CandidateDraft(
         sample_id=f"sample-{scenario_id}",
         scenario_id=scenario_id,
-        query_vi="already done",
-        reference_answer_vi="a",
-        reasoning_vi="r",
+        query="already done",
+        reference_answer="a",
+        reasoning="r",
         required_claims=(),
         gold_chunk_ids=("chunk-1",),
         query_form="specific",
@@ -128,7 +128,7 @@ def test_generate_candidates_skips_already_completed_tasks() -> None:
 
     assert failures == ()
     assert calls == ["generate"]
-    assert progress_by_task_id["scenario-1:0"].draft.query_vi == "already done"
+    assert progress_by_task_id["scenario-1:0"].draft.query == "already done"
     assert progress_by_task_id["scenario-2:0"].completed is True
 
 

@@ -167,9 +167,9 @@ def _candidate_draft() -> CandidateDraft:
     return CandidateDraft(
         sample_id="sample-1",
         scenario_id="scenario-1",
-        query_vi="oto vuot den do bi phat bao nhieu",
-        reference_answer_vi="Phạt tiền 4.000.000 đồng.",
-        reasoning_vi="Theo Điều 6.",
+        query="oto vuot den do bi phat bao nhieu",
+        reference_answer="Phạt tiền 4.000.000 đồng.",
+        reasoning="Theo Điều 6.",
         required_claims=(
             RequiredClaim(
                 claim="Mức phạt tiền áp dụng",
