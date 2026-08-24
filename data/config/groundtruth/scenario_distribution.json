@@ -1,12 +1,12 @@
 {
   "schema_version": "2.0.0",
-  "query_styles": ["standard", "no_diacritics", "misspelled", "keyword_style"],
+  "query_styles": ["standard", "conversational", "polite", "formal", "no_diacritics", "misspelled", "keyword_style"],
   "query_lengths": ["short", "medium", "long"],
   "query_forms": ["specific", "abstract"],
   "bundle_answerability_values": ["answerable", "partially_answerable"],
   "bundle_kind_weights": {
-    "single_hop": 0.4,
-    "multi_hop": 0.4,
-    "temporal": 0.2
+    "single_hop": 1.0,
+    "multi_hop": 1.0,
+    "temporal": 1.0
   }
 }

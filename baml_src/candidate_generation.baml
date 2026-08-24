@@ -91,7 +91,16 @@ function GenerateSingleTurnCandidateBatch(
       nhưng vẫn là một câu hỏi gọn.
     - Tuân thủ chính xác style:
     {% if item.query_style == "standard" %}
-      standard: tiếng Việt đủ dấu, đúng chính tả, câu hoàn chỉnh có dấu hỏi.
+      standard: hỏi trực tiếp, tiếng Việt đủ dấu, đúng chính tả và có dấu hỏi.
+    {% elif item.query_style == "conversational" %}
+      conversational: giọng hội thoại tự nhiên, có thể xưng tôi/em/mình và kể
+      tình huống ngắn như khi hỏi trên diễn đàn hoặc ứng dụng nhắn tin.
+    {% elif item.query_style == "polite" %}
+      polite: lịch sự, tự nhiên, có thể mở đầu bằng cho hỏi, xin hỏi hoặc kết
+      thúc bằng mong được giải đáp; không viết thành công văn.
+    {% elif item.query_style == "formal" %}
+      formal: trang trọng, chính xác, trung tính như câu hỏi nghiệp vụ hoặc tư
+      vấn pháp lý; chỉ dùng thuật ngữ và căn cứ có trong facts.
     {% elif item.query_style == "no_diacritics" %}
       no_diacritics: query hoàn toàn không dấu, không thêm lỗi chính tả.
     {% elif item.query_style == "misspelled" %}

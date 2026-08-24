@@ -1,10 +1,16 @@
 {
   "schema_version": "2.0.0",
   "personas": [
-    { "id": "tai_xe_ca_nhan", "description_vi": "Tài xế cá nhân hỏi ngắn gọn về tình huống thực tế của mình" },
-    { "id": "chu_doanh_nghiep_van_tai", "description_vi": "Chủ doanh nghiệp vận tải quan tâm nghĩa vụ, rủi ro và cách áp dụng cho hoạt động vận tải" },
-    { "id": "can_bo_xu_phat", "description_vi": "Cán bộ xử phạt hỏi chính xác về căn cứ, thẩm quyền và thủ tục nghiệp vụ" },
-    { "id": "luat_su", "description_vi": "Luật sư hỏi chặt chẽ về điều kiện, ngoại lệ, hiệu lực và lập luận pháp lý" },
-    { "id": "nguoi_hoc_lai", "description_vi": "Người học lái hỏi đơn giản để hiểu quy tắc và hậu quả vi phạm" }
+    { "id": "tai_xe_ca_nhan", "description_vi": "Người đi xe máy hoặc ô tô cá nhân kể tình huống của mình và muốn biết có vi phạm, bị xử lý thế nào" },
+    { "id": "tai_xe_kinh_doanh_van_tai", "description_vi": "Tài xế xe tải, xe khách hoặc taxi hỏi thực tế về trách nhiệm và hậu quả khi đang làm việc" },
+    { "id": "tai_xe_cong_nghe_giao_hang", "description_vi": "Tài xế công nghệ hoặc người giao hàng hỏi nhanh, gần gũi về lỗi gặp trong quá trình chạy xe" },
+    { "id": "chu_xe_cho_muon_cho_thue", "description_vi": "Chủ xe đã cho mượn, cho thuê hoặc giao xe cho người khác hỏi ai chịu trách nhiệm và phải xử lý ra sao" },
+    { "id": "chu_doanh_nghiep_van_tai", "description_vi": "Chủ doanh nghiệp hoặc người quản lý đội xe quan tâm nghĩa vụ của đơn vị, tài xế và rủi ro vận hành" },
+    { "id": "phu_huynh_nguoi_giam_ho", "description_vi": "Phụ huynh hoặc người giám hộ hỏi dễ hiểu về vi phạm của con hoặc người chưa thành niên" },
+    { "id": "nguoi_hoc_lai", "description_vi": "Người đang học lái hoặc mới có giấy phép hỏi đơn giản để hiểu quy tắc, điều kiện và hậu quả vi phạm" },
+    { "id": "nguoi_xu_ly_phat_nguoi", "description_vi": "Người nhận thông báo hoặc tra cứu phạt nguội hỏi về trách nhiệm, thủ tục và cách áp dụng cho trường hợp của mình" },
+    { "id": "nguoi_dan_phan_anh_vi_pham", "description_vi": "Người dân chứng kiến hoặc bị ảnh hưởng bởi hành vi giao thông hỏi hành vi đó có vi phạm và được xử lý thế nào" },
+    { "id": "can_bo_xu_phat", "description_vi": "Cán bộ xử phạt hỏi chính xác, trung tính về căn cứ, thẩm quyền, điều kiện và thủ tục nghiệp vụ" },
+    { "id": "luat_su", "description_vi": "Luật sư hoặc người tư vấn hỏi chặt chẽ về phạm vi áp dụng, ngoại lệ, hiệu lực và lập luận pháp lý" }
   ]
 }

@@ -244,6 +244,13 @@ Code chỉ cân bằng các trục cấu hình không mang quyết định pháp
 - answerability;
 - single-hop, multi-hop hoặc temporal.
 
+Persona bao phủ người lái xe cá nhân và chuyên nghiệp, tài xế công nghệ,
+chủ xe, doanh nghiệp vận tải, phụ huynh, người học lái, người xử lý phạt
+nguội, người dân phản ánh vi phạm, cán bộ và luật sư. Query style bao gồm hỏi
+trực tiếp, hội thoại, lịch sự, trang trọng, không dấu, lỗi gõ và từ khóa. Các
+giá trị trong từng trục được luân phiên cân bằng; ba bundle kind có trọng số
+bằng nhau khi đều có dữ liệu.
+
 Code không quyết định statement phải sinh loại câu hỏi nào. Mục tiêu câu hỏi
 được LLM chọn trực tiếp trong Step 6 từ các facts của bundle.
 

@@ -59,7 +59,7 @@ def _config(
             query_lengths=query_lengths,
             query_forms=query_forms,
             bundle_answerability_values=("answerable", "partially_answerable"),
-            bundle_kind_weights=(("single_hop", 0.4), ("multi_hop", 0.4), ("temporal", 0.2)),
+            bundle_kind_weights=(("single_hop", 1.0), ("multi_hop", 1.0), ("temporal", 1.0)),
         ),
     )
 
@@ -80,6 +80,8 @@ def test_load_personas_reads_repo_config() -> None:
     personas = load_personas(_REPO_CONFIG_DIR / "personas.json")
 
     assert "tai_xe_ca_nhan" in personas.persona_ids
+    assert "chu_xe_cho_muon_cho_thue" in personas.persona_ids
+    assert "nguoi_xu_ly_phat_nguoi" in personas.persona_ids
 
 
 def test_load_scenario_distribution_reads_repo_config() -> None:
@@ -87,8 +89,9 @@ def test_load_scenario_distribution_reads_repo_config() -> None:
     distribution = load_scenario_distribution(_REPO_CONFIG_DIR / "scenario_distribution.json")
 
     assert "no_diacritics" in distribution.query_styles
+    assert {"conversational", "polite", "formal"} <= set(distribution.query_styles)
     assert distribution.bundle_answerability_values == ("answerable", "partially_answerable")
-    assert dict(distribution.bundle_kind_weights) == {"single_hop": 0.4, "multi_hop": 0.4, "temporal": 0.2}
+    assert dict(distribution.bundle_kind_weights) == {"single_hop": 1.0, "multi_hop": 1.0, "temporal": 1.0}
 
 
 def test_load_evolution_config_reads_repo_config() -> None:
@@ -103,7 +106,7 @@ def test_load_persona_descriptions_reads_repo_config() -> None:
     """Every persona ID in the repo config maps to a non-empty description."""
     descriptions = load_persona_descriptions(_REPO_CONFIG_DIR / "personas.json")
 
-    assert descriptions["tai_xe_ca_nhan"] == "Tài xế cá nhân hỏi ngắn gọn về tình huống thực tế của mình"
+    assert descriptions["tai_xe_ca_nhan"].startswith("Người đi xe máy hoặc ô tô cá nhân")
 
 
 def test_sample_scenarios_returns_empty_for_no_bundles() -> None:
@@ -162,6 +165,16 @@ def test_sample_scenarios_prioritizes_unused_persona_bundle_pairing() -> None:
     bundle = _bundle("bundle-a", ("a",))
 
     scenarios = _sample_scenarios([bundle], facts_by_id, _config(), total_samples=2)
+
+    assert {scenario.persona for scenario in scenarios} == {"tai_xe_ca_nhan", "luat_su"}
+
+
+def test_sample_scenarios_balances_personas_across_bundles() -> None:
+    """Distinct bundles do not repeatedly receive the first configured persona."""
+    facts_by_id = {fact_id: _fact(fact_id) for fact_id in ("a", "b")}
+    bundles = [_bundle("bundle-a", ("a",)), _bundle("bundle-b", ("b",))]
+
+    scenarios = _sample_scenarios(bundles, facts_by_id, _config(), total_samples=2)
 
     assert {scenario.persona for scenario in scenarios} == {"tai_xe_ca_nhan", "luat_su"}
 

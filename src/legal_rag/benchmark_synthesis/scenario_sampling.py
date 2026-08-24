@@ -143,6 +143,7 @@ def sample_scenarios(
 
     used_persona_bundle_pairs: set[tuple[str, str]] = set()
     usage_counts: dict[str, Counter[str]] = {
+        "persona": Counter(),
         "query_style": Counter(),
         "query_length": Counter(),
         "query_form": Counter(),
@@ -180,7 +181,12 @@ def sample_scenarios(
         attempt_index = bundle_attempts[bundle.bundle_id]
         bundle_attempts[bundle.bundle_id] += 1
 
-        persona = _pick_persona(config.personas.persona_ids, bundle.bundle_id, used_persona_bundle_pairs, attempt_index)
+        persona = _pick_persona(
+            config.personas.persona_ids,
+            bundle.bundle_id,
+            used_persona_bundle_pairs,
+            usage_counts["persona"],
+        )
         query_style = _pick_least_used(config.distribution.query_styles, usage_counts["query_style"])
         query_length = _pick_least_used(config.distribution.query_lengths, usage_counts["query_length"])
         query_form = _pick_least_used(config.distribution.query_forms, usage_counts["query_form"])
@@ -188,6 +194,7 @@ def sample_scenarios(
 
         used_persona_bundle_pairs.add((persona, bundle.bundle_id))
         kind_usage[bundle_kind] += 1
+        usage_counts["persona"][persona] += 1
         usage_counts["query_style"][query_style] += 1
         usage_counts["query_length"][query_length] += 1
         usage_counts["query_form"][query_form] += 1
@@ -229,13 +236,11 @@ def _pick_persona(
     persona_ids: Sequence[str],
     bundle_id: str,
     used_pairs: set[tuple[str, str]],
-    attempt_index: int,
+    counts: Counter[str],
 ) -> str:
-    """Pick a persona not yet paired with this bundle, cycling once exhausted."""
-    for persona_id in persona_ids:
-        if (persona_id, bundle_id) not in used_pairs:
-            return persona_id
-    return persona_ids[attempt_index % len(persona_ids)]
+    """Pick the least-used persona not yet paired with this bundle."""
+    unused = tuple(persona_id for persona_id in persona_ids if (persona_id, bundle_id) not in used_pairs)
+    return _pick_least_used(unused or persona_ids, counts)
 
 
 def _pick_least_used(values: Sequence[str], counts: Counter[str]) -> str:
