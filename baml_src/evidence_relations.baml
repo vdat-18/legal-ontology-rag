@@ -13,18 +13,13 @@ class LegalFactSummary {
 
 class ConfirmedRelation {
   is_related bool @description(#"
-    True nếu hai fact thực sự có quan hệ pháp lý hoặc nghiệp vụ trực tiếp.
-    False nếu chỉ giống nhau bề mặt, cùng chủ đề chung chung, hoặc không có
-    căn cứ rõ ràng để nối chúng lại.
+    True chỉ khi một câu hỏi grounded hữu ích thực sự cần cả hai fact.
   "#)
   bundle_kind RelationBundleKind? @description(#"
-    MultiHop nếu hai fact bổ sung nhau cho cùng một câu hỏi. Temporal nếu hai
-    fact thể hiện thay đổi quy định hoặc hai chế độ hiệu lực cần phân biệt
-    theo thời gian. Null khi is_related=false.
+    Hình dạng evidence: MultiHop hoặc Temporal; null khi is_related=false.
   "#)
   bridge string? @description(#"
-    Một cụm ngắn mô tả chính xác nội dung thực sự nối hai fact. Null khi
-    is_related=false.
+    Cụm ngắn mô tả nội dung nối hai fact; null khi is_related=false.
   "#)
 }
 
@@ -42,28 +37,37 @@ class EvidenceRelationBatchResult {
 function ConfirmEvidenceRelationBatch(items: EvidenceRelationBatchItem[]) -> EvidenceRelationBatchResult[] {
   client OpenAICompatibleProvider
   prompt #"
+    {{ _.role("system") }}
+
+    Bối cảnh: chuẩn bị evidence bundle cho benchmark RAG hỏi đáp về
+    xử lý vi phạm giao thông đường bộ tại Việt Nam. Retrieval đã
+    chỉ đề xuất các pair có khả năng liên quan; bạn đưa ra quyết định
+    ngữ nghĩa cuối cùng cho từng pair, độc lập.
+
+    Input: statement là nguồn sự thật pháp lý. document_number, valid_from
+    và valid_to chỉ là metadata hỗ trợ. Không dùng kiến thức bên ngoài.
+
+    Đặt is_related=true chỉ khi có một câu hỏi pháp lý tự nhiên, hữu
+    ích và grounded mà câu trả lời thực sự cần nội dung của cả hai
+    fact. Không xác nhận khi một fact đã đủ; hai fact lặp lại, chỉ
+    giống bề mặt/cùng chủ đề, hoặc chỉ có thể ghép thành hai câu hỏi
+    độc lập.
+
+    Khi related, bundle_kind chỉ mô tả hình dạng evidence, không phải
+    taxonomy quan hệ pháp lý:
+    - MultiHop: hai fact bổ sung nhau cho cùng một vấn đề không chủ yếu
+      là phân biệt theo thời gian.
+    - Temporal: hai fact cùng một vấn đề pháp lý nhưng cần phân biệt
+      do thay đổi quy định hoặc phạm vi hiệu lực theo thời gian. Chỉ khác
+      văn bản hay mốc thời gian chưa đủ để xác nhận.
+
+    bridge là một cụm ngắn, cụ thể và có căn cứ trong input, nêu
+    nội dung thực sự nối hai fact; không chỉ ghi ID, số Điều hay chủ đề
+    chung. Khi is_related=false, trả bundle_kind=null và bridge=null.
+
+    Trả đúng một kết quả cho mỗi input và giữ nguyên pair_id.
+
     {{ _.role("user") }}
-
-    Nhiệm vụ: xác nhận quan hệ trực tiếp giữa các legal fact hoàn chỉnh trong
-    domain xử lý vi phạm giao thông đường bộ. Xử lý độc lập từng pair và giữ
-    nguyên pair_id.
-
-    Chỉ đặt is_related=true khi kết hợp hai statement tạo ra một liên hệ pháp
-    lý hữu ích và thực sự cần cả hai fact để tạo một câu hỏi đúng grounded.
-
-    Khi related, chọn bundle_kind:
-    - MultiHop: hai fact bổ sung trực tiếp cho cùng tình huống, như quy tắc với
-      điều kiện, ngoại lệ, thẩm quyền, bước thủ tục, chế tài hoặc hệ quả khác.
-    - Temporal: hai fact thể hiện quy định thay đổi, thay thế hoặc các chế độ
-      hiệu lực khác nhau cần phân biệt theo thời gian.
-
-    Không xác nhận nếu hai fact chỉ trùng từ, cùng loại phương tiện, cùng văn
-    bản/chủ đề, diễn đạt lặp lại, hoặc một fact đã đủ cho câu hỏi. Metadata
-    thời gian chỉ hỗ trợ, không tự chứng minh quan hệ temporal.
-
-    Khi related: bridge là một cụm ngắn nêu đúng hành vi, tình huống, thủ tục
-    hoặc thay đổi nối hai fact, không chỉ ghi số Điều. Khi không related:
-    bundle_kind=null và bridge=null.
 
     Các cặp cần xác nhận:
 
