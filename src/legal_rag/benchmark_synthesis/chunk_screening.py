@@ -26,7 +26,7 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
 CHUNK_SCREENING_SCHEMA_VERSION = "2.0.0"
-CHUNK_SCREENING_PROMPT_VERSION = "5.0.0"
+CHUNK_SCREENING_PROMPT_VERSION = "5.1.0"
 
 
 @dataclass(frozen=True, slots=True)
