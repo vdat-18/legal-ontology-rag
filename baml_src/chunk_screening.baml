@@ -11,6 +11,9 @@ class ChunkScreeningResult {
   has_penalty_content bool @description(#"
     True nếu target có fact trực tiếp giúp xác định hoặc xử lý vi phạm trong domain.
   "#)
+  has_document_metadata bool @description(#"
+    True nếu target nêu rõ số hiệu, ngày có hiệu lực hoặc ngày hết hiệu lực của chính văn bản đang đọc.
+  "#)
   reason string @description(#"Một câu tiếng Việt ngắn giải thích quyết định."#)
 }
 
@@ -43,7 +46,16 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
 
     Sau khi đã đúng domain, ưu tiên recall cho quy định chưa trọn vẹn do bị
     chia chunk hoặc nằm trong bảng. Mục lục, tiêu đề, lời dẫn, căn cứ ban
-    hành, chữ ký và thông tin hành chính tự chúng không đủ.
+    hành, danh mục hoặc tên biểu mẫu, trường điền thông tin, dòng giao/nhận,
+    ô ký tên và thông tin hành chính tự chúng không đủ. Biểu mẫu chỉ được giữ
+    khi Target chứa nội dung pháp lý cụ thể phải ghi hoặc phải thực hiện,
+    không giữ phần khung trống hay xác nhận thao tác đơn lẻ.
+
+    Đánh giá has_document_metadata độc lập với has_penalty_content. Đặt true
+    chỉ khi Target nêu rõ số hiệu của chính văn bản đang đọc, ngày toàn văn
+    bản bắt đầu có hiệu lực hoặc ngày toàn văn bản hết hiệu lực. Không chọn
+    ngày ký/ban hành, ngày áp dụng riêng, metadata của văn bản được dẫn chiếu
+    hoặc thông tin chỉ nhận diện phụ lục/biểu mẫu.
 
     Chỉ Target text làm căn cứ. Structural context chỉ giúp hiểu cấu trúc,
     không tự tạo nội dung pháp lý. Trả đúng một kết quả cho mỗi input, giữ

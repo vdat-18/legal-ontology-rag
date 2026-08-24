@@ -43,15 +43,16 @@ def main() -> None:
     synthesis_settings = SynthesisSettings.from_path(arguments.synthesis_config)
     chunks = read_chunks(arguments.chunks_path)
 
+    screening_fingerprint = build_chunk_screening_fingerprint(
+        chunks,
+        synthesis_settings,
+        llm_base_url=settings.llm_base_url,
+        llm_model=settings.llm_model,
+    )
     initialize_stage_cache(
         stage_cache_path(arguments.screening_output_path),
         (arguments.screening_output_path,),
-        build_chunk_screening_fingerprint(
-            chunks,
-            synthesis_settings,
-            llm_base_url=settings.llm_base_url,
-            llm_model=settings.llm_model,
-        ),
+        screening_fingerprint,
     )
     initialize_stage_cache(
         stage_cache_path(arguments.metadata_output_path),
@@ -59,6 +60,7 @@ def main() -> None:
         build_document_metadata_fingerprint(
             chunks,
             synthesis_settings,
+            screening_run_id=screening_fingerprint.run_id,
             llm_base_url=settings.llm_base_url,
             llm_model=settings.llm_model,
         ),

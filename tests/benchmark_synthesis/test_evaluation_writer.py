@@ -68,7 +68,12 @@ def test_legal_facts_round_trip_through_jsonl(tmp_path: Path) -> None:
 def test_chunk_screening_round_trips_through_jsonl(tmp_path: Path) -> None:
     """A written chunk-screening record reads back with identical field values."""
     output_path = tmp_path / "chunk_screening.jsonl"
-    record = ChunkScreeningRecord(chunk_id="chunk-1", has_penalty_content=True, reason="Nêu rõ mức phạt tiền.")
+    record = ChunkScreeningRecord(
+        chunk_id="chunk-1",
+        has_penalty_content=True,
+        has_document_metadata=True,
+        reason="Nêu rõ mức phạt tiền.",
+    )
 
     write_chunk_screening(output_path, [record])
     records = read_chunk_screening(output_path)

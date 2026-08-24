@@ -13,13 +13,14 @@ from loguru import logger
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import DocumentMetadata as BamlDocumentMetadata
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
 from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
 DOCUMENT_METADATA_SCHEMA_VERSION = "1.0.0"
-DOCUMENT_METADATA_PROMPT_VERSION = "3.0.0"
+DOCUMENT_METADATA_PROMPT_VERSION = "5.0.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,8 +44,8 @@ class DocumentMetadataRecord:
 class DocumentMetadataClient(Protocol):
     """Boundary implemented by a document-metadata language-model client."""
 
-    def resolve(self, opening_sections: Sequence[str], closing_sections: Sequence[str]) -> BamlDocumentMetadata:
-        """Return one document's number and effective dates from its opening and closing text."""
+    def resolve(self, metadata_sections: Sequence[str]) -> BamlDocumentMetadata:
+        """Return one document's number and effective dates from selected source text."""
 
 
 class BamlDocumentMetadataClient:
@@ -65,10 +66,10 @@ class BamlDocumentMetadataClient:
         self._timeout_seconds = settings.llm_timeout_seconds
         self._max_response_bytes = synthesis_settings.max_response_bytes
 
-    def resolve(self, opening_sections: Sequence[str], closing_sections: Sequence[str]) -> BamlDocumentMetadata:
+    def resolve(self, metadata_sections: Sequence[str]) -> BamlDocumentMetadata:
         """Run one bounded BAML call and return the typed document metadata."""
         request = b.request.ResolveDocumentMetadata(
-            list(opening_sections), list(closing_sections), baml_options={"client_registry": self._registry}
+            list(metadata_sections), baml_options={"client_registry": self._registry}
         )
         raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
         return b.parse.ResolveDocumentMetadata(raw_output, baml_options={"client_registry": self._registry})
@@ -76,30 +77,24 @@ class BamlDocumentMetadataClient:
 
 def resolve_document_metadata(
     chunks: Sequence[Chunk],
+    screening_records: Sequence[ChunkScreeningRecord],
     client: DocumentMetadataClient,
     *,
-    opening_chunk_count: int,
-    closing_chunk_count: int,
     max_retries: int,
     retry_delay_seconds: float,
 ) -> DocumentMetadataRecord:
-    """Resolve one document's metadata from the opening and closing chunks of its main body."""
+    """Resolve metadata only from model-selected root chunks."""
     body_chunks = sorted(
         (chunk for chunk in chunks if chunk.record_scope == "root"),
         key=lambda chunk: (chunk.chunk_index, chunk.chunk_id),
     )
-    body = [chunk.text for chunk in body_chunks]
     source_key = chunks[0].source_sha256 if chunks else "empty-document"
-    opening_sections = body[:opening_chunk_count]
-    closing_sections = body[-closing_chunk_count:]
-    logger.info(
-        "Document metadata started: opening_chunks={}, closing_chunks={}",
-        len(opening_sections),
-        len(closing_sections),
-    )
+    metadata_chunk_ids = {record.chunk_id for record in screening_records if record.has_document_metadata}
+    metadata_sections = [chunk.text for chunk in body_chunks if chunk.chunk_id in metadata_chunk_ids]
+    logger.info("Document metadata started: metadata_chunks={}", len(metadata_sections))
 
     def _resolve() -> DocumentMetadataRecord:
-        resolved = client.resolve(opening_sections, closing_sections)
+        resolved = client.resolve(metadata_sections)
         return DocumentMetadataRecord(
             document_number=resolved.document_number,
             valid_from=date.fromisoformat(resolved.valid_from) if resolved.valid_from else None,

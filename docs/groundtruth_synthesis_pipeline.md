@@ -73,6 +73,8 @@ ngữ nghĩa của LLM, không phải keyword rule. Model chỉ giữ nội dung
 giúp xác định hành vi/tình huống vi phạm, phạm vi áp dụng hoặc cách phát hiện,
 ngăn chặn và xử lý. Nội dung quản lý giao thông nói chung hoặc thủ tục hành
 chính độc lập không đủ; recall chỉ được ưu tiên sau khi vượt qua boundary này.
+Danh mục/tên biểu mẫu, trường điền, dòng giao nhận và ô ký không phải legal
+fact nếu target không chứa nghĩa vụ hoặc hướng dẫn pháp lý cụ thể.
 Runtime log hiển thị tổng batch, `batch_size`, `max_concurrency`, thời điểm
 mỗi batch bắt đầu và tiến độ sau khi batch đã checkpoint thành công.
 Mỗi response checkpoint ngay các verdict có `chunk_id` khớp duy nhất, theo
@@ -83,7 +85,9 @@ mọi chunk gốc vẫn có thể được dùng làm context liền kề cho m�
 
 ### Output
 
-`*.chunk_screening.jsonl`, với quyết định và lý do của model cho từng chunk.
+`*.chunk_screening.jsonl`, với quyết định domain, cờ metadata cấp văn bản và
+lý do của model cho từng chunk. Cờ metadata chỉ định source text cho Step 1B;
+code không tìm ngày hoặc số hiệu bằng regex/keyword.
 
 ## 1B. Lấy metadata cấp văn bản
 
@@ -95,19 +99,15 @@ Các chunk có `record_scope == "root"`, được sắp theo:
 (chunk_index, chunk_id)
 ```
 
-Sau đó code lấy đúng thứ tự:
-
-- 10 chunk đầu của thân văn bản;
-- 10 chunk cuối của thân văn bản.
-
-Các số lượng này nằm trong typed config, không hardcode trong logic:
-`stages.document_metadata.opening_chunk_count` và
-`stages.document_metadata.closing_chunk_count`.
+Sau đó code chỉ lấy các chunk được Step 1A đánh dấu
+`has_document_metadata=true`, giữ đúng thứ tự tài liệu. Không có cửa sổ
+đầu/cuối hoặc fallback semantic trong code.
 
 ### Xử lý
 
-LLM đọc hai nhóm chunk để xác định metadata của chính văn bản đang xử lý,
-không lấy metadata của văn bản được dẫn chiếu:
+LLM chỉ đọc các đoạn metadata đã được chọn trên toàn văn để xác định metadata
+của chính văn bản đang xử lý, không lấy metadata của văn bản được dẫn chiếu.
+Cách này vẫn tìm được điều khoản hiệu lực nằm trước một phụ lục dài:
 
 - `document_number`;
 - `valid_from`;
@@ -383,7 +383,7 @@ fact IDs vẫn được giữ để phân tích theo lát cắt.
   run ID trực tiếp trong cache và progress.
 - Cấu hình synthesis nằm tại
   `data/config/groundtruth/synthesis_v1.json`.
-- Synthesis config hiện dùng schema `4.0.0`; mỗi LLM stage khai báo rõ
+- Synthesis config hiện dùng schema `5.0.0`; mỗi LLM stage khai báo rõ
   `reasoning_effort`, hiện đặt là `medium`.
 - `LegalFact 3.0.0`, `EvidenceRelation 3.0.0` và `Scenario 4.0.0` vẫn dùng lại
   được nếu đã được sinh bởi Steps 1-5 hiện tại.

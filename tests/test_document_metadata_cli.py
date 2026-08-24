@@ -11,8 +11,14 @@ import pytest
 from legal_rag import document_metadata_cli
 from legal_rag.baml_client.types import DocumentMetadata as BamlDocumentMetadata
 from legal_rag.benchmark_synthesis import document_metadata
-from legal_rag.benchmark_synthesis.stage_cache import stage_cache_path
-from legal_rag.benchmark_synthesis.writer import read_document_metadata
+from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
+from legal_rag.benchmark_synthesis.config import SynthesisSettings
+from legal_rag.benchmark_synthesis.stage_cache import (
+    build_chunk_screening_fingerprint,
+    stage_cache_path,
+    write_stage_cache_fingerprint,
+)
+from legal_rag.benchmark_synthesis.writer import read_document_metadata, write_chunk_screening
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
 
@@ -56,7 +62,7 @@ class _FakeMetadataClient:
     def __init__(self, settings: object, synthesis_settings: object) -> None:
         return None
 
-    def resolve(self, opening_sections: object, closing_sections: object) -> BamlDocumentMetadata:
+    def resolve(self, metadata_sections: object) -> BamlDocumentMetadata:
         """Return the document number and effective date of the sampled document."""
         return BamlDocumentMetadata(document_number="168/2024/NĐ-CP", valid_from="2025-01-01", valid_to=None)
 
@@ -64,12 +70,34 @@ class _FakeMetadataClient:
 def test_document_metadata_cli_resolves_and_writes_one_record(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """The command reads a document's chunks and writes exactly one typed metadata record."""
     chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
+    screening_path = tmp_path / "chunk_screening.jsonl"
     metadata_path = tmp_path / "document_metadata.jsonl"
     write_chunks(
         chunks_path,
         (
             _chunk("chunk-1", "CHÍNH PHỦ Số: 168/2024/NĐ-CP"),
             _chunk("chunk-2", "Điều 55. Hiệu lực thi hành."),
+        ),
+    )
+    chunks = (
+        _chunk("chunk-1", "CHÍNH PHỦ Số: 168/2024/NĐ-CP"),
+        _chunk("chunk-2", "Điều 55. Hiệu lực thi hành."),
+    )
+    write_chunk_screening(
+        screening_path,
+        (
+            ChunkScreeningRecord("chunk-1", False, "Document identity.", has_document_metadata=True),
+            ChunkScreeningRecord("chunk-2", True, "Effective date.", has_document_metadata=True),
+        ),
+    )
+    synthesis_settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+    write_stage_cache_fingerprint(
+        stage_cache_path(screening_path),
+        build_chunk_screening_fingerprint(
+            chunks,
+            synthesis_settings,
+            llm_base_url="http://localhost:20128/v1",
+            llm_model="provider/test-model",
         ),
     )
     monkeypatch.setenv("LLM_BASE_URL", "http://localhost:20128/v1")
@@ -83,6 +111,7 @@ def test_document_metadata_cli_resolves_and_writes_one_record(monkeypatch: pytes
         [
             "legal-resolve-document-metadata",
             str(chunks_path),
+            str(screening_path),
             str(metadata_path),
             "--synthesis-config",
             str(_SYNTHESIS_CONFIG_PATH),

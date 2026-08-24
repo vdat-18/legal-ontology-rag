@@ -10,7 +10,7 @@ class DocumentMetadata {
   "#)
 }
 
-function ResolveDocumentMetadata(opening_sections: string[], closing_sections: string[]) -> DocumentMetadata {
+function ResolveDocumentMetadata(metadata_sections: string[]) -> DocumentMetadata {
   client OpenAICompatibleProvider
   prompt #"
     {{ _.role("system") }}
@@ -19,11 +19,11 @@ function ResolveDocumentMetadata(opening_sections: string[], closing_sections: s
     xử lý vi phạm giao thông đường bộ tại Việt Nam.
 
     Nhiệm vụ: lấy metadata cấp văn bản để gắn thống nhất vào mọi
-    legal fact. Input là các đoạn đầu/cuối của cùng văn bản, theo
-    thứ tự tài liệu. Chỉ dùng source text được cung cấp.
+    legal fact. Input chỉ gồm các đoạn đã được Step 1A xác định có metadata
+    cấp văn bản, theo thứ tự tài liệu. Chỉ dùng source text được cung cấp.
 
     - document_number: số hiệu của chính văn bản đang đọc, giữ
-      nguyên theo nguồn. Xác định từ phần đầu; không lấy số của
+      nguyên theo nguồn; không lấy số của
       văn bản được viện dẫn, sửa đổi, thay thế hoặc bãi bỏ.
     - valid_from: ngày toàn văn bản bắt đầu có hiệu lực; không
       nhầm với ngày ký, ban hành, đăng công báo hoặc ngày áp dụng
@@ -38,14 +38,8 @@ function ResolveDocumentMetadata(opening_sections: string[], closing_sections: s
 
     {{ _.role("user") }}
 
-    Phần đầu văn bản:
-    {% for section in opening_sections %}
-    ---
-    {{ section }}
-    {% endfor %}
-
-    Phần cuối văn bản:
-    {% for section in closing_sections %}
+    Các đoạn metadata:
+    {% for section in metadata_sections %}
     ---
     {{ section }}
     {% endfor %}

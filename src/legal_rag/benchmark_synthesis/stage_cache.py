@@ -83,6 +83,7 @@ def build_document_metadata_fingerprint(
     chunks: Sequence[Chunk],
     settings: SynthesisSettings,
     *,
+    screening_run_id: str,
     llm_base_url: str,
     llm_model: str,
 ) -> StageCacheFingerprint:
@@ -94,12 +95,9 @@ def build_document_metadata_fingerprint(
         model=llm_model,
         identity={
             "chunks": [_chunk_identity(chunk, include_context=False) for chunk in root_chunks],
+            "screening_run_id": screening_run_id,
             "llm": {"base_url": llm_base_url, "model": llm_model},
-            "settings": {
-                "opening_chunk_count": settings.document_metadata_opening_chunk_count,
-                "closing_chunk_count": settings.document_metadata_closing_chunk_count,
-                "generation": asdict(settings.document_metadata),
-            },
+            "settings": {"generation": asdict(settings.document_metadata)},
         },
     )
 

@@ -65,6 +65,7 @@ def prepare_chunk_screening(
 
 def prepare_document_metadata(
     chunks: Sequence[Chunk],
+    screening_records: Sequence[ChunkScreeningRecord],
     output_path: Path,
     client_factory: Callable[[], DocumentMetadataClient],
     settings: SynthesisSettings,
@@ -75,9 +76,8 @@ def prepare_document_metadata(
         return read_document_metadata(output_path)
     record = resolve_document_metadata(
         chunks,
+        screening_records,
         client_factory(),
-        opening_chunk_count=settings.document_metadata_opening_chunk_count,
-        closing_chunk_count=settings.document_metadata_closing_chunk_count,
         max_retries=settings.llm_max_retries,
         retry_delay_seconds=settings.llm_retry_delay_seconds,
     )
@@ -107,6 +107,7 @@ def prepare_document_artifacts(
     logger.info("Step 1B document metadata started for {}", source_name)
     metadata = prepare_document_metadata(
         chunks,
+        records,
         metadata_output_path,
         metadata_client_factory,
         settings,

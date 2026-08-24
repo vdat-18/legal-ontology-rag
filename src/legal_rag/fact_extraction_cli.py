@@ -75,6 +75,7 @@ def main() -> None:
         build_document_metadata_fingerprint(
             chunks,
             synthesis_settings,
+            screening_run_id=screening_fingerprint.run_id,
             llm_base_url=settings.llm_base_url,
             llm_model=settings.llm_model,
         ),

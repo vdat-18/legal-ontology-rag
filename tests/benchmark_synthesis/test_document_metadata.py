@@ -1,4 +1,4 @@
-"""Tests for resolving document-level metadata from a document's opening and closing chunks."""
+"""Tests for resolving document-level metadata from model-selected chunks."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ import pytest
 
 from legal_rag.baml_client.types import DocumentMetadata as BamlDocumentMetadata
 from legal_rag.benchmark_synthesis import document_metadata
+from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.document_metadata import (
     BamlDocumentMetadataClient,
@@ -56,13 +57,11 @@ class _RecordingMetadataClient:
 
     def __init__(self, result: BamlDocumentMetadata) -> None:
         self._result = result
-        self.opening_sections: tuple[str, ...] = ()
-        self.closing_sections: tuple[str, ...] = ()
+        self.metadata_sections: tuple[str, ...] = ()
 
-    def resolve(self, opening_sections: Sequence[str], closing_sections: Sequence[str]) -> BamlDocumentMetadata:
-        """Record both section lists and return the configured result."""
-        self.opening_sections = tuple(opening_sections)
-        self.closing_sections = tuple(closing_sections)
+    def resolve(self, metadata_sections: Sequence[str]) -> BamlDocumentMetadata:
+        """Record selected metadata sections and return the configured result."""
+        self.metadata_sections = tuple(metadata_sections)
         return self._result
 
 
@@ -77,6 +76,20 @@ def _baml_metadata(**overrides: object) -> BamlDocumentMetadata:
     return BamlDocumentMetadata(**defaults)
 
 
+def _screening(chunks: Sequence[Chunk], *metadata_chunk_ids: str) -> tuple[ChunkScreeningRecord, ...]:
+    """Build screening records that route selected chunks into metadata resolution."""
+    selected = set(metadata_chunk_ids)
+    return tuple(
+        ChunkScreeningRecord(
+            chunk_id=chunk.chunk_id,
+            has_penalty_content=False,
+            has_document_metadata=chunk.chunk_id in selected,
+            reason="Metadata routing fixture.",
+        )
+        for chunk in chunks
+    )
+
+
 def test_resolve_document_metadata_parses_dates_into_typed_record() -> None:
     """ISO date strings from the model become typed dates, and an absent date stays None."""
     chunks = [_chunk("c1", "Số: 168/2024/NĐ-CP"), _chunk("c2", "Điều 55. Hiệu lực thi hành.")]
@@ -84,9 +97,8 @@ def test_resolve_document_metadata_parses_dates_into_typed_record() -> None:
 
     record = resolve_document_metadata(
         chunks,
+        _screening(chunks, "c1", "c2"),
         client,
-        opening_chunk_count=3,
-        closing_chunk_count=5,
         max_retries=2,
         retry_delay_seconds=0,
     )
@@ -96,26 +108,24 @@ def test_resolve_document_metadata_parses_dates_into_typed_record() -> None:
     assert record.valid_to is None
 
 
-def test_resolve_document_metadata_reads_the_opening_and_closing_of_the_document() -> None:
-    """The opening sections come from the first chunks and the closing sections from the last."""
-    chunks = [_chunk(f"c{index}", f"Đoạn {index}") for index in range(10)]
+def test_resolve_document_metadata_reads_only_selected_chunks_in_document_order() -> None:
+    """Only marked root chunks reach the resolver, regardless of input order."""
+    chunks = [_chunk(f"c{index}", f"Đoạn {index}", chunk_index=index) for index in range(10)]
     client = _RecordingMetadataClient(_baml_metadata())
 
     resolve_document_metadata(
-        chunks,
+        [chunks[8], chunks[1], chunks[6], chunks[3], chunks[0], chunks[9], chunks[4], chunks[2], chunks[7], chunks[5]],
+        _screening(chunks, "c7", "c2", "c4"),
         client,
-        opening_chunk_count=2,
-        closing_chunk_count=3,
-        max_retries=2,
+        max_retries=0,
         retry_delay_seconds=0,
     )
 
-    assert client.opening_sections == ("Đoạn 0", "Đoạn 1")
-    assert client.closing_sections == ("Đoạn 7", "Đoạn 8", "Đoạn 9")
+    assert client.metadata_sections == ("Đoạn 2", "Đoạn 4", "Đoạn 7")
 
 
-def test_resolve_document_metadata_logs_window_and_completion(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Operators can see the metadata reading-window size and completed document identity."""
+def test_resolve_document_metadata_logs_selected_count_and_completion(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Operators can see the selected metadata count and completed document identity."""
     chunks = [_chunk(f"c{index}", f"Đoạn {index}") for index in range(3)]
     client = _RecordingMetadataClient(_baml_metadata())
     messages: list[str] = []
@@ -128,54 +138,33 @@ def test_resolve_document_metadata_logs_window_and_completion(monkeypatch: pytes
 
     resolve_document_metadata(
         chunks,
+        _screening(chunks, "c1"),
         client,
-        opening_chunk_count=2,
-        closing_chunk_count=1,
         max_retries=0,
         retry_delay_seconds=0,
     )
 
     assert messages == [
-        "Document metadata started: opening_chunks=2, closing_chunks=1",
+        "Document metadata started: metadata_chunks=1",
         "Document metadata completed: 168/2024/NĐ-CP",
     ]
 
 
-def test_resolve_document_metadata_orders_root_chunks_by_chunk_index() -> None:
-    """Opening and closing sections follow document order even when input chunks are shuffled."""
-    chunks = [_chunk(f"c{index}", f"Đoạn {index}", chunk_index=index) for index in range(10)]
-    client = _RecordingMetadataClient(_baml_metadata())
-
-    resolve_document_metadata(
-        [chunks[8], chunks[1], chunks[6], chunks[3], chunks[0], chunks[9], chunks[4], chunks[2], chunks[7], chunks[5]],
-        client,
-        opening_chunk_count=5,
-        closing_chunk_count=5,
-        max_retries=2,
-        retry_delay_seconds=0,
-    )
-
-    assert client.opening_sections == tuple(f"Đoạn {index}" for index in range(5))
-    assert client.closing_sections == tuple(f"Đoạn {index}" for index in range(5, 10))
-
-
 def test_resolve_document_metadata_ignores_attachment_chunks() -> None:
-    """Attachment chunks are excluded so the closing sections stay inside the document body."""
+    """Marked attachment chunks do not enter root-document metadata resolution."""
     body = [_chunk("c1", "Số: 168/2024/NĐ-CP"), _chunk("c2", "Điều 55. Hiệu lực thi hành.")]
     attachments = [_chunk(f"a{index}", f"Phụ lục {index}", record_scope="attachment_child") for index in range(5)]
     client = _RecordingMetadataClient(_baml_metadata())
 
     resolve_document_metadata(
         [*body, *attachments],
+        _screening([*body, *attachments], "c2", "a0"),
         client,
-        opening_chunk_count=1,
-        closing_chunk_count=1,
         max_retries=2,
         retry_delay_seconds=0,
     )
 
-    assert client.opening_sections == ("Số: 168/2024/NĐ-CP",)
-    assert client.closing_sections == ("Điều 55. Hiệu lực thi hành.",)
+    assert client.metadata_sections == ("Điều 55. Hiệu lực thi hành.",)
 
 
 def test_resolve_document_metadata_raises_on_a_malformed_date() -> None:
@@ -186,9 +175,8 @@ def test_resolve_document_metadata_raises_on_a_malformed_date() -> None:
     with pytest.raises(LlmTaskExhaustedError, match="document_metadata:source-hash") as exc_info:
         resolve_document_metadata(
             chunks,
+            _screening(chunks),
             client,
-            opening_chunk_count=3,
-            closing_chunk_count=5,
             max_retries=2,
             retry_delay_seconds=0,
         )
@@ -213,7 +201,7 @@ def test_baml_document_metadata_client_parses_typed_result(monkeypatch: pytest.M
         lambda *args, **kwargs: '{"document_number":"336/2025/NĐ-CP","valid_from":"2025-08-01","valid_to":null}',
     )
 
-    resolved = client.resolve(["Số: 336/2025/NĐ-CP"], ["Điều 20. Hiệu lực thi hành."])
+    resolved = client.resolve(["Số: 336/2025/NĐ-CP", "Điều 20. Hiệu lực thi hành."])
 
     assert resolved.document_number == "336/2025/NĐ-CP"
     assert resolved.valid_from == "2025-08-01"

@@ -135,6 +135,7 @@ def _configure_cli(
     metadata_fingerprint = build_document_metadata_fingerprint(
         chunks,
         synthesis_settings,
+        screening_run_id=screening_fingerprint.run_id,
         llm_base_url="http://localhost:20128/v1",
         llm_model="provider/test-model",
     )

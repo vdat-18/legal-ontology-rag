@@ -148,18 +148,20 @@ def test_screening_fingerprint_changes_with_reasoning_effort() -> None:
     assert original.run_id != changed.run_id
 
 
-def test_metadata_fingerprint_changes_with_reading_window_config() -> None:
-    """Metadata artifacts become stale when the configured opening window changes."""
+def test_metadata_fingerprint_changes_with_screening_run() -> None:
+    """Metadata selection becomes stale when upstream screening changes."""
     settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
     original = build_document_metadata_fingerprint(
-        (_chunk(),), settings, llm_base_url="https://llm.test/v1", llm_model="provider/model"
+        (_chunk(),),
+        settings,
+        screening_run_id="screening-a",
+        llm_base_url="https://llm.test/v1",
+        llm_model="provider/model",
     )
     changed = build_document_metadata_fingerprint(
         (_chunk(),),
-        replace(
-            settings,
-            document_metadata_opening_chunk_count=settings.document_metadata_opening_chunk_count + 1,
-        ),
+        settings,
+        screening_run_id="screening-b",
         llm_base_url="https://llm.test/v1",
         llm_model="provider/model",
     )

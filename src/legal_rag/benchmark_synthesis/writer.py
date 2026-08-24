@@ -57,6 +57,7 @@ def read_chunk_screening(input_path: Path) -> tuple[ChunkScreeningRecord, ...]:
                 ChunkScreeningRecord(
                     chunk_id=payload["chunk_id"],
                     has_penalty_content=payload["has_penalty_content"],
+                    has_document_metadata=payload["has_document_metadata"],
                     reason=payload["reason"],
                 )
             )

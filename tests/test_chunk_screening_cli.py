@@ -69,6 +69,7 @@ class _AlternatingScreeningClient:
             ChunkScreeningResult(
                 chunk_id=chunk.chunk_id,
                 has_penalty_content=index == 0,
+                has_document_metadata=False,
                 reason="Contains penalty content." if index == 0 else "Table of contents.",
             )
             for index, chunk in enumerate(chunks)
@@ -115,6 +116,7 @@ def _configure_cli(
 def _serial_screening_config(tmp_path: Path) -> Path:
     """Write a test config that makes interruption ordering deterministic."""
     payload = json.loads(_SYNTHESIS_CONFIG_PATH.read_text(encoding="utf-8"))
+    payload["stages"]["chunk_screening"]["batch_size"] = 50
     payload["stages"]["chunk_screening"]["max_concurrency"] = 1
     output_path = tmp_path / "synthesis.serial-screening.json"
     output_path.write_text(json.dumps(payload), encoding="utf-8")
@@ -159,7 +161,14 @@ def test_chunk_screening_cli_resumes_by_skipping_already_screened_chunks(
     )
     write_chunk_screening(
         screening_path,
-        [ChunkScreeningRecord(chunk_id="chunk-1", has_penalty_content=True, reason="Đã sàng lọc trước đó.")],
+        [
+            ChunkScreeningRecord(
+                chunk_id="chunk-1",
+                has_penalty_content=True,
+                has_document_metadata=False,
+                reason="Đã sàng lọc trước đó.",
+            )
+        ],
     )
     screened_chunk_ids: list[str] = []
 
@@ -173,7 +182,12 @@ def test_chunk_screening_cli_resumes_by_skipping_already_screened_chunks(
             """Record screened chunk ids and return a fixed verdict for each."""
             screened_chunk_ids.extend(chunk.chunk_id for chunk in chunks)
             return [
-                ChunkScreeningResult(chunk_id=chunk.chunk_id, has_penalty_content=False, reason="Table of contents.")
+                ChunkScreeningResult(
+                    chunk_id=chunk.chunk_id,
+                    has_penalty_content=False,
+                    has_document_metadata=False,
+                    reason="Table of contents.",
+                )
                 for chunk in chunks
             ]
 
@@ -211,7 +225,12 @@ def test_chunk_screening_cli_writes_partial_output_when_a_batch_keeps_failing(
                 msg = "provider timed out"
                 raise TimeoutError(msg)
             return [
-                ChunkScreeningResult(chunk_id=chunk.chunk_id, has_penalty_content=True, reason="Contains penalty.")
+                ChunkScreeningResult(
+                    chunk_id=chunk.chunk_id,
+                    has_penalty_content=True,
+                    has_document_metadata=False,
+                    reason="Contains penalty.",
+                )
                 for chunk in chunks
             ]
 
@@ -248,7 +267,12 @@ def test_chunk_screening_cli_persists_progress_if_interrupted_mid_document(
             if self._calls > 1:
                 raise SystemExit
             return [
-                ChunkScreeningResult(chunk_id=chunk.chunk_id, has_penalty_content=True, reason="Contains penalty.")
+                ChunkScreeningResult(
+                    chunk_id=chunk.chunk_id,
+                    has_penalty_content=True,
+                    has_document_metadata=False,
+                    reason="Contains penalty.",
+                )
                 for chunk in chunks
             ]
 
@@ -276,7 +300,14 @@ def test_chunk_screening_cli_skips_the_llm_entirely_when_fully_resumed(
     write_chunks(chunks_path, (_chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."),))
     write_chunk_screening(
         screening_path,
-        [ChunkScreeningRecord(chunk_id="chunk-1", has_penalty_content=True, reason="Đã sàng lọc trước đó.")],
+        [
+            ChunkScreeningRecord(
+                chunk_id="chunk-1",
+                has_penalty_content=True,
+                has_document_metadata=False,
+                reason="Đã sàng lọc trước đó.",
+            )
+        ],
     )
 
     def _fail(*args: object, **kwargs: object) -> None:

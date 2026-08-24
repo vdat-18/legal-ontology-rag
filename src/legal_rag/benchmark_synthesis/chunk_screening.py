@@ -25,8 +25,8 @@ from legal_rag.benchmark_synthesis.llm_execution import (
 from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
-CHUNK_SCREENING_SCHEMA_VERSION = "1.0.0"
-CHUNK_SCREENING_PROMPT_VERSION = "4.0.0"
+CHUNK_SCREENING_SCHEMA_VERSION = "2.0.0"
+CHUNK_SCREENING_PROMPT_VERSION = "5.0.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +36,7 @@ class ChunkScreeningRecord:
     chunk_id: str
     has_penalty_content: bool
     reason: str
+    has_document_metadata: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable screening record."""
@@ -43,6 +44,7 @@ class ChunkScreeningRecord:
             "schema_version": CHUNK_SCREENING_SCHEMA_VERSION,
             "chunk_id": self.chunk_id,
             "has_penalty_content": self.has_penalty_content,
+            "has_document_metadata": self.has_document_metadata,
             "reason": self.reason,
         }
 
@@ -87,6 +89,7 @@ def _records_for(
         ChunkScreeningRecord(
             chunk_id=chunk.chunk_id,
             has_penalty_content=results_by_chunk_id[chunk.chunk_id].has_penalty_content,
+            has_document_metadata=results_by_chunk_id[chunk.chunk_id].has_document_metadata,
             reason=results_by_chunk_id[chunk.chunk_id].reason,
         )
         for chunk in chunks

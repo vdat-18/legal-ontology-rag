@@ -65,10 +65,16 @@ def test_screen_chunks_returns_one_record_per_chunk_in_order() -> None:
     client = _FakeScreeningClient(
         {
             "chunk-high": ChunkScreeningResult(
-                chunk_id="chunk-high", has_penalty_content=True, reason="Nêu rõ mức phạt tiền cụ thể."
+                chunk_id="chunk-high",
+                has_penalty_content=True,
+                has_document_metadata=True,
+                reason="Nêu rõ mức phạt tiền cụ thể.",
             ),
             "chunk-low": ChunkScreeningResult(
-                chunk_id="chunk-low", has_penalty_content=False, reason="Đây là mục lục, không có chế tài."
+                chunk_id="chunk-low",
+                has_penalty_content=False,
+                has_document_metadata=False,
+                reason="Đây là mục lục, không có chế tài.",
             ),
         }
     )
@@ -77,6 +83,7 @@ def test_screen_chunks_returns_one_record_per_chunk_in_order() -> None:
 
     assert [record.chunk_id for record in records] == ["chunk-high", "chunk-low"]
     assert records[0].has_penalty_content is True
+    assert records[0].has_document_metadata is True
     assert records[1].has_penalty_content is False
     assert records[1].reason == "Đây là mục lục, không có chế tài."
 
@@ -90,7 +97,11 @@ def test_screen_chunks_passes_structural_context_separately_from_target_text() -
     class _RecordingClient:
         def screen(self, items: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
             seen_items.extend(items)
-            return [ChunkScreeningResult(chunk_id="chunk-1", has_penalty_content=True, reason="Penalty item.")]
+            return [
+                ChunkScreeningResult(
+                    chunk_id="chunk-1", has_penalty_content=True, has_document_metadata=False, reason="Penalty item."
+                )
+            ]
 
     screen_chunks([chunk], _RecordingClient(), batch_size=50, max_retries=0, retry_delay_seconds=0)
 
@@ -103,7 +114,9 @@ def test_screen_chunks_batches_calls_by_batch_size() -> None:
     chunks = [_chunk(f"chunk-{i}", f"Nội dung {i}") for i in range(5)]
     calls: list[int] = []
     results_by_chunk_id = {
-        chunk.chunk_id: ChunkScreeningResult(chunk_id=chunk.chunk_id, has_penalty_content=True, reason="")
+        chunk.chunk_id: ChunkScreeningResult(
+            chunk_id=chunk.chunk_id, has_penalty_content=True, has_document_metadata=False, reason=""
+        )
         for chunk in chunks
     }
 
@@ -127,7 +140,12 @@ def test_screen_chunks_supports_configured_batches_of_ten() -> None:
     class _CountingClient:
         def screen(self, batch: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
             calls.append(len(batch))
-            return [ChunkScreeningResult(chunk_id=item.chunk_id, has_penalty_content=True, reason="") for item in batch]
+            return [
+                ChunkScreeningResult(
+                    chunk_id=item.chunk_id, has_penalty_content=True, has_document_metadata=False, reason=""
+                )
+                for item in batch
+            ]
 
     screen_chunks(chunks, _CountingClient(), batch_size=10, max_retries=2, retry_delay_seconds=0)
 
@@ -145,7 +163,12 @@ def test_screen_chunks_runs_batches_concurrently_and_preserves_output_order() ->
             calls.append(batch[0].chunk_id)
             barrier.wait(timeout=2)
             return [
-                ChunkScreeningResult(chunk_id=item.chunk_id, has_penalty_content=True, reason="Contains penalty.")
+                ChunkScreeningResult(
+                    chunk_id=item.chunk_id,
+                    has_penalty_content=True,
+                    has_document_metadata=False,
+                    reason="Contains penalty.",
+                )
                 for item in batch
             ]
 
@@ -180,6 +203,7 @@ def test_screen_chunks_logs_batch_lifecycle(monkeypatch: pytest.MonkeyPatch) -> 
             chunk.chunk_id: ChunkScreeningResult(
                 chunk_id=chunk.chunk_id,
                 has_penalty_content=True,
+                has_document_metadata=False,
                 reason="Contains legal content.",
             )
             for chunk in chunks
@@ -206,7 +230,9 @@ def test_screen_chunks_calls_on_batch_screened_after_each_batch() -> None:
     """on_batch_screened receives just the newly screened batch's records, once per batch."""
     chunks = [_chunk(f"chunk-{i}", f"Nội dung {i}") for i in range(5)]
     results_by_chunk_id = {
-        chunk.chunk_id: ChunkScreeningResult(chunk_id=chunk.chunk_id, has_penalty_content=True, reason="")
+        chunk.chunk_id: ChunkScreeningResult(
+            chunk_id=chunk.chunk_id, has_penalty_content=True, has_document_metadata=False, reason=""
+        )
         for chunk in chunks
     }
 
@@ -239,13 +265,24 @@ def test_screen_chunks_checkpoints_matches_and_retries_only_incomplete_chunks() 
             calls.append([item.chunk_id for item in batch])
             if len(calls) == 1:
                 return [
-                    ChunkScreeningResult(chunk_id="chunk-0", has_penalty_content=True, reason="ok"),
-                    ChunkScreeningResult(chunk_id="chunk-1", has_penalty_content=True, reason="duplicate"),
-                    ChunkScreeningResult(chunk_id="chunk-1", has_penalty_content=True, reason="duplicate"),
-                    ChunkScreeningResult(chunk_id="unexpected", has_penalty_content=True, reason="wrong id"),
+                    ChunkScreeningResult(
+                        chunk_id="chunk-0", has_penalty_content=True, has_document_metadata=False, reason="ok"
+                    ),
+                    ChunkScreeningResult(
+                        chunk_id="chunk-1", has_penalty_content=True, has_document_metadata=False, reason="duplicate"
+                    ),
+                    ChunkScreeningResult(
+                        chunk_id="chunk-1", has_penalty_content=True, has_document_metadata=False, reason="duplicate"
+                    ),
+                    ChunkScreeningResult(
+                        chunk_id="unexpected", has_penalty_content=True, has_document_metadata=False, reason="wrong id"
+                    ),
                 ]
             return [
-                ChunkScreeningResult(chunk_id=item.chunk_id, has_penalty_content=True, reason="ok") for item in batch
+                ChunkScreeningResult(
+                    chunk_id=item.chunk_id, has_penalty_content=True, has_document_metadata=False, reason="ok"
+                )
+                for item in batch
             ]
 
     records = screen_chunks(
@@ -269,7 +306,11 @@ def test_screen_chunks_keeps_partial_checkpoint_when_missing_chunks_exhaust_retr
 
     class _IncompleteClient:
         def screen(self, batch: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
-            return [ChunkScreeningResult(chunk_id="chunk-0", has_penalty_content=True, reason="ok")]
+            return [
+                ChunkScreeningResult(
+                    chunk_id="chunk-0", has_penalty_content=True, has_document_metadata=False, reason="ok"
+                )
+            ]
 
     with pytest.raises(RuntimeError, match="chunk screening left 1 incomplete"):
         screen_chunks(
@@ -296,7 +337,11 @@ def test_screen_chunks_retries_a_failing_batch_then_succeeds() -> None:
             if attempts < 2:
                 msg = "provider timed out"
                 raise TimeoutError(msg)
-            return [ChunkScreeningResult(chunk_id="chunk-1", has_penalty_content=True, reason="Nêu rõ mức phạt.")]
+            return [
+                ChunkScreeningResult(
+                    chunk_id="chunk-1", has_penalty_content=True, has_document_metadata=False, reason="Nêu rõ mức phạt."
+                )
+            ]
 
     records = screen_chunks([chunk], _FlakyClient(), batch_size=50, max_retries=2, retry_delay_seconds=0)
 
@@ -318,7 +363,10 @@ def test_screen_chunks_skips_a_batch_that_fails_every_attempt() -> None:
                 msg = "provider timed out"
                 raise TimeoutError(msg)
             return [
-                ChunkScreeningResult(chunk_id=item.chunk_id, has_penalty_content=True, reason="ok") for item in batch
+                ChunkScreeningResult(
+                    chunk_id=item.chunk_id, has_penalty_content=True, has_document_metadata=False, reason="ok"
+                )
+                for item in batch
             ]
 
     with pytest.raises(RuntimeError, match="chunk screening left 1 incomplete"):
@@ -371,7 +419,8 @@ def test_baml_chunk_screening_client_parses_typed_result(monkeypatch: pytest.Mon
         chunk_screening,
         "execute_baml_request",
         lambda *args, **kwargs: (
-            '[{"chunk_id":"chunk-1","has_penalty_content":true,"reason":"Nêu mức phạt tiền cụ thể."}]'
+            '[{"chunk_id":"chunk-1","has_penalty_content":true,'
+            '"has_document_metadata":false,"reason":"Nêu mức phạt tiền cụ thể."}]'
         ),
     )
 
@@ -387,4 +436,5 @@ def test_baml_chunk_screening_client_parses_typed_result(monkeypatch: pytest.Mon
 
     assert results[0].chunk_id == "chunk-1"
     assert results[0].has_penalty_content is True
+    assert results[0].has_document_metadata is False
     assert results[0].reason == "Nêu mức phạt tiền cụ thể."

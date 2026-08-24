@@ -86,6 +86,7 @@ def test_document_preparation_cli_runs_sequentially_and_reuses_completed_outputs
                 ChunkScreeningResult(
                     chunk_id=chunk.chunk_id,
                     has_penalty_content=chunk.chunk_id == "chunk-2",
+                    has_document_metadata=False,
                     reason="Contains penalty." if chunk.chunk_id == "chunk-2" else "Opening metadata.",
                 )
                 for chunk in chunks
@@ -95,7 +96,7 @@ def test_document_preparation_cli_runs_sequentially_and_reuses_completed_outputs
         def __init__(self, settings: object, synthesis_settings: object) -> None:
             return None
 
-        def resolve(self, opening_sections: object, closing_sections: object) -> BamlDocumentMetadata:
+        def resolve(self, metadata_sections: object) -> BamlDocumentMetadata:
             calls.append("metadata")
             return BamlDocumentMetadata(document_number="168/2024/NĐ-CP", valid_from="2025-01-01", valid_to=None)
 
@@ -175,7 +176,11 @@ def test_chunk_screening_persists_partial_results_before_exhausted_batch_raises(
 
     class _PartialScreeningClient:
         def screen(self, items: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
-            return [ChunkScreeningResult(chunk_id="chunk-0", has_penalty_content=True, reason="ok")]
+            return [
+                ChunkScreeningResult(
+                    chunk_id="chunk-0", has_penalty_content=True, has_document_metadata=False, reason="ok"
+                )
+            ]
 
     settings = replace(
         SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH),
