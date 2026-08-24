@@ -287,12 +287,10 @@ def _parse_candidate_draft(payload: dict[str, object]) -> CandidateDraft:
             RequiredClaim(
                 claim=claim["claim"],
                 fact_id=claim["fact_id"],
-                requested_chunk_ids=tuple(claim["requested_chunk_ids"]),
                 evidence=tuple(ClaimEvidence(chunk_id=entry["chunk_id"]) for entry in claim["evidence"]),
             )
             for claim in payload["required_claims"]
         ),
-        evolutions=tuple(payload["evolutions"]),
         gold_chunk_ids=tuple(payload["gold_chunk_ids"]),
         query_form=payload["query_form"],
         persona=payload["persona"],

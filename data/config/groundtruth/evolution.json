@@ -1,9 +1,0 @@
-{
-  "schema_version": "1.0.0",
-  "operations": [
-    { "id": "concretizing", "description_vi": "Thêm tình tiết cụ thể vào tình huống" },
-    { "id": "reasoning", "description_vi": "Buộc suy luận từ quy định thay vì tra cứu trực tiếp" },
-    { "id": "hypothetical", "description_vi": "Đặt giả định \"nếu ... thì\"" }
-  ],
-  "max_rounds": 1
-}

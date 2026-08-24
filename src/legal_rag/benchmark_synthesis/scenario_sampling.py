@@ -51,14 +51,6 @@ class ScenarioSamplingConfig:
 
 
 @dataclass(frozen=True, slots=True)
-class EvolutionConfig:
-    """Versioned catalog of evidence-preserving evolution operations."""
-
-    operation_ids: tuple[str, ...]
-    max_rounds: int
-
-
-@dataclass(frozen=True, slots=True)
 class Scenario:
     """One structured scenario, generated before any question text exists."""
 
@@ -112,15 +104,6 @@ def load_scenario_distribution(config_path: Path) -> ScenarioDistribution:
         bundle_kind_weights=tuple(
             (bundle_kind, float(weight)) for bundle_kind, weight in config["bundle_kind_weights"].items()
         ),
-    )
-
-
-def load_evolution_config(config_path: Path) -> EvolutionConfig:
-    """Load the versioned evolution-operation configuration."""
-    config = json.loads(config_path.read_text(encoding="utf-8"))
-    return EvolutionConfig(
-        operation_ids=tuple(entry["id"] for entry in config["operations"]),
-        max_rounds=config["max_rounds"],
     )
 
 

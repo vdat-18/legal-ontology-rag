@@ -177,7 +177,6 @@ def _candidate_draft() -> CandidateDraft:
                 evidence=(ClaimEvidence(chunk_id="chunk-1"),),
             ),
         ),
-        evolutions=("concretizing",),
         gold_chunk_ids=("chunk-1",),
         query_form="specific",
         persona="tai_xe_ca_nhan",

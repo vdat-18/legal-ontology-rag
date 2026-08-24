@@ -8,7 +8,7 @@ from math import isfinite
 from pathlib import Path
 from typing import Any
 
-SYNTHESIS_CONFIG_SCHEMA_VERSION = "2.0.0"
+SYNTHESIS_CONFIG_SCHEMA_VERSION = "3.0.0"
 _MAX_LLM_TEMPERATURE = 2.0
 
 
@@ -92,7 +92,6 @@ class SynthesisSettings:
     fact_extraction: LlmStageSettings
     evidence_relation: LlmStageSettings
     candidate_generation: LlmStageSettings
-    candidate_evolution: LlmStageSettings
 
     def __post_init__(self) -> None:
         """Reject invalid synthesis limits before a run starts."""
@@ -181,7 +180,6 @@ class SynthesisSettings:
             fact_extraction=_stage_settings(extraction),
             evidence_relation=_stage_settings(relation),
             candidate_generation=_stage_settings(stages["candidate_generation"]),
-            candidate_evolution=_stage_settings(stages["candidate_evolution"]),
         )
 
 

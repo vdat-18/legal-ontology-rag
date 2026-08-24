@@ -1,4 +1,4 @@
-"""Tests for single-turn candidate generation and evolution."""
+"""Tests for grounded single-turn candidate generation."""
 
 from __future__ import annotations
 
@@ -8,14 +8,12 @@ from pathlib import Path
 import pytest
 
 from legal_rag.baml_client.types import ClaimReference as BamlClaimReference
-from legal_rag.baml_client.types import EvolutionOperation, FactContext
-from legal_rag.baml_client.types import EvolvedCandidate as BamlEvolvedCandidate
+from legal_rag.baml_client.types import FactContext
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
 from legal_rag.benchmark_synthesis import candidate_generation
 from legal_rag.benchmark_synthesis.candidate_generation import (
     BamlCandidateGenerationClient,
     build_fact_context,
-    evolve_candidate,
     generate_candidate,
 )
 from legal_rag.benchmark_synthesis.config import LlmStageSettings, SynthesisSettings
@@ -34,10 +32,7 @@ def _fact(fact_id: str = "fact-1") -> LegalFact:
         valid_from=None,
         valid_to=None,
         document_number="168/2024/NĐ-CP",
-        evidence=(
-            EvidenceReference(chunk_id="chunk-1"),
-            EvidenceReference(chunk_id="chunk-2"),
-        ),
+        evidence=(EvidenceReference(chunk_id="chunk-1"), EvidenceReference(chunk_id="chunk-2")),
     )
 
 
@@ -57,13 +52,13 @@ def _scenario(fact_ids: tuple[str, ...] = ("fact-1",)) -> Scenario:
     )
 
 
-def test_build_fact_context_exposes_only_real_evidence_chunk_ids() -> None:
-    """The BAML-facing fact context lists exactly the fact's own evidence chunk_ids."""
+def test_build_fact_context_exposes_only_semantic_fact_fields() -> None:
+    """The LLM receives fact content and metadata, while provenance stays in code."""
     context = build_fact_context(_fact())
 
-    assert context.evidence_chunk_ids == ["chunk-1", "chunk-2"]
     assert context.fact_id == "fact-1"
     assert context.statement == _fact().statement
+    assert not hasattr(context, "evidence_chunk_ids")
 
 
 def test_build_fact_context_accepts_general_legal_statement() -> None:
@@ -83,57 +78,41 @@ class _FakeGenerationClient:
         """Return the configured generated candidate."""
         return self._generated
 
-    def evolve(self, *args: object, **kwargs: object) -> BamlEvolvedCandidate:
-        """Unused in generation-only tests."""
-        raise NotImplementedError
 
-
-def test_generate_candidate_cross_references_real_evidence_chunks() -> None:
-    """Required claims retain only chunk ids present in the fact's evidence."""
+def test_generate_candidate_attaches_all_provenance_from_the_claimed_fact() -> None:
+    """Claim provenance comes from the persisted fact rather than model-generated chunk IDs."""
     fact = _fact()
     generated = BamlGeneratedCandidate(
         query_vi="oto vuot den do bi phat bao nhieu",
         reference_answer_vi="Phạt tiền 4.000.000 đồng và trừ 4 điểm.",
-        reasoning_vi="Theo Điều 6.",
-        required_claims=[
-            BamlClaimReference(claim="Mức phạt tiền áp dụng", fact_id="fact-1", evidence_chunk_ids=["chunk-1"]),
-        ],
+        reasoning_vi="Fact xác định mức phạt và số điểm bị trừ.",
+        required_claims=[BamlClaimReference(claim="Mức phạt tiền áp dụng", fact_id="fact-1")],
     )
-    client = _FakeGenerationClient(generated)
 
-    candidate = generate_candidate(_scenario(), {"fact-1": fact}, "Tài xế cá nhân", client, generator_model="m")
-
-    assert len(candidate.required_claims) == 1
-    assert len(candidate.required_claims[0].evidence) == 1
-    assert candidate.required_claims[0].evidence[0].chunk_id == "chunk-1"
-
-
-def test_generate_candidate_drops_hallucinated_chunk_id() -> None:
-    """A claim referencing a chunk_id outside the fact's evidence yields no evidence for it."""
-    fact = _fact()
-    generated = BamlGeneratedCandidate(
-        query_vi="q",
-        reference_answer_vi="a",
-        reasoning_vi="r",
-        required_claims=[
-            BamlClaimReference(claim="Claim bịa", fact_id="fact-1", evidence_chunk_ids=["chunk-does-not-exist"]),
-        ],
+    candidate = generate_candidate(
+        _scenario(),
+        {"fact-1": fact},
+        "Tài xế cá nhân",
+        _FakeGenerationClient(generated),
+        generator_model="m",
     )
-    client = _FakeGenerationClient(generated)
 
-    candidate = generate_candidate(_scenario(), {"fact-1": fact}, "Tài xế cá nhân", client, generator_model="m")
-
-    assert candidate.required_claims[0].evidence == ()
+    assert [entry.chunk_id for entry in candidate.required_claims[0].evidence] == ["chunk-1", "chunk-2"]
 
 
 def test_generate_candidate_carries_declared_scenario_labels_unchanged() -> None:
     """Scenario labels pass through to the draft exactly as declared."""
     fact = _fact()
     generated = BamlGeneratedCandidate(query_vi="q", reference_answer_vi="a", reasoning_vi="r", required_claims=[])
-    client = _FakeGenerationClient(generated)
     scenario = _scenario()
 
-    candidate = generate_candidate(scenario, {"fact-1": fact}, "Tài xế cá nhân", client, generator_model="m")
+    candidate = generate_candidate(
+        scenario,
+        {"fact-1": fact},
+        "Tài xế cá nhân",
+        _FakeGenerationClient(generated),
+        generator_model="m",
+    )
 
     assert candidate.persona == scenario.persona
     assert candidate.answerability == scenario.answerability
@@ -153,84 +132,6 @@ def test_generate_candidate_sample_id_is_deterministic() -> None:
     assert first.sample_id == second.sample_id
 
 
-def _draft_for_evolution() -> candidate_generation.CandidateDraft:
-    """Build one candidate draft for evolution tests."""
-    fact = _fact()
-    generated = BamlGeneratedCandidate(
-        query_vi="oto vuot den do bi phat bao nhieu",
-        reference_answer_vi="Phạt tiền 4.000.000 đồng.",
-        reasoning_vi="r",
-        required_claims=[
-            BamlClaimReference(claim="Mức phạt", fact_id="fact-1", evidence_chunk_ids=["chunk-1"]),
-        ],
-    )
-    client = _FakeGenerationClient(generated)
-    return generate_candidate(_scenario(), {"fact-1": fact}, "Tài xế cá nhân", client, generator_model="m")
-
-
-class _FakeEvolutionClient:
-    """Return a pre-programmed evolved query/answer for every operation."""
-
-    def __init__(self, evolved_by_operation: dict[EvolutionOperation, BamlEvolvedCandidate]) -> None:
-        self._evolved_by_operation = evolved_by_operation
-
-    def generate(self, *args: object, **kwargs: object) -> BamlGeneratedCandidate:
-        """Unused in evolution tests."""
-        raise NotImplementedError
-
-    def evolve(
-        self,
-        query_vi: str,
-        reference_answer_vi: str,
-        reasoning_vi: str,
-        operation: EvolutionOperation,
-        query_length: str,
-    ) -> BamlEvolvedCandidate:
-        """Return the configured evolved candidate for this operation."""
-        return self._evolved_by_operation[operation]
-
-
-def test_evolve_candidate_applies_operations_in_sequence_and_records_them() -> None:
-    """Each configured operation is applied once, in order, and recorded in evolutions."""
-    draft = _draft_for_evolution()
-    client = _FakeEvolutionClient(
-        {
-            EvolutionOperation.Concretizing: BamlEvolvedCandidate(
-                query_vi="q-concrete", reference_answer_vi="a-concrete", reasoning_vi="r-concrete"
-            ),
-            EvolutionOperation.Reasoning: BamlEvolvedCandidate(
-                query_vi="q-reasoning", reference_answer_vi="a-reasoning", reasoning_vi="r-reasoning"
-            ),
-        }
-    )
-
-    evolved = evolve_candidate(
-        draft, ["concretizing", "reasoning"], client, llm_max_retries=0, llm_retry_delay_seconds=0
-    )
-
-    assert evolved.evolutions == ("concretizing", "reasoning")
-    assert evolved.query_vi == "q-reasoning"
-    assert evolved.reference_answer_vi == "a-reasoning"
-    assert evolved.reasoning_vi == "r-reasoning"
-    assert evolved.sample_id != draft.sample_id
-
-
-def test_evolve_candidate_never_changes_claims() -> None:
-    """Evolution only touches query_vi and reference_answer_vi, never evidence."""
-    draft = _draft_for_evolution()
-    client = _FakeEvolutionClient(
-        {
-            EvolutionOperation.Hypothetical: BamlEvolvedCandidate(
-                query_vi="q-hyp", reference_answer_vi="a-hyp", reasoning_vi="r-hyp"
-            )
-        }
-    )
-
-    evolved = evolve_candidate(draft, ["hypothetical"], client, llm_max_retries=0, llm_retry_delay_seconds=0)
-
-    assert evolved.required_claims == draft.required_claims
-
-
 def _settings() -> Settings:
     """Build runtime settings for an offline BAML request."""
     return Settings(
@@ -246,26 +147,20 @@ def _synthesis_settings() -> SynthesisSettings:
     return SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
 
 
-def test_candidate_client_uses_separate_generation_and_evolution_bounds(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Each candidate LLM operation uses its own versioned stage configuration."""
+def test_candidate_client_uses_generation_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Candidate generation uses its versioned stage configuration once."""
     configured_tokens: list[int] = []
 
     def _capture_registry(**kwargs: object) -> object:
         configured_tokens.append(int(kwargs["max_output_tokens"]))
         return object()
 
-    settings = replace(
-        _synthesis_settings(),
-        candidate_generation=LlmStageSettings(101, 0.0),
-        candidate_evolution=LlmStageSettings(103, 0.0),
-    )
+    settings = replace(_synthesis_settings(), candidate_generation=LlmStageSettings(101, 0.0))
     monkeypatch.setattr(candidate_generation, "build_client_registry", _capture_registry)
 
     BamlCandidateGenerationClient(_settings(), settings)
 
-    assert configured_tokens == [101, 103]
+    assert configured_tokens == [101]
 
 
 def test_baml_candidate_generation_client_parses_typed_result(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -276,7 +171,7 @@ def test_baml_candidate_generation_client_parses_typed_result(monkeypatch: pytes
         "execute_baml_request",
         lambda *args, **kwargs: (
             '[{"task_id":"single","candidate":{"query_vi":"q","reference_answer_vi":"a","reasoning_vi":"r",'
-            '"required_claims":[{"claim":"c","fact_id":"fact-1","evidence_chunk_ids":["chunk-1"]}]}}]'
+            '"required_claims":[{"claim":"c","fact_id":"fact-1"}]}}]'
         ),
     )
     fact_context = FactContext(
@@ -285,7 +180,6 @@ def test_baml_candidate_generation_client_parses_typed_result(monkeypatch: pytes
         valid_from=None,
         valid_to=None,
         document_number="168/2024/NĐ-CP",
-        evidence_chunk_ids=["chunk-1"],
     )
 
     result = client.generate(

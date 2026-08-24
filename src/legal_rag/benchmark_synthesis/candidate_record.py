@@ -1,4 +1,4 @@
-"""Track one candidate's progress from generation through evolution, trusting LLM output as-is."""
+"""Track one candidate-generation task through its persisted checkpoints."""
 
 from __future__ import annotations
 
@@ -7,12 +7,12 @@ from typing import Any
 
 from legal_rag.benchmark_synthesis.candidate_generation import CandidateDraft
 
-CANDIDATE_PROGRESS_SCHEMA_VERSION = "3.0.0"
+CANDIDATE_PROGRESS_SCHEMA_VERSION = "4.0.0"
 
 
 @dataclass(frozen=True, slots=True)
 class CandidateProgressRecord:
-    """Checkpoint for one scenario attempt across every candidate LLM stage."""
+    """Checkpoint for one scenario generation attempt."""
 
     task_id: str
     scenario_id: str

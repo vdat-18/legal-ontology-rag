@@ -7,7 +7,7 @@ from typing import Any
 
 from legal_rag.benchmark_synthesis.candidate_generation import CandidateDraft
 
-GROUND_TRUTH_EXPORT_SCHEMA_VERSION = "3.0.0"
+GROUND_TRUTH_EXPORT_SCHEMA_VERSION = "4.0.0"
 
 
 def export_ground_truth(candidates: Sequence[CandidateDraft]) -> tuple[dict[str, Any], ...]:
@@ -29,7 +29,6 @@ def _export_candidate(candidate: CandidateDraft) -> dict[str, Any]:
         "bridge": candidate.bridge,
         "reasoning_vi": candidate.reasoning_vi,
         "required_claims": [claim.to_dict() for claim in candidate.required_claims],
-        "evolutions": list(candidate.evolutions),
         "query_form": candidate.query_form,
         "persona": candidate.persona,
         "query_style": candidate.query_style,

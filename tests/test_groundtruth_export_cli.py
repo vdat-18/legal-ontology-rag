@@ -23,7 +23,6 @@ def _candidate() -> CandidateDraft:
         reference_answer_vi="Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng.",
         reasoning_vi="Áp dụng mức phạt tại Điều 7.",
         required_claims=(),
-        evolutions=(),
         gold_chunk_ids=("chunk-1",),
         query_form="specific",
         persona="tai_xe_ca_nhan",

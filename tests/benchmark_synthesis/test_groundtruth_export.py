@@ -23,11 +23,9 @@ def _candidate() -> CandidateDraft:
             RequiredClaim(
                 claim="Mức phạt tiền",
                 fact_id="fact-1",
-                requested_chunk_ids=("chunk-1",),
                 evidence=(ClaimEvidence(chunk_id="chunk-1"),),
             ),
         ),
-        evolutions=("concretizing",),
         gold_chunk_ids=("chunk-1",),
         query_form="specific",
         persona="tai_xe_ca_nhan",

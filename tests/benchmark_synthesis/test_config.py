@@ -14,7 +14,7 @@ _SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config"
 
 
 def test_synthesis_settings_load_every_pipeline_stage() -> None:
-    """The checked-in config owns batch, retry, quality, and per-operation LLM bounds."""
+    """The checked-in config owns batch, retry, retrieval, and LLM bounds."""
     settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
 
     assert settings.embedding_profile == "bge_m3"
@@ -46,7 +46,6 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.evidence_retrieval.bm25_delta == 0.5
     assert settings.evidence_relation.max_output_tokens == 4096
     assert settings.candidate_generation.max_output_tokens == 8192
-    assert settings.candidate_evolution.max_output_tokens == 8192
 
 
 def test_synthesis_settings_reject_unknown_schema(tmp_path: Path) -> None:

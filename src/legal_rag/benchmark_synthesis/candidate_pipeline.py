@@ -8,10 +8,7 @@ from dataclasses import dataclass
 from typing import cast
 
 from legal_rag.benchmark_synthesis.candidate_generation import (
-    CandidateDraft,
     CandidateGenerationClient,
-    evolve_candidate,
-    evolve_candidate_batch,
     generate_candidate,
     generate_candidate_batch,
 )
@@ -32,7 +29,6 @@ class CandidatePipelineContext:
 
     facts_by_id: Mapping[str, LegalFact]
     persona_descriptions: Mapping[str, str]
-    evolution_operations: Sequence[str]
     generation_client: CandidateGenerationClient
     generator_model: str
     llm_max_retries: int
@@ -63,9 +59,6 @@ def process_candidate_task(
         )
         progress = CandidateProgressRecord(task_id, scenario.scenario_id, attempt_index, "generated", draft)
         checkpoint(progress)
-
-    if len(progress.draft.evolutions) < len(context.evolution_operations):
-        progress = _evolve_with_checkpoints(progress, scenario, context, checkpoint)
 
     completed = CandidateProgressRecord(task_id, scenario.scenario_id, attempt_index, "completed", progress.draft)
     checkpoint(completed)
@@ -156,53 +149,6 @@ def process_candidate_batch(
             current[task_id] = record
             checkpoint(record)
 
-    evolved_task_ids = {
-        task_id
-        for task_id, record in current.items()
-        if record is not None and len(record.draft.evolutions) < len(context.evolution_operations)
-    }
-    for operation_index, operation_id in enumerate(context.evolution_operations):
-        evolution_tasks = [
-            (task_id, record.draft)
-            for task_id, record in current.items()
-            if record is not None and len(record.draft.evolutions) == operation_index
-        ]
-        if not evolution_tasks:
-            continue
-        evolved = execute_llm_task(
-            _batch_task_key(tuple(task_id for task_id, _ in evolution_tasks), f"evolution:{operation_id}"),
-            lambda evolution_tasks=evolution_tasks, operation_id=operation_id: evolve_candidate_batch(
-                evolution_tasks,
-                operation_id,
-                context.generation_client,
-            ),
-            max_retries=context.llm_max_retries,
-            retry_delay_seconds=context.llm_retry_delay_seconds,
-        )
-        for task_id, draft in evolved:
-            previous = cast(CandidateProgressRecord, current[task_id])
-            record = CandidateProgressRecord(
-                task_id,
-                previous.scenario_id,
-                previous.attempt_index,
-                "evolution",
-                draft,
-            )
-            current[task_id] = record
-            checkpoint(record)
-
-    for task_id in evolved_task_ids:
-        previous = cast(CandidateProgressRecord, current[task_id])
-        record = CandidateProgressRecord(
-            task_id,
-            previous.scenario_id,
-            previous.attempt_index,
-            "evolved",
-            previous.draft,
-        )
-        current[task_id] = record
-        checkpoint(record)
-
     for task_id, record in current.items():
         completed_record = cast(CandidateProgressRecord, record)
         completed = CandidateProgressRecord(
@@ -218,42 +164,3 @@ def process_candidate_batch(
 def _batch_task_key(task_ids: Sequence[str], stage: str) -> str:
     """Build one stable retry key for an ordered candidate batch."""
     return f"candidate-batch:{sha256_json({'task_ids': list(task_ids), 'stage': stage})}:{stage}"
-
-
-def _evolve_with_checkpoints(
-    progress: CandidateProgressRecord,
-    scenario: Scenario,
-    context: CandidatePipelineContext,
-    checkpoint: Callable[[CandidateProgressRecord], None],
-) -> CandidateProgressRecord:
-    """Apply remaining evolutions while persisting every successful call."""
-    current = progress
-
-    def _checkpoint_draft(draft: CandidateDraft) -> None:
-        nonlocal current
-        current = CandidateProgressRecord(
-            progress.task_id,
-            scenario.scenario_id,
-            progress.attempt_index,
-            "evolution",
-            draft,
-        )
-        checkpoint(current)
-
-    draft = evolve_candidate(
-        current.draft,
-        context.evolution_operations,
-        context.generation_client,
-        llm_max_retries=context.llm_max_retries,
-        llm_retry_delay_seconds=context.llm_retry_delay_seconds,
-        on_operation_applied=_checkpoint_draft,
-    )
-    current = CandidateProgressRecord(
-        progress.task_id,
-        scenario.scenario_id,
-        progress.attempt_index,
-        "evolved",
-        draft,
-    )
-    checkpoint(current)
-    return current

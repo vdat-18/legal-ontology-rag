@@ -23,9 +23,9 @@ phạm giao thông đường bộ tại Việt Nam.
 
 Mỗi stage chỉ làm đúng một nhiệm vụ: screening chọn target; metadata giải
 thông tin toàn văn bản; extraction tạo fact; relation nối các fact hoàn chỉnh;
-generation tạo mẫu hỏi đáp; evolution chỉ đổi bề mặt. Tất cả stage chỉ dùng
-input được cung cấp, không bổ sung kiến thức pháp luật bên ngoài và giữ nguyên
-ID của từng batch item.
+scenario sampling cân bằng hình thức câu hỏi; generation tạo mẫu hỏi đáp. Tất
+cả stage chỉ dùng input được cung cấp, không bổ sung kiến thức pháp luật bên
+ngoài và giữ nguyên ID của từng batch item.
 
 ## Tổng quan
 
@@ -43,7 +43,7 @@ Document chunks
                             |
                             `-- 5. Plan and sample scenarios
                                     |
-                                    `-- 6. Generate/evolve candidates
+                                    `-- 6. Generate candidates
                                             |
                                             `-- 7. Export evaluation ground truth
 ```
@@ -270,12 +270,21 @@ hỏi hay đáp án hoàn chỉnh.
 LLM nhận các thuộc tính bề mặt của scenario và mỗi fact dưới dạng tối giản:
 
 ```text
-fact_id
-statement
-document_number
-valid_from / valid_to
-evidence_chunk_ids
+Scenario:
+- persona_description
+- query_style, query_length, query_form
+- answerability
+- bundle_kind, bridge, reasoning_hops
+
+Mỗi fact:
+- fact_id
+- statement
+- document_number
+- valid_from / valid_to
 ```
+
+`gold_chunk_ids` và evidence của fact không được gửi cho LLM. Chunk ID chỉ là
+provenance kỹ thuật, không giúp model hiểu nội dung pháp lý.
 
 ### Output
 
@@ -284,7 +293,7 @@ LLM sinh:
 - `query_vi`;
 - `reference_answer_vi`;
 - `reasoning_vi`;
-- `required_claims`, mỗi claim trỏ về `fact_id` và evidence chunk IDs.
+- `required_claims`, mỗi claim chỉ gồm nội dung `claim` và `fact_id` hỗ trợ.
 
 LLM tự chọn một câu hỏi pháp lý hữu ích được facts hỗ trợ, không nhận taxonomy
 hoặc question intent trung gian. Prompt buộc mọi con số, điều kiện, ngoại lệ
@@ -293,13 +302,15 @@ Với multi-hop, mọi fact phải cần thiết cho câu hỏi và đáp án. V
 `partially_answerable`, đáp án chỉ nêu phần có căn cứ và phần chưa thể kết
 luận; không tự điền thông tin còn thiếu.
 
-Nếu có evolution, LLM biến đổi query, answer và reasoning theo operation được
-cấu hình nhưng phải giữ nguyên căn cứ, answerability, con số và kết luận.
-Claims và provenance gốc vẫn được giữ.
-
 Không có critique gate hoặc verification gate sau generation. Pipeline tin
-typed output của LLM và ghi candidate trực tiếp. Code chỉ giữ evidence IDs
-thực sự thuộc fact tương ứng để provenance không trỏ sang chunk ngoài fact.
+typed output của LLM và ghi candidate trực tiếp. Với mỗi claim, code lấy toàn
+bộ `LegalFact.evidence` của `fact_id` tương ứng và gắn thành provenance; LLM
+không tự chọn hoặc tạo chunk ID. Nếu model trả `fact_id` không thuộc scenario,
+native lookup error được giữ nguyên thay vì thêm rule xác minh tùy chỉnh.
+
+Step 6 chỉ có một lần generation. Không còn evolution vì việc viết lại query,
+answer và reasoning sau khi claims đã cố định có thể làm chúng lệch nhau; độ
+đa dạng bề mặt đã được Step 5 điều khiển bằng persona, style, form và length.
 
 Output:
 
@@ -321,8 +332,8 @@ data/benchmark_synthesis/candidates/single_turn.progress.jsonl
 }
 ```
 
-Các metadata như scenario, persona, answerability, reasoning,
-claims, evolutions và source fact IDs vẫn được giữ để phân tích theo lát cắt.
+Các metadata như scenario, persona, answerability, reasoning, claims và source
+fact IDs vẫn được giữ để phân tích theo lát cắt.
 
 Ý nghĩa khi evaluate:
 
@@ -342,10 +353,12 @@ claims, evolutions và source fact IDs vẫn được giữ để phân tích th
   hoặc upstream run khác nhau.
 - Cấu hình synthesis nằm tại
   `data/config/groundtruth/synthesis_v1.json`.
-- `LegalFact 3.0.0` và `EvidenceRelation 3.0.0` vẫn dùng lại được. Artifact
-  `Scenario 3.0.0`, `Candidate 3.0.0`, `CandidateProgress 2.0.0` và
-  `GroundTruth 2.0.0` không tương thích với flow mới; chạy lại từ scenario
-  sampling với synthesis config `2.0.0`, không sửa tay hoặc tự động migrate.
+- Synthesis config hiện dùng schema `3.0.0`.
+- `LegalFact 3.0.0`, `EvidenceRelation 3.0.0` và `Scenario 4.0.0` vẫn dùng lại
+  được nếu đã được sinh bởi Steps 1-5 hiện tại.
+- `Candidate 5.0.0`, `CandidateProgress 4.0.0` và `GroundTruth 4.0.0` không
+  tương thích với artifact Step 6-7 cũ; cần chạy lại Step 6 và Step 7, không
+  sửa tay hoặc tự động migrate.
 
 ## Giới hạn hiện tại
 

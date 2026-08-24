@@ -9,20 +9,15 @@ import pytest
 
 from legal_rag import candidate_generation_cli
 from legal_rag.baml_client.types import (
-    CandidateEvolutionBatchInput,
     CandidateGenerationBatchInput,
-    EvolutionOperation,
-    EvolvedCandidateBatchItem,
     GeneratedSingleTurnCandidateBatchItem,
 )
 from legal_rag.baml_client.types import ClaimReference as BamlClaimReference
-from legal_rag.baml_client.types import EvolvedCandidate as BamlEvolvedCandidate
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
 from legal_rag.benchmark_synthesis import candidate_generation
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.benchmark_synthesis.writer import (
-    read_candidate_progress,
     read_candidates,
     write_legal_facts,
     write_scenarios,
@@ -72,44 +67,13 @@ class _FakeGenerationClient:
             query_vi="oto vuot den do bi phat bao nhieu",
             reference_answer_vi=_REFERENCE_ANSWER,
             reasoning_vi="Theo Điều 6.",
-            required_claims=[
-                BamlClaimReference(claim="Mức phạt tiền áp dụng", fact_id="fact-1", evidence_chunk_ids=["chunk-1"]),
-            ],
+            required_claims=[BamlClaimReference(claim="Mức phạt tiền áp dụng", fact_id="fact-1")],
         )
 
     def generate_batch(self, items: list[CandidateGenerationBatchInput]) -> list[GeneratedSingleTurnCandidateBatchItem]:
         """Generate one candidate for every batch item."""
         return [
             GeneratedSingleTurnCandidateBatchItem(task_id=item.task_id, candidate=self.generate()) for item in items
-        ]
-
-    def evolve(
-        self,
-        query_vi: str,
-        reference_answer_vi: str,
-        reasoning_vi: str,
-        operation: EvolutionOperation,
-        query_length: str,
-    ) -> BamlEvolvedCandidate:
-        """Return the query and answer unchanged, tagged by operation."""
-        return BamlEvolvedCandidate(
-            query_vi=query_vi, reference_answer_vi=reference_answer_vi, reasoning_vi=reasoning_vi
-        )
-
-    def evolve_batch(self, items: list[CandidateEvolutionBatchInput]) -> list[EvolvedCandidateBatchItem]:
-        """Evolve one candidate for every batch item."""
-        return [
-            EvolvedCandidateBatchItem(
-                task_id=item.task_id,
-                candidate=self.evolve(
-                    item.query_vi,
-                    item.reference_answer_vi,
-                    item.reasoning_vi,
-                    item.operation,
-                    item.query_length,
-                ),
-            )
-            for item in items
         ]
 
 
@@ -140,8 +104,6 @@ def _configure_cli(
             str(candidates_output_path),
             "--personas",
             str(_REPO_CONFIG_DIR / "personas.json"),
-            "--evolution",
-            str(_REPO_CONFIG_DIR / "evolution.json"),
             "--candidates-per-scenario",
             str(candidates_per_scenario),
             "--synthesis-config",
@@ -186,71 +148,3 @@ def test_candidate_generation_cli_generates_multiple_attempts_per_scenario(
 
     drafts = read_candidates(candidates_path)
     assert len(drafts) == 3
-
-
-def test_candidate_generation_cli_resumes_after_failed_evolution_without_repeating_prior_llm_stages(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """The generation checkpoint survives an exhausted evolution task."""
-    facts_path = tmp_path / "legal_facts.jsonl"
-    scenarios_path = tmp_path / "scenarios.jsonl"
-    candidates_path = tmp_path / "single_turn.jsonl"
-    progress_path = tmp_path / "single_turn.progress.jsonl"
-    write_legal_facts(facts_path, [_fact()])
-    write_scenarios(scenarios_path, [_scenario()])
-
-    class _EvolutionFailsClient(_FakeGenerationClient):
-        """Complete generation, then exhaust evolution retries."""
-
-        def evolve(
-            self,
-            query_vi: str,
-            reference_answer_vi: str,
-            reasoning_vi: str,
-            operation: EvolutionOperation,
-            query_length: str,
-        ) -> BamlEvolvedCandidate:
-            msg = "evolution unavailable"
-            raise TimeoutError(msg)
-
-    _configure_cli(monkeypatch, facts_path, scenarios_path, candidates_path, candidates_per_scenario=1)
-    monkeypatch.setattr(candidate_generation, "BamlCandidateGenerationClient", _EvolutionFailsClient)
-
-    with pytest.raises(RuntimeError, match="candidate generation left 1 incomplete"):
-        candidate_generation_cli.main()
-
-    progress = read_candidate_progress(progress_path)
-    assert len(progress) == 1
-    assert progress[0].completed is False
-    assert progress[0].draft.evolutions == ()
-
-    evolve_calls: list[EvolutionOperation] = []
-
-    class _ResumeAtEvolutionClient(_FakeGenerationClient):
-        """Fail if completed stages repeat and finish the remaining evolutions."""
-
-        def generate(self, *args: object, **kwargs: object) -> BamlGeneratedCandidate:
-            msg = "generation must be resumed from checkpoint"
-            raise AssertionError(msg)
-
-        def evolve(
-            self,
-            query_vi: str,
-            reference_answer_vi: str,
-            reasoning_vi: str,
-            operation: EvolutionOperation,
-            query_length: str,
-        ) -> BamlEvolvedCandidate:
-            evolve_calls.append(operation)
-            return BamlEvolvedCandidate(
-                query_vi=query_vi,
-                reference_answer_vi=reference_answer_vi,
-                reasoning_vi=reasoning_vi,
-            )
-
-    monkeypatch.setattr(candidate_generation, "BamlCandidateGenerationClient", _ResumeAtEvolutionClient)
-    candidate_generation_cli.main()
-
-    assert evolve_calls == [EvolutionOperation.Concretizing]
-    assert read_candidate_progress(progress_path)[0].completed is True
-    assert len(read_candidates(candidates_path)) == 1

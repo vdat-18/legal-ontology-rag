@@ -4,19 +4,11 @@ class FactContext {
   valid_from string?
   valid_to string?
   document_number string
-  evidence_chunk_ids string[] @description(#"
-    chunk_id đã có sẵn cho fact này. Mọi evidence_chunk_ids trong
-    required_claims phải là tập con của danh sách này cho đúng fact_id.
-  "#)
 }
 
 class ClaimReference {
   claim string @description(#"Diễn đạt ngắn gọn nội dung claim, bằng tiếng Việt."#)
   fact_id string @description(#"Phải trùng với một fact_id trong facts."#)
-  evidence_chunk_ids string[] @description(#"
-    Tập con của evidence_chunk_ids thuộc đúng fact_id này. Không tự thêm
-    chunk_id không có trong danh sách đã cho.
-  "#)
 }
 
 class GeneratedSingleTurnCandidate {
@@ -69,7 +61,7 @@ function GenerateSingleTurnCandidateBatch(
       trực tiếp hỗ trợ; không ép facts vào một loại câu hỏi định trước.
     - Mọi kết luận, con số, điều kiện, ngoại lệ và mốc thời gian phải có trong
       facts. Không thêm kiến thức pháp luật, tình tiết làm đổi kết luận, số
-      Điều/khoản/điểm hoặc chunk_id không được cung cấp.
+      Điều/khoản/điểm không được cung cấp.
     - Bridge chỉ mô tả cách các fact được nối, không phải nguồn pháp lý. Không
       đưa nội dung chỉ xuất hiện trong bridge vào query, answer hoặc claims.
     - Với reasoning_hops=1, một fact phải đủ để trả lời. Với reasoning_hops>1,
@@ -117,8 +109,9 @@ function GenerateSingleTurnCandidateBatch(
     - reasoning_vi giải thích ngắn cách facts dẫn tới đáp án, theo đúng thứ tự
       suy luận; không bịa citation và không nói "dữ liệu được cung cấp".
     - Mỗi required claim là một ý bắt buộc trong đáp án, trỏ đúng fact_id và
-      chỉ dùng evidence_chunk_ids thuộc fact đó. Không tạo claim cho phần chưa
-      thể kết luận của partially_answerable và không lặp claim cùng nội dung.
+      được code gắn provenance từ evidence của fact đó. Không tạo claim cho
+      phần chưa thể kết luận của partially_answerable và không lặp claim cùng
+      nội dung.
 
     Trước khi trả lời, tự kiểm tra query, answer, reasoning, claims, số hop,
     answerability và evidence nhất quán với nhau.
@@ -128,85 +121,10 @@ function GenerateSingleTurnCandidateBatch(
     [{{ fact.fact_id }}] {{ fact.statement }}
     Văn bản: {{ fact.document_number }}
     Hiệu lực: {{ fact.valid_from }} đến {{ fact.valid_to }}
-    Chunk căn cứ: {{ fact.evidence_chunk_ids }}
     ---
     {% endfor %}
     ===== END TASK {{ item.task_id }} =====
     {% endfor %}
-
-    {{ ctx.output_format }}
-  "#
-}
-
-enum EvolutionOperation {
-  Concretizing
-  Reasoning
-  Hypothetical
-}
-
-class EvolvedCandidate {
-  query_vi string
-  reference_answer_vi string
-  reasoning_vi string
-}
-
-class CandidateEvolutionBatchInput {
-  task_id string
-  query_vi string
-  reference_answer_vi string
-  reasoning_vi string
-  operation EvolutionOperation
-  query_length string
-}
-
-class EvolvedCandidateBatchItem {
-  task_id string
-  candidate EvolvedCandidate
-}
-
-function EvolveCandidateBatch(
-  items: CandidateEvolutionBatchInput[]
-) -> EvolvedCandidateBatchItem[] {
-  client OpenAICompatibleProvider
-  prompt #"
-    {{ _.role("user") }}
-
-    Nhiệm vụ: biến đổi bề mặt một mẫu hỏi đáp về xử lý vi phạm giao thông
-    đường bộ mà không thay đổi căn cứ, answerability hoặc kết luận pháp lý.
-    Giữ nguyên task_id, thứ tự và trả đúng một kết quả mỗi task.
-
-    - Concretizing: thêm đúng một chi tiết tình huống không làm thay đổi phạm
-      vi áp dụng hoặc kết luận.
-    - Reasoning: viết lại câu hỏi để người trả lời phải nối các dữ kiện/quy tắc
-      đã có, không thêm kiến thức hay hop mới.
-    - Hypothetical: chuyển cùng nội dung sang giả định "nếu... thì", giữ nguyên
-      điều kiện và hệ quả.
-
-    {% for item in items %}
-    ===== TASK {{ item.task_id }} =====
-    Phép áp dụng: {{ item.operation }}
-
-    Câu hỏi gốc:
-    {{ item.query_vi }}
-
-    Đáp án gốc:
-    {{ item.reference_answer_vi }}
-
-    Lập luận gốc:
-    {{ item.reasoning_vi }}
-
-    Giữ kiểu gõ của query gốc: có/không dấu, lỗi/viết tắt, câu đầy đủ hay từ
-    khóa. Giữ length={{ item.query_length }}
-    {% if item.query_length == "short" %}(khoảng 5-10 từ){% elif item.query_length == "medium" %}(khoảng 10-20 từ){% elif item.query_length == "long" %}(trên 20 từ){% endif %}
-    và không kéo dài thành đoạn văn.
-    ===== END TASK {{ item.task_id }} =====
-    {% endfor %}
-
-    Cập nhật answer và reasoning cho nhất quán với query mới. Giữ nguyên mọi
-    con số, điều kiện, ngoại lệ, mức độ chắc chắn và phần thông tin còn thiếu.
-    Không thêm căn cứ, citation, hành vi, chế tài hoặc kết luận mới. Answer và
-    reasoning luôn dùng tiếng Việt chuẩn, không dùng thuật ngữ nội bộ hay cụm
-    "dữ liệu được cung cấp".
 
     {{ ctx.output_format }}
   "#

@@ -2,40 +2,28 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
-from functools import partial
 from typing import Any, Protocol
 
 from baml_py.logging import set_log_level
 
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import (
-    CandidateEvolutionBatchInput,
     CandidateGenerationBatchInput,
-    EvolutionOperation,
-    EvolvedCandidateBatchItem,
     FactContext,
     GeneratedSingleTurnCandidateBatchItem,
 )
-from legal_rag.baml_client.types import EvolvedCandidate as BamlEvolvedCandidate
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
-from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
 from legal_rag.benchmark_synthesis.models import LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
-CANDIDATE_SCHEMA_VERSION = "4.0.0"
-CANDIDATE_GENERATION_PROMPT_VERSION = "5.1.0"
-
-_EVOLUTION_OPERATION_BY_ID: dict[str, EvolutionOperation] = {
-    "concretizing": EvolutionOperation.Concretizing,
-    "reasoning": EvolutionOperation.Reasoning,
-    "hypothetical": EvolutionOperation.Hypothetical,
-}
+CANDIDATE_SCHEMA_VERSION = "5.0.0"
+CANDIDATE_GENERATION_PROMPT_VERSION = "6.0.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,21 +44,19 @@ class RequiredClaim:
     claim: str
     fact_id: str
     evidence: tuple[ClaimEvidence, ...]
-    requested_chunk_ids: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable required-claim record."""
         return {
             "claim": self.claim,
             "fact_id": self.fact_id,
-            "requested_chunk_ids": list(self.requested_chunk_ids),
             "evidence": [entry.to_dict() for entry in self.evidence],
         }
 
 
 @dataclass(frozen=True, slots=True)
 class CandidateDraft:
-    """One single-turn candidate generated and evolved, trusting LLM output as-is."""
+    """One grounded single-turn candidate generated from a fixed scenario."""
 
     sample_id: str
     scenario_id: str
@@ -78,7 +64,6 @@ class CandidateDraft:
     reference_answer_vi: str
     reasoning_vi: str
     required_claims: tuple[RequiredClaim, ...]
-    evolutions: tuple[str, ...]
     gold_chunk_ids: tuple[str, ...]
     query_form: str
     persona: str
@@ -104,7 +89,6 @@ class CandidateDraft:
             "reference_answer_vi": self.reference_answer_vi,
             "reasoning_vi": self.reasoning_vi,
             "required_claims": [claim.to_dict() for claim in self.required_claims],
-            "evolutions": list(self.evolutions),
             "gold_chunk_ids": list(self.gold_chunk_ids),
             "query_form": self.query_form,
             "persona": self.persona,
@@ -118,21 +102,14 @@ class CandidateDraft:
 
 
 def build_fact_context(fact: LegalFact) -> FactContext:
-    """Return the BAML-facing view of one fact, exposing only its own evidence chunk_ids."""
+    """Return the minimal BAML-facing view of one legal fact."""
     return FactContext(
         fact_id=fact.fact_id,
         statement=fact.statement,
         valid_from=fact.valid_from.isoformat() if fact.valid_from else None,
         valid_to=fact.valid_to.isoformat() if fact.valid_to else None,
         document_number=fact.document_number,
-        evidence_chunk_ids=[entry.chunk_id for entry in fact.evidence],
     )
-
-
-def _claim_evidence(fact: LegalFact, referenced_chunk_ids: Sequence[str]) -> tuple[ClaimEvidence, ...]:
-    """Return the fact's own evidence chunks matching the LLM-referenced chunk_ids."""
-    referenced = set(referenced_chunk_ids)
-    return tuple(ClaimEvidence(chunk_id=entry.chunk_id) for entry in fact.evidence if entry.chunk_id in referenced)
 
 
 class CandidateGenerationClient(Protocol):
@@ -157,19 +134,6 @@ class CandidateGenerationClient(Protocol):
     ) -> Sequence[GeneratedSingleTurnCandidateBatchItem]:
         """Return one typed generated candidate for every batch item."""
 
-    def evolve(
-        self,
-        query_vi: str,
-        reference_answer_vi: str,
-        reasoning_vi: str,
-        operation: EvolutionOperation,
-        query_length: str,
-    ) -> BamlEvolvedCandidate:
-        """Return one typed evolved query and answer."""
-
-    def evolve_batch(self, items: Sequence[CandidateEvolutionBatchInput]) -> Sequence[EvolvedCandidateBatchItem]:
-        """Return one typed evolved candidate for every batch item."""
-
 
 class BamlCandidateGenerationClient:
     """Typed BAML client backed by a runtime OpenAI-compatible provider."""
@@ -177,20 +141,12 @@ class BamlCandidateGenerationClient:
     def __init__(self, settings: Settings, synthesis_settings: SynthesisSettings) -> None:
         """Create a runtime BAML client from typed, secret-safe configuration."""
         set_log_level("OFF")
-        self._generation_registry = build_client_registry(
+        self._registry = build_client_registry(
             base_url=settings.llm_base_url,
             api_key=settings.llm_api_key,
             model=settings.llm_model,
             max_output_tokens=synthesis_settings.candidate_generation.max_output_tokens,
             temperature=synthesis_settings.candidate_generation.temperature,
-            timeout_seconds=settings.llm_timeout_seconds,
-        )
-        self._evolution_registry = build_client_registry(
-            base_url=settings.llm_base_url,
-            api_key=settings.llm_api_key,
-            model=settings.llm_model,
-            max_output_tokens=synthesis_settings.candidate_evolution.max_output_tokens,
-            temperature=synthesis_settings.candidate_evolution.temperature,
             timeout_seconds=settings.llm_timeout_seconds,
         )
         self._timeout_seconds = settings.llm_timeout_seconds
@@ -229,40 +185,10 @@ class BamlCandidateGenerationClient:
         """Run one bounded BAML call for a candidate batch."""
         request = b.request.GenerateSingleTurnCandidateBatch(
             list(items),
-            baml_options={"client_registry": self._generation_registry},
+            baml_options={"client_registry": self._registry},
         )
         raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        return b.parse.GenerateSingleTurnCandidateBatch(
-            raw_output, baml_options={"client_registry": self._generation_registry}
-        )
-
-    def evolve(
-        self,
-        query_vi: str,
-        reference_answer_vi: str,
-        reasoning_vi: str,
-        operation: EvolutionOperation,
-        query_length: str,
-    ) -> BamlEvolvedCandidate:
-        """Run one evolution through the batch endpoint."""
-        item = CandidateEvolutionBatchInput(
-            task_id="single",
-            query_vi=query_vi,
-            reference_answer_vi=reference_answer_vi,
-            reasoning_vi=reasoning_vi,
-            operation=operation,
-            query_length=query_length,
-        )
-        return self.evolve_batch((item,))[0].candidate
-
-    def evolve_batch(self, items: Sequence[CandidateEvolutionBatchInput]) -> Sequence[EvolvedCandidateBatchItem]:
-        """Run one bounded BAML call for an evolution batch."""
-        request = b.request.EvolveCandidateBatch(
-            list(items),
-            baml_options={"client_registry": self._evolution_registry},
-        )
-        raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        return b.parse.EvolveCandidateBatch(raw_output, baml_options={"client_registry": self._evolution_registry})
+        return b.parse.GenerateSingleTurnCandidateBatch(raw_output, baml_options={"client_registry": self._registry})
 
 
 def generate_candidate(
@@ -330,15 +256,13 @@ def _candidate_from_generated(
     generator_model: str,
 ) -> CandidateDraft:
     """Attach one typed LLM result to its deterministic scenario metadata."""
+    scenario_facts_by_id = {fact_id: facts_by_id[fact_id] for fact_id in scenario.fact_ids}
     required_claims = tuple(
         RequiredClaim(
             claim=claim.claim,
             fact_id=claim.fact_id,
-            requested_chunk_ids=tuple(claim.evidence_chunk_ids),
-            evidence=(
-                _claim_evidence(facts_by_id[claim.fact_id], claim.evidence_chunk_ids)
-                if claim.fact_id in facts_by_id
-                else ()
+            evidence=tuple(
+                ClaimEvidence(chunk_id=entry.chunk_id) for entry in scenario_facts_by_id[claim.fact_id].evidence
             ),
         )
         for claim in raw.required_claims
@@ -353,7 +277,6 @@ def _candidate_from_generated(
             reference_answer_vi=raw.reference_answer_vi,
             reasoning_vi=raw.reasoning_vi,
             required_claims=required_claims,
-            evolutions=(),
             gold_chunk_ids=scenario.gold_chunk_ids,
             query_form=scenario.query_form,
             persona=scenario.persona,
@@ -363,97 +286,6 @@ def _candidate_from_generated(
             reasoning_hops=scenario.reasoning_hops,
             source_fact_ids=scenario.fact_ids,
             generator_model=generator_model,
-        )
-    )
-
-
-def evolve_candidate(
-    draft: CandidateDraft,
-    operations: Sequence[str],
-    client: CandidateGenerationClient,
-    *,
-    llm_max_retries: int,
-    llm_retry_delay_seconds: float,
-    on_operation_applied: Callable[[CandidateDraft], None] | None = None,
-) -> CandidateDraft:
-    """Apply a bounded sequence of evidence-preserving evolution operations."""
-    query_vi = draft.query_vi
-    reference_answer_vi = draft.reference_answer_vi
-    reasoning_vi = draft.reasoning_vi
-    applied = list(draft.evolutions)
-    for operation_id in operations[len(applied) :]:
-        result = execute_llm_task(
-            f"{draft.scenario_id}:evolution:{len(applied)}:{operation_id}",
-            partial(
-                client.evolve,
-                query_vi,
-                reference_answer_vi,
-                reasoning_vi,
-                _EVOLUTION_OPERATION_BY_ID[operation_id],
-                draft.query_length,
-            ),
-            max_retries=llm_max_retries,
-            retry_delay_seconds=llm_retry_delay_seconds,
-        )
-        query_vi = result.query_vi
-        reference_answer_vi = result.reference_answer_vi
-        reasoning_vi = result.reasoning_vi
-        applied.append(operation_id)
-        draft = _with_identity(
-            replace(
-                draft,
-                query_vi=query_vi,
-                reference_answer_vi=reference_answer_vi,
-                reasoning_vi=reasoning_vi,
-                evolutions=tuple(applied),
-            )
-        )
-        if on_operation_applied is not None:
-            on_operation_applied(draft)
-    return _with_identity(
-        replace(
-            draft,
-            query_vi=query_vi,
-            reference_answer_vi=reference_answer_vi,
-            reasoning_vi=reasoning_vi,
-            evolutions=tuple(applied),
-        )
-    )
-
-
-def evolve_candidate_batch(
-    tasks: Sequence[tuple[str, CandidateDraft]],
-    operation_id: str,
-    client: CandidateGenerationClient,
-) -> tuple[tuple[str, CandidateDraft], ...]:
-    """Apply one evolution operation to every task in a single LLM request."""
-    operation = _EVOLUTION_OPERATION_BY_ID[operation_id]
-    items = [
-        CandidateEvolutionBatchInput(
-            task_id=task_id,
-            query_vi=draft.query_vi,
-            reference_answer_vi=draft.reference_answer_vi,
-            reasoning_vi=draft.reasoning_vi,
-            operation=operation,
-            query_length=draft.query_length,
-        )
-        for task_id, draft in tasks
-    ]
-    evolved_by_task_id = {result.task_id: result.candidate for result in client.evolve_batch(items)}
-    return tuple(
-        (task_id, _apply_evolution(draft, operation_id, evolved_by_task_id[task_id])) for task_id, draft in tasks
-    )
-
-
-def _apply_evolution(draft: CandidateDraft, operation_id: str, result: BamlEvolvedCandidate) -> CandidateDraft:
-    """Return one draft updated with a completed evolution operation."""
-    return _with_identity(
-        replace(
-            draft,
-            query_vi=result.query_vi,
-            reference_answer_vi=result.reference_answer_vi,
-            reasoning_vi=result.reasoning_vi,
-            evolutions=(*draft.evolutions, operation_id),
         )
     )
 

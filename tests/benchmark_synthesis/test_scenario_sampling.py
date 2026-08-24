@@ -11,7 +11,6 @@ from legal_rag.benchmark_synthesis.scenario_sampling import (
     Scenario,
     ScenarioDistribution,
     ScenarioSamplingConfig,
-    load_evolution_config,
     load_persona_descriptions,
     load_personas,
     load_scenario_distribution,
@@ -92,14 +91,6 @@ def test_load_scenario_distribution_reads_repo_config() -> None:
     assert {"conversational", "polite", "formal"} <= set(distribution.query_styles)
     assert distribution.bundle_answerability_values == ("answerable", "partially_answerable")
     assert dict(distribution.bundle_kind_weights) == {"single_hop": 1.0, "multi_hop": 1.0, "temporal": 1.0}
-
-
-def test_load_evolution_config_reads_repo_config() -> None:
-    """The versioned evolution file in the repo loads without error."""
-    config = load_evolution_config(_REPO_CONFIG_DIR / "evolution.json")
-
-    assert "concretizing" in config.operation_ids
-    assert config.max_rounds == 1
 
 
 def test_load_persona_descriptions_reads_repo_config() -> None:

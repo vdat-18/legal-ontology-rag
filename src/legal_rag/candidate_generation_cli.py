@@ -21,7 +21,6 @@ def _parser() -> argparse.ArgumentParser:
         help="Candidate-stage checkpoint JSONL path; defaults beside candidates_output_path",
     )
     parser.add_argument("--personas", type=Path, required=True, help="Persona config JSON path")
-    parser.add_argument("--evolution", type=Path, required=True, help="Evolution-operation config JSON path")
     parser.add_argument(
         "--candidates-per-scenario", type=int, required=True, help="Number of generation attempts per scenario"
     )
@@ -41,10 +40,7 @@ def main() -> None:
     from legal_rag.benchmark_synthesis.candidate_record import CandidateProgressRecord
     from legal_rag.benchmark_synthesis.config import SynthesisSettings
     from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError
-    from legal_rag.benchmark_synthesis.scenario_sampling import (
-        load_evolution_config,
-        load_persona_descriptions,
-    )
+    from legal_rag.benchmark_synthesis.scenario_sampling import load_persona_descriptions
     from legal_rag.benchmark_synthesis.writer import (
         read_candidate_progress,
         read_legal_facts,
@@ -66,14 +62,11 @@ def main() -> None:
     scenarios = read_scenarios(arguments.scenarios_path)
 
     persona_descriptions = load_persona_descriptions(arguments.personas)
-    evolution_config = load_evolution_config(arguments.evolution)
-    evolution_operations = evolution_config.operation_ids[: evolution_config.max_rounds]
 
     generation_client = BamlCandidateGenerationClient(settings, synthesis_settings)
     context = CandidatePipelineContext(
         facts_by_id=facts_by_id,
         persona_descriptions=persona_descriptions,
-        evolution_operations=evolution_operations,
         generation_client=generation_client,
         generator_model=settings.llm_model,
         llm_max_retries=synthesis_settings.llm_max_retries,
