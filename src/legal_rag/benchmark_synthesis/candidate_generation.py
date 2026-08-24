@@ -23,7 +23,7 @@ from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
 CANDIDATE_SCHEMA_VERSION = "6.0.0"
-CANDIDATE_GENERATION_PROMPT_VERSION = "7.0.0"
+CANDIDATE_GENERATION_PROMPT_VERSION = "8.0.0"
 
 
 @dataclass(frozen=True, slots=True)

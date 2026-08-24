@@ -7,15 +7,15 @@ class FactContext {
 }
 
 class ClaimReference {
-  claim string @description(#"Diễn đạt ngắn gọn nội dung claim, bằng tiếng Việt."#)
+  claim string @description(#"Một ý bắt buộc trong reference_answer, viết ngắn gọn."#)
   fact_id string @description(#"Phải trùng với một fact_id trong facts."#)
 }
 
 class GeneratedSingleTurnCandidate {
   query string @description(#"Câu hỏi tự nhiên, đúng phong cách được yêu cầu."#)
-  reference_answer string
-  reasoning string @description(#"Chuỗi lập luận nối evidence tới đáp án."#)
-  required_claims ClaimReference[] @description(#"Ít nhất một phần tử. Mỗi ý bắt buộc trong đáp án phải có một claim."#)
+  reference_answer string @description(#"Đáp án tham chiếu chỉ dựa trên facts."#)
+  reasoning string @description(#"Giải thích ngắn cách facts dẫn tới đáp án."#)
+  required_claims ClaimReference[] @description(#"Các ý bắt buộc trong đáp án và fact hỗ trợ."#)
 }
 
 class CandidateGenerationBatchInput {
@@ -41,80 +41,70 @@ function GenerateSingleTurnCandidateBatch(
 ) -> GeneratedSingleTurnCandidateBatchItem[] {
   client OpenAICompatibleProvider
   prompt #"
+    {{ _.role("system") }}
+
+    Bối cảnh: tạo ground truth single-turn để đánh giá RAG trong domain
+    xử lý vi phạm giao thông đường bộ tại Việt Nam. Xử lý độc lập
+    từng task.
+
+    Nguồn và grounding:
+    - statement và metadata của facts là nguồn pháp lý duy nhất. Không
+      thêm kiến thức, con số, điều kiện, ngoại lệ, mốc thời gian,
+      tình tiết làm đổi kết luận hay số Điều/khoản/điểm không có trong facts.
+    - Persona, form, style và length chỉ điều khiển cách hỏi, không
+      bổ sung sự kiện. bundle_kind và reasoning_hops mô tả hình dạng
+      evidence. bridge chỉ gợi cách nối facts, không phải nguồn pháp lý.
+    - Tự chọn một câu hỏi hữu ích và tự nhiên được facts hỗ trợ;
+      không ghép facts chỉ để làm câu hỏi phức tạp.
+
+    Scenario contract:
+    - answerable: facts trả lời trọn câu hỏi.
+    - partially_answerable: câu hỏi thiếu đúng một thông tin ảnh hưởng
+      việc áp dụng mà facts không xác định; đáp án tách phần có căn
+      cứ và phần chưa thể kết luận, không tự điền thông tin thiếu.
+    - reasoning_hops=1: một fact đủ trả lời. reasoning_hops>1: mọi
+      fact phải đóng góp một ý cần thiết cho câu hỏi và đáp án.
+    - single_hop dùng một fact; multi_hop kết hợp các fact bổ sung;
+      temporal phân biệt quy định theo thay đổi hoặc hiệu lực thời gian.
+
+    Query contract:
+    - Viết như người hỏi thật theo persona, không lộ đáp án, không dùng
+      thuật ngữ nội bộ. specific nêu tình huống; abstract hỏi quy tắc
+      tự nhiên, không sao chép statement.
+    - length: short 5-10 từ; medium 10-20 từ; long trên 20 từ nhưng gọn.
+    - style: standard=hỏi trực tiếp, đủ dấu và có dấu hỏi;
+      conversational=hội thoại;
+      polite=lịch sự; formal=trang trọng, trung tính; no_diacritics=hoàn toàn
+      không dấu; misspelled=có vài lỗi gõ hoặc viết tắt tự nhiên;
+      keyword_style=chỉ từ khóa cốt lõi, không thành câu, không dấu hỏi.
+
+    Output contract:
+    - query tuân thủ scenario.
+    - reference_answer trả lời trực tiếp, đủ điều kiện, ngoại lệ và
+      hệ quả cần thiết; luôn dùng tiếng Việt chuẩn.
+    - reasoning giải thích ngắn cách facts dẫn tới đáp án; không bịa
+      citation hoặc nói "dữ liệu được cung cấp".
+    - required_claims có ít nhất một phần tử, liệt kê các ý bắt buộc
+      trong reference_answer, không lặp nội dung và trỏ đúng fact_id.
+      Với reasoning_hops>1,
+      claims phải bao phủ mọi fact. Không tạo claim cho phần chưa thể kết
+      luận của partially_answerable.
+
+    Tự kiểm tra query, reference_answer, reasoning, required_claims, answerability
+    và reasoning_hops nhất quán. Trả đúng một kết quả cho mỗi task,
+    giữ nguyên task_id và thứ tự.
+
     {{ _.role("user") }}
 
-    Nhiệm vụ: với mỗi task, tạo một mẫu ground truth single-turn để đánh giá
-    RAG trong domain xử lý vi phạm giao thông đường bộ tại Việt Nam. Chỉ dùng
-    facts của task; trả đúng một kết quả, giữ nguyên task_id và thứ tự.
-
+    Các task cần sinh:
     {% for item in items %}
     ===== TASK {{ item.task_id }} =====
-    Yêu cầu scenario:
-    - Người hỏi: {{ item.persona_description }}
+    Scenario:
+    - Persona: {{ item.persona_description }}
     - Answerability: {{ item.answerability }}
-    - Evidence shape: {{ item.bundle_kind }}, reasoning_hops={{ item.reasoning_hops }}
-    {% if item.bridge %}- Nội dung nối các fact: {{ item.bridge }}{% endif %}
-    - Form={{ item.query_form }}, style={{ item.query_style }}, length={{ item.query_length }}
-
-    Grounding và coverage:
-    - Tự chọn một câu hỏi pháp lý hữu ích, tự nhiên và đủ cụ thể được facts
-      trực tiếp hỗ trợ; không ép facts vào một loại câu hỏi định trước.
-    - Mọi kết luận, con số, điều kiện, ngoại lệ và mốc thời gian phải có trong
-      facts. Không thêm kiến thức pháp luật, tình tiết làm đổi kết luận, số
-      Điều/khoản/điểm không được cung cấp.
-    - Bridge chỉ mô tả cách các fact được nối, không phải nguồn pháp lý. Không
-      đưa nội dung chỉ xuất hiện trong bridge vào query, answer hoặc claims.
-    - Với reasoning_hops=1, một fact phải đủ để trả lời. Với reasoning_hops>1,
-      câu hỏi và đáp án phải thực sự cần mọi fact, required_claims bao phủ mọi
-      fact và thể hiện đúng mối nối có căn cứ trong facts; không ghép nhiều
-      fact chỉ để làm dài.
-    - Nếu answerable, facts phải trả lời trọn câu hỏi. Nếu partially_answerable,
-      câu hỏi phải thiếu đúng một thông tin ảnh hưởng việc áp dụng mà facts
-      không xác định; đáp án nêu phần kết luận có căn cứ và phần chưa thể kết
-      luận, không tự điền dữ kiện thiếu.
-
-    query:
-    - Viết như người hỏi thật theo persona, không dùng thuật ngữ nội bộ, không
-      lộ đáp án. Chỉ luật sư hoặc cán bộ xử phạt mới nên hỏi bằng số điều khoản
-      khi số đó có trong facts.
-    - Form=specific: nêu tình huống cụ thể. Form=abstract: hỏi trực tiếp về quy
-      tắc nhưng vẫn tự nhiên, không sao chép nguyên statement.
-    - Tuân thủ length: short khoảng 5-10 từ; medium 10-20 từ; long trên 20 từ
-      nhưng vẫn là một câu hỏi gọn.
-    - Tuân thủ chính xác style:
-    {% if item.query_style == "standard" %}
-      standard: hỏi trực tiếp, tiếng Việt đủ dấu, đúng chính tả và có dấu hỏi.
-    {% elif item.query_style == "conversational" %}
-      conversational: giọng hội thoại tự nhiên, có thể xưng tôi/em/mình và kể
-      tình huống ngắn như khi hỏi trên diễn đàn hoặc ứng dụng nhắn tin.
-    {% elif item.query_style == "polite" %}
-      polite: lịch sự, tự nhiên, có thể mở đầu bằng cho hỏi, xin hỏi hoặc kết
-      thúc bằng mong được giải đáp; không viết thành công văn.
-    {% elif item.query_style == "formal" %}
-      formal: trang trọng, chính xác, trung tính như câu hỏi nghiệp vụ hoặc tư
-      vấn pháp lý; chỉ dùng thuật ngữ và căn cứ có trong facts.
-    {% elif item.query_style == "no_diacritics" %}
-      no_diacritics: query hoàn toàn không dấu, không thêm lỗi chính tả.
-    {% elif item.query_style == "misspelled" %}
-      misspelled: vẫn có dấu, chỉ thêm vài lỗi hoặc viết tắt chat tự nhiên.
-    {% elif item.query_style == "keyword_style" %}
-      keyword_style: chỉ các từ khóa cốt lõi, không thành câu, không dấu hỏi.
-    {% else %}
-      Thực hiện đúng style={{ item.query_style }}.
-    {% endif %}
-
-    Đáp án, lập luận và claims:
-    - reference_answer trả lời trực tiếp, đủ điều kiện/ngoại lệ và hệ quả
-      cần thiết; dùng tiếng Việt chuẩn dù query có lỗi hoặc không dấu.
-    - reasoning giải thích ngắn cách facts dẫn tới đáp án, theo đúng thứ tự
-      suy luận; không bịa citation và không nói "dữ liệu được cung cấp".
-    - Mỗi required claim là một ý bắt buộc trong đáp án, trỏ đúng fact_id và
-      được code gắn provenance từ evidence của fact đó. Không tạo claim cho
-      phần chưa thể kết luận của partially_answerable và không lặp claim cùng
-      nội dung.
-
-    Trước khi trả lời, tự kiểm tra query, answer, reasoning, claims, số hop,
-    answerability và evidence nhất quán với nhau.
+    - Evidence: bundle_kind={{ item.bundle_kind }}, reasoning_hops={{ item.reasoning_hops }}
+    {% if item.bridge %}- Bridge: {{ item.bridge }}{% endif %}
+    - Query: form={{ item.query_form }}, style={{ item.query_style }}, length={{ item.query_length }}
 
     Facts:
     {% for fact in item.facts %}
