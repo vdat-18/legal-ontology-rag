@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -165,3 +166,28 @@ def test_document_preparation_does_not_start_metadata_when_screening_fails(tmp_p
         )
 
     assert metadata_started is False
+
+
+def test_chunk_screening_persists_partial_results_before_exhausted_batch_raises(tmp_path: Path) -> None:
+    """Every matched verdict remains checkpointed even when another chunk never receives a verdict."""
+    chunks = (_chunk("chunk-0", "Nội dung 0"), _chunk("chunk-1", "Nội dung 1"))
+    output_path = tmp_path / "chunk_screening.jsonl"
+
+    class _PartialScreeningClient:
+        def screen(self, items: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            return [ChunkScreeningResult(chunk_id="chunk-0", has_penalty_content=True, reason="ok")]
+
+    settings = replace(
+        SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH),
+        llm_max_retries=0,
+        llm_retry_delay_seconds=0,
+    )
+    with pytest.raises(RuntimeError, match="chunk screening left 1 incomplete"):
+        document_preparation.prepare_chunk_screening(
+            chunks,
+            output_path,
+            _PartialScreeningClient,
+            settings,
+        )
+
+    assert [record.chunk_id for record in read_chunk_screening(output_path)] == ["chunk-0"]

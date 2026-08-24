@@ -119,9 +119,9 @@ def test_screen_chunks_batches_calls_by_batch_size() -> None:
     assert all(record.has_penalty_content for record in records)
 
 
-def test_screen_chunks_supports_configured_batches_of_fifty() -> None:
-    """The configured production size sends at most fifty chunks in one screening request."""
-    chunks = [_chunk(f"chunk-{i}", f"Nội dung {i}") for i in range(51)]
+def test_screen_chunks_supports_configured_batches_of_ten() -> None:
+    """The configured production size sends at most ten chunks in one screening request."""
+    chunks = [_chunk(f"chunk-{i}", f"Nội dung {i}") for i in range(11)]
     calls: list[int] = []
 
     class _CountingClient:
@@ -129,9 +129,9 @@ def test_screen_chunks_supports_configured_batches_of_fifty() -> None:
             calls.append(len(batch))
             return [ChunkScreeningResult(chunk_id=item.chunk_id, has_penalty_content=True, reason="") for item in batch]
 
-    screen_chunks(chunks, _CountingClient(), batch_size=50, max_retries=2, retry_delay_seconds=0)
+    screen_chunks(chunks, _CountingClient(), batch_size=10, max_retries=2, retry_delay_seconds=0)
 
-    assert calls == [50, 1]
+    assert calls == [10, 1]
 
 
 def test_screen_chunks_runs_batches_concurrently_and_preserves_output_order() -> None:
@@ -226,6 +226,62 @@ def test_screen_chunks_calls_on_batch_screened_after_each_batch() -> None:
     )
 
     assert batches_seen == [["chunk-0", "chunk-1"], ["chunk-2", "chunk-3"], ["chunk-4"]]
+
+
+def test_screen_chunks_checkpoints_matches_and_retries_only_incomplete_chunks() -> None:
+    """Valid verdicts persist immediately while duplicate, missing, and unexpected IDs are retried."""
+    chunks = [_chunk(f"chunk-{index}", f"Nội dung {index}") for index in range(3)]
+    calls: list[list[str]] = []
+    checkpoints: list[list[str]] = []
+
+    class _PartialClient:
+        def screen(self, batch: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            calls.append([item.chunk_id for item in batch])
+            if len(calls) == 1:
+                return [
+                    ChunkScreeningResult(chunk_id="chunk-0", has_penalty_content=True, reason="ok"),
+                    ChunkScreeningResult(chunk_id="chunk-1", has_penalty_content=True, reason="duplicate"),
+                    ChunkScreeningResult(chunk_id="chunk-1", has_penalty_content=True, reason="duplicate"),
+                    ChunkScreeningResult(chunk_id="unexpected", has_penalty_content=True, reason="wrong id"),
+                ]
+            return [
+                ChunkScreeningResult(chunk_id=item.chunk_id, has_penalty_content=True, reason="ok") for item in batch
+            ]
+
+    records = screen_chunks(
+        chunks,
+        _PartialClient(),
+        batch_size=3,
+        max_retries=1,
+        retry_delay_seconds=0,
+        on_batch_screened=lambda completed: checkpoints.append([record.chunk_id for record in completed]),
+    )
+
+    assert calls == [["chunk-0", "chunk-1", "chunk-2"], ["chunk-1", "chunk-2"]]
+    assert checkpoints == [["chunk-0"], ["chunk-1", "chunk-2"]]
+    assert [record.chunk_id for record in records] == ["chunk-0", "chunk-1", "chunk-2"]
+
+
+def test_screen_chunks_keeps_partial_checkpoint_when_missing_chunks_exhaust_retries() -> None:
+    """A failed batch still checkpoints every uniquely matched verdict returned before exhaustion."""
+    chunks = [_chunk("chunk-0", "Nội dung 0"), _chunk("chunk-1", "Nội dung 1")]
+    checkpoints: list[list[str]] = []
+
+    class _IncompleteClient:
+        def screen(self, batch: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            return [ChunkScreeningResult(chunk_id="chunk-0", has_penalty_content=True, reason="ok")]
+
+    with pytest.raises(RuntimeError, match="chunk screening left 1 incomplete"):
+        screen_chunks(
+            chunks,
+            _IncompleteClient(),
+            batch_size=2,
+            max_retries=0,
+            retry_delay_seconds=0,
+            on_batch_screened=lambda completed: checkpoints.append([record.chunk_id for record in completed]),
+        )
+
+    assert checkpoints == [["chunk-0"]]
 
 
 def test_screen_chunks_retries_a_failing_batch_then_succeeds() -> None:

@@ -24,7 +24,7 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.vncorenlp_timeout_seconds == 120
     assert settings.llm_max_retries == 2
     assert settings.llm_retry_delay_seconds == 120
-    assert settings.chunk_screening_batch_size == 50
+    assert settings.chunk_screening_batch_size == 10
     assert settings.chunk_screening_max_concurrency == 4
     assert settings.chunk_screening.max_output_tokens == 16_384
     assert settings.chunk_screening.reasoning_effort == "medium"
