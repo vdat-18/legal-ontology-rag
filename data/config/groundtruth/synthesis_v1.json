@@ -20,7 +20,7 @@
   "stages": {
     "chunk_screening": {
       "batch_size": 10,
-      "max_concurrency": 4,
+      "max_concurrency": 20,
       "max_output_tokens": 16384,
       "temperature": 0.0,
       "reasoning_effort": "medium"
