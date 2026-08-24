@@ -7,7 +7,7 @@ import http.client
 import json
 from collections.abc import Mapping
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urlsplit
 
 from baml_py import ClientRegistry, HTTPRequest
@@ -16,6 +16,8 @@ from loguru import logger
 
 if TYPE_CHECKING:
     from legal_rag.settings import Settings
+
+ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
 
 
 class BamlTransportError(ValueError):
@@ -58,21 +60,25 @@ def build_client_registry(
     max_output_tokens: int,
     temperature: float,
     timeout_seconds: float,
+    reasoning_effort: ReasoningEffort | None = None,
 ) -> ClientRegistry:
     """Build a BAML client registry bound to one runtime OpenAI-compatible provider."""
     registry = ClientRegistry()
+    options: dict[str, Any] = {
+        "base_url": base_url,
+        "api_key": api_key,
+        "model": model,
+        "max_tokens": max_output_tokens,
+        "temperature": temperature,
+        "supports_streaming": False,
+        "http": {"request_timeout_ms": int(timeout_seconds * 1000)},
+    }
+    if reasoning_effort is not None:
+        options["reasoning_effort"] = reasoning_effort
     registry.add_llm_client(
         "RuntimeLLMProvider",
         "openai-generic",
-        {
-            "base_url": base_url,
-            "api_key": api_key,
-            "model": model,
-            "max_tokens": max_output_tokens,
-            "temperature": temperature,
-            "supports_streaming": False,
-            "http": {"request_timeout_ms": int(timeout_seconds * 1000)},
-        },
+        options,
     )
     registry.set_primary("RuntimeLLMProvider")
     return registry

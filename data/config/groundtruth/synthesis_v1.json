@@ -1,5 +1,5 @@
 {
-  "schema_version": "3.0.0",
+  "schema_version": "4.0.0",
   "embedding_profile": "bge_m3",
   "embedding": {
     "batch_size": 64,
@@ -22,13 +22,15 @@
       "batch_size": 50,
       "max_concurrency": 4,
       "max_output_tokens": 16384,
-      "temperature": 0.0
+      "temperature": 0.0,
+      "reasoning_effort": "medium"
     },
     "document_metadata": {
       "opening_chunk_count": 10,
       "closing_chunk_count": 10,
       "max_output_tokens": 1024,
-      "temperature": 0.0
+      "temperature": 0.0,
+      "reasoning_effort": "medium"
     },
     "fact_extraction": {
       "batch_size": 1,
@@ -36,7 +38,8 @@
       "max_preceding_chunks": 2,
       "max_following_chunks": 1,
       "max_output_tokens": 32768,
-      "temperature": 0.0
+      "temperature": 0.0,
+      "reasoning_effort": "medium"
     },
     "evidence_relation": {
       "batch_size": 10,
@@ -52,13 +55,15 @@
         }
       },
       "max_output_tokens": 4096,
-      "temperature": 0.0
+      "temperature": 0.0,
+      "reasoning_effort": "medium"
     },
     "candidate_generation": {
       "batch_size": 5,
       "max_concurrency": 10,
       "max_output_tokens": 8192,
-      "temperature": 0.0
+      "temperature": 0.0,
+      "reasoning_effort": "medium"
     }
   }
 }

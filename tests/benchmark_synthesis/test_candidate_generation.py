@@ -149,18 +149,18 @@ def _synthesis_settings() -> SynthesisSettings:
 
 def test_candidate_client_uses_generation_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
     """Candidate generation uses its versioned stage configuration once."""
-    configured_tokens: list[int] = []
+    configured: list[tuple[int, object]] = []
 
     def _capture_registry(**kwargs: object) -> object:
-        configured_tokens.append(int(kwargs["max_output_tokens"]))
+        configured.append((int(kwargs["max_output_tokens"]), kwargs["reasoning_effort"]))
         return object()
 
-    settings = replace(_synthesis_settings(), candidate_generation=LlmStageSettings(101, 0.0))
+    settings = replace(_synthesis_settings(), candidate_generation=LlmStageSettings(101, 0.0, "high"))
     monkeypatch.setattr(candidate_generation, "build_client_registry", _capture_registry)
 
     BamlCandidateGenerationClient(_settings(), settings)
 
-    assert configured_tokens == [101]
+    assert configured == [(101, "high")]
 
 
 def test_baml_candidate_generation_client_parses_typed_result(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -403,22 +403,22 @@ def _synthesis_settings() -> SynthesisSettings:
 
 def test_evidence_relation_client_uses_relation_stage_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
     """Relation confirmation no longer inherits fact-extraction generation bounds."""
-    configured_tokens: list[int] = []
+    configured: list[tuple[int, object]] = []
 
     def _capture_registry(**kwargs: object) -> object:
-        configured_tokens.append(int(kwargs["max_output_tokens"]))
+        configured.append((int(kwargs["max_output_tokens"]), kwargs["reasoning_effort"]))
         return object()
 
     settings = replace(
         _synthesis_settings(),
-        fact_extraction=LlmStageSettings(101, 0.0),
-        evidence_relation=LlmStageSettings(202, 0.0),
+        fact_extraction=LlmStageSettings(101, 0.0, "low"),
+        evidence_relation=LlmStageSettings(202, 0.0, "high"),
     )
     monkeypatch.setattr(evidence_graph, "build_client_registry", _capture_registry)
 
     BamlEvidenceRelationClient(_settings(), settings, run_id="run-1")
 
-    assert configured_tokens == [202]
+    assert configured == [(202, "high")]
 
 
 def test_baml_evidence_relation_client_translates_confirmed_relation(monkeypatch: pytest.MonkeyPatch) -> None:

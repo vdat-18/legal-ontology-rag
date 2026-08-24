@@ -60,6 +60,7 @@ class BamlDocumentMetadataClient:
             max_output_tokens=synthesis_settings.document_metadata.max_output_tokens,
             temperature=synthesis_settings.document_metadata.temperature,
             timeout_seconds=settings.llm_timeout_seconds,
+            reasoning_effort=synthesis_settings.document_metadata.reasoning_effort,
         )
         self._timeout_seconds = settings.llm_timeout_seconds
         self._max_response_bytes = synthesis_settings.max_response_bytes

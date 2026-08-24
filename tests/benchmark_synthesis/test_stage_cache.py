@@ -132,6 +132,22 @@ def test_screening_fingerprint_changes_with_stage_config() -> None:
     assert original.run_id != changed_config.run_id
 
 
+def test_screening_fingerprint_changes_with_reasoning_effort() -> None:
+    """Resume rejects screening artifacts generated with another reasoning effort."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+    original = build_chunk_screening_fingerprint(
+        (_chunk(),), settings, llm_base_url="https://llm.test/v1", llm_model="provider/model-a"
+    )
+    changed = build_chunk_screening_fingerprint(
+        (_chunk(),),
+        replace(settings, chunk_screening=replace(settings.chunk_screening, reasoning_effort="high")),
+        llm_base_url="https://llm.test/v1",
+        llm_model="provider/model-a",
+    )
+
+    assert original.run_id != changed.run_id
+
+
 def test_metadata_fingerprint_changes_with_reading_window_config() -> None:
     """Metadata artifacts become stale when the configured opening window changes."""
     settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)

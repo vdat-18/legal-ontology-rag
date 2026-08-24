@@ -15,7 +15,7 @@ from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_transport import BamlRateLimitError, BamlTransportError, build_client_registry
 
 
-def _request() -> object:
+def _request(*, reasoning_effort: baml_transport.ReasoningEffort | None = None) -> object:
     """Build one generated BAML HTTP request for transport-level tests."""
     registry = build_client_registry(
         base_url="http://localhost:20128/v1",
@@ -24,12 +24,20 @@ def _request() -> object:
         max_output_tokens=2048,
         temperature=0,
         timeout_seconds=30,
+        reasoning_effort=reasoning_effort,
     )
     return b.request.CaptionImage(
         [],
         Image.from_base64("image/png", "aW1hZ2U="),
         baml_options={"client_registry": registry},
     )
+
+
+def test_runtime_registry_sends_configured_reasoning_effort() -> None:
+    """The generated request carries the configured OpenAI reasoning effort."""
+    request = _request(reasoning_effort="medium")
+
+    assert request.body.json()["reasoning_effort"] == "medium"
 
 
 def test_non_stream_transport_forces_json_response(monkeypatch: pytest.MonkeyPatch) -> None:

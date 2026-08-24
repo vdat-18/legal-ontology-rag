@@ -370,7 +370,8 @@ fact IDs vẫn được giữ để phân tích theo lát cắt.
   run ID trực tiếp trong cache và progress.
 - Cấu hình synthesis nằm tại
   `data/config/groundtruth/synthesis_v1.json`.
-- Synthesis config hiện dùng schema `3.0.0`.
+- Synthesis config hiện dùng schema `4.0.0`; mỗi LLM stage khai báo rõ
+  `reasoning_effort`, hiện đặt là `medium`.
 - `LegalFact 3.0.0`, `EvidenceRelation 3.0.0` và `Scenario 4.0.0` vẫn dùng lại
   được nếu đã được sinh bởi Steps 1-5 hiện tại.
 - `Candidate 6.0.0`, `CandidateProgress 5.0.0` và `GroundTruth 5.0.0` không

@@ -8,7 +8,9 @@ from math import isfinite
 from pathlib import Path
 from typing import Any
 
-SYNTHESIS_CONFIG_SCHEMA_VERSION = "3.0.0"
+from legal_rag.baml_transport import ReasoningEffort
+
+SYNTHESIS_CONFIG_SCHEMA_VERSION = "4.0.0"
 _MAX_LLM_TEMPERATURE = 2.0
 
 
@@ -18,6 +20,7 @@ class LlmStageSettings:
 
     max_output_tokens: int
     temperature: float
+    reasoning_effort: ReasoningEffort
 
     def __post_init__(self) -> None:
         """Reject invalid output limits before provider construction."""
@@ -185,7 +188,11 @@ class SynthesisSettings:
 
 def _stage_settings(config: dict[str, Any]) -> LlmStageSettings:
     """Build one stage's typed generation bounds."""
-    return LlmStageSettings(max_output_tokens=config["max_output_tokens"], temperature=config["temperature"])
+    return LlmStageSettings(
+        max_output_tokens=config["max_output_tokens"],
+        temperature=config["temperature"],
+        reasoning_effort=config["reasoning_effort"],
+    )
 
 
 def _evidence_retrieval_settings(config: dict[str, Any]) -> EvidenceRetrievalSettings:

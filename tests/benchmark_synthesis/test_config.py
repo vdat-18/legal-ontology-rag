@@ -27,13 +27,16 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.chunk_screening_batch_size == 50
     assert settings.chunk_screening_max_concurrency == 4
     assert settings.chunk_screening.max_output_tokens == 16_384
+    assert settings.chunk_screening.reasoning_effort == "medium"
     assert settings.document_metadata_opening_chunk_count == 10
     assert settings.document_metadata_closing_chunk_count == 10
+    assert settings.document_metadata.reasoning_effort == "medium"
     assert settings.fact_extraction_batch_size == 1
     assert settings.fact_extraction_max_concurrency == 4
     assert settings.fact_extraction_max_preceding_chunks == 2
     assert settings.fact_extraction_max_following_chunks == 1
     assert settings.fact_extraction.max_output_tokens == 32_768
+    assert settings.fact_extraction.reasoning_effort == "medium"
     assert settings.evidence_relation_batch_size == 10
     assert settings.evidence_relation_max_concurrency == 10
     assert settings.candidate_generation_batch_size == 5
@@ -45,7 +48,9 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.evidence_retrieval.bm25_b == 0.4
     assert settings.evidence_retrieval.bm25_delta == 0.5
     assert settings.evidence_relation.max_output_tokens == 4096
+    assert settings.evidence_relation.reasoning_effort == "medium"
     assert settings.candidate_generation.max_output_tokens == 8192
+    assert settings.candidate_generation.reasoning_effort == "medium"
 
 
 def test_synthesis_settings_reject_unknown_schema(tmp_path: Path) -> None:
