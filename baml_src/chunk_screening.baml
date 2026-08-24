@@ -30,6 +30,11 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     nào vi phạm, áp dụng cho ai/phương tiện nào, trong điều kiện hay ngoại
     lệ nào, và vi phạm được phát hiện, ngăn chặn hoặc xử lý ra sao.
 
+    Mỗi block là một target độc lập. Khi đánh giá một block, bỏ qua hoàn toàn
+    text và fact của mọi block khác trong cùng request. Không dùng thứ tự các
+    block để nối, bổ sung hoặc hoàn thiện nội dung target. Fact chỉ xuất hiện
+    ở block khác không được dùng làm căn cứ cho kết quả hiện tại.
+
     Đặt has_penalty_content=true khi Target text chứa ít nhất một fact về:
     hành vi/nghĩa vụ; chủ thể, phương tiện, điều kiện/ngoại lệ xác định
     phạm vi áp dụng; chế tài, hậu quả pháp lý hoặc khắc phục hậu quả; thẩm
