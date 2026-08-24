@@ -25,7 +25,8 @@ Mỗi stage chỉ làm đúng một nhiệm vụ: screening chọn target; metad
 thông tin toàn văn bản; extraction tạo fact; relation nối các fact hoàn chỉnh;
 scenario sampling cân bằng hình thức câu hỏi; generation tạo mẫu hỏi đáp. Tất
 cả stage chỉ dùng input được cung cấp, không bổ sung kiến thức pháp luật bên
-ngoài và giữ nguyên ID của từng batch item.
+ngoài và giữ nguyên ID của từng batch item. Chỉ dẫn ổn định về
+bài toán, domain và contract được tách khỏi source text của từng request.
 
 ## Tổng quan
 

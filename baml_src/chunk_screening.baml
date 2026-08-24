@@ -1,8 +1,7 @@
 class ChunkScreeningItem {
   chunk_id string
   context_text string @description(#"
-    Ngữ cảnh cấu trúc do parser tạo, dùng để hiểu Chương, Mục và Điều của
-    target text. Không tự coi context này là nội dung chế tài.
+    Ngữ cảnh cấu trúc do parser tạo; không phải source text.
   "#)
   text string
 }
@@ -10,40 +9,36 @@ class ChunkScreeningItem {
 class ChunkScreeningResult {
   chunk_id string @description(#"Phải trùng với một chunk_id trong danh sách đầu vào."#)
   has_penalty_content bool @description(#"
-    Tên field được giữ để tương thích schema. true nếu target chứa nội dung
-    pháp lý có thể trích thành fact về xử lý vi phạm giao thông đường bộ.
+    True nếu target có nội dung có thể trích thành legal fact trong domain.
   "#)
-  reason string @description(#"
-    Giải thích ngắn gọn bằng tiếng Việt cho quyết định has_penalty_content.
-  "#)
+  reason string @description(#"Một câu tiếng Việt ngắn giải thích quyết định."#)
 }
 
 function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
   client OpenAICompatibleProvider
   prompt #"
+    {{ _.role("system") }}
+
+    Bối cảnh: chuẩn bị nguồn sự thật cho benchmark RAG hỏi đáp về
+    xử lý vi phạm giao thông đường bộ tại Việt Nam.
+
+    Nhiệm vụ: sàng lọc độc lập từng target chunk trước khi trích
+    legal fact. Domain gồm quy định trực tiếp về hành vi/nghĩa vụ;
+    chủ thể, phương tiện, điều kiện/ngoại lệ; chế tài và khắc
+    phục hậu quả; thẩm quyền, thủ tục; hiệu lực hoặc chuyển tiếp
+    ảnh hưởng trực tiếp đến việc xử lý vi phạm.
+
+    Đặt has_penalty_content=true khi Target text có nội dung có thể trích
+    thành fact trong domain. Không cần quy định trọn vẹn; ưu tiên recall
+    cho mảnh bị chia chunk hoặc nằm trong bảng. Ngược lại, đặt false;
+    mục lục, tiêu đề, lời dẫn, căn cứ ban hành, chữ ký, thông tin
+    hành chính hoặc nội dung ngoài domain tự chúng không đủ.
+
+    Chỉ Target text làm căn cứ. Structural context chỉ giúp hiểu cấu trúc,
+    không tự tạo nội dung pháp lý. Trả đúng một kết quả cho mỗi
+    input, giữ nguyên chunk_id và viết reason bằng một câu ngắn.
+
     {{ _.role("user") }}
-
-    Nhiệm vụ: chọn các target đáng gửi sang bước trích xuất fact cho benchmark
-    hỏi đáp về xử lý vi phạm giao thông đường bộ tại Việt Nam. Xử lý độc lập
-    từng chunk, trả đúng một kết quả và giữ nguyên chunk_id.
-
-    has_penalty_content=true khi Target chứa ít nhất một nội dung có thể làm
-    căn cứ trả lời câu hỏi trong domain, gồm: hành vi vi phạm hoặc nghĩa vụ;
-    chủ thể/phương tiện và điều kiện áp dụng; mức hay hình thức xử phạt; trừ
-    điểm, tước quyền sử dụng; biện pháp khắc phục; ngoại lệ; thẩm quyền; trình
-    tự, thời hạn hoặc thủ tục xử lý; quy định sửa đổi/chuyển tiếp ảnh hưởng
-    trực tiếp đến việc áp dụng. Bao gồm quy định nằm trong bảng hoặc Target là
-    mảnh trực tiếp của một quy định bị chia chunk.
-
-    has_penalty_content=false khi Target chỉ là mục lục, tiêu đề, lời dẫn,
-    căn cứ ban hành, chữ ký, thông tin hành chính, phạm vi chung, định nghĩa
-    không quyết định cách xử lý vi phạm, hiệu lực chung của toàn văn bản, hoặc
-    nội dung ngoài giao thông đường bộ.
-
-    Chỉ dùng Target text để quyết định. Structural context chỉ giúp hiểu vị trí
-    và phạm vi; không tự tạo nội dung pháp lý. Ưu tiên recall khi Target có một
-    phần quy định rõ ràng dù phần còn lại nằm ở chunk liền kề. reason viết một
-    câu ngắn, nêu loại nội dung tìm thấy hoặc lý do loại.
 
     Các chunk cần sàng lọc:
     {% for chunk in chunks %}

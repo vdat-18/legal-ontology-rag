@@ -18,7 +18,7 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
 DOCUMENT_METADATA_SCHEMA_VERSION = "1.0.0"
-DOCUMENT_METADATA_PROMPT_VERSION = "2.0.0"
+DOCUMENT_METADATA_PROMPT_VERSION = "3.0.0"
 
 
 @dataclass(frozen=True, slots=True)
