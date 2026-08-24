@@ -52,15 +52,19 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     ô ký tên và thông tin hành chính tự chúng không đủ. Luôn đặt false cho
     phần chỉ liệt kê trường trống cần điền hoặc chỉ xác nhận đã giao/nhận văn
     bản và thời điểm giao/nhận, kể cả khi các trường đó nhắc tới vi phạm,
-    tình tiết, tang vật hay người xử lý. Biểu mẫu chỉ được giữ khi Target nêu
-    một quy tắc, điều kiện, quyền, nghĩa vụ, thời hạn hoặc biện pháp pháp lý
-    cụ thể phải áp dụng.
+    tình tiết, tang vật hay người xử lý. Nhãn trường vẫn là nội dung cần loại,
+    kể cả khi dùng từ mang nghĩa bắt buộc như phải thực hiện, phải xác minh
+    hoặc phải giám định. Biểu mẫu chỉ được giữ khi Target nêu một quy tắc,
+    điều kiện, quyền, nghĩa vụ, thời hạn hoặc biện pháp pháp lý hoàn chỉnh,
+    độc lập với phần thông tin còn trống cần điền.
 
     Đánh giá has_document_metadata độc lập với has_penalty_content. Đặt true
     chỉ khi Target nêu rõ số hiệu của chính văn bản đang đọc, ngày toàn văn
     bản bắt đầu có hiệu lực hoặc ngày toàn văn bản hết hiệu lực. Không chọn
     ngày ký/ban hành, ngày áp dụng riêng, metadata của văn bản được dẫn chiếu
-    hoặc thông tin chỉ nhận diện phụ lục/biểu mẫu.
+    hoặc thông tin chỉ nhận diện phụ lục/biểu mẫu. Luôn đặt false khi số hiệu
+    chỉ được lặp lại trong tiêu đề hoặc dòng giới thiệu phụ lục, dù đó là số
+    hiệu của chính văn bản đang đọc.
 
     Chỉ Target text làm căn cứ. Structural context chỉ giúp hiểu cấu trúc,
     không tự tạo nội dung pháp lý. Trả đúng một kết quả cho mỗi input, giữ
