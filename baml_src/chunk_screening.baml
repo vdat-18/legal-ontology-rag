@@ -38,6 +38,32 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     block để nối, bổ sung hoặc hoàn thiện nội dung target. Fact chỉ xuất hiện
     ở block khác không được dùng làm căn cứ cho kết quả hiện tại.
 
+    Cổng quyết định có ưu tiên cao:
+    - chỉ đặt true cho quy tắc trực tiếp áp dụng vào một vụ việc cụ thể; câu
+      giao nhiệm vụ quản lý chung không phải thẩm quyền xử lý vụ việc;
+    - đặt false nếu Target chỉ giao cơ quan quản lý, hướng dẫn, kiểm tra, thanh
+      tra, phối hợp, báo cáo, bảo vệ công trình hoặc "xử lý vi phạm theo thẩm
+      quyền" mà không tự nêu hành vi, điều kiện, quyền hạn hay bước xử lý cụ
+      thể. Viện dẫn điều/khoản khác nhưng không nêu lại nội dung cũng không đủ;
+    - đặt false cho điều khoản chỉ giao cơ quan ban hành, sửa đổi hoặc quy định
+      danh mục, loại đối tượng, điều kiện hay yêu cầu trong tương lai. Đây là
+      thẩm quyền xây dựng quy định, không phải chính quy tắc dùng để xác định vi
+      phạm; chỉ đặt true nếu Target tự nêu luôn đối tượng và nghĩa vụ cụ thể;
+    - phạm vi điều chỉnh và định nghĩa đứng riêng luôn false, kể cả định nghĩa
+      về vi phạm hành chính. Chỉ giữ khi cùng Target còn có một quy tắc trực
+      tiếp sử dụng khái niệm đó để xác định hoặc xử lý trường hợp cụ thể.
+
+    Phân biệt rõ thẩm quyền vụ việc với quản lý nhà nước. Chỉ coi là thẩm quyền
+    trực tiếp khi Target tự quy định chủ thể được lập biên bản, ra quyết định,
+    áp dụng một chế tài/biện pháp, thu thập chứng cứ hoặc thực hiện một bước xác
+    định trong hồ sơ vi phạm. Các cụm như "kiểm tra, xử lý theo thẩm quyền" hay
+    "thực hiện biện pháp phòng ngừa, ngăn chặn" tự chúng chỉ là nhiệm vụ chung.
+
+    Ngược lại, nghĩa vụ, thời hạn, hạn chế hoặc hậu quả mà chính Target xác định
+    phát sinh sau xử phạt, đình chỉ, thu hồi, tạm giữ hay biện pháp xử lý phải
+    đặt true. Target không cần nhắc lại hành vi gốc nếu tự nêu rõ sự kiện xử lý
+    làm căn cứ phát sinh; phần hành chính đi kèm không làm mất fact hợp lệ.
+
     Đặt has_penalty_content=true chỉ khi Target text tự nêu ít nhất một nội
     dung có thể dùng trực tiếp trong một vụ việc vi phạm đường bộ:
     - hành vi bị cấm hoặc quy tắc, nghĩa vụ, điều kiện, ngoại lệ trực tiếp
