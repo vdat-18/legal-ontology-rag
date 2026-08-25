@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Sequence
 from dataclasses import replace
@@ -152,6 +153,15 @@ def test_document_preparation_cli_runs_sequentially_and_reuses_completed_outputs
     assert [record.chunk_id for record in read_chunk_screening(screening_path)] == ["chunk-1", "chunk-2"]
     assert "Step 1B metadata candidates unchanged; reusing existing metadata" in log_messages
 
+    metadata_fingerprint_path = stage_cache_path(metadata_path)
+    metadata_fingerprint = json.loads(metadata_fingerprint_path.read_text(encoding="utf-8"))
+    metadata_fingerprint["prompt_version"] = "older-prompt"
+    metadata_fingerprint_path.write_text(json.dumps(metadata_fingerprint), encoding="utf-8")
+
+    document_preparation_cli.main()
+
+    assert calls == ["screening", "metadata", "screening", "screening", "metadata"]
+
     class _MetadataChangingScreeningClient(_SequentialScreeningClient):
         def screen(self, chunks: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
             calls.append("screening")
@@ -168,7 +178,7 @@ def test_document_preparation_cli_runs_sequentially_and_reuses_completed_outputs
     monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _MetadataChangingScreeningClient)
     document_preparation_cli.main()
 
-    assert calls == ["screening", "metadata", "screening", "screening", "metadata"]
+    assert calls == ["screening", "metadata", "screening", "screening", "metadata", "screening", "metadata"]
 
     def _fail(*_args: object, **_kwargs: object) -> None:
         pytest.fail("Completed document-preparation outputs must bypass both LLM clients")

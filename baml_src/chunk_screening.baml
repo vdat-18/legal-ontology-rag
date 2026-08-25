@@ -1,5 +1,9 @@
 class ChunkScreeningItem {
   chunk_id string
+  source_name string @description(#"Tên tài liệu nguồn chứa target."#)
+  record_scope string @description(#"Phạm vi root hoặc attachment_child của target."#)
+  attachment_member_path string? @description(#"Đường dẫn thành viên đính kèm nếu target thuộc attachment."#)
+  kind string @description(#"Loại chunk do parser xác định."#)
   context_text string @description(#"
     Ngữ cảnh cấu trúc do parser tạo; không phải source text.
   "#)
@@ -129,6 +133,23 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     minh độc lập bên ngoài mẫu, trực tiếp giải thích một quy tắc pháp luật áp
     dụng chung, mới có thể được giữ.
 
+    Dùng Source provenance để hiểu target thuộc văn bản gốc hay tệp đính kèm,
+    nhưng không loại chỉ dựa vào provenance: phụ lục vẫn có thể chứa quy tắc
+    pháp lý độc lập. Ghi chú hoặc hướng dẫn đơn lẻ của biểu mẫu/tệp đính kèm
+    phải đặt false kể cả khi target không chứa trường trống hay ô ký tên.
+
+    Luôn đặt false cho tên hoặc mục danh mục biển báo, vạch kẻ, cấu kiện hay
+    thiết kế chỉ nêu mã và tên như "Biển số ...: Cấm ...". Chỉ đặt true khi
+    chính Target còn có câu giải thích hiệu lực pháp lý, điều cấm hoặc nghĩa vụ
+    chấp hành. Nội dung phân loại phương tiện, cấu tạo, tiêu chuẩn kỹ thuật hoặc
+    yêu cầu thiết kế cũng đặt false nếu không tự nêu vi phạm hay cách xử lý.
+
+    Việc thu thập, kết nối, chia sẻ, lưu trữ hoặc quản lý dữ liệu chỉ để "phục
+    vụ xử lý vi phạm" không phải bản thân quy tắc vi phạm hay thủ tục xử lý,
+    nên đặt false nếu Target không nêu thêm hành vi, thẩm quyền, trình tự hoặc
+    hậu quả pháp lý cụ thể. Hành vi, lỗi và quy tắc trong kỳ thi/sát hạch chỉ
+    dùng để chấm đạt/trượt, không phải vi phạm xảy ra trên đường, nên đặt false.
+
     Với từng Target, quyết định has_document_metadata trước rồi mới quyết định
     has_penalty_content; hai field hoàn toàn độc lập và có thể khác nhau. Đặt
     metadata=true khi chính Target chứa ít nhất một thông tin giúp Step 1B xác
@@ -186,6 +207,11 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     {% for chunk in chunks %}
     ---
     chunk_id: {{ chunk.chunk_id }}
+    Source provenance:
+    - source_name: {{ chunk.source_name }}
+    - record_scope: {{ chunk.record_scope }}
+    - attachment_member_path: {{ chunk.attachment_member_path }}
+    - kind: {{ chunk.kind }}
     {% if chunk.context_text %}
     Structural context:
     {{ chunk.context_text }}

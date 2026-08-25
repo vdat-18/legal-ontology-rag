@@ -281,5 +281,8 @@ def _chunk_identity(chunk: Chunk, *, include_context: bool) -> dict[str, object]
         "source_sha256": chunk.source_sha256,
     }
     if include_context:
+        identity["attachment_member_path"] = chunk.attachment_member_path
         identity["context_text"] = chunk.context_text
+        identity["kind"] = chunk.kind
+        identity["source_name"] = chunk.source_name
     return identity

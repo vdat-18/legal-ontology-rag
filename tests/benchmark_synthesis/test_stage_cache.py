@@ -118,6 +118,25 @@ def test_screening_fingerprint_changes_with_structural_context() -> None:
     assert original.run_id != changed.run_id
 
 
+def test_screening_fingerprint_changes_with_prompt_facing_provenance() -> None:
+    """Screening caches become stale when provenance shown to the model changes."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+    chunk = _chunk()
+    original = build_chunk_screening_fingerprint(
+        (chunk,), settings, llm_base_url="https://llm.test/v1", llm_model="provider/model-a"
+    )
+
+    for changed_chunk in (
+        replace(chunk, source_name="attachment.doc"),
+        replace(chunk, attachment_member_path="word/embeddings/attachment.doc"),
+        replace(chunk, kind="table"),
+    ):
+        changed = build_chunk_screening_fingerprint(
+            (changed_chunk,), settings, llm_base_url="https://llm.test/v1", llm_model="provider/model-a"
+        )
+        assert original.run_id != changed.run_id
+
+
 def test_screening_fingerprint_changes_with_stage_config() -> None:
     """A cache becomes stale when reproducibility-sensitive stage settings change."""
     settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)

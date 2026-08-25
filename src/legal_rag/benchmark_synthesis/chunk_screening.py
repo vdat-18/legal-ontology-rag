@@ -27,7 +27,7 @@ from legal_rag.settings import Settings
 
 CHUNK_SCREENING_SCHEMA_VERSION = "3.0.0"
 LEGACY_CHUNK_SCREENING_SCHEMA_VERSION = "2.0.0"
-CHUNK_SCREENING_PROMPT_VERSION = "5.10.0"
+CHUNK_SCREENING_PROMPT_VERSION = "5.11.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -244,6 +244,10 @@ def screen_chunks(
             items = [
                 ChunkScreeningItem(
                     chunk_id=chunk.chunk_id,
+                    source_name=chunk.source_name,
+                    record_scope=chunk.record_scope,
+                    attachment_member_path=chunk.attachment_member_path,
+                    kind=chunk.kind,
                     context_text=chunk.context_text,
                     text=chunk.text,
                 )

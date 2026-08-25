@@ -32,6 +32,11 @@ function ResolveDocumentMetadata(metadata_sections: string[]) -> DocumentMetadat
       text nêu rõ; không suy ra từ việc một điều khoản hay văn bản
       khác bị bãi bỏ.
 
+    Với văn bản hợp nhất (VBHN), metadata phải thuộc chính văn bản hợp nhất.
+    Không lấy ngày hiệu lực của luật, nghị định hoặc văn bản gốc đang được hợp
+    nhất làm valid_from/valid_to của VBHN. Nếu source không nêu ngày hiệu lực
+    độc lập của chính VBHN thì trả null cho trường tương ứng.
+
     Chuẩn hóa ngày thành YYYY-MM-DD; trả null nếu không nêu rõ. Không
     dùng kiến thức bên ngoài, suy đoán hoặc để dẫn chiếu ở phần cuối
     ghi đè danh tính văn bản xác định từ phần đầu.

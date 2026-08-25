@@ -118,7 +118,20 @@ def main() -> None:
             for chunk_id in rescreen_chunk_ids
         )
         metadata_fingerprint_path = stage_cache_path(arguments.metadata_output_path)
-        if rescreen_chunk_ids and arguments.metadata_output_path.exists() and not metadata_selection_changed:
+        existing_metadata_fingerprint = (
+            read_stage_cache_fingerprint(metadata_fingerprint_path) if metadata_fingerprint_path.exists() else None
+        )
+        metadata_generation_unchanged = (
+            existing_metadata_fingerprint is not None
+            and existing_metadata_fingerprint.prompt_version == metadata_fingerprint.prompt_version
+            and existing_metadata_fingerprint.model == metadata_fingerprint.model
+        )
+        if (
+            rescreen_chunk_ids
+            and arguments.metadata_output_path.exists()
+            and not metadata_selection_changed
+            and metadata_generation_unchanged
+        ):
             write_stage_cache_fingerprint(metadata_fingerprint_path, metadata_fingerprint)
             logger.info("Step 1B metadata candidates unchanged; reusing existing metadata")
             return

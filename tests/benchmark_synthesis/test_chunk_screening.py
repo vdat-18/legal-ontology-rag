@@ -12,13 +12,22 @@ from legal_rag.baml_client.types import ChunkScreeningItem, ChunkScreeningResult
 from legal_rag.benchmark_synthesis import chunk_screening
 from legal_rag.benchmark_synthesis.chunk_screening import BamlChunkScreeningClient, screen_chunks
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
-from legal_rag.chunker.models import Chunk
+from legal_rag.chunker.models import Chunk, ChunkKind, RecordScope
 from legal_rag.settings import Settings
 
 _SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
 
 
-def _chunk(chunk_id: str, text: str, *, context_text: str = "") -> Chunk:
+def _chunk(
+    chunk_id: str,
+    text: str,
+    *,
+    context_text: str = "",
+    source_name: str = "source.docx",
+    record_scope: RecordScope = "root",
+    attachment_member_path: str | None = None,
+    kind: ChunkKind = "paragraph_group",
+) -> Chunk:
     """Build one minimal chunk for chunk-screening tests."""
     return Chunk(
         chunk_id=chunk_id,
@@ -26,12 +35,12 @@ def _chunk(chunk_id: str, text: str, *, context_text: str = "") -> Chunk:
         chunker_config_sha256="config-hash",
         scope_id="scope-id",
         chunk_index=0,
-        kind="paragraph_group",
-        source_name="source.docx",
+        kind=kind,
+        source_name=source_name,
         source_sha256="source-hash",
-        record_scope="root",
+        record_scope=record_scope,
         parent_attachment_id=None,
-        attachment_member_path=None,
+        attachment_member_path=attachment_member_path,
         attachment_member_sha256=None,
         unit_ids=("unit-0",),
         source_refs=("word/document.xml#/body/0",),
@@ -107,6 +116,38 @@ def test_screen_chunks_passes_structural_context_separately_from_target_text() -
 
     assert seen_items[0].context_text == context_text
     assert seen_items[0].text == chunk.text
+
+
+def test_screen_chunks_passes_source_provenance_separately_from_target_text() -> None:
+    """Screening receives parser provenance so the model can identify attachment boilerplate."""
+    chunk = _chunk(
+        "chunk-1",
+        "Ghi chú: ghi rõ họ tên người lập.",
+        source_name="Bieu mau.doc",
+        record_scope="attachment_child",
+        attachment_member_path="word/embeddings/Bieu mau.doc",
+        kind="paragraph_group",
+    )
+    seen_items: list[ChunkScreeningItem] = []
+
+    class _RecordingClient:
+        def screen(self, items: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            seen_items.extend(items)
+            return [
+                ChunkScreeningResult(
+                    chunk_id="chunk-1",
+                    has_penalty_content=False,
+                    has_document_metadata=False,
+                    reason="Đây là ghi chú của biểu mẫu đính kèm.",
+                )
+            ]
+
+    screen_chunks([chunk], _RecordingClient(), batch_size=10, max_retries=0, retry_delay_seconds=0)
+
+    assert seen_items[0].source_name == "Bieu mau.doc"
+    assert seen_items[0].record_scope == "attachment_child"
+    assert seen_items[0].attachment_member_path == "word/embeddings/Bieu mau.doc"
+    assert seen_items[0].kind == "paragraph_group"
 
 
 def test_screen_chunks_batches_calls_by_batch_size() -> None:
@@ -428,6 +469,10 @@ def test_baml_chunk_screening_client_parses_typed_result(monkeypatch: pytest.Mon
         [
             ChunkScreeningItem(
                 chunk_id="chunk-1",
+                source_name="source.docx",
+                record_scope="root",
+                attachment_member_path=None,
+                kind="paragraph_group",
                 context_text="Điều 6",
                 text="Điều 6 khoản 9 điểm b quy định mức phạt.",
             )
