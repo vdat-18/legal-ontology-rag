@@ -1,6 +1,6 @@
 schema_version: "0.1.0"
 artifact_id: road-traffic-ontology-requirements
-artifact_version: "0.1.0"
+artifact_version: "0.1.1"
 status: v0.1_frozen
 requirement_categories:
   - id: purpose
@@ -48,30 +48,6 @@ requirement_categories:
       - id: SCOPE-007
         statement: >-
           Direct provenance from a modeled rule and consequence to the provisions and evidence that support them.
-
-  - id: explicitly_out_of_scope
-    requirements:
-      - id: EXCL-001
-        statement: Retrieval, ranking, query planning, graph traversal, answer generation, and GraphRAG evaluation.
-      - id: EXCL-002
-        statement: Graphiti, Neo4j, BAML, and other runtime or persistence projections.
-      - id: EXCL-003
-        statement: Ontology population from chunks and production extraction prompts.
-      - id: EXCL-004
-        statement: >-
-          Enforcement authority and competence boundaries except when a pilot example exposes a required dependency.
-      - id: EXCL-005
-        statement: Administrative procedure, complaints, appeals, and adjudication.
-      - id: EXCL-006
-        statement: Criminal and civil liability.
-      - id: EXCL-007
-        statement: >-
-          Detailed road infrastructure, vehicle engineering, registration, inspection, and driver-training models
-          beyond distinctions required by a V0.1 CQ.
-      - id: EXCL-008
-        statement: >-
-          Computing a final combined sanction for multiple simultaneous violations. Each applicable rule may be
-          represented, but sanction aggregation policy is deferred.
 
   - id: required_granularity
     requirements:

@@ -87,18 +87,11 @@ or any storage framework.
 | `SCOPE-006` | Effective intervals, amendment, replacement, and supersession of rules or provisions. |
 | `SCOPE-007` | Direct provenance from a modeled rule and consequence to the provisions and evidence that support them. |
 
-### Explicitly Out of Scope
+### Scope Boundary
 
-| ID | Exclusion |
-| --- | --- |
-| `EXCL-001` | Retrieval, ranking, query planning, graph traversal, answer generation, and GraphRAG evaluation. |
-| `EXCL-002` | Graphiti, Neo4j, BAML, and other runtime or persistence projections. |
-| `EXCL-003` | Ontology population from chunks and production extraction prompts. |
-| `EXCL-004` | Enforcement authority and competence boundaries except when a pilot example exposes a required dependency. |
-| `EXCL-005` | Administrative procedure, complaints, appeals, and adjudication. |
-| `EXCL-006` | Criminal and civil liability. |
-| `EXCL-007` | Detailed road infrastructure, vehicle engineering, registration, inspection, and driver-training models beyond distinctions required by a V0.1 CQ. |
-| `EXCL-008` | Computing a final combined sanction for multiple simultaneous violations. Each applicable rule may be represented, but sanction aggregation policy is deferred. |
+The `in_scope` registry is closed: only listed capabilities belong to V0.1. Anything not listed is outside the current
+ontology-construction scope and requires an explicit versioned scope addition before it can drive ontology terms or
+constraints.
 
 ### Required Granularity
 

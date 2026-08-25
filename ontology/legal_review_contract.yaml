@@ -116,7 +116,7 @@ review_items:
     title: V0.1 scope, competency questions, and legal limitations
     pending_topics: []
     question: Are the V0.1 scope, exclusions, CQs, and stated limitations legally appropriate and non-misleading?
-    affected_ids: [PURP-001, USE-001, SCOPE-001, EXCL-001, GRAN-001, CQ-RULE-001, CQ-TEMPORAL-001, CQ-EXCEPTION-001]
+    affected_ids: [PURP-001, USE-001, SCOPE-001, GRAN-001, CQ-RULE-001, CQ-TEMPORAL-001, CQ-EXCEPTION-001]
     evidence_files: [ontology/requirements/ontology_requirements.yaml, ontology/requirements/competency_questions.yaml, ontology/reports/v0.1_qa_report.md]
     acceptance_criteria:
       - Structural CQ projections are not represented as final legal conclusions.

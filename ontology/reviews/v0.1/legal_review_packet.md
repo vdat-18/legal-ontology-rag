@@ -192,7 +192,7 @@ Question: Are the V0.1 scope, exclusions, CQs, and stated limitations legally ap
 
 Current decision: `accept`
 
-Affected IDs: `PURP-001`, `USE-001`, `SCOPE-001`, `EXCL-001`, `GRAN-001`, `CQ-RULE-001`, `CQ-TEMPORAL-001`, `CQ-EXCEPTION-001`
+Affected IDs: `PURP-001`, `USE-001`, `SCOPE-001`, `GRAN-001`, `CQ-RULE-001`, `CQ-TEMPORAL-001`, `CQ-EXCEPTION-001`
 
 Evidence files: `ontology/requirements/ontology_requirements.yaml`, `ontology/requirements/competency_questions.yaml`, `ontology/reports/v0.1_qa_report.md`
 

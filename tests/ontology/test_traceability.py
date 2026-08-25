@@ -46,6 +46,12 @@ def test_requirement_registry_uses_minimal_schema(ontology_paths: OntologyPaths)
         "status",
         "requirement_categories",
     }
+    assert [category["id"] for category in document["requirement_categories"]] == [
+        "purpose",
+        "intended_use",
+        "in_scope",
+        "required_granularity",
+    ]
     for category in document["requirement_categories"]:
         assert set(category) == {"id", "requirements"}
         assert all(set(requirement) == {"id", "statement"} for requirement in category["requirements"])

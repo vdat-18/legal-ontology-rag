@@ -2,7 +2,7 @@
   "accepted_count": 11,
   "artifact_id": "legal-ontology-rag-internal-legal-review",
   "artifact_version": "0.1.0",
-  "checked_at": "2026-08-18T14:23:59.661154+00:00",
+  "checked_at": "2026-08-25T06:43:39.687284+00:00",
   "checks": [
     {
       "check_id": "decision-inventory",
