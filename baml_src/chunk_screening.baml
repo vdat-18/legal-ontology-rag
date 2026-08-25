@@ -45,16 +45,28 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     - hiệu lực hoặc chuyển tiếp trực tiếp thay đổi cách áp dụng các nội dung
       trên.
 
+    Kiểm tra tối thiểu trước khi đặt true: từ riêng Target phải trả lời được
+    một câu hỏi pháp lý cụ thể như ai đã làm/không làm gì, trong điều kiện nào,
+    có bị cấm, bị xử lý hoặc phải áp dụng thủ tục nào. Nếu chỉ có thể nói chung
+    rằng nội dung "liên quan giao thông", "bảo đảm an toàn", "phục vụ quản lý"
+    hoặc "có thể dẫn đến vi phạm" thì đặt false. Không tự bổ sung chế tài, hành
+    vi vi phạm hoặc liên hệ với vụ việc từ kiến thức ngoài Target.
+
     Quy định có thể áp dụng cho người tham gia giao thông, chủ xe, đơn vị kinh
-    doanh vận tải, cơ sở đào tạo/sát hạch hoặc đơn vị quản lý hạ tầng. Với các
-    chủ thể quản lý, kinh doanh hoặc đào tạo, chỉ giữ khi Target tự nêu hành vi
-    vi phạm và hậu quả pháp lý hoặc cách xử lý tương ứng. Không suy ra rằng một
-    nghĩa vụ quản lý, điều kiện hoạt động hay từ "phải" tự nó là fact vi phạm.
+    doanh vận tải, cơ sở đào tạo/sát hạch hoặc đơn vị quản lý hạ tầng. Với chủ
+    thể quản lý, kinh doanh, đào tạo, xây dựng hoặc bảo trì, chỉ giữ khi Target
+    tự nêu hành vi bị cấm/không được phép, căn cứ đình chỉ/thu hồi/xử lý, hậu
+    quả pháp lý hoặc thủ tục xử lý tương ứng. Nghĩa vụ vận hành, điều kiện kỹ
+    thuật, yêu cầu bảo đảm an toàn, trách nhiệm quản lý hoặc từ "phải",
+    "không được ảnh hưởng" tự chúng chưa phải fact vi phạm.
 
     Đặt false nếu Target chỉ mô tả hoạt động quản lý, điều kiện vận hành hoặc
     kiến thức chuyên ngành mà chưa tạo liên hệ pháp lý trực tiếp với một vi
     phạm đường bộ. Đánh giá chức năng pháp lý của toàn Target, không quyết định
-    chỉ vì xuất hiện từ như "vi phạm", "cấm", "lấn làn" hay "vượt đèn".
+    chỉ vì xuất hiện từ như "vi phạm", "cấm", "bắt buộc", "xử lý", "lấn làn"
+    hay "vượt đèn". Trong Target hỗn hợp, chỉ đặt true nếu phần thuộc domain tự
+    tạo thành một quy tắc trực tiếp và hoàn chỉnh; việc nhắc thoáng qua giao
+    thông đường bộ giữa danh sách nhiều lĩnh vực hoặc nhiều ví dụ không đủ.
 
     Luôn đặt false cho:
     - chương trình, thời lượng, nội dung đào tạo; lỗi, điểm, đạt/trượt hoặc quy
@@ -63,10 +75,11 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     - nghĩa vụ tổ chức, báo cáo, lưu dữ liệu hoặc vận hành thông thường của cơ
       sở đào tạo/sát hạch nếu Target không tự nêu căn cứ thu hồi, đình chỉ, chế
       tài hoặc biện pháp xử lý do vi phạm nghĩa vụ đó;
-    - hình ảnh, bản vẽ, sơ đồ, bảng kích thước hoặc mô tả thuần kỹ thuật về vật
-      liệu, màu sắc, kết cấu, chế tạo, lắp đặt báo hiệu hay phương tiện. Vẫn giữ
-      phần chữ quy định ý nghĩa, hiệu lực báo hiệu hoặc nghĩa vụ người tham gia
-      giao thông phải chấp hành;
+    - hình ảnh, chú thích hình, OCR/mô tả hình, bản vẽ, sơ đồ, bảng kích thước
+      hoặc mô tả thuần kỹ thuật về vật liệu, màu sắc, kết cấu, chế tạo, lắp đặt
+      báo hiệu hay phương tiện. Một đoạn có cả quy cách và ý nghĩa chỉ được giữ
+      khi phần chữ tự nêu rõ hiệu lực, điều cấm hoặc nghĩa vụ chấp hành của
+      người tham gia giao thông; hình dạng/kích thước tự nó không tạo nghĩa vụ;
     - phí, hợp đồng, hồ sơ, giám định, tạm ứng hoặc thủ tục bồi thường bảo hiểm,
       bảng tỷ lệ thương tật và nghĩa vụ nội bộ của doanh nghiệp bảo hiểm, kể cả
       khi phát sinh từ tai nạn hoặc nhắc đến rượu, bia, ma túy. Chỉ giữ nghĩa vụ
@@ -77,22 +90,24 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     - chính sách, tuyên truyền, tổ chức quản lý, dữ liệu/thống kê, tài chính,
       hỗ trợ hoặc thủ tục hành chính độc lập.
 
-    Quy tắc xử lý vi phạm hành chính chung được giữ khi nội dung của nó có thể
-    áp dụng trực tiếp cho vụ việc giao thông đường bộ. Danh sách chức danh hoặc
-    cơ quan chỉ được giữ khi Target tự gắn chức danh đó với thẩm quyền xử lý vi
-    phạm đường bộ; việc một cơ quan giao thông xuất hiện trong danh sách thẩm
-    quyền chung pha trộn nhiều lĩnh vực là chưa đủ. Loại phần chỉ điều chỉnh
-    một lĩnh vực khác hoặc chỉ liệt kê cơ quan, đối tượng, ví dụ ngoài domain.
-    Định nghĩa/phân loại chỉ được giữ khi cần áp dụng trực tiếp một quy tắc vi
-    phạm. Khi chưa thấy liên hệ trực tiếp này trong Target, đặt false.
+    Quy tắc xử lý vi phạm hành chính chung chỉ được giữ khi Target tự nêu một
+    quy tắc thủ tục có thể áp dụng nguyên vẹn cho vụ việc giao thông đường bộ,
+    không phụ thuộc vào nội dung riêng của lĩnh vực khác. Danh sách chức danh,
+    cơ quan, đối tượng hoặc hành vi pha trộn nhiều lĩnh vực đặt false nếu phần
+    đường bộ chỉ là một mục rời rạc và Target không tự xác lập thẩm quyền hay
+    cách xử lý riêng cho vi phạm đường bộ. Các biện pháp giáo dục tại xã,
+    trường giáo dưỡng, cai nghiện và biện pháp hành chính đặc biệt đặt false,
+    kể cả khi danh sách ví dụ có nhắc một hành vi giao thông. Định nghĩa/phân
+    loại chỉ được giữ khi Target đồng thời chứa quy tắc trực tiếp sử dụng nó.
 
     Mục lục, tiêu đề, lời dẫn, căn cứ ban hành, danh mục hoặc tên biểu mẫu và
     thông tin hành chính tự chúng không đủ. Luôn đặt false cho mẫu quyết định,
     biên bản, thông báo, phiếu, sổ theo dõi hoặc giấy phép chưa được lập; phần
-    hướng dẫn điền mẫu; trường trống, dòng giao/nhận và ô ký tên. Quy tắc nhìn
-    có vẻ hoàn chỉnh nhưng chỉ là boilerplate của văn bản sẽ được lập theo mẫu
-    vẫn phải đặt false. Chỉ phần thuyết minh độc lập bên ngoài mẫu, trực tiếp
-    giải thích một quy tắc pháp luật áp dụng chung, mới có thể được giữ.
+    chú thích/hướng dẫn điền mẫu; trường trống, dòng giao/nhận và ô ký tên.
+    Ghi chú, căn cứ pháp lý hoặc câu chữ nhìn có vẻ hoàn chỉnh nhưng vẫn nằm
+    trong cấu trúc của văn bản sẽ được lập theo mẫu là boilerplate và phải đặt
+    false. Chỉ phần thuyết minh độc lập bên ngoài mẫu, trực tiếp giải thích một
+    quy tắc pháp luật áp dụng chung, mới có thể được giữ.
 
     Với từng Target, quyết định has_document_metadata trước rồi mới quyết định
     has_penalty_content; hai field hoàn toàn độc lập và có thể khác nhau. Đặt
@@ -103,6 +118,12 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     - điều khoản hiệu lực tương đối của toàn văn bản như "có hiệu lực kể từ
       ngày ký", dù ngày ký nằm ở metadata candidate khác. Step 1B sẽ kết hợp
       các candidate để suy ra giá trị cuối cùng.
+
+    Khi quyết định metadata, phải đọc toàn bộ Target từ đầu đến cuối và chủ
+    động tìm điều khoản hiệu lực của văn bản nguồn, kể cả khi nó nằm sau một
+    đoạn dài sửa đổi, chuyển tiếp hoặc nội dung ngoài domain. Target có thể
+    metadata=true nhưng penalty=false; không dùng quyết định penalty để bỏ qua
+    việc kiểm tra metadata.
 
     Phần đầu văn bản nêu số hiệu chính thức là đủ, dù chỉ có thông tin hành
     chính, ngày ký/ban hành và penalty=false. Điều khoản hiệu lực của chính
