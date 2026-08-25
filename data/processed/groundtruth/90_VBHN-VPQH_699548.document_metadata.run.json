@@ -1,0 +1,7 @@
+{
+  "model": "gpt-5.6-luna",
+  "prompt_version": "5.0.0",
+  "run_id": "446da5026495cc21329855323e3351b9d0331659ba05576511432f4f6c37cff7",
+  "schema_version": "1.0.0",
+  "stage": "document_metadata"
+}
