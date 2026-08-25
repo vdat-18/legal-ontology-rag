@@ -114,8 +114,7 @@ def main() -> None:
         records_by_id = {record.chunk_id: record for record in records}
         metadata_selection_changed = any(
             existing_records_by_id.get(chunk_id) is None
-            or existing_records_by_id[chunk_id].has_document_metadata
-            != records_by_id[chunk_id].has_document_metadata
+            or existing_records_by_id[chunk_id].has_document_metadata != records_by_id[chunk_id].has_document_metadata
             for chunk_id in rescreen_chunk_ids
         )
         metadata_fingerprint_path = stage_cache_path(arguments.metadata_output_path)

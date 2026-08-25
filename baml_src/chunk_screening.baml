@@ -68,6 +68,11 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     tạo thành một quy tắc trực tiếp và hoàn chỉnh; việc nhắc thoáng qua giao
     thông đường bộ giữa danh sách nhiều lĩnh vực hoặc nhiều ví dụ không đủ.
 
+    Các tiêu chí loại trừ bên dưới có ưu tiên cao hơn tín hiệu dương đơn lẻ.
+    Không cứu một Target chỉ vì tìm thấy một câu có từ "phải", "không được",
+    "xử lý vi phạm", tên cơ quan giao thông hoặc một quy tắc hợp lệ nằm trong
+    loại source phải loại.
+
     Luôn đặt false cho:
     - chương trình, thời lượng, nội dung đào tạo; lỗi, điểm, đạt/trượt hoặc quy
       trình thi sát hạch; tình huống giả định, mô phỏng hay ví dụ sư phạm, kể
@@ -80,6 +85,9 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
       báo hiệu hay phương tiện. Một đoạn có cả quy cách và ý nghĩa chỉ được giữ
       khi phần chữ tự nêu rõ hiệu lực, điều cấm hoặc nghĩa vụ chấp hành của
       người tham gia giao thông; hình dạng/kích thước tự nó không tạo nghĩa vụ;
+    - quy trình ứng phó sự cố, cứu nạn, tạm dừng khai thác, điều tiết giao
+      thông, bảo trì cây xanh/công trình hoặc yêu cầu vận hành an toàn thông
+      thường nếu không tự nêu hành vi vi phạm và cách xử lý hành vi đó;
     - phí, hợp đồng, hồ sơ, giám định, tạm ứng hoặc thủ tục bồi thường bảo hiểm,
       bảng tỷ lệ thương tật và nghĩa vụ nội bộ của doanh nghiệp bảo hiểm, kể cả
       khi phát sinh từ tai nạn hoặc nhắc đến rượu, bia, ma túy. Chỉ giữ nghĩa vụ
@@ -90,15 +98,24 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     - chính sách, tuyên truyền, tổ chức quản lý, dữ liệu/thống kê, tài chính,
       hỗ trợ hoặc thủ tục hành chính độc lập.
 
-    Quy tắc xử lý vi phạm hành chính chung chỉ được giữ khi Target tự nêu một
-    quy tắc thủ tục có thể áp dụng nguyên vẹn cho vụ việc giao thông đường bộ,
-    không phụ thuộc vào nội dung riêng của lĩnh vực khác. Danh sách chức danh,
+    Quy tắc xử lý vi phạm hành chính chung phải được giữ khi Target tự nêu một
+    quy tắc độc lập có thể áp dụng nguyên vẹn cho vụ việc giao thông đường bộ,
+    không phụ thuộc vào nội dung riêng của lĩnh vực khác. Ví dụ gồm cách xác
+    định mức phạt trong khung, tình tiết tăng/giảm, thời hiệu, lập biên bản,
+    tạm giữ và thi hành quyết định. Không yêu cầu Target phải nhắc lại từ
+    "đường bộ" nếu bản thân quy tắc trung lập lĩnh vực và áp dụng trực tiếp.
+    Danh sách chức danh,
     cơ quan, đối tượng hoặc hành vi pha trộn nhiều lĩnh vực đặt false nếu phần
     đường bộ chỉ là một mục rời rạc và Target không tự xác lập thẩm quyền hay
-    cách xử lý riêng cho vi phạm đường bộ. Các biện pháp giáo dục tại xã,
+    cách xử lý riêng cho vi phạm đường bộ. Một chức danh đường bộ hoặc Cảnh sát
+    giao thông xuất hiện giữa danh sách nhiều chức danh chuyên ngành không làm
+    cả Target thành fact thuộc domain. Các biện pháp giáo dục tại xã,
     trường giáo dưỡng, cai nghiện và biện pháp hành chính đặc biệt đặt false,
-    kể cả khi danh sách ví dụ có nhắc một hành vi giao thông. Định nghĩa/phân
-    loại chỉ được giữ khi Target đồng thời chứa quy tắc trực tiếp sử dụng nó.
+    kể cả khi danh sách ví dụ có nhắc một hành vi giao thông. Việc chuyển hồ sơ
+    có dấu hiệu tội phạm trong chính quy trình áp dụng các biện pháp đặc biệt
+    này vẫn thuộc phần phải loại, không phải thủ tục xử phạt chung. Định
+    nghĩa/phân loại chỉ được giữ khi Target đồng thời chứa quy tắc trực tiếp sử
+    dụng nó.
 
     Mục lục, tiêu đề, lời dẫn, căn cứ ban hành, danh mục hoặc tên biểu mẫu và
     thông tin hành chính tự chúng không đủ. Luôn đặt false cho mẫu quyết định,
@@ -106,8 +123,11 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     chú thích/hướng dẫn điền mẫu; trường trống, dòng giao/nhận và ô ký tên.
     Ghi chú, căn cứ pháp lý hoặc câu chữ nhìn có vẻ hoàn chỉnh nhưng vẫn nằm
     trong cấu trúc của văn bản sẽ được lập theo mẫu là boilerplate và phải đặt
-    false. Chỉ phần thuyết minh độc lập bên ngoài mẫu, trực tiếp giải thích một
-    quy tắc pháp luật áp dụng chung, mới có thể được giữ.
+    false. Nếu Target còn các mục để trống, dấu chấm dẫn, ô điền, phần ký hoặc
+    hướng dẫn lập hồ sơ thì toàn Target vẫn là mẫu; một câu hướng dẫn hoàn
+    chỉnh nằm trước các trường trống không làm Target hợp lệ. Chỉ phần thuyết
+    minh độc lập bên ngoài mẫu, trực tiếp giải thích một quy tắc pháp luật áp
+    dụng chung, mới có thể được giữ.
 
     Với từng Target, quyết định has_document_metadata trước rồi mới quyết định
     has_penalty_content; hai field hoàn toàn độc lập và có thể khác nhau. Đặt
@@ -124,6 +144,11 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     đoạn dài sửa đổi, chuyển tiếp hoặc nội dung ngoài domain. Target có thể
     metadata=true nhưng penalty=false; không dùng quyết định penalty để bỏ qua
     việc kiểm tra metadata.
+
+    Trước khi trả metadata=false, kiểm tra lại riêng phần cuối Target. Nếu
+    Target tự chứa điều khoản tuyên bố ngày bắt đầu/hết hiệu lực của chính văn
+    bản nguồn thì bắt buộc metadata=true, bất kể phần trước dài, hỗn hợp, ngoài
+    domain hoặc penalty được quyết định true/false thế nào.
 
     Phần đầu văn bản nêu số hiệu chính thức là đủ, dù chỉ có thông tin hành
     chính, ngày ký/ban hành và penalty=false. Điều khoản hiệu lực của chính

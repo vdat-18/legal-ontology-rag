@@ -27,7 +27,7 @@ from legal_rag.settings import Settings
 
 CHUNK_SCREENING_SCHEMA_VERSION = "3.0.0"
 LEGACY_CHUNK_SCREENING_SCHEMA_VERSION = "2.0.0"
-CHUNK_SCREENING_PROMPT_VERSION = "5.9.0"
+CHUNK_SCREENING_PROMPT_VERSION = "5.10.0"
 
 
 @dataclass(frozen=True, slots=True)
