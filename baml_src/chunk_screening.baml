@@ -121,6 +121,12 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     nghĩa/phân loại chỉ được giữ khi Target đồng thời chứa quy tắc trực tiếp sử
     dụng nó.
 
+    Quy tắc loại biện pháp hành chính đặc biệt áp dụng cho toàn bộ Target: thời
+    hạn, thẩm quyền, gửi quyết định, giám sát hoặc quyền của người bị áp dụng
+    biện pháp giáo dục tại cộng đồng, trường giáo dưỡng hay cơ sở cai nghiện
+    đều penalty=false. Không giữ chúng chỉ vì đây là một dạng "xử lý vi phạm
+    hành chính" hoặc vì Target có trình tự pháp lý cụ thể.
+
     Mục lục, tiêu đề, lời dẫn, căn cứ ban hành, danh mục hoặc tên biểu mẫu và
     thông tin hành chính tự chúng không đủ. Luôn đặt false cho mẫu quyết định,
     biên bản, thông báo, phiếu, sổ theo dõi hoặc giấy phép chưa được lập; phần
@@ -137,6 +143,15 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     nhưng không loại chỉ dựa vào provenance: phụ lục vẫn có thể chứa quy tắc
     pháp lý độc lập. Ghi chú hoặc hướng dẫn đơn lẻ của biểu mẫu/tệp đính kèm
     phải đặt false kể cả khi target không chứa trường trống hay ô ký tên.
+    Phải xác định chức năng của Target trước khi đọc tín hiệu mệnh lệnh. Nếu
+    Target là nội dung được in trực tiếp trên giấy phép, chứng chỉ, thẻ hoặc mặt
+    sau của giấy tờ để nhắc người giữ giấy thì đó là hướng dẫn của mẫu giấy tờ
+    và bắt buộc đặt penalty=false. Quy tắc loại này ưu tiên hơn các câu như
+    phải xuất trình, không được sửa chữa, cấm tẩy xóa hoặc phải cấp lại. Việc
+    target nằm trong source root, không có trường trống hoặc dùng câu hoàn
+    chỉnh không biến hướng dẫn in trên giấy tờ thành quy định độc lập. Chỉ giữ
+    quy định nằm ngoài mẫu, tự xác lập phạm vi áp dụng chung bằng văn bản quy
+    phạm thay vì nói về giấy tờ cụ thể đang được in.
 
     Luôn đặt false cho tên hoặc mục danh mục biển báo, vạch kẻ, cấu kiện hay
     thiết kế chỉ nêu mã và tên như "Biển số ...: Cấm ...". Chỉ đặt true khi
@@ -149,6 +164,13 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     nên đặt false nếu Target không nêu thêm hành vi, thẩm quyền, trình tự hoặc
     hậu quả pháp lý cụ thể. Hành vi, lỗi và quy tắc trong kỳ thi/sát hạch chỉ
     dùng để chấm đạt/trượt, không phải vi phạm xảy ra trên đường, nên đặt false.
+
+    Thông báo, thống kê, phối hợp hoặc phân công giải quyết tai nạn giao thông
+    tự nó không phải xử lý vi phạm. Chỉ giữ khi Target tự nêu hoạt động phát
+    hiện, chứng minh hoặc xử lý một hành vi vi phạm cụ thể phát sinh từ vụ tai
+    nạn. Nghĩa vụ nội bộ của doanh nghiệp bảo hiểm, hiệp hội hoặc cơ quan quản
+    lý bảo hiểm, gồm báo cáo, công khai, khuyến mại và chiết khấu, luôn đặt
+    false; chúng không trở thành fact đường bộ chỉ vì liên quan bảo hiểm xe.
 
     Với từng Target, quyết định has_document_metadata trước rồi mới quyết định
     has_penalty_content; hai field hoàn toàn độc lập và có thể khác nhau. Đặt
@@ -195,11 +217,28 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     văn bản nguồn. Luôn đặt false khi số hiệu chỉ được lặp lại trong tiêu đề
     hoặc dòng giới thiệu phụ lục.
 
+    Với source là văn bản hợp nhất, nội dung thân văn bản vẫn dùng các cụm như
+    "Luật này" hoặc "Nghị định này" để nói về văn bản quy phạm được hợp nhất.
+    Ngày hiệu lực, hết hiệu lực và điều khoản thi hành trong phần thân đó luôn
+    thuộc văn bản gốc, không thuộc văn bản hợp nhất, nên metadata=false. Chỉ
+    đặt metadata=true khi chính Target nhận diện rõ "Văn bản hợp nhất", số
+    hiệu VBHN hoặc tuyên bố hiệu lực độc lập của chính văn bản hợp nhất. Không
+    suy ra hiệu lực VBHN từ hiệu lực của văn bản gốc, dù điều khoản có tiêu đề
+    "Hiệu lực thi hành" và nằm trong chính văn bản đang đọc.
+
     Chỉ Target text làm căn cứ. Structural context chỉ giúp hiểu cấu trúc,
     không tự tạo nội dung pháp lý. Trả đúng một kết quả cho mỗi input, giữ
     nguyên chính xác chunk_id, không tạo hoặc sửa bất kỳ ký tự nào. Reason
-    phải là một câu ngắn, hoàn toàn bằng tiếng Việt. Khi hai field khác nhau,
-    reason phải thể hiện căn cứ của cả quyết định metadata và penalty.
+    phải là một câu ngắn, hoàn toàn bằng tiếng Việt và không xen từ hay chữ của
+    ngôn ngữ khác. Khi hai field khác nhau, reason phải thể hiện căn cứ của cả
+    quyết định metadata và penalty.
+
+    Trước khi trả kết quả, tự kiểm tra riêng từng item: đọc lại đúng Target gắn
+    với chunk_id đó; xác nhận mọi chi tiết trong reason thực sự xuất hiện trong
+    chính Target; xác nhận không lấy câu, ngày hoặc kết luận từ item liền trước
+    hay liền sau. Nếu reason mô tả nội dung không có trong Target thì phải đánh
+    giá lại item đó. Sau cùng kiểm tra mỗi input có đúng một output và reason
+    mô tả đúng chính chunk_id tương ứng.
 
     {{ _.role("user") }}
 
