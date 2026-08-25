@@ -15,7 +15,9 @@ from legal_rag.benchmark_synthesis import chunk_screening
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.stage_cache import (
+    StageCacheFingerprint,
     build_chunk_screening_fingerprint,
+    read_stage_cache_fingerprint,
     stage_cache_path,
     write_stage_cache_fingerprint,
 )
@@ -201,6 +203,79 @@ def test_chunk_screening_cli_resumes_by_skipping_already_screened_chunks(
     assert [record.chunk_id for record in records] == ["chunk-1", "chunk-2"]
     assert records[0].reason == "Đã sàng lọc trước đó."
     assert records[1].has_penalty_content is False
+
+
+def test_chunk_screening_cli_selectively_replaces_only_requested_verdicts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A targeted refresh preserves other verdicts and records mixed prompt provenance."""
+    chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
+    screening_path = tmp_path / "chunk_screening.jsonl"
+    chunks = (
+        _chunk("chunk-1", "Phạt tiền từ 4.000.000 đồng đến 6.000.000 đồng."),
+        _chunk("chunk-2", "MỤC LỤC"),
+    )
+    write_chunks(chunks_path, chunks)
+    old_fingerprint = StageCacheFingerprint(
+        stage="chunk_screening",
+        run_id="old-screening-run",
+        prompt_version="5.8.0",
+        model="provider/test-model",
+    )
+    write_chunk_screening(
+        screening_path,
+        (
+            ChunkScreeningRecord("chunk-1", True, "Giữ nguyên."),
+            ChunkScreeningRecord("chunk-2", True, "Kết quả cũ bị sai."),
+        ),
+    )
+    _configure_cli(monkeypatch, chunks_path, screening_path)
+    write_stage_cache_fingerprint(stage_cache_path(screening_path), old_fingerprint)
+    screened_chunk_ids: list[str] = []
+
+    class _SelectiveClient:
+        def __init__(self, settings: object, synthesis_settings: object) -> None:
+            return None
+
+        def screen(self, items: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            screened_chunk_ids.extend(item.chunk_id for item in items)
+            return tuple(
+                ChunkScreeningResult(
+                    chunk_id=item.chunk_id,
+                    has_penalty_content=False,
+                    has_document_metadata=False,
+                    reason="Mục lục không chứa quy tắc vi phạm.",
+                )
+                for item in items
+            )
+
+    monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _SelectiveClient)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "legal-screen-chunks",
+            str(chunks_path),
+            str(screening_path),
+            "--synthesis-config",
+            str(_SYNTHESIS_CONFIG_PATH),
+            "--rescreen-chunk-id",
+            "chunk-2",
+        ],
+    )
+
+    chunk_screening_cli.main()
+
+    records = read_chunk_screening(screening_path)
+    assert screened_chunk_ids == ["chunk-2"]
+    assert [record.chunk_id for record in records] == ["chunk-1", "chunk-2"]
+    assert records[0].reason == "Giữ nguyên."
+    assert records[0].prompt_version == "5.8.0"
+    assert records[0].screening_run_id == "old-screening-run"
+    assert records[1].reason == "Mục lục không chứa quy tắc vi phạm."
+    assert records[1].prompt_version == chunk_screening.CHUNK_SCREENING_PROMPT_VERSION
+    assert records[1].screening_run_id != "old-screening-run"
+    assert read_stage_cache_fingerprint(stage_cache_path(screening_path)).prompt_version == "mixed"
 
 
 def test_chunk_screening_cli_writes_partial_output_when_a_batch_keeps_failing(

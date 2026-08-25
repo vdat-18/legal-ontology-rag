@@ -12,7 +12,10 @@ from legal_rag.benchmark_synthesis.candidate_generation import (
     CANDIDATE_GENERATION_PROMPT_VERSION,
     CANDIDATE_SCHEMA_VERSION,
 )
-from legal_rag.benchmark_synthesis.chunk_screening import CHUNK_SCREENING_PROMPT_VERSION
+from legal_rag.benchmark_synthesis.chunk_screening import (
+    CHUNK_SCREENING_PROMPT_VERSION,
+    ChunkScreeningRecord,
+)
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.document_metadata import (
     DOCUMENT_METADATA_PROMPT_VERSION,
@@ -77,6 +80,41 @@ def build_chunk_screening_fingerprint(
             },
         },
     )
+
+
+def build_chunk_screening_artifact_fingerprint(
+    chunks: Sequence[Chunk], records: Sequence[ChunkScreeningRecord]
+) -> StageCacheFingerprint:
+    """Fingerprint a complete screening artifact, including mixed per-chunk provenance."""
+    prompt_versions = {record.prompt_version or "unknown" for record in records}
+    models = {record.model or "unknown" for record in records}
+    return _build_fingerprint(
+        stage="chunk_screening",
+        prompt_version=next(iter(prompt_versions)) if len(prompt_versions) == 1 else "mixed",
+        model=next(iter(models)) if len(models) == 1 else "mixed",
+        identity={
+            "chunks": [_chunk_identity(chunk, include_context=True) for chunk in chunks],
+            "records": [record.to_dict() for record in records],
+        },
+    )
+
+
+def require_chunk_screening_cache(
+    fingerprint_path: Path,
+    chunks: Sequence[Chunk],
+    records: Sequence[ChunkScreeningRecord],
+    execution_fingerprint: StageCacheFingerprint,
+) -> StageCacheFingerprint:
+    """Validate either a uniform execution cache or a selectively merged artifact cache."""
+    if [record.chunk_id for record in records] != [chunk.chunk_id for chunk in chunks]:
+        msg = "Chunk-screening artifact is incomplete or not in source chunk order"
+        raise ValueError(msg)
+    existing = read_stage_cache_fingerprint(fingerprint_path)
+    artifact_fingerprint = build_chunk_screening_artifact_fingerprint(chunks, records)
+    if existing not in {execution_fingerprint, artifact_fingerprint}:
+        msg = "Existing chunk_screening artifacts belong to a different synthesis run"
+        raise ValueError(msg)
+    return existing
 
 
 def build_document_metadata_fingerprint(

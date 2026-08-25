@@ -29,7 +29,7 @@ def main() -> None:
         build_chunk_screening_fingerprint,
         build_document_metadata_fingerprint,
         initialize_stage_cache,
-        require_stage_cache,
+        require_chunk_screening_cache,
         stage_cache_path,
     )
     from legal_rag.benchmark_synthesis.writer import read_chunk_screening
@@ -44,8 +44,11 @@ def main() -> None:
     synthesis_settings = SynthesisSettings.from_path(arguments.synthesis_config)
 
     chunks = read_chunks(arguments.chunks_path)
-    screening_fingerprint = require_stage_cache(
+    screening_records = read_chunk_screening(arguments.screening_path)
+    screening_fingerprint = require_chunk_screening_cache(
         stage_cache_path(arguments.screening_path),
+        chunks,
+        screening_records,
         build_chunk_screening_fingerprint(
             chunks,
             synthesis_settings,
@@ -53,7 +56,6 @@ def main() -> None:
             llm_model=settings.llm_model,
         ),
     )
-    screening_records = read_chunk_screening(arguments.screening_path)
     fingerprint_path = stage_cache_path(arguments.metadata_output_path)
     initialize_stage_cache(
         fingerprint_path,

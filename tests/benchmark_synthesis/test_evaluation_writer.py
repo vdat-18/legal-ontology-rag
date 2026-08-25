@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date
 from pathlib import Path
 
@@ -79,6 +80,29 @@ def test_chunk_screening_round_trips_through_jsonl(tmp_path: Path) -> None:
     records = read_chunk_screening(output_path)
 
     assert records == (record,)
+
+
+def test_chunk_screening_reads_legacy_records_without_provenance(tmp_path: Path) -> None:
+    """Version 2 screening outputs remain readable before selective migration."""
+    output_path = tmp_path / "legacy_chunk_screening.jsonl"
+    output_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "2.0.0",
+                "chunk_id": "chunk-1",
+                "has_penalty_content": True,
+                "has_document_metadata": False,
+                "reason": "Nêu mức phạt.",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    records = read_chunk_screening(output_path)
+
+    assert records[0].prompt_version is None
+    assert records[0].screening_run_id is None
 
 
 def test_document_metadata_round_trips_through_jsonl(tmp_path: Path) -> None:

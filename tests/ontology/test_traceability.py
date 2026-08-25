@@ -35,6 +35,22 @@ def test_all_traceability_references_resolve_to_versioned_registries(
         assert referenced_ids(combined, predicate) <= registries[kind]
 
 
+def test_requirement_registry_uses_minimal_schema(ontology_paths: OntologyPaths) -> None:
+    """Requirements retain only versioning, grouping, identity, and statements."""
+    document = load_yaml(ontology_paths.requirements)
+
+    assert set(document) == {
+        "schema_version",
+        "artifact_id",
+        "artifact_version",
+        "status",
+        "requirement_categories",
+    }
+    for category in document["requirement_categories"]:
+        assert set(category) == {"id", "requirements"}
+        assert all(set(requirement) == {"id", "statement"} for requirement in category["requirements"])
+
+
 def test_all_local_terms_have_traceability(
     ontology_graph: Graph,
     module_policy: tuple[ModulePolicy, ...],

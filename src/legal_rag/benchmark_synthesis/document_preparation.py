@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
+from dataclasses import replace
 from pathlib import Path
 
 from loguru import logger
@@ -32,10 +33,41 @@ def prepare_chunk_screening(
     output_path: Path,
     client_factory: Callable[[], ChunkScreeningClient],
     settings: SynthesisSettings,
+    *,
+    rescreen_chunk_ids: Collection[str] = (),
+    prompt_version: str | None = None,
+    model: str | None = None,
+    screening_run_id: str | None = None,
+    existing_prompt_version: str | None = None,
+    existing_model: str | None = None,
+    existing_screening_run_id: str | None = None,
 ) -> tuple[ChunkScreeningRecord, ...]:
     """Resume chunk screening and persist each completed batch."""
     existing_records = read_chunk_screening(output_path) if output_path.exists() else ()
+    existing_records = tuple(
+        replace(
+            record,
+            prompt_version=record.prompt_version or existing_prompt_version,
+            model=record.model or existing_model,
+            screening_run_id=record.screening_run_id or existing_screening_run_id,
+        )
+        for record in existing_records
+    )
     records_by_chunk_id = {record.chunk_id: record for record in existing_records}
+    requested_ids = set(rescreen_chunk_ids)
+    chunk_ids = {chunk.chunk_id for chunk in chunks}
+    unknown_ids = requested_ids - chunk_ids
+    if unknown_ids:
+        msg = f"Unknown chunk ids requested for re-screening: {sorted(unknown_ids)}"
+        raise ValueError(msg)
+    if requested_ids:
+        missing_unselected_ids = chunk_ids - requested_ids - records_by_chunk_id.keys()
+        if missing_unselected_ids:
+            msg = "Selective re-screening requires prior verdicts for every unselected chunk"
+            raise ValueError(msg)
+        for chunk_id in requested_ids:
+            records_by_chunk_id.pop(chunk_id, None)
+        logger.info("Chunk screening selectively invalidated {} chunks", len(requested_ids))
     chunks_to_screen = tuple(chunk for chunk in chunks if chunk.chunk_id not in records_by_chunk_id)
     if existing_records:
         logger.info("Chunk screening resumed: {}/{} chunks already completed", len(existing_records), len(chunks))
@@ -56,6 +88,9 @@ def prepare_chunk_screening(
             max_retries=settings.llm_max_retries,
             retry_delay_seconds=settings.llm_retry_delay_seconds,
             on_batch_screened=_persist_batch,
+            prompt_version=prompt_version,
+            model=model,
+            screening_run_id=screening_run_id,
         )
 
     records = tuple(records_by_chunk_id[chunk.chunk_id] for chunk in chunks if chunk.chunk_id in records_by_chunk_id)
@@ -92,6 +127,15 @@ def prepare_document_artifacts(
     screening_client_factory: Callable[[], ChunkScreeningClient],
     metadata_client_factory: Callable[[], DocumentMetadataClient],
     settings: SynthesisSettings,
+    *,
+    rescreen_chunk_ids: Collection[str] = (),
+    prompt_version: str | None = None,
+    model: str | None = None,
+    screening_run_id: str | None = None,
+    existing_prompt_version: str | None = None,
+    existing_model: str | None = None,
+    existing_screening_run_id: str | None = None,
+    on_screening_complete: Callable[[Sequence[ChunkScreeningRecord]], None] | None = None,
 ) -> tuple[tuple[ChunkScreeningRecord, ...], DocumentMetadataRecord]:
     """Prepare screening before resolving document metadata."""
     source_name = chunks[0].source_name if chunks else "empty-document"
@@ -102,8 +146,17 @@ def prepare_document_artifacts(
         screening_output_path,
         screening_client_factory,
         settings,
+        rescreen_chunk_ids=rescreen_chunk_ids,
+        prompt_version=prompt_version,
+        model=model,
+        screening_run_id=screening_run_id,
+        existing_prompt_version=existing_prompt_version,
+        existing_model=existing_model,
+        existing_screening_run_id=existing_screening_run_id,
     )
     logger.info("Step 1A chunk screening completed for {}", source_name)
+    if on_screening_complete is not None:
+        on_screening_complete(records)
     logger.info("Step 1B document metadata started for {}", source_name)
     metadata = prepare_document_metadata(
         chunks,

@@ -39,6 +39,7 @@ def main() -> None:
         build_document_metadata_fingerprint,
         build_fact_extraction_fingerprint,
         initialize_stage_cache,
+        require_chunk_screening_cache,
         require_stage_cache,
         stage_cache_path,
     )
@@ -61,8 +62,11 @@ def main() -> None:
     synthesis_settings = SynthesisSettings.from_path(arguments.synthesis_config)
 
     chunks = read_chunks(arguments.chunks_path)
-    screening_fingerprint = require_stage_cache(
+    screening_records = read_chunk_screening(arguments.screening_path)
+    screening_fingerprint = require_chunk_screening_cache(
         stage_cache_path(arguments.screening_path),
+        chunks,
+        screening_records,
         build_chunk_screening_fingerprint(
             chunks,
             synthesis_settings,
@@ -80,7 +84,6 @@ def main() -> None:
             llm_model=settings.llm_model,
         ),
     )
-    screening_records = read_chunk_screening(arguments.screening_path)
     accepted_chunk_ids = {record.chunk_id for record in screening_records if record.has_penalty_content}
     accepted_chunks = tuple(chunk for chunk in chunks if chunk.chunk_id in accepted_chunk_ids)
     metadata = read_document_metadata(arguments.metadata_path)

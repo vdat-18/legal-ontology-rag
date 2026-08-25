@@ -25,7 +25,8 @@ from legal_rag.benchmark_synthesis.llm_execution import (
 from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
-CHUNK_SCREENING_SCHEMA_VERSION = "2.0.0"
+CHUNK_SCREENING_SCHEMA_VERSION = "3.0.0"
+LEGACY_CHUNK_SCREENING_SCHEMA_VERSION = "2.0.0"
 CHUNK_SCREENING_PROMPT_VERSION = "5.9.0"
 
 
@@ -37,6 +38,9 @@ class ChunkScreeningRecord:
     has_penalty_content: bool
     reason: str
     has_document_metadata: bool = False
+    prompt_version: str | None = None
+    model: str | None = None
+    screening_run_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable screening record."""
@@ -46,6 +50,9 @@ class ChunkScreeningRecord:
             "has_penalty_content": self.has_penalty_content,
             "has_document_metadata": self.has_document_metadata,
             "reason": self.reason,
+            "prompt_version": self.prompt_version,
+            "model": self.model,
+            "screening_run_id": self.screening_run_id,
         }
 
 
@@ -82,7 +89,12 @@ class BamlChunkScreeningClient:
 
 
 def _records_for(
-    chunks: Sequence[Chunk], results_by_chunk_id: dict[str, ChunkScreeningResult]
+    chunks: Sequence[Chunk],
+    results_by_chunk_id: dict[str, ChunkScreeningResult],
+    *,
+    prompt_version: str | None,
+    model: str | None,
+    screening_run_id: str | None,
 ) -> tuple[ChunkScreeningRecord, ...]:
     """Build a verdict record for each of chunks that already has a result."""
     return tuple(
@@ -91,6 +103,9 @@ def _records_for(
             has_penalty_content=results_by_chunk_id[chunk.chunk_id].has_penalty_content,
             has_document_metadata=results_by_chunk_id[chunk.chunk_id].has_document_metadata,
             reason=results_by_chunk_id[chunk.chunk_id].reason,
+            prompt_version=prompt_version,
+            model=model,
+            screening_run_id=screening_run_id,
         )
         for chunk in chunks
         if chunk.chunk_id in results_by_chunk_id
@@ -127,6 +142,9 @@ def _screen_batch_with_checkpoints(
     on_batch_screened: Callable[[Sequence[ChunkScreeningRecord]], None] | None,
     max_retries: int,
     retry_delay_seconds: float,
+    prompt_version: str | None,
+    model: str | None,
+    screening_run_id: str | None,
 ) -> None:
     """Checkpoint valid verdicts and retry only unresolved items in one batch."""
     logger.info(
@@ -142,7 +160,13 @@ def _screen_batch_with_checkpoints(
         results = client.screen(pending)
         matching, duplicate_id_count, unexpected_id_count = _unique_requested_results(pending, results)
         if matching:
-            new_records = _records_for(batch, matching)
+            new_records = _records_for(
+                batch,
+                matching,
+                prompt_version=prompt_version,
+                model=model,
+                screening_run_id=screening_run_id,
+            )
             with checkpoint_lock:
                 results_by_chunk_id.update(matching)
                 if on_batch_screened is not None:
@@ -196,6 +220,9 @@ def screen_chunks(
     max_retries: int,
     retry_delay_seconds: float,
     on_batch_screened: Callable[[Sequence[ChunkScreeningRecord]], None] | None = None,
+    prompt_version: str | None = CHUNK_SCREENING_PROMPT_VERSION,
+    model: str | None = None,
+    screening_run_id: str | None = None,
 ) -> tuple[ChunkScreeningRecord, ...]:
     """Screen chunks in bounded concurrent batches and checkpoint each successful batch."""
     results_by_chunk_id: dict[str, ChunkScreeningResult] = {}
@@ -237,6 +264,9 @@ def screen_chunks(
                 on_batch_screened,
                 max_retries,
                 retry_delay_seconds,
+                prompt_version,
+                model,
+                screening_run_id,
             )
             futures[future] = (batch_index + 1, task_key)
 
@@ -249,7 +279,13 @@ def screen_chunks(
                 logger.error("Chunk screening batch {}/{} failed", batch_number, batch_count)
 
     with checkpoint_lock:
-        records = _records_for(chunks, results_by_chunk_id)
+        records = _records_for(
+            chunks,
+            results_by_chunk_id,
+            prompt_version=prompt_version,
+            model=model,
+            screening_run_id=screening_run_id,
+        )
     if failures:
         incomplete_error = IncompleteLlmTasksError.for_stage("chunk screening", failures)
         raise incomplete_error

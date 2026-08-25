@@ -8,12 +8,14 @@ from pathlib import Path
 
 import pytest
 
+from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.benchmark_synthesis.stage_cache import (
     build_candidate_generation_fingerprint,
+    build_chunk_screening_artifact_fingerprint,
     build_chunk_screening_fingerprint,
     build_document_metadata_fingerprint,
     build_fact_extraction_fingerprint,
@@ -143,6 +145,20 @@ def test_screening_fingerprint_changes_with_reasoning_effort() -> None:
         replace(settings, chunk_screening=replace(settings.chunk_screening, reasoning_effort="high")),
         llm_base_url="https://llm.test/v1",
         llm_model="provider/model-a",
+    )
+
+    assert original.run_id != changed.run_id
+
+
+def test_screening_artifact_fingerprint_changes_with_one_replaced_verdict() -> None:
+    """A selective verdict replacement invalidates every downstream stage cache."""
+    original = build_chunk_screening_artifact_fingerprint(
+        (_chunk(),),
+        (ChunkScreeningRecord("chunk-1", True, "Accepted.", prompt_version="5.8.0", screening_run_id="run-a"),),
+    )
+    changed = build_chunk_screening_artifact_fingerprint(
+        (_chunk(),),
+        (ChunkScreeningRecord("chunk-1", False, "Rejected.", prompt_version="5.9.0", screening_run_id="run-b"),),
     )
 
     assert original.run_id != changed.run_id

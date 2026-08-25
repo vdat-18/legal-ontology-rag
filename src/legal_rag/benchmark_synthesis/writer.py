@@ -17,7 +17,11 @@ from legal_rag.benchmark_synthesis.candidate_record import (
     CANDIDATE_PROGRESS_SCHEMA_VERSION,
     CandidateProgressRecord,
 )
-from legal_rag.benchmark_synthesis.chunk_screening import CHUNK_SCREENING_SCHEMA_VERSION, ChunkScreeningRecord
+from legal_rag.benchmark_synthesis.chunk_screening import (
+    CHUNK_SCREENING_SCHEMA_VERSION,
+    LEGACY_CHUNK_SCREENING_SCHEMA_VERSION,
+    ChunkScreeningRecord,
+)
 from legal_rag.benchmark_synthesis.document_metadata import (
     DOCUMENT_METADATA_SCHEMA_VERSION,
     DocumentMetadataRecord,
@@ -50,7 +54,10 @@ def read_chunk_screening(input_path: Path) -> tuple[ChunkScreeningRecord, ...]:
     with input_path.open(encoding="utf-8") as source_file:
         for line in source_file:
             payload = json.loads(line)
-            if payload["schema_version"] != CHUNK_SCREENING_SCHEMA_VERSION:
+            if payload["schema_version"] not in {
+                LEGACY_CHUNK_SCREENING_SCHEMA_VERSION,
+                CHUNK_SCREENING_SCHEMA_VERSION,
+            }:
                 msg = f"Unsupported chunk-screening schema: {payload['schema_version']}"
                 raise ValueError(msg)
             records.append(
@@ -59,6 +66,9 @@ def read_chunk_screening(input_path: Path) -> tuple[ChunkScreeningRecord, ...]:
                     has_penalty_content=payload["has_penalty_content"],
                     has_document_metadata=payload["has_document_metadata"],
                     reason=payload["reason"],
+                    prompt_version=payload.get("prompt_version"),
+                    model=payload.get("model"),
+                    screening_run_id=payload.get("screening_run_id"),
                 )
             )
     return tuple(records)

@@ -86,8 +86,16 @@ mọi chunk gốc vẫn có thể được dùng làm context liền kề cho m�
 ### Output
 
 `*.chunk_screening.jsonl`, với quyết định domain, cờ metadata cấp văn bản và
-lý do của model cho từng chunk. Cờ metadata chỉ định source text cho Step 1B;
-code không tìm ngày hoặc số hiệu bằng regex/keyword.
+lý do của model cho từng chunk. Mỗi verdict lưu riêng prompt version, model và
+screening run để có thể chạy lại chọn lọc mà vẫn giữ provenance. Cờ metadata
+chỉ định source text cho Step 1B; code không tìm ngày hoặc số hiệu bằng
+regex/keyword.
+
+Khi chỉ một số verdict sai, truyền từng `--rescreen-chunk-id` hoặc một JSON
+array qua `--rescreen-chunk-ids`. LLM chỉ nhận các chunk được chọn; code thay
+verdict tại đúng vị trí cũ và giữ nguyên các chunk khác. Step 1B được dùng lại
+nếu tập metadata candidate không đổi, và chỉ chạy lại khi selection metadata
+thực sự thay đổi.
 
 ## 1B. Lấy metadata cấp văn bản
 

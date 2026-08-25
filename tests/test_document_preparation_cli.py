@@ -68,6 +68,7 @@ def test_document_preparation_cli_runs_sequentially_and_reuses_completed_outputs
             log_messages.append(message.format(*args))
 
     monkeypatch.setattr(document_preparation, "logger", _RecordingLogger())
+    monkeypatch.setattr(document_preparation_cli, "logger", _RecordingLogger())
     write_chunks(
         chunks_path,
         (
@@ -131,11 +132,61 @@ def test_document_preparation_cli_runs_sequentially_and_reuses_completed_outputs
     assert "Step 1B document metadata started for 168_2024_ND-CP.docx" in log_messages
     assert "Step 1 completed for 168_2024_ND-CP.docx" in log_messages
 
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "legal-prepare-groundtruth-document",
+            str(chunks_path),
+            str(screening_path),
+            str(metadata_path),
+            "--synthesis-config",
+            str(_SYNTHESIS_CONFIG_PATH),
+            "--rescreen-chunk-id",
+            "chunk-2",
+        ],
+    )
+    document_preparation_cli.main()
+
+    assert calls == ["screening", "metadata", "screening"]
+    assert [record.chunk_id for record in read_chunk_screening(screening_path)] == ["chunk-1", "chunk-2"]
+    assert "Step 1B metadata candidates unchanged; reusing existing metadata" in log_messages
+
+    class _MetadataChangingScreeningClient(_SequentialScreeningClient):
+        def screen(self, chunks: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            calls.append("screening")
+            return tuple(
+                ChunkScreeningResult(
+                    chunk_id=chunk.chunk_id,
+                    has_penalty_content=True,
+                    has_document_metadata=True,
+                    reason="Contains penalty and document metadata.",
+                )
+                for chunk in chunks
+            )
+
+    monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _MetadataChangingScreeningClient)
+    document_preparation_cli.main()
+
+    assert calls == ["screening", "metadata", "screening", "screening", "metadata"]
+
     def _fail(*_args: object, **_kwargs: object) -> None:
         pytest.fail("Completed document-preparation outputs must bypass both LLM clients")
 
     monkeypatch.setattr(chunk_screening, "BamlChunkScreeningClient", _fail)
     monkeypatch.setattr(document_metadata, "BamlDocumentMetadataClient", _fail)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "legal-prepare-groundtruth-document",
+            str(chunks_path),
+            str(screening_path),
+            str(metadata_path),
+            "--synthesis-config",
+            str(_SYNTHESIS_CONFIG_PATH),
+        ],
+    )
 
     document_preparation_cli.main()
 
