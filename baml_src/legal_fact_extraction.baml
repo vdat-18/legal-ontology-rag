@@ -1,14 +1,17 @@
 enum ChunkWindowRole {
   Preceding
+  PrecedingTarget
   Target
   Following
+  FollowingTarget
   ArticleContext
 }
 
 class ChunkWindowEntry {
   chunk_id string
   role ChunkWindowRole @description(#"
-    Target là chunk cần trích fact; các role khác là source context.
+    Target là chunk cần trích fact. PrecedingTarget và FollowingTarget
+    là context cũng được xử lý độc lập như target ở request khác.
   "#)
   context_text string @description(#"
     Ngữ cảnh cấu trúc do parser tạo; không phải source text.
@@ -57,10 +60,13 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     - Mỗi fact thuộc về Target chứa nội dung pháp lý đặc trưng của quy
       tắc như hành vi, chủ thể, điều kiện, ngoại lệ hoặc hậu quả; tiêu
       đề, câu dẫn, đánh số hay dẫn chiếu chung không đủ để sở hữu fact.
-    - Dùng Preceding khi Target bắt đầu giữa câu, khoản hoặc danh sách
+    - Nếu Target bắt đầu bằng phần tiếp nối của quy tắc đã bắt đầu ở
+      PrecedingTarget, không trích lại quy tắc đó; chỉ trích các quy
+      tắc độc lập bắt đầu trong Target. PrecedingTarget đã sở hữu quy
+      tắc và có Following context để hoàn chỉnh nó.
+    - Nếu phần đầu cần thiết nằm ở Preceding thường, dùng context đó
       để khôi phục đầy đủ chủ thể, quy tắc chung, điều kiện và các phần
-      không thể tách. Không trả một phần tiếp nối làm thay đổi hoặc bỏ
-      sót phạm vi của quy tắc hoàn chỉnh.
+      không thể tách vì chunk này không được xử lý độc lập.
     - Chỉ dùng Following để khép lại câu, khoản hoặc danh sách đã có
       nội dung pháp lý đặc trưng trong Target. Nếu Target chỉ giới
       thiệu quy tắc hoặc danh sách còn nội dung đặc trưng bắt đầu ở
@@ -83,9 +89,10 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     - Trả đúng một kết quả cho mỗi input, giữ nguyên target_chunk_id;
       facts=[] là hợp lệ.
 
-    Tự kiểm tra: Target sở hữu nội dung đặc trưng của fact; statement
-    tự đủ nghĩa, không thiếu phần đầu của quy tắc, không trích sang
-    Following và không lặp quy định; evidence phủ toàn bộ statement.
+    Tự kiểm tra: Target sở hữu nội dung đặc trưng của fact; không lặp
+    quy tắc đã bắt đầu ở PrecedingTarget; statement tự đủ nghĩa, không
+    thiếu phần đầu, không trích sang Following và evidence phủ toàn bộ
+    statement.
 
     {{ _.role("user") }}
 

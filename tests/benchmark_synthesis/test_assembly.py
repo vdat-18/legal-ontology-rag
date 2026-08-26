@@ -76,7 +76,7 @@ def test_assembly_packages_facts_and_minimal_manifest(tmp_path: Path) -> None:
     assert result.manifest["prompt_versions"] == {
         "chunk_screening": "5.15.0",
         "document_metadata": "5.1.0",
-        "fact_extraction": "5.1.0",
+        "fact_extraction": "5.2.0",
     }
     assert result.manifest["fact_corpus_sha256"]
     assert result.manifest["config_sha256"]

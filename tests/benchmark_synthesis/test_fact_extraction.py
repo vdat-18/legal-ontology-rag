@@ -96,6 +96,28 @@ def test_build_reading_window_includes_target_preceding_and_following_chunks() -
     }
 
 
+def test_build_reading_window_marks_adjacent_extraction_targets() -> None:
+    """The model can distinguish independently processed neighbors from context-only chunks."""
+    preceding = _chunk("preceding", "Phần trước.")
+    target = _chunk("target", "Nội dung mục tiêu.", previous_chunk_id="preceding", next_chunk_id="following")
+    following = _chunk("following", "Phần sau.")
+    chunks_by_id = {chunk.chunk_id: chunk for chunk in (preceding, target, following)}
+
+    window = build_reading_window(
+        target,
+        chunks_by_id,
+        max_preceding_chunks=1,
+        max_following_chunks=1,
+        extraction_target_ids={"preceding", "target", "following"},
+    )
+
+    assert {entry.chunk_id: entry.role for entry in window} == {
+        "preceding": ChunkWindowRole.PrecedingTarget,
+        "target": ChunkWindowRole.Target,
+        "following": ChunkWindowRole.FollowingTarget,
+    }
+
+
 def test_build_reading_window_keeps_structural_context_separate_from_source_text() -> None:
     """Parser-derived ancestry reaches the model without becoming evidence text."""
     target = _chunk(
@@ -485,6 +507,33 @@ def test_extract_facts_from_document_resolves_context_excluded_from_target_chunk
     )
 
     assert seen_roles == {"target": ChunkWindowRole.Target, "preceding": ChunkWindowRole.Preceding}
+
+
+def test_extract_facts_from_document_marks_previously_processed_target_context() -> None:
+    """Resume keeps ownership markers for accepted chunks omitted from remaining targets."""
+    preceding = _chunk("preceding", "Quy tắc bắt đầu tại đây.")
+    target = _chunk("target", "Phần tiếp nối và quy tắc độc lập.", previous_chunk_id="preceding")
+    seen_roles: dict[str, ChunkWindowRole] = {}
+
+    class _RecordingClient:
+        def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[FactExtractionBatchResult]:
+            seen_roles.update({entry.chunk_id: entry.role for entry in items[0].window})
+            return (FactExtractionBatchResult(target_chunk_id=items[0].target_chunk_id, facts=[]),)
+
+    extract_facts_from_document(
+        [target],
+        [preceding, target],
+        _RecordingClient(),
+        _metadata(),
+        max_preceding_chunks=1,
+        max_following_chunks=0,
+        batch_size=1,
+        extraction_target_ids={"preceding", "target"},
+        max_retries=0,
+        retry_delay_seconds=0,
+    )
+
+    assert seen_roles == {"preceding": ChunkWindowRole.PrecedingTarget, "target": ChunkWindowRole.Target}
 
 
 def _settings() -> Settings:

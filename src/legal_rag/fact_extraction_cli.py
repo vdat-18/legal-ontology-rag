@@ -162,6 +162,7 @@ def main() -> None:
             max_following_chunks=synthesis_settings.fact_extraction_max_following_chunks,
             batch_size=synthesis_settings.fact_extraction_batch_size,
             max_concurrency=synthesis_settings.fact_extraction_max_concurrency,
+            extraction_target_ids=accepted_chunk_ids,
             max_retries=synthesis_settings.llm_max_retries,
             retry_delay_seconds=synthesis_settings.llm_retry_delay_seconds,
             on_batch_processed=_persist_batch,

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence, Set
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from functools import partial
@@ -33,7 +33,7 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
 EXTRACTION_PROGRESS_SCHEMA_VERSION = "1.0.0"
-FACT_EXTRACTION_PROMPT_VERSION = "5.1.0"
+FACT_EXTRACTION_PROMPT_VERSION = "5.2.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,8 +73,17 @@ def _walk_adjacent_chunks(
     return tuple(chunks)
 
 
-def _window_entry(chunk: Chunk, role: ChunkWindowRole) -> ChunkWindowEntry:
+def _window_entry(
+    chunk: Chunk,
+    role: ChunkWindowRole,
+    extraction_target_ids: Set[str],
+) -> ChunkWindowEntry:
     """Return one BAML reading-window entry for a persisted chunk."""
+    if chunk.chunk_id in extraction_target_ids:
+        if role == ChunkWindowRole.Preceding:
+            role = ChunkWindowRole.PrecedingTarget
+        elif role == ChunkWindowRole.Following:
+            role = ChunkWindowRole.FollowingTarget
     return ChunkWindowEntry(
         chunk_id=chunk.chunk_id,
         role=role,
@@ -89,6 +98,7 @@ def build_reading_window(
     *,
     max_preceding_chunks: int,
     max_following_chunks: int,
+    extraction_target_ids: Set[str] = frozenset(),
 ) -> tuple[ChunkWindowEntry, ...]:
     """Assemble one document-ordered window from persisted neighbor links."""
     preceding = _walk_adjacent_chunks(
@@ -104,9 +114,12 @@ def build_reading_window(
         next_chunk_id=lambda chunk: chunk.next_chunk_id,
     )
     return (
-        *(_window_entry(chunk, ChunkWindowRole.Preceding) for chunk in reversed(preceding)),
-        _window_entry(target, ChunkWindowRole.Target),
-        *(_window_entry(chunk, ChunkWindowRole.Following) for chunk in following),
+        *(
+            _window_entry(chunk, ChunkWindowRole.Preceding, extraction_target_ids)
+            for chunk in reversed(preceding)
+        ),
+        _window_entry(target, ChunkWindowRole.Target, extraction_target_ids),
+        *(_window_entry(chunk, ChunkWindowRole.Following, extraction_target_ids) for chunk in following),
     )
 
 
@@ -207,12 +220,14 @@ def extract_facts_from_document(
     max_following_chunks: int,
     batch_size: int,
     max_concurrency: int = 1,
+    extraction_target_ids: Set[str] | None = None,
     max_retries: int,
     retry_delay_seconds: float,
     on_batch_processed: Callable[[Sequence[tuple[str, tuple[LegalFact, ...]]]], None] | None = None,
 ) -> tuple[LegalFact, ...]:
     """Extract facts in bounded concurrent batches and checkpoint each successful batch."""
     chunks_by_id = {chunk.chunk_id: chunk for chunk in document_chunks}
+    all_target_ids = extraction_target_ids or {chunk.chunk_id for chunk in target_chunks}
 
     batch_results_by_index: dict[int, tuple[tuple[str, tuple[LegalFact, ...]], ...]] = {}
     failures: list[LlmTaskFailure] = []
@@ -232,6 +247,7 @@ def extract_facts_from_document(
                             chunks_by_id,
                             max_preceding_chunks=max_preceding_chunks,
                             max_following_chunks=max_following_chunks,
+                            extraction_target_ids=all_target_ids,
                         )
                     ),
                 )
