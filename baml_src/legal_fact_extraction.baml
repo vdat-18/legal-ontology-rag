@@ -68,9 +68,17 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     - Khi Target bắt đầu bằng phần tiếp nối, dùng Preceding hoặc
       PrecedingTarget để khôi phục phần dẫn chung, chủ thể và phạm vi,
       rồi viết fact đầy đủ cho nội dung nằm trong Target.
-    - Chỉ dùng Following để hoàn chỉnh câu hoặc mục đã bắt đầu trong
-      Target. Không lấy mục, điều kiện, ngoại lệ hoặc quy tắc mới bắt
-      đầu trong FollowingTarget; nội dung đó thuộc target kế tiếp.
+    - Với FollowingTarget, chỉ dùng phần đầu để hoàn chỉnh đúng câu
+      hoặc mục đang viết dở ở cuối Target. Nếu FollowingTarget bắt đầu
+      mục, điều kiện, ngoại lệ hay quy tắc mới thì tuyệt đối không lấy;
+      nội dung đó thuộc target kế tiếp.
+    - Nếu Target kết thúc bằng câu dẫn danh sách mà các mục bắt đầu ở
+      FollowingTarget, không tạo fact cho danh sách đó. Nếu Target đã
+      chứa một số mục và FollowingTarget chứa các mục còn lại, chỉ trích
+      các mục nằm trong Target; không gộp toàn bộ danh sách.
+    - Following thường không được xử lý độc lập, nên có thể dùng để
+      hoàn chỉnh quy tắc hoặc danh sách đã bắt đầu trong Target khi cần
+      thiết và vẫn phải có Target trong evidence.
     - Không trích lại cùng một quy tắc dưới dạng gộp và dạng tách.
     - Structural context chỉ giúp hiểu cấu trúc, không phải source text.
 
@@ -83,9 +91,21 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     - Giữ các thành phần của cùng một quy tắc trong một fact. Chỉ
       tách khi các quy tắc độc lập hoặc khác phạm vi, điều kiện hay
       hậu quả; không gộp quy tắc không liên quan.
+    - Một câu mới nêu chủ thể hoặc nghĩa vụ mới là quy tắc độc lập và
+      phải thành fact riêng, kể cả khi nằm trong cùng một khoản. Không
+      nhập nghĩa vụ đó vào fact của câu đứng trước.
+    - Không suy ra quan hệ tương ứng chỉ từ vị trí của các mục trong
+      nhiều danh sách song song. Chỉ tách thành từng cặp khi Source text
+      xác lập rõ ánh xạ; nếu không, giữ cấu trúc quy tắc chung và không
+      tự thêm giới hạn cho từng chủ thể.
     - Giữ chính xác ý nghĩa, con số, khoảng, đơn vị, điều kiện và
       ngoại lệ. Không thêm kiến thức, suy đoán hoặc diễn giải rộng hơn
       source text; không tạo fact nếu chưa đủ căn cứ.
+    - Giữ nguyên mọi giới hạn về chủ thể, loại phương tiện, hoàn cảnh
+      áp dụng và dẫn chiếu điều, khoản; không thay dẫn chiếu cụ thể bằng
+      cụm chung như "theo quy định", không mở rộng nhãn nhóm so với nguồn.
+    - Không bỏ sót quy định giao thẩm quyền hoặc quy định chi tiết nằm
+      trọn trong Target khi nó nêu rõ chủ thể và nội dung được giao.
     - evidence gồm Target và các chunk trong window có Source text đã
       dùng; toàn bộ statement phải được phủ. Không dùng Structural
       context làm evidence.
@@ -94,8 +114,11 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
 
     Tự kiểm tra: đã xét hết nội dung pháp lý đặc trưng nằm trong Target,
     kể cả phần tiếp nối; không bỏ sót vì nội dung bắt đầu ở chunk trước;
-    statement thuần tiếng Việt, tự đủ nghĩa, không lấy mục mới từ
-    FollowingTarget và evidence phủ toàn bộ statement.
+    nếu evidence có FollowingTarget thì phần được dùng chỉ là đuôi của
+    đúng câu hoặc mục bắt đầu trong Target, không phải mục mới; statement
+    không tự tạo ánh xạ tương ứng chỉ từ thứ tự liệt kê; không gộp câu
+    mới có chủ thể hoặc nghĩa vụ mới vào fact trước; statement thuần
+    tiếng Việt, tự đủ nghĩa và evidence phủ toàn bộ statement.
 
     {{ _.role("user") }}
 

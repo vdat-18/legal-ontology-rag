@@ -33,8 +33,9 @@ from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact, b
 from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
-EXTRACTION_PROGRESS_SCHEMA_VERSION = "1.0.0"
-FACT_EXTRACTION_PROMPT_VERSION = "5.4.0"
+LEGACY_EXTRACTION_PROGRESS_SCHEMA_VERSION = "1.0.0"
+EXTRACTION_PROGRESS_SCHEMA_VERSION = "2.0.0"
+FACT_EXTRACTION_PROMPT_VERSION = "5.5.6"
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,12 +43,18 @@ class ExtractionProgressRecord:
     """One chunk fact extraction has finished reading, recorded whether or not it produced facts."""
 
     chunk_id: str
+    prompt_version: str | None = None
+    model: str | None = None
+    extraction_run_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable extraction-progress record."""
         return {
             "schema_version": EXTRACTION_PROGRESS_SCHEMA_VERSION,
             "chunk_id": self.chunk_id,
+            "prompt_version": self.prompt_version,
+            "model": self.model,
+            "extraction_run_id": self.extraction_run_id,
         }
 
 

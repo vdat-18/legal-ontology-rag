@@ -36,6 +36,7 @@ from legal_rag.benchmark_synthesis.evidence_graph import (
 )
 from legal_rag.benchmark_synthesis.fact_extraction import (
     EXTRACTION_PROGRESS_SCHEMA_VERSION,
+    LEGACY_EXTRACTION_PROGRESS_SCHEMA_VERSION,
     ExtractionProgressRecord,
 )
 from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
@@ -132,10 +133,20 @@ def read_extraction_progress(input_path: Path) -> tuple[ExtractionProgressRecord
     with input_path.open(encoding="utf-8") as source_file:
         for line in source_file:
             payload = json.loads(line)
-            if payload["schema_version"] != EXTRACTION_PROGRESS_SCHEMA_VERSION:
+            if payload["schema_version"] not in {
+                LEGACY_EXTRACTION_PROGRESS_SCHEMA_VERSION,
+                EXTRACTION_PROGRESS_SCHEMA_VERSION,
+            }:
                 msg = f"Unsupported extraction-progress schema: {payload['schema_version']}"
                 raise ValueError(msg)
-            records.append(ExtractionProgressRecord(chunk_id=payload["chunk_id"]))
+            records.append(
+                ExtractionProgressRecord(
+                    chunk_id=payload["chunk_id"],
+                    prompt_version=payload.get("prompt_version"),
+                    model=payload.get("model"),
+                    extraction_run_id=payload.get("extraction_run_id"),
+                )
+            )
     return tuple(records)
 
 

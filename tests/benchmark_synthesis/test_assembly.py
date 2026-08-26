@@ -9,6 +9,11 @@ import pytest
 
 from legal_rag.benchmark_synthesis.assembly import RUN_MANIFEST_SCHEMA_VERSION, assemble_groundtruth_corpus
 from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.stage_cache import (
+    StageCacheFingerprint,
+    stage_cache_path,
+    write_stage_cache_fingerprint,
+)
 from legal_rag.benchmark_synthesis.writer import write_legal_facts
 
 _DOCUMENT_A = "168_2024_ND-CP_619502"
@@ -76,7 +81,7 @@ def test_assembly_packages_facts_and_minimal_manifest(tmp_path: Path) -> None:
     assert result.manifest["prompt_versions"] == {
         "chunk_screening": "5.15.0",
         "document_metadata": "5.1.0",
-        "fact_extraction": "5.4.0",
+        "fact_extraction": "5.5.6",
     }
     assert result.manifest["fact_corpus_sha256"]
     assert result.manifest["config_sha256"]
@@ -113,6 +118,26 @@ def test_assembly_does_not_require_screening_metadata_or_progress_artifacts(tmp_
     result = _assemble(tmp_path, ((_DOCUMENT_A, (_fact(),)),))
 
     assert len(result.facts) == 1
+
+
+def test_assembly_uses_fact_artifact_prompt_provenance_when_available(tmp_path: Path) -> None:
+    """A selectively merged document is not mislabeled as one uniform prompt run."""
+    processed_dir, config_path, snapshot_path = _write_inputs(tmp_path, ((_DOCUMENT_A, (_fact(),)),))
+    write_stage_cache_fingerprint(
+        stage_cache_path(processed_dir / f"{_DOCUMENT_A}.legal_facts.jsonl"),
+        StageCacheFingerprint("fact_extraction", "mixed-run", "mixed", "provider/test-model"),
+    )
+
+    result = assemble_groundtruth_corpus(
+        processed_dir,
+        config_path,
+        snapshot_path,
+        _SYNTHESIS_CONFIG_PATH,
+        [config_path],
+        llm_model="provider/test-model",
+    )
+
+    assert result.manifest["prompt_versions"]["fact_extraction"] == "mixed"
 
 
 def test_assembly_lets_missing_fact_file_raise_naturally(tmp_path: Path) -> None:

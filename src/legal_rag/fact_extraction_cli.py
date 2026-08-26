@@ -20,6 +20,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("facts_output_path", type=Path, help="Destination legal-facts JSONL path")
     parser.add_argument("progress_output_path", type=Path, help="Destination extraction-progress JSONL path")
     parser.add_argument("--synthesis-config", type=Path, required=True, help="Versioned synthesis config JSON path")
+    parser.add_argument("--reextract-chunk-id", action="append", default=[], help="Chunk id to extract again")
+    parser.add_argument("--reextract-chunk-ids", type=Path, help="JSON file containing chunk ids to extract again")
     return parser
 
 
@@ -29,19 +31,23 @@ def main() -> None:
 
     from legal_rag.benchmark_synthesis.config import SynthesisSettings
     from legal_rag.benchmark_synthesis.fact_extraction import (
+        FACT_EXTRACTION_PROMPT_VERSION,
         BamlFactExtractionClient,
         ExtractionProgressRecord,
         extract_facts_from_document,
     )
+    from legal_rag.benchmark_synthesis.fact_extraction_resume import prepare_extraction_resume
+    from legal_rag.benchmark_synthesis.fact_extraction_selection import load_reextract_chunk_ids
     from legal_rag.benchmark_synthesis.models import LegalFact
     from legal_rag.benchmark_synthesis.stage_cache import (
         build_chunk_screening_fingerprint,
         build_document_metadata_fingerprint,
+        build_fact_extraction_artifact_fingerprint,
         build_fact_extraction_fingerprint,
-        initialize_stage_cache,
         require_chunk_screening_cache,
         require_stage_cache,
         stage_cache_path,
+        write_stage_cache_fingerprint,
     )
     from legal_rag.benchmark_synthesis.writer import (
         read_chunk_screening,
@@ -87,22 +93,39 @@ def main() -> None:
     accepted_chunk_ids = {record.chunk_id for record in screening_records if record.has_penalty_content}
     accepted_chunks = tuple(chunk for chunk in chunks if chunk.chunk_id in accepted_chunk_ids)
     metadata = read_document_metadata(arguments.metadata_path)
-    initialize_stage_cache(
-        stage_cache_path(arguments.facts_output_path),
-        (arguments.facts_output_path, arguments.progress_output_path),
-        build_fact_extraction_fingerprint(
-            chunks,
-            tuple(chunk.chunk_id for chunk in accepted_chunks),
-            metadata,
-            synthesis_settings,
-            screening_run_id=screening_fingerprint.run_id,
-            metadata_run_id=metadata_fingerprint.run_id,
-            llm_base_url=settings.llm_base_url,
-            llm_model=settings.llm_model,
-        ),
+    accepted_chunk_id_order = tuple(chunk.chunk_id for chunk in accepted_chunks)
+    execution_fingerprint = build_fact_extraction_fingerprint(
+        chunks,
+        accepted_chunk_id_order,
+        metadata,
+        synthesis_settings,
+        screening_run_id=screening_fingerprint.run_id,
+        metadata_run_id=metadata_fingerprint.run_id,
+        llm_base_url=settings.llm_base_url,
+        llm_model=settings.llm_model,
+    )
+    existing_facts = read_legal_facts(arguments.facts_output_path) if arguments.facts_output_path.exists() else ()
+    existing_progress = (
+        read_extraction_progress(arguments.progress_output_path) if arguments.progress_output_path.exists() else ()
+    )
+    fingerprint_path = stage_cache_path(arguments.facts_output_path)
+    reextract_chunk_ids = load_reextract_chunk_ids(
+        arguments.reextract_chunk_id,
+        arguments.reextract_chunk_ids,
+    )
+    existing_facts, existing_progress = prepare_extraction_resume(
+        fingerprint_path=fingerprint_path,
+        facts_path=arguments.facts_output_path,
+        progress_path=arguments.progress_output_path,
+        chunks=chunks,
+        accepted_chunks=accepted_chunks,
+        metadata=metadata,
+        existing_facts=existing_facts,
+        existing_progress=existing_progress,
+        execution_fingerprint=execution_fingerprint,
+        reextract_chunk_ids=reextract_chunk_ids,
     )
 
-    existing_facts = read_legal_facts(arguments.facts_output_path) if arguments.facts_output_path.exists() else ()
     facts_by_id: dict[str, LegalFact] = {}
 
     def _merge_facts(facts: Sequence[LegalFact]) -> None:
@@ -111,10 +134,8 @@ def main() -> None:
             facts_by_id.setdefault(fact.fact_id, fact)
 
     _merge_facts(existing_facts)
-    existing_progress = (
-        read_extraction_progress(arguments.progress_output_path) if arguments.progress_output_path.exists() else ()
-    )
-    processed_chunk_ids = {record.chunk_id for record in existing_progress}
+    progress_by_chunk_id = {record.chunk_id: record for record in existing_progress}
+    processed_chunk_ids = set(progress_by_chunk_id)
     remaining_targets = tuple(chunk for chunk in accepted_chunks if chunk.chunk_id not in processed_chunk_ids)
     logger.info(
         "Loaded {} accepted chunks of {} from {}; {} already extracted, {} remaining",
@@ -136,13 +157,20 @@ def main() -> None:
         write_legal_facts(
             arguments.facts_output_path, tuple(sorted(facts_by_id.values(), key=lambda fact: fact.fact_id))
         )
-        processed_chunk_ids.update(chunk_id for chunk_id, _ in batch_results)
+        for chunk_id, _ in batch_results:
+            processed_chunk_ids.add(chunk_id)
+            progress_by_chunk_id[chunk_id] = ExtractionProgressRecord(
+                chunk_id=chunk_id,
+                prompt_version=FACT_EXTRACTION_PROMPT_VERSION,
+                model=settings.llm_model,
+                extraction_run_id=execution_fingerprint.run_id,
+            )
         write_extraction_progress(
             arguments.progress_output_path,
             tuple(
-                ExtractionProgressRecord(chunk_id=chunk.chunk_id)
-                for chunk in chunks
-                if chunk.chunk_id in processed_chunk_ids
+                progress_by_chunk_id[chunk.chunk_id]
+                for chunk in accepted_chunks
+                if chunk.chunk_id in progress_by_chunk_id
             ),
         )
         logger.debug(
@@ -173,11 +201,25 @@ def main() -> None:
     write_extraction_progress(
         arguments.progress_output_path,
         tuple(
-            ExtractionProgressRecord(chunk_id=chunk.chunk_id)
-            for chunk in chunks
-            if chunk.chunk_id in processed_chunk_ids
+            progress_by_chunk_id[chunk.chunk_id]
+            for chunk in accepted_chunks
+            if chunk.chunk_id in progress_by_chunk_id
         ),
     )
+    progress = tuple(
+        progress_by_chunk_id[chunk.chunk_id]
+        for chunk in accepted_chunks
+        if chunk.chunk_id in progress_by_chunk_id
+    )
+    if len(progress) == len(accepted_chunks):
+        artifact_fingerprint = build_fact_extraction_artifact_fingerprint(
+            chunks,
+            accepted_chunk_id_order,
+            metadata,
+            facts,
+            progress,
+        )
+        write_stage_cache_fingerprint(fingerprint_path, artifact_fingerprint)
     processed_chunk_count = len(processed_chunk_ids & accepted_chunk_ids)
     logger.info(
         "Extracted {} legal facts from {}/{} accepted chunks ({} still unprocessed), wrote {}",

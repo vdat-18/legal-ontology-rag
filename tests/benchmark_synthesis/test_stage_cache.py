@@ -11,6 +11,7 @@ import pytest
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
+from legal_rag.benchmark_synthesis.fact_extraction import ExtractionProgressRecord
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.benchmark_synthesis.stage_cache import (
@@ -18,6 +19,7 @@ from legal_rag.benchmark_synthesis.stage_cache import (
     build_chunk_screening_artifact_fingerprint,
     build_chunk_screening_fingerprint,
     build_document_metadata_fingerprint,
+    build_fact_extraction_artifact_fingerprint,
     build_fact_extraction_fingerprint,
     initialize_stage_cache,
     read_stage_cache_fingerprint,
@@ -230,6 +232,21 @@ def test_fact_extraction_fingerprint_changes_with_upstream_run() -> None:
     )
 
     assert original.run_id != changed.run_id
+
+
+def test_fact_extraction_artifact_fingerprint_tracks_chunk_provenance() -> None:
+    """Artifact identity records the prompt and model persisted for its chunks."""
+    metadata = DocumentMetadataRecord("168/2024/NĐ-CP", date(2025, 1, 1), None)
+    fingerprint = build_fact_extraction_artifact_fingerprint(
+        (_chunk(),),
+        ("chunk-1",),
+        metadata,
+        (_fact(),),
+        (ExtractionProgressRecord("chunk-1", "5.5.0", "provider/model", "run-a"),),
+    )
+
+    assert fingerprint.prompt_version == "5.5.0"
+    assert fingerprint.model == "provider/model"
 
 
 def test_candidate_fingerprint_changes_with_persona_or_model() -> None:

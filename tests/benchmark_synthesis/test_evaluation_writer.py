@@ -118,11 +118,22 @@ def test_document_metadata_round_trips_through_jsonl(tmp_path: Path) -> None:
 def test_extraction_progress_round_trips_through_jsonl(tmp_path: Path) -> None:
     """A written extraction-progress record reads back with identical field values."""
     output_path = tmp_path / "extraction_progress.jsonl"
-    records = (ExtractionProgressRecord(chunk_id="chunk-1"), ExtractionProgressRecord(chunk_id="chunk-2"))
+    records = (
+        ExtractionProgressRecord("chunk-1", "5.5.0", "provider/model-a", "run-a"),
+        ExtractionProgressRecord("chunk-2", "5.5.1", "provider/model-b", "run-b"),
+    )
 
     write_extraction_progress(output_path, records)
 
     assert read_extraction_progress(output_path) == records
+
+
+def test_extraction_progress_reads_legacy_records_without_provenance(tmp_path: Path) -> None:
+    """Version 1 progress remains readable before selective provenance migration."""
+    output_path = tmp_path / "extraction_progress.jsonl"
+    output_path.write_text('{"schema_version":"1.0.0","chunk_id":"chunk-1"}\n', encoding="utf-8")
+
+    assert read_extraction_progress(output_path) == (ExtractionProgressRecord(chunk_id="chunk-1"),)
 
 
 def test_evidence_relations_round_trip_through_jsonl(tmp_path: Path) -> None:

@@ -20,9 +20,11 @@ from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataReco
 from legal_rag.benchmark_synthesis.fact_extraction import ExtractionProgressRecord
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.stage_cache import (
+    StageCacheFingerprint,
     build_chunk_screening_fingerprint,
     build_document_metadata_fingerprint,
     build_fact_extraction_fingerprint,
+    read_stage_cache_fingerprint,
     stage_cache_path,
     write_stage_cache_fingerprint,
 )
@@ -389,6 +391,78 @@ def test_fact_extraction_cli_resumes_by_skipping_already_extracted_chunks(
     assert {fact.source_chunk_id for fact in facts} == {"chunk-1", "chunk-2"}
 
 
+def test_fact_extraction_cli_selectively_replaces_one_chunk_with_mixed_provenance(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A prompt update can replace one target while retaining provenance for untouched facts."""
+    chunks_path = tmp_path / "168_2024_ND-CP.chunks.jsonl"
+    screening_path = tmp_path / "chunk_screening.jsonl"
+    facts_path = tmp_path / "legal_facts.jsonl"
+    progress_path = tmp_path / "extraction_progress.jsonl"
+    chunks = (
+        _chunk("chunk-1", "Quy tắc cần sửa."),
+        _chunk("chunk-2", "Quy tắc đã đúng."),
+    )
+    write_chunks(chunks_path, chunks)
+    write_chunk_screening(
+        screening_path,
+        [ChunkScreeningRecord(chunk.chunk_id, True, "Penalty.") for chunk in chunks],
+    )
+    write_legal_facts(
+        facts_path,
+        [_existing_fact("old-fact-1", "chunk-1"), _existing_fact("old-fact-2", "chunk-2")],
+    )
+    write_extraction_progress(
+        progress_path,
+        [ExtractionProgressRecord("chunk-1"), ExtractionProgressRecord("chunk-2")],
+    )
+    extracted_chunk_ids: list[str] = []
+
+    class _SelectiveClient:
+        def __init__(self, settings: object, synthesis_settings: object) -> None:
+            return None
+
+        def extract_batch(self, items: list[FactExtractionBatchItem]) -> tuple[FactExtractionBatchResult, ...]:
+            extracted_chunk_ids.extend(item.target_chunk_id for item in items)
+            return tuple(
+                FactExtractionBatchResult(
+                    target_chunk_id=item.target_chunk_id,
+                    facts=[
+                        BamlLegalFact(
+                            statement="Quy tắc đã được sửa chính xác.",
+                            evidence=[BamlEvidenceEntry(chunk_id=item.target_chunk_id)],
+                        )
+                    ],
+                )
+                for item in items
+            )
+
+    _configure_cli(monkeypatch, chunks_path, screening_path, facts_path)
+    old_fingerprint = StageCacheFingerprint("fact_extraction", "old-run", "5.5.0", "provider/test-model")
+    write_stage_cache_fingerprint(stage_cache_path(facts_path), old_fingerprint)
+    monkeypatch.setattr(fact_extraction, "BamlFactExtractionClient", _SelectiveClient)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [*sys.argv, "--reextract-chunk-id", "chunk-1"],
+    )
+
+    fact_extraction_cli.main()
+
+    assert extracted_chunk_ids == ["chunk-1"]
+    facts = read_legal_facts(facts_path)
+    assert {fact.source_chunk_id for fact in facts} == {"chunk-1", "chunk-2"}
+    assert next(fact for fact in facts if fact.source_chunk_id == "chunk-1").statement == (
+        "Quy tắc đã được sửa chính xác."
+    )
+    progress_by_id = {record.chunk_id: record for record in read_extraction_progress(progress_path)}
+    assert progress_by_id["chunk-1"].prompt_version == fact_extraction.FACT_EXTRACTION_PROMPT_VERSION
+    assert progress_by_id["chunk-2"] == ExtractionProgressRecord(
+        "chunk-2", "5.5.0", "provider/test-model", "old-run"
+    )
+    assert read_stage_cache_fingerprint(stage_cache_path(facts_path)).prompt_version == "mixed"
+
+
 def test_fact_extraction_cli_does_not_reprocess_a_chunk_that_yielded_no_facts(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -421,9 +495,9 @@ def test_fact_extraction_cli_does_not_reprocess_a_chunk_that_yielded_no_facts(
     fact_extraction_cli.main()
 
     assert extraction_calls == ["chunk-1"]
-    assert read_extraction_progress(tmp_path / "extraction_progress.jsonl") == (
-        ExtractionProgressRecord(chunk_id="chunk-1"),
-    )
+    progress = read_extraction_progress(tmp_path / "extraction_progress.jsonl")
+    assert [record.chunk_id for record in progress] == ["chunk-1"]
+    assert progress[0].prompt_version == fact_extraction.FACT_EXTRACTION_PROMPT_VERSION
     assert read_legal_facts(facts_path) == ()
 
 
@@ -512,9 +586,9 @@ def test_fact_extraction_cli_persists_progress_if_interrupted_mid_document(
     facts = read_legal_facts(facts_path)
     assert len(facts) == 1
     assert facts[0].source_chunk_id == "chunk-1"
-    assert read_extraction_progress(tmp_path / "extraction_progress.jsonl") == (
-        ExtractionProgressRecord(chunk_id="chunk-1"),
-    )
+    assert [record.chunk_id for record in read_extraction_progress(tmp_path / "extraction_progress.jsonl")] == [
+        "chunk-1"
+    ]
 
 
 def test_fact_extraction_cli_replaces_facts_replayed_after_progress_write_crash(
@@ -569,9 +643,9 @@ def test_fact_extraction_cli_replaces_facts_replayed_after_progress_write_crash(
 
     facts = read_legal_facts(facts_path)
     assert [fact.statement for fact in facts] == [statement]
-    assert read_extraction_progress(tmp_path / "extraction_progress.jsonl") == (
-        ExtractionProgressRecord(chunk_id="chunk-1"),
-    )
+    assert [record.chunk_id for record in read_extraction_progress(tmp_path / "extraction_progress.jsonl")] == [
+        "chunk-1"
+    ]
 
 
 def test_fact_extraction_cli_skips_chunks_excluded_by_screening(

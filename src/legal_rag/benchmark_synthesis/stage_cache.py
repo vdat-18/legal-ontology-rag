@@ -21,7 +21,10 @@ from legal_rag.benchmark_synthesis.document_metadata import (
     DOCUMENT_METADATA_PROMPT_VERSION,
     DocumentMetadataRecord,
 )
-from legal_rag.benchmark_synthesis.fact_extraction import FACT_EXTRACTION_PROMPT_VERSION
+from legal_rag.benchmark_synthesis.fact_extraction import (
+    FACT_EXTRACTION_PROMPT_VERSION,
+    ExtractionProgressRecord,
+)
 from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.chunker.models import Chunk
@@ -175,6 +178,65 @@ def build_fact_extraction_fingerprint(
             },
         },
     )
+
+
+def build_fact_extraction_artifact_fingerprint(
+    chunks: Sequence[Chunk],
+    accepted_chunk_ids: Sequence[str],
+    metadata: DocumentMetadataRecord,
+    facts: Sequence[LegalFact],
+    progress: Sequence[ExtractionProgressRecord],
+) -> StageCacheFingerprint:
+    """Fingerprint a complete fact artifact, including mixed per-chunk provenance."""
+    prompt_versions = {record.prompt_version or "unknown" for record in progress}
+    models = {record.model or "unknown" for record in progress}
+    return _build_fingerprint(
+        stage="fact_extraction",
+        prompt_version=next(iter(prompt_versions)) if len(prompt_versions) == 1 else "mixed",
+        model=next(iter(models)) if len(models) == 1 else "mixed",
+        identity={
+            "accepted_chunk_ids": list(accepted_chunk_ids),
+            "chunks": [_chunk_identity(chunk, include_context=True) for chunk in chunks],
+            "facts": [fact.to_dict() for fact in facts],
+            "legal_fact_schema": LEGAL_FACT_SCHEMA_VERSION,
+            "metadata": metadata.to_dict(),
+            "progress": [record.to_dict() for record in progress],
+        },
+    )
+
+
+def require_fact_extraction_cache(
+    fingerprint_path: Path,
+    chunks: Sequence[Chunk],
+    accepted_chunk_ids: Sequence[str],
+    metadata: DocumentMetadataRecord,
+    facts: Sequence[LegalFact],
+    progress: Sequence[ExtractionProgressRecord],
+    execution_fingerprint: StageCacheFingerprint,
+) -> StageCacheFingerprint:
+    """Validate either a uniform execution cache or a selectively merged fact artifact."""
+    existing = read_stage_cache_fingerprint(fingerprint_path)
+    if existing == execution_fingerprint:
+        return existing
+    accepted_ids = list(accepted_chunk_ids)
+    if [record.chunk_id for record in progress] != accepted_ids:
+        msg = "Fact-extraction progress is incomplete or not in accepted chunk order"
+        raise ValueError(msg)
+    accepted_id_set = set(accepted_ids)
+    if any(fact.source_chunk_id not in accepted_id_set for fact in facts):
+        msg = "Fact-extraction artifact contains a fact for an unaccepted target chunk"
+        raise ValueError(msg)
+    artifact_fingerprint = build_fact_extraction_artifact_fingerprint(
+        chunks,
+        accepted_chunk_ids,
+        metadata,
+        facts,
+        progress,
+    )
+    if existing != artifact_fingerprint:
+        msg = "Existing fact_extraction artifacts belong to a different synthesis run"
+        raise ValueError(msg)
+    return existing
 
 
 def build_candidate_generation_fingerprint(

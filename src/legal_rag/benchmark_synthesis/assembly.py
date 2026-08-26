@@ -14,6 +14,7 @@ from legal_rag.benchmark_synthesis.chunk_screening import CHUNK_SCREENING_PROMPT
 from legal_rag.benchmark_synthesis.document_metadata import DOCUMENT_METADATA_PROMPT_VERSION
 from legal_rag.benchmark_synthesis.fact_extraction import FACT_EXTRACTION_PROMPT_VERSION
 from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, LegalFact
+from legal_rag.benchmark_synthesis.stage_cache import read_stage_cache_fingerprint, stage_cache_path
 from legal_rag.benchmark_synthesis.writer import read_legal_facts
 from legal_rag.parser.hashing import sha256_json
 
@@ -44,15 +45,24 @@ def assemble_groundtruth_corpus(
 
     facts: list[LegalFact] = []
     document_summaries: list[dict[str, object]] = []
+    extraction_prompt_versions: set[str] = set()
     for document_id in document_ids:
-        document_facts = read_legal_facts(processed_dir / f"{document_id}.legal_facts.jsonl")
+        facts_path = processed_dir / f"{document_id}.legal_facts.jsonl"
+        document_facts = read_legal_facts(facts_path)
         facts.extend(document_facts)
         document_summaries.append({"document_id": document_id, "fact_count": len(document_facts)})
+        fingerprint_path = stage_cache_path(facts_path)
+        if fingerprint_path.exists():
+            extraction_prompt_versions.add(read_stage_cache_fingerprint(fingerprint_path).prompt_version)
 
     prompt_versions = {
         "chunk_screening": CHUNK_SCREENING_PROMPT_VERSION,
         "document_metadata": DOCUMENT_METADATA_PROMPT_VERSION,
-        "fact_extraction": FACT_EXTRACTION_PROMPT_VERSION,
+        "fact_extraction": (
+            next(iter(extraction_prompt_versions))
+            if len(extraction_prompt_versions) == 1
+            else "mixed" if extraction_prompt_versions else FACT_EXTRACTION_PROMPT_VERSION
+        ),
     }
     config_hashes = {
         path.as_posix(): _sha256_file(path) for path in (corpus_config_path, synthesis_config_path, *config_paths)
