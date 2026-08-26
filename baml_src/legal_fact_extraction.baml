@@ -60,23 +60,26 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     - Mỗi fact thuộc về Target chứa nội dung pháp lý đặc trưng của quy
       tắc như hành vi, chủ thể, điều kiện, ngoại lệ hoặc hậu quả; tiêu
       đề, câu dẫn, đánh số hay dẫn chiếu chung không đủ để sở hữu fact.
-    - Nếu Target bắt đầu bằng phần tiếp nối của quy tắc đã bắt đầu ở
-      PrecedingTarget, không trích lại quy tắc đó; chỉ trích các quy
-      tắc độc lập bắt đầu trong Target. PrecedingTarget đã sở hữu quy
-      tắc và có Following context để hoàn chỉnh nó.
-    - Nếu phần đầu cần thiết nằm ở Preceding thường, dùng context đó
-      để khôi phục đầy đủ chủ thể, quy tắc chung, điều kiện và các phần
-      không thể tách vì chunk này không được xử lý độc lập.
-    - Chỉ dùng Following để khép lại câu, khoản hoặc danh sách đã có
-      nội dung pháp lý đặc trưng trong Target. Nếu Target chỉ giới
-      thiệu quy tắc hoặc danh sách còn nội dung đặc trưng bắt đầu ở
-      Following thì không trích nội dung đó cho Target.
+    - Trích mọi nội dung pháp lý thuộc domain có phần đặc trưng nằm
+      trong Target, kể cả Target bắt đầu giữa một khoản hoặc danh sách
+      từ PrecedingTarget. Mỗi mục, điều kiện, ngoại lệ hoặc hậu quả mới
+      xuất hiện trong Target thuộc Target; không giả định request khác
+      đã trích nó.
+    - Khi Target bắt đầu bằng phần tiếp nối, dùng Preceding hoặc
+      PrecedingTarget để khôi phục phần dẫn chung, chủ thể và phạm vi,
+      rồi viết fact đầy đủ cho nội dung nằm trong Target.
+    - Chỉ dùng Following để hoàn chỉnh câu hoặc mục đã bắt đầu trong
+      Target. Không lấy mục, điều kiện, ngoại lệ hoặc quy tắc mới bắt
+      đầu trong FollowingTarget; nội dung đó thuộc target kế tiếp.
     - Không trích lại cùng một quy tắc dưới dạng gộp và dạng tách.
     - Structural context chỉ giúp hiểu cấu trúc, không phải source text.
 
     Output contract:
     - statement là nguồn sự thật duy nhất: một mệnh đề pháp lý
       nguyên tử, tự hiểu được và giữ đủ thành phần cần thiết để áp dụng.
+    - statement chỉ viết bằng tiếng Việt. Không chèn từ hoặc ký tự của
+      ngôn ngữ khác; chỉ giữ chữ cái Latin, số, đơn vị, mã hạng và ký
+      hiệu cần thiết có căn cứ từ source text.
     - Giữ các thành phần của cùng một quy tắc trong một fact. Chỉ
       tách khi các quy tắc độc lập hoặc khác phạm vi, điều kiện hay
       hậu quả; không gộp quy tắc không liên quan.
@@ -89,10 +92,10 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     - Trả đúng một kết quả cho mỗi input, giữ nguyên target_chunk_id;
       facts=[] là hợp lệ.
 
-    Tự kiểm tra: Target sở hữu nội dung đặc trưng của fact; không lặp
-    quy tắc đã bắt đầu ở PrecedingTarget; statement tự đủ nghĩa, không
-    thiếu phần đầu, không trích sang Following và evidence phủ toàn bộ
-    statement.
+    Tự kiểm tra: đã xét hết nội dung pháp lý đặc trưng nằm trong Target,
+    kể cả phần tiếp nối; không bỏ sót vì nội dung bắt đầu ở chunk trước;
+    statement thuần tiếng Việt, tự đủ nghĩa, không lấy mục mới từ
+    FollowingTarget và evidence phủ toàn bộ statement.
 
     {{ _.role("user") }}
 

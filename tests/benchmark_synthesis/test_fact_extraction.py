@@ -248,6 +248,22 @@ def test_build_extracted_fact_rejects_empty_evidence() -> None:
         build_extracted_fact(_baml_fact(evidence=[]), "chunk-1", _metadata(), {"chunk-1": "Nội dung."})
 
 
+def test_build_extracted_fact_rejects_evidence_without_target_chunk() -> None:
+    """A context-only citation cannot satisfy target ownership provenance."""
+    raw = _baml_fact(evidence=[BamlEvidenceEntry(chunk_id="context")])
+
+    with pytest.raises(ValueError, match="must cite its target chunk"):
+        build_extracted_fact(raw, "target", _metadata(), {"context": None, "target": None})
+
+
+def test_build_extracted_fact_rejects_non_latin_script_text() -> None:
+    """Foreign-script model contamination is retried instead of persisted."""
+    raw = _baml_fact(statement="Người lái xe phải dừng lại तथा chấp hành hiệu lệnh.")
+
+    with pytest.raises(ValueError, match="Latin-script Vietnamese"):
+        _build_extracted(raw)
+
+
 class _FakeExtractionClient:
     """Return pre-programmed facts for every target in a requested batch."""
 

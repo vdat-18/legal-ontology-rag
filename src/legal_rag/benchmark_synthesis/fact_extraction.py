@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import unicodedata
 from collections.abc import Callable, Mapping, Sequence, Set
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -33,7 +34,7 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
 EXTRACTION_PROGRESS_SCHEMA_VERSION = "1.0.0"
-FACT_EXTRACTION_PROMPT_VERSION = "5.2.0"
+FACT_EXTRACTION_PROMPT_VERSION = "5.4.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -165,6 +166,15 @@ def build_extracted_fact(
     evidence = tuple(EvidenceReference(chunk_id=entry.chunk_id) for entry in raw.evidence)
     if not evidence:
         msg = "A legal fact must cite at least one evidence chunk"
+        raise ValueError(msg)
+    if source_chunk_id not in {reference.chunk_id for reference in evidence}:
+        msg = "A legal fact must cite its target chunk"
+        raise ValueError(msg)
+    if any(
+        character.isalpha() and not unicodedata.name(character, "").startswith("LATIN")
+        for character in raw.statement
+    ):
+        msg = "A legal fact statement must use Latin-script Vietnamese text"
         raise ValueError(msg)
     for reference in evidence:
         window_chunks_by_id[reference.chunk_id]
