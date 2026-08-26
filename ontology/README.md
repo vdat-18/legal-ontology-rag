@@ -3,9 +3,9 @@
 This directory contains versioned ontology-engineering artifacts derived from
 `docs/ontology_construction_plan.md`.
 
-Current status: internally frozen V0.1. The project owner accepted `LR-001` through `LR-007`, all ten external-reuse
-decisions, and the 11 AI-assisted internal `ILR-*` recommendations. Independent legal-professional certification is not
-asserted.
+Current status: V0.1 is preserved as an immutable internal release under `dist/ontology/v0.1.0/`; the editable ontology
+workspace is now the V0.2 candidate. Prior V0.1 approvals remain historical evidence and are not reused as approval of
+V0.2. Independent legal-professional certification is not asserted.
 
 The current increment contains machine-readable requirements, competency questions, glossary terms, modeling decisions,
 formalization policy, the source/provenance OWL module, its SHACL shapes, executable source/evidence CQ projections,
@@ -14,7 +14,7 @@ Retrieval, GraphRAG, and Graphiti remain outside this increment. Source-grounded
 separate downstream pipeline so construction artifacts remain independent from extracted instance data.
 
 `formalization_policy.yaml` selects OWL 2 DL and defines proposed canonical namespaces and an acyclic local import graph.
-Publishing under the proposed `w3id.org` namespace remains optional and separate from the internal V0.1 freeze.
+Publishing under the proposed `w3id.org` namespace remains optional and is pending V0.2 semantic QA and review.
 
 `legal_ontology.ttl` currently imports only modules already formalized in the repository. `catalog-v001.xml` resolves
 their canonical and version IRIs to local files without network access.
@@ -46,7 +46,7 @@ satisfaction, and change interpretation still require semantic confirmation outs
 Automated ontology QA lives in `tests/ontology/`, backed by reusable loaders and validators in
 `src/legal_rag/ontology_validation/`. It checks Turtle parsing, policy and import consistency, catalog resolution,
 modeling guardrails, SHACL fixtures, all mandatory CQ projections, and traceability. See
-`ontology/reports/v0.1_qa_report.md` for the validated scope, semantic limitations, and open public-release gates.
+`ontology/reports/v0.1_qa_report.md` for the historical V0.1 validated scope. It is not QA evidence for V0.2.
 
 `semantic_qa_contract.yaml` adds the semantic release-hardening boundary. It pins ROBOT `v1.9.10` and HermiT in a
 network-isolated bounded Docker invocation, validates the OWL 2 DL import closure through the local XML catalog,
@@ -54,9 +54,9 @@ materializes reasoning output, audits unsatisfiable classes and unintended infer
 rules, and repeats traceability plus mandatory-CQ coverage in one machine-readable report. Minimal declarations for
 referenced PROV-O, SKOS, OWL-Time, and Dublin Core entities live in the foundational source module so the import closure
 is OWL 2 DL without importing external ontology bundles. The ontology and its construction artifacts are licensed under
-CC BY 4.0 through `LICENSE` and root `dcterms:license` metadata. All current semantic checks pass. Each report contains a
-digest of every semantic input so changed ontology, shape, CQ, fixture, registry, catalog, or policy files invalidate
-stale QA evidence.
+CC BY 4.0 through `LICENSE` and root `dcterms:license` metadata. The archived V0.1 semantic checks passed; no passing V0.2
+report is asserted yet. Each report contains a digest of every semantic input so changed ontology, shape, CQ, fixture,
+registry, catalog, or policy files invalidate stale QA evidence. V0.2 semantic QA must be rerun before release.
 
 `external_reuse_registry.yaml` records the completed ontology-engineering review of ten external resources and the
 exact 23 external term IRIs used by OWL or SHACL. Dublin Core, PROV-O, SKOS, and OWL-Time are reused by term reference
@@ -70,12 +70,20 @@ explicit questions, evidence files, affected IDs, acceptance criteria, and Codex
 readiness report live under `reviews/v0.1/`. All 11 internal recommendations and project-owner acceptance are recorded;
 no licensed or independent legal-professional certification is asserted.
 
-`release_contract.yaml` defines the immutable V0.1 distribution boundary. The release command checks the bound semantic
-report, ontology identity, license, the live external-reuse registry, legal-review packet completeness, explicit human
-approvals, and the declared file
+`release_contract.yaml` now defines the blocked V0.2 candidate release boundary. The release command checks the bound semantic
+report, ontology identity, license, the live external-reuse registry, legal-review packet completeness, explicit
+project-owner approvals, and the declared file
 inventory. A successful run creates a metadata-normalized ZIP with an internal `MANIFEST.json` plus a separate SHA-256
-checksum. The internal freeze contract is fully approved and excludes namespace-publication assets. W3ID deployment can
-be performed later without changing the frozen ontology semantics.
+checksum. V0.2 packaging remains fail-closed until fresh semantic QA and explicit V0.2 approvals exist. The immutable
+V0.1 archive and checksum remain unchanged under `dist/ontology/v0.1.0/`.
+
+`evolution_policy.yaml` defines how a frozen ontology may change after new source data arrives. New chunks populate
+instances and may produce reviewed gap proposals, but neither the data nor an LLM mutates the TBox directly. The
+`legal-diff-ontology` command compares two project roots by declared local classes and properties, their OWL axiom
+closures, named SHACL node shapes and constraint closures, mandatory CQs, deprecations, and replacement links. It blocks
+active or deprecated term removal, term-kind or active-term semantic changes, named-shape removal or constraint changes,
+and mandatory-CQ removal while allowing additive changes. Labels, comments, and traceability annotations do not count as
+semantic changes. A changed meaning must receive a new IRI, and the old IRI remains declared with `owl:deprecated true`.
 
 `namespace_publication.yaml` defines the canonical namespace deployment and W3ID registration boundary. The publication
 command validates all ontology/version IRIs against Turtle and the XML catalog, creates HTML plus byte-identical Turtle
@@ -91,10 +99,14 @@ types, redirect status, and `Location` targets; it does not retry or silently ac
 `population_contract.yaml` defines the versioned chunk-to-instance boundary. The corresponding pipeline creates
 reviewable typed records, deterministic RDF instances, exact evidence links, and writes Turtle only after SHACL
 conformance. It does not populate concrete occurrences or infer cross-document legal changes and concept equivalence.
+Population records and checkpoints are bound to the ontology version, ontology semantic hash, input, prompt, provider
+configuration, model, and run ID so incompatible ontology/run states cannot be mixed. A source-reviewed gold evaluator
+gates the pilot on exact per-chunk inventory plus required and forbidden
+rule signatures before scaling.
 See `docs/ontology_population_pipeline.md` for the workflow and command.
 
 `assembly_contract.yaml` defines the next within-document canonicalization boundary. It uses bounded structural windows
-only to prepare typed LLM inputs, requires a legal reviewer to accept or reject every proposed cross-chunk assembly, and
+only to prepare typed LLM inputs, requires attributable project-owner review for every proposed cross-chunk assembly, and
 rejects overlapping accepted members. Candidate generation and finalization are offline; only proposal generation calls
 the model. Canonical population JSONL and Turtle are written after review completion and full-graph SHACL conformance.
 Cross-document legal changes are handled only by the subsequent reviewed change-resolution boundary; exception redirects
@@ -102,14 +114,14 @@ and concept equivalence remain deferred.
 
 `change_resolution_contract.yaml` implements the reviewed cross-document `LegalChange` boundary after per-document
 assembly. An explicit ordered corpus manifest drives exhaustive bounded candidate windows without lexical matching or
-semantic scoring. A typed LLM may only propose changes supported by exact later-document evidence; a human reviewer owns
+semantic scoring. A typed LLM may only propose changes supported by exact later-document evidence; the project owner owns
 acceptance. Accepted changes update canonical validity identities and materialize amendment, replacement, or
 repeal/supersession events before full multi-document SHACL validation. Exception redirects are handled only by the
 subsequent reviewed exception-resolution boundary; transitional applicability and concept equivalence remain deferred.
 
 `exception_resolution_contract.yaml` implements the next reviewed boundary. It uses exhaustive bounded source/general/
 target windows without keyword classification or similarity scoring. Typed proposals preserve exact exception evidence
-and grouped citation wording, while humans approve the general rule, cited provisions, and version-specific redirects.
+and grouped citation wording, while project-owner review approves the general rule, cited provisions, and redirects.
 The formal model adds `hasProvisionCitation` so one exception can retain locator grouping separately from direct
 `citesExcludedProvision` and `redirectsTo` projections. Finalization validates the complete graph against SHACL and
 `CQ-EXCEPTION-001`. Concept equivalence is handled only by the subsequent reviewed concept-resolution boundary; legal
@@ -118,7 +130,7 @@ priority evaluation, unpopulated provision targets, and occurrence applicability
 `concept_resolution_contract.yaml` implements reviewed consolidation for rule-scoped `RegulatedConduct`,
 `LegalSubjectRole`, and `VehicleCategory` occurrences. Candidate construction exhaustively enumerates same-kind pairs
 without lexical filtering or semantic scoring. Typed LLM proposals must bind exact evidence from both occurrences, and
-every proposed merge or taxonomy relation requires attributable human acceptance. Finalization computes canonical
+every proposed merge or taxonomy relation requires attributable project-owner acceptance. Finalization computes canonical
 identities only from accepted `SameConcept` decisions, remaps rule references, and materializes reviewed SKOS
 `broader`/`narrower`/`related` relations. It does not assert OWL equivalence or subclass semantics. Subject kinds remain
 the pre-approved controlled concepts; consequence-target consolidation, legal priority, and occurrence applicability

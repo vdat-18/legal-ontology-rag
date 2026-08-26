@@ -14,6 +14,7 @@ POPULATION_CONTRACT_SCHEMA_VERSION = "0.1.0"
 class PopulationSettings:
     """Execution limits and identity policy for ontology population."""
 
+    ontology_version: str
     instance_namespace: str
     batch_size: int
     max_preceding_chunks: int
@@ -35,6 +36,7 @@ class PopulationSettings:
         extraction = document["extraction"]
         reading_window = document["input"]["reading_window"]
         return cls(
+            ontology_version=document["ontology_version"],
             instance_namespace=document["instance_namespace"].rstrip("/") + "/",
             batch_size=extraction["batch_size"],
             max_preceding_chunks=reading_window["max_preceding_chunks"],

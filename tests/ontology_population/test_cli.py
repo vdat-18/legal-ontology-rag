@@ -16,7 +16,7 @@ from legal_rag.baml_client.types import (
     OntologyConsequenceEntry,
     OntologyConsequenceKind,
     OntologyCurrency,
-    OntologyEvidenceEntry,
+    OntologyEvidenceReference,
     OntologyPopulationBatchResult,
     OntologyRuleEntry,
     OntologySubjectKind,
@@ -27,7 +27,11 @@ from legal_rag.benchmark_synthesis.writer import write_chunk_screening, write_do
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
 from legal_rag.ontology_population import extraction
-from legal_rag.ontology_population.writer import read_population_progress, read_population_records
+from legal_rag.ontology_population.evidence import fragment_evidence_sources
+from legal_rag.ontology_population.writer import (
+    read_population_progress,
+    read_population_records,
+)
 from legal_rag.settings import Settings
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -46,46 +50,43 @@ class _CliPopulationClient:
     def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
         """Return one typed rule per target chunk."""
         type(self).calls += 1
-        return tuple(
-            OntologyPopulationBatchResult(
-                target_chunk_id=item.target_chunk_id,
-                rules=[
-                    OntologyRuleEntry(
-                        conduct_label_vi="Điều khiển xe không gắn biển số",
-                        subject_kind=OntologySubjectKind.NaturalPerson,
-                        role_labels_vi=["Người điều khiển"],
-                        vehicle_category_labels_vi=["Xe mô tô"],
-                        condition_root_id=None,
-                        conditions=[],
-                        consequences=[
-                            OntologyConsequenceEntry(
-                                consequence_id="money",
-                                kind=OntologyConsequenceKind.MonetaryPenalty,
-                                minimum_amount="4000000",
-                                maximum_amount="6000000",
-                                currency=OntologyCurrency.VND,
-                                point_value=None,
-                                target_label_vi=None,
-                                responsible_role_label_vi=None,
-                                evidence=[
-                                    OntologyEvidenceEntry(
-                                        chunk_id=item.target_chunk_id,
-                                        quoted_span=item.window[0].text,
-                                    )
-                                ],
-                            )
-                        ],
-                        valid_from=None,
-                        valid_to=None,
-                        provision_path="Điều 13 khoản 9 điểm b",
-                        evidence=[
-                            OntologyEvidenceEntry(chunk_id=item.target_chunk_id, quoted_span=item.window[0].text)
-                        ],
-                    )
-                ],
+        results = []
+        for item in items:
+            source = fragment_evidence_sources(item.target_chunk_id, item.window[0].text)[0]
+            evidence = OntologyEvidenceReference(evidence_id=source.evidence_id)
+            results.append(
+                OntologyPopulationBatchResult(
+                    target_chunk_id=item.target_chunk_id,
+                    rules=[
+                        OntologyRuleEntry(
+                            conduct_label_vi="Điều khiển xe không gắn biển số",
+                            subject_kind=OntologySubjectKind.NaturalPerson,
+                            role_labels_vi=["Người điều khiển"],
+                            vehicle_category_labels_vi=["Xe mô tô"],
+                            condition_root_id=None,
+                            conditions=[],
+                            consequences=[
+                                OntologyConsequenceEntry(
+                                    consequence_id="money",
+                                    kind=OntologyConsequenceKind.MonetaryPenalty,
+                                    minimum_amount="4000000",
+                                    maximum_amount="6000000",
+                                    currency=OntologyCurrency.VND,
+                                    point_value=None,
+                                    target_label_vi=None,
+                                    responsible_role_label_vi=None,
+                                    evidence=[evidence],
+                                )
+                            ],
+                            valid_from=None,
+                            valid_to=None,
+                            provision_path="Điều 13 khoản 9 điểm b",
+                            evidence=[evidence],
+                        )
+                    ],
+                )
             )
-            for item in items
-        )
+        return tuple(results)
 
 
 def test_cli_writes_reviewable_records_progress_and_validated_graph(
@@ -177,10 +178,18 @@ def test_cli_writes_reviewable_records_progress_and_validated_graph(
     ontology_population_cli.main()
 
     assert len(read_population_records(records_path)) == 1
-    assert [record.chunk_id for record in read_population_progress(progress_path)] == [legal_chunk.chunk_id]
+    progress = read_population_progress(progress_path)
+    assert [record.chunk_id for record in progress] == [legal_chunk.chunk_id]
+    assert all(record.run_id for record in progress)
+    record = read_population_records(records_path)[0]
+    assert record.ontology_version == "0.2.0"
+    assert record.ontology_semantic_sha256
+    assert record.population_run_id == progress[0].run_id
     assert len(Graph().parse(graph_path, format="turtle")) > 0
-    assert json.loads(preflight_path.read_text(encoding="utf-8"))["overall_status"] == "ready"
-    assert {item["artifact_type"] for item in json.loads(preflight_path.read_text(encoding="utf-8"))["artifacts"]} == {
+    preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
+    assert preflight["overall_status"] == "ready"
+    assert preflight["ontology_semantic_sha256"] == record.ontology_semantic_sha256
+    assert {item["artifact_type"] for item in preflight["artifacts"]} == {
         "chunks",
         "screening",
         "metadata",
@@ -195,3 +204,10 @@ def test_cli_writes_reviewable_records_progress_and_validated_graph(
         llm_model="dotenv-model",
         llm_timeout_seconds=45,
     )
+
+    dotenv_path.write_text(
+        dotenv_path.read_text(encoding="utf-8").replace("LLM_MODEL=dotenv-model", "LLM_MODEL=changed-model"),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="different prompt, model, input, or ontology run"):
+        ontology_population_cli.main()

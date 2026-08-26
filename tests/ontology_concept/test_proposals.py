@@ -13,6 +13,7 @@ from legal_rag.baml_client.types import (
     ConceptResolutionPairInput,
     ConceptResolutionPairResult,
     OntologyConceptRelation,
+    OntologyEvidenceReference,
 )
 from legal_rag.benchmark_synthesis.llm_execution import LlmTaskExhaustedError
 from legal_rag.ontology_change.corpus import ChangeCorpus
@@ -41,14 +42,18 @@ class _ConceptClient:
         for pair in pairs:
             proposal = None
             if not self._empty and pair.left.kind.value == "LegalSubjectRole":
-                left_evidence = pair.left.evidence
+                left_evidence = [
+                    OntologyEvidenceReference(evidence_id=source.evidence_id) for source in pair.left.evidence
+                ]
                 if self._paraphrase:
-                    left_evidence = [replace(left_evidence[0], quoted_span="Diễn giải không có trong source")]
+                    left_evidence = [OntologyEvidenceReference(evidence_id="ev_unknown")]
                 proposal = ConceptRelationProposalEntry(
                     relation=OntologyConceptRelation.SameConcept,
                     preferred_label_vi="Nhãn không thuộc pair" if self._invalid_label else pair.left.label_vi,
                     left_evidence=left_evidence,
-                    right_evidence=pair.right.evidence,
+                    right_evidence=[
+                        OntologyEvidenceReference(evidence_id=source.evidence_id) for source in pair.right.evidence
+                    ],
                     rationale_vi="Hai occurrence biểu đạt cùng vai trò pháp lý trong source.",
                 )
             results.append(ConceptResolutionPairResult(candidate_id=pair.candidate_id, proposal=proposal))
@@ -63,11 +68,9 @@ def _propose(corpus: ChangeCorpus, client: _ConceptClient):
         retry_delay_seconds=0,
     )
     candidates = build_concept_candidates(corpus.documents[0].records, settings)
-    chunk_text = {chunk.chunk_id: chunk.text for chunk in corpus.documents[0].chunks}
     return propose_concept_relations(
         candidates.pairs,
         candidates.occurrences,
-        chunk_text,
         client,
         settings,
         run_id="concept-run",
@@ -111,11 +114,9 @@ def test_zero_proposal_results_are_valid_and_checkpointable(exception_corpus: Ch
         retry_delay_seconds=0,
     )
     candidates = build_concept_candidates(exception_corpus.documents[0].records, settings)
-    chunk_text = {chunk.chunk_id: chunk.text for chunk in exception_corpus.documents[0].chunks}
     proposals = propose_concept_relations(
         candidates.pairs,
         candidates.occurrences,
-        chunk_text,
         _ConceptClient(empty=True),
         settings,
         run_id="concept-run",

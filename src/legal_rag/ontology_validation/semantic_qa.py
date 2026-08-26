@@ -28,6 +28,7 @@ from legal_rag.ontology_validation.semantic_runner import RobotRunner
 from legal_rag.ontology_validation.traceability import (
     REFERENCE_PREDICATES,
     collect_ids,
+    ontology_pattern_issues,
     referenced_ids,
     shapes_without_traceability,
     subjects_for_cq,
@@ -129,8 +130,11 @@ def semantic_input_sha256(paths: OntologyPaths, settings: SemanticQaSettings) ->
         paths.requirements,
         paths.glossary,
         paths.modeling_decisions,
+        paths.patterns,
+        paths.pilot_fixtures,
         paths.query_manifest,
         paths.semantic_qa_contract,
+        paths.evolution_policy,
         paths.external_reuse_registry,
         *(module.path for module in modules),
         *(case.query_path for case in query_cases),
@@ -173,6 +177,16 @@ def collect_traceability_issues(
         issues.extend(f"untraced-shape:{shape}" for shape in sorted(shapes_without_traceability(shapes_graph)))
     if settings.require_mandatory_cq_coverage:
         issues.extend(_mandatory_cq_issues(paths, ontology_graph, shapes_graph))
+    if settings.require_ontology_pattern_coverage:
+        issues.extend(
+            ontology_pattern_issues(
+                load_yaml(paths.patterns),
+                load_yaml(paths.competency_questions),
+                load_yaml(paths.pilot_fixtures),
+                ontology_graph,
+                shapes_graph,
+            )
+        )
     return tuple(sorted(issues))
 
 

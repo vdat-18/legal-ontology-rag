@@ -30,8 +30,8 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.chunk_screening.reasoning_effort == "medium"
     assert settings.document_metadata.reasoning_effort == "medium"
     assert settings.fact_extraction_batch_size == 1
-    assert settings.fact_extraction_max_concurrency == 4
-    assert settings.fact_extraction_max_preceding_chunks == 2
+    assert settings.fact_extraction_max_concurrency == 20
+    assert settings.fact_extraction_max_preceding_chunks == 3
     assert settings.fact_extraction_max_following_chunks == 1
     assert settings.fact_extraction.max_output_tokens == 32_768
     assert settings.fact_extraction.reasoning_effort == "medium"

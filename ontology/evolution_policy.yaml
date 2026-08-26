@@ -1,0 +1,30 @@
+schema_version: "0.1.0"
+artifact_id: road-traffic-ontology-evolution-policy
+artifact_version: "0.2.0"
+status: active
+lifecycle:
+  new_data_action: populate_instances
+  llm_tbox_mutation: prohibited
+  required_change_evidence:
+    - accepted_requirement_or_cq
+    - modeling_decision
+    - passing_semantic_qa
+    - project_owner_acceptance
+breaking_changes:
+  fail_on:
+    - removed_active_term
+    - changed_term_kind
+    - changed_active_term_semantics
+    - removed_node_shape
+    - changed_node_shape_constraints
+    - removed_mandatory_cq
+deprecation:
+  predicate_iri: http://www.w3.org/2002/07/owl#deprecated
+  replacement_predicate_iri: http://purl.org/dc/terms/isReplacedBy
+  require_retained_declaration: true
+  meaning_change_action: mint_new_iri
+semantic_boundaries:
+  - New source data populates the frozen ontology and may propose gaps; it never changes the TBox directly.
+  - An ontology change requires reviewed requirements, a modeling decision, passing semantic QA, and project-owner acceptance.
+  - A changed meaning receives a new IRI; the old IRI remains declared and deprecated.
+  - LLM output may describe a gap or candidate change but is never the final ontology authority.

@@ -37,6 +37,7 @@ def main() -> None:
     from legal_rag.ontology_population.config import PopulationSettings
     from legal_rag.ontology_population.extraction import (
         BamlOntologyPopulationClient,
+        build_population_run_id,
         extract_population_from_document,
     )
     from legal_rag.ontology_population.materializer import (
@@ -48,6 +49,7 @@ def main() -> None:
     from legal_rag.ontology_population.preflight import (
         load_population_inputs,
         load_population_target_selection,
+        population_ontology_semantic_sha256,
         run_population_preflight,
         select_population_targets,
         validate_population_resume_state,
@@ -62,6 +64,8 @@ def main() -> None:
     from legal_rag.settings import Settings
 
     arguments = _parser().parse_args()
+    project_root = Path(__file__).resolve().parents[2]
+    ontology_semantic_sha256 = population_ontology_semantic_sha256(project_root)
     population_settings = PopulationSettings.from_path(arguments.contract_path)
     bundle = load_population_inputs(arguments.chunks_path, arguments.screening_path, arguments.metadata_path)
     target_selection = (
@@ -80,6 +84,7 @@ def main() -> None:
         population_settings,
         tuple(artifact_paths),
         datetime.now(UTC),
+        ontology_semantic_sha256=ontology_semantic_sha256,
         target_limit=arguments.target_limit,
         target_selection=target_selection,
     )
@@ -93,6 +98,11 @@ def main() -> None:
     chunks = bundle.chunks
     metadata = bundle.metadata
     accepted_chunks = select_population_targets(bundle, arguments.target_limit, target_selection)
+    dotenv_path = find_dotenv(usecwd=True)
+    if dotenv_path:
+        load_dotenv(dotenv_path, override=True)
+    settings = Settings.from_environment()
+    run_id = build_population_run_id(preflight.pilot_run_id, settings)
     existing_records = (
         read_population_records(arguments.records_output_path) if arguments.records_output_path.exists() else ()
     )
@@ -101,7 +111,13 @@ def main() -> None:
     existing_progress = (
         read_population_progress(arguments.progress_output_path) if arguments.progress_output_path.exists() else ()
     )
-    validate_population_resume_state(accepted_chunks, existing_records, existing_progress)
+    validate_population_resume_state(
+        accepted_chunks,
+        existing_records,
+        existing_progress,
+        expected_run_id=run_id,
+        expected_ontology_semantic_sha256=ontology_semantic_sha256,
+    )
     processed_ids = {record.chunk_id for record in existing_progress}
     remaining_targets = tuple(chunk for chunk in accepted_chunks if chunk.chunk_id not in processed_ids)
 
@@ -124,22 +140,25 @@ def main() -> None:
 
     def persist_batch(batch_results: Sequence[tuple[str, tuple[OntologyPopulationRecord, ...]]]) -> None:
         """Persist records before progress so interrupted writes replay safely."""
-        for _, target_records in batch_results:
+        for chunk_id, target_records in batch_results:
+            stale_ids = [
+                population_id for population_id, record in records_by_id.items() if record.source_chunk_id == chunk_id
+            ]
+            for population_id in stale_ids:
+                del records_by_id[population_id]
             records_by_id.update({record.population_id: record for record in target_records})
         write_population_records(arguments.records_output_path, ordered_records())
         processed_ids.update(chunk_id for chunk_id, _ in batch_results)
         write_population_progress(
             arguments.progress_output_path,
             tuple(
-                PopulationProgressRecord(chunk_id=chunk.chunk_id) for chunk in chunks if chunk.chunk_id in processed_ids
+                PopulationProgressRecord(chunk_id=chunk.chunk_id, run_id=run_id)
+                for chunk in chunks
+                if chunk.chunk_id in processed_ids
             ),
         )
 
     if remaining_targets:
-        dotenv_path = find_dotenv(usecwd=True)
-        if dotenv_path:
-            load_dotenv(dotenv_path, override=True)
-        settings = Settings.from_environment()
         client = BamlOntologyPopulationClient(settings, population_settings)
         extract_population_from_document(
             remaining_targets,
@@ -147,6 +166,8 @@ def main() -> None:
             client,
             metadata,
             population_settings,
+            ontology_semantic_sha256=ontology_semantic_sha256,
+            population_run_id=run_id,
             max_concurrency=arguments.max_concurrency,
             on_batch_processed=persist_batch,
         )
@@ -155,10 +176,13 @@ def main() -> None:
     write_population_records(arguments.records_output_path, records)
     write_population_progress(
         arguments.progress_output_path,
-        tuple(PopulationProgressRecord(chunk_id=chunk.chunk_id) for chunk in chunks if chunk.chunk_id in processed_ids),
+        tuple(
+            PopulationProgressRecord(chunk_id=chunk.chunk_id, run_id=run_id)
+            for chunk in chunks
+            if chunk.chunk_id in processed_ids
+        ),
     )
     graph = materialize_population_graph(chunks, metadata, records, population_settings.instance_namespace)
-    project_root = Path(__file__).resolve().parents[2]
     validate_population_graph(graph, OntologyPaths(project_root))
     write_population_graph(arguments.graph_output_path, graph)
     logger.info(

@@ -35,7 +35,7 @@ def test_publication_site_is_complete_deterministic_and_byte_exact(
 
     root_source = publication_settings.resources[0].source_path.read_bytes()
     assert (first_output / "ontology" / "ontology.ttl").read_bytes() == root_source
-    assert (first_output / "ontology" / "0.1.0" / "ontology.ttl").read_bytes() == root_source
+    assert (first_output / "ontology" / "0.2.0" / "ontology.ttl").read_bytes() == root_source
     assert "CC BY 4.0" in (first_output / "ontology" / "index.html").read_text(encoding="utf-8")
 
 

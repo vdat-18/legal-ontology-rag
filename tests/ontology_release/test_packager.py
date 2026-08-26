@@ -21,12 +21,12 @@ from .conftest import write_releasable_project
 CHECKED_AT = datetime(2026, 8, 18, 12, 0, tzinfo=UTC)
 
 
-def test_production_contract_builds_internal_freeze_without_public_namespace(
+def test_production_candidate_remains_blocked_without_v0_2_approvals(
     tmp_path: Path,
     project_root: Path,
     release_settings: OntologyReleaseSettings,
 ) -> None:
-    """Public namespace deployment is not required to create the approved internal V0.1 archive."""
+    """A passing technical report cannot reuse V0.1 approvals for the V0.2 candidate."""
     semantic_settings = SemanticQaSettings.from_path(release_settings.semantic_contract_path, project_root)
     report_path = tmp_path / "semantic-report.json"
     report_path.write_text(
@@ -44,15 +44,15 @@ def test_production_contract_builds_internal_freeze_without_public_namespace(
     report = build_ontology_release(project_root, release_settings, report_path, tmp_path / "release", CHECKED_AT)
     gates = {item.gate_id: item for item in report.gates}
 
-    assert report.overall_status == "released"
-    assert gates["human-approvals"].status == "passed"
+    assert report.overall_status == "blocked"
+    assert gates["human-approvals"].status == "failed"
     assert gates["ontology-license"].status == "passed"
     assert gates["external-reuse-registry"].status == "passed"
     assert gates["internal-legal-review-packet"].status == "passed"
     assert gates["release-file-inventory"].status == "passed"
     assert gates["semantic-qa"].status == "passed"
-    assert Path(report.archive_path or "").is_file()
-    assert (tmp_path / "release" / release_settings.checksum_file).is_file()
+    assert report.archive_path is None
+    assert not (tmp_path / "release" / release_settings.checksum_file).exists()
 
 
 def test_release_archive_is_reproducible_and_self_describing(

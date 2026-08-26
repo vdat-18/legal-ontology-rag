@@ -5,7 +5,7 @@
     uri="legal_ontology.ttl"
   />
   <uri
-    name="https://w3id.org/legal-ontology-rag/ontology/0.1.0"
+    name="https://w3id.org/legal-ontology-rag/ontology/0.2.0"
     uri="legal_ontology.ttl"
   />
   <uri
@@ -13,7 +13,7 @@
     uri="modules/source_provenance.ttl"
   />
   <uri
-    name="https://w3id.org/legal-ontology-rag/ontology/0.1.0/source-provenance"
+    name="https://w3id.org/legal-ontology-rag/ontology/0.2.0/source-provenance"
     uri="modules/source_provenance.ttl"
   />
   <uri
@@ -21,7 +21,7 @@
     uri="modules/occurrence_context.ttl"
   />
   <uri
-    name="https://w3id.org/legal-ontology-rag/ontology/0.1.0/occurrence-context"
+    name="https://w3id.org/legal-ontology-rag/ontology/0.2.0/occurrence-context"
     uri="modules/occurrence_context.ttl"
   />
   <uri
@@ -29,7 +29,7 @@
     uri="modules/temporal_change.ttl"
   />
   <uri
-    name="https://w3id.org/legal-ontology-rag/ontology/0.1.0/temporal-change"
+    name="https://w3id.org/legal-ontology-rag/ontology/0.2.0/temporal-change"
     uri="modules/temporal_change.ttl"
   />
   <uri
@@ -37,7 +37,7 @@
     uri="modules/normative_rule.ttl"
   />
   <uri
-    name="https://w3id.org/legal-ontology-rag/ontology/0.1.0/normative-rule"
+    name="https://w3id.org/legal-ontology-rag/ontology/0.2.0/normative-rule"
     uri="modules/normative_rule.ttl"
   />
   <uri
@@ -45,7 +45,7 @@
     uri="modules/legal_consequence.ttl"
   />
   <uri
-    name="https://w3id.org/legal-ontology-rag/ontology/0.1.0/legal-consequence"
+    name="https://w3id.org/legal-ontology-rag/ontology/0.2.0/legal-consequence"
     uri="modules/legal_consequence.ttl"
   />
   <uri
@@ -53,7 +53,7 @@
     uri="shapes/legal_ontology.shacl.ttl"
   />
   <uri
-    name="https://w3id.org/legal-ontology-rag/shapes/0.5.0"
+    name="https://w3id.org/legal-ontology-rag/shapes/0.6.0"
     uri="shapes/legal_ontology.shacl.ttl"
   />
 </catalog>

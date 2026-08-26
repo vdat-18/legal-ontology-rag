@@ -7,8 +7,6 @@ from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from typing import Protocol
 
-from baml_py.logging import set_log_level
-
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import (
     AssemblyConditionSummary,
@@ -16,18 +14,19 @@ from legal_rag.baml_client.types import (
     OntologyConditionKind,
     OntologyConsequenceKind,
     OntologyCurrency,
-    OntologyEvidenceEntry,
+    OntologyEvidenceSource,
     OntologyPopulationSummary,
     OntologySubjectKind,
     RuleAssemblyWindowInput,
     RuleAssemblyWindowResult,
 )
-from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.baml_transport import BamlCaller
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
 from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
 from legal_rag.chunker.models import Chunk
 from legal_rag.ontology_population.assembly_config import AssemblySettings
 from legal_rag.ontology_population.assembly_models import AssemblyCandidateWindow, AssemblyProposal
+from legal_rag.ontology_population.evidence import evidence_source
 from legal_rag.ontology_population.extraction import build_population_record
 from legal_rag.ontology_population.models import OntologyPopulationRecord, population_identity
 from legal_rag.settings import Settings
@@ -49,17 +48,12 @@ class BamlAssemblyProposalClient:
 
     def __init__(self, settings: Settings, assembly_settings: AssemblySettings) -> None:
         """Create a bounded runtime BAML client."""
-        set_log_level("OFF")
-        self._registry = build_client_registry(
-            base_url=settings.llm_base_url,
-            api_key=settings.llm_api_key,
-            model=settings.llm_model,
+        self._caller = BamlCaller.from_settings(
+            settings,
             max_output_tokens=assembly_settings.max_output_tokens,
             temperature=assembly_settings.temperature,
-            timeout_seconds=settings.llm_timeout_seconds,
+            max_response_bytes=assembly_settings.max_response_bytes,
         )
-        self._timeout_seconds = settings.llm_timeout_seconds
-        self._max_response_bytes = assembly_settings.max_response_bytes
         self._model = settings.llm_model
 
     @property
@@ -69,11 +63,9 @@ class BamlAssemblyProposalClient:
 
     def propose_batch(self, windows: Sequence[RuleAssemblyWindowInput]) -> Sequence[RuleAssemblyWindowResult]:
         """Run one bounded BAML call over candidate windows."""
-        request = b.request.ProposeOntologyRuleAssemblies(
-            list(windows), baml_options={"client_registry": self._registry}
-        )
-        raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        return b.parse.ProposeOntologyRuleAssemblies(raw_output, baml_options={"client_registry": self._registry})
+        request = b.request.ProposeOntologyRuleAssemblies(list(windows), baml_options=self._caller.options)
+        raw_output = self._caller.execute(request)
+        return b.parse.ProposeOntologyRuleAssemblies(raw_output, baml_options=self._caller.options)
 
 
 def build_assembly_proposal_run_id(
@@ -91,6 +83,7 @@ def build_assembly_proposal_run_id(
             "temperature": assembly_settings.temperature,
             "llm_base_url": settings.llm_base_url,
             "llm_model": settings.llm_model,
+            "llm_extra_request_body": dict(settings.llm_extra_request_body),
         }
     )
 
@@ -177,11 +170,20 @@ def _build_batch_proposals(
                     record.population_id,
                 ),
             )
+            ontology_version, ontology_semantic_sha256 = _member_ontology_identity(members, records_by_id)
             assembled_record = build_population_record(
                 raw.assembled_rule,
                 anchor.source_chunk_id,
                 metadata,
-                {chunk_id: chunk.text for chunk_id, chunk in chunks_by_id.items()},
+                [
+                    evidence_source(chunk_id, exact_text)
+                    for chunk_id, exact_text in sorted(
+                        set().union(*(_record_evidence(records_by_id[member]) for member in members))
+                    )
+                ],
+                ontology_version=ontology_version,
+                ontology_semantic_sha256=ontology_semantic_sha256,
+                population_run_id=run_id,
             )
             member_evidence = set().union(*(_record_evidence(records_by_id[member]) for member in members))
             if not _record_evidence(assembled_record) <= member_evidence:
@@ -208,6 +210,24 @@ def _build_batch_proposals(
             )
         translated.append((candidate_id, tuple(candidate_proposals)))
     return tuple(translated)
+
+
+def _member_ontology_identity(
+    members: tuple[str, ...],
+    records_by_id: Mapping[str, OntologyPopulationRecord],
+) -> tuple[str, str]:
+    """Require one ontology version and semantic closure across assembled member records."""
+    identities = {
+        (records_by_id[member].ontology_version, records_by_id[member].ontology_semantic_sha256) for member in members
+    }
+    if len(identities) != 1:
+        msg = "Assembly proposal members must use one ontology version and semantic hash"
+        raise ValueError(msg)
+    ontology_version, ontology_semantic_sha256 = identities.pop()
+    if not ontology_version or not ontology_semantic_sha256:
+        msg = "Assembly proposal members require current ontology provenance"
+        raise ValueError(msg)
+    return ontology_version, ontology_semantic_sha256
 
 
 def _window_input(
@@ -237,7 +257,7 @@ def summarize_population_record(record: OntologyPopulationRecord) -> OntologyPop
                 kind=OntologyConditionKind(condition.kind),
                 text_vi=condition.text_vi,
                 operand_ids=list(condition.operand_ids),
-                evidence=[_evidence_entry(item.chunk_id, item.exact_text) for item in condition.evidence],
+                evidence=[_evidence_source(item.chunk_id, item.exact_text) for item in condition.evidence],
             )
             for condition in record.conditions
         ],
@@ -254,7 +274,7 @@ def summarize_population_record(record: OntologyPopulationRecord) -> OntologyPop
                 maximum_duration_months=consequence.maximum_duration_months,
                 target_label_vi=consequence.target_label_vi,
                 responsible_role_label_vi=consequence.responsible_role_label_vi,
-                evidence=[_evidence_entry(item.chunk_id, item.exact_text) for item in consequence.evidence],
+                evidence=[_evidence_source(item.chunk_id, item.exact_text) for item in consequence.evidence],
             )
             for consequence in record.consequences
         ],
@@ -262,13 +282,13 @@ def summarize_population_record(record: OntologyPopulationRecord) -> OntologyPop
         valid_to=record.valid_to.isoformat() if record.valid_to else None,
         document_number=record.document_number,
         provision_path=record.provision_path,
-        evidence=[_evidence_entry(item.chunk_id, item.exact_text) for item in record.evidence],
+        evidence=[_evidence_source(item.chunk_id, item.exact_text) for item in record.evidence],
     )
 
 
-def _evidence_entry(chunk_id: str, exact_text: str) -> OntologyEvidenceEntry:
-    """Build one BAML evidence entry."""
-    return OntologyEvidenceEntry(chunk_id=chunk_id, quoted_span=exact_text)
+def _evidence_source(chunk_id: str, exact_text: str) -> OntologyEvidenceSource:
+    """Build one BAML evidence source."""
+    return evidence_source(chunk_id, exact_text)
 
 
 def _record_evidence(record: OntologyPopulationRecord) -> set[tuple[str, str]]:

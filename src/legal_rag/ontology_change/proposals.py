@@ -8,20 +8,18 @@ from datetime import date
 from functools import partial
 from typing import Protocol
 
-from baml_py.logging import set_log_level
-
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import (
-    ChangeSourceChunkInput,
     CrossDocumentChangeWindowInput,
     CrossDocumentChangeWindowResult,
 )
-from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.baml_transport import BamlCaller
 from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
 from legal_rag.ontology_change.config import ChangeResolutionSettings
 from legal_rag.ontology_change.corpus import ChangeCorpus, ChangeCorpusDocument
 from legal_rag.ontology_change.models import ChangeCandidateWindow, LegalChangeProposal
 from legal_rag.ontology_population.assembly_proposals import summarize_population_record
+from legal_rag.ontology_population.evidence import fragment_evidence_sources
 from legal_rag.ontology_population.extraction import bind_population_evidence
 from legal_rag.ontology_population.models import OntologyPopulationRecord, population_identity
 from legal_rag.settings import Settings
@@ -45,17 +43,12 @@ class BamlChangeProposalClient:
 
     def __init__(self, settings: Settings, change_settings: ChangeResolutionSettings) -> None:
         """Create a bounded runtime BAML client."""
-        set_log_level("OFF")
-        self._registry = build_client_registry(
-            base_url=settings.llm_base_url,
-            api_key=settings.llm_api_key,
-            model=settings.llm_model,
+        self._caller = BamlCaller.from_settings(
+            settings,
             max_output_tokens=change_settings.max_output_tokens,
             temperature=change_settings.temperature,
-            timeout_seconds=settings.llm_timeout_seconds,
+            max_response_bytes=change_settings.max_response_bytes,
         )
-        self._timeout_seconds = settings.llm_timeout_seconds
-        self._max_response_bytes = change_settings.max_response_bytes
         self._model = settings.llm_model
 
     @property
@@ -67,11 +60,9 @@ class BamlChangeProposalClient:
         self, windows: Sequence[CrossDocumentChangeWindowInput]
     ) -> Sequence[CrossDocumentChangeWindowResult]:
         """Run one bounded BAML call over cross-document windows."""
-        request = b.request.ProposeCrossDocumentLegalChanges(
-            list(windows), baml_options={"client_registry": self._registry}
-        )
-        raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        return b.parse.ProposeCrossDocumentLegalChanges(raw_output, baml_options={"client_registry": self._registry})
+        request = b.request.ProposeCrossDocumentLegalChanges(list(windows), baml_options=self._caller.options)
+        raw_output = self._caller.execute(request)
+        return b.parse.ProposeCrossDocumentLegalChanges(raw_output, baml_options=self._caller.options)
 
 
 def build_change_proposal_run_id(
@@ -89,6 +80,7 @@ def build_change_proposal_run_id(
             "temperature": change_settings.temperature,
             "llm_base_url": settings.llm_base_url,
             "llm_model": settings.llm_model,
+            "llm_extra_request_body": dict(settings.llm_extra_request_body),
         }
     )
 
@@ -146,22 +138,19 @@ def _build_batch_proposals(
         msg = "Legal-change response must contain exactly one result per candidate window"
         raise ValueError(msg)
     results_by_id = {result.candidate_id: result for result in results}
+    inputs_by_id = {item.candidate_id: item for item in inputs}
     windows_by_id = {window.candidate_id: window for window in windows}
     translated = []
     for candidate_id in requested_ids:
         window = windows_by_id[candidate_id]
         later_document = documents_by_id[window.later_document_id]
-        chunk_text_by_id = {
-            chunk.chunk_id: chunk.text
-            for chunk in later_document.chunks
-            if chunk.chunk_id in set(window.change_source_chunk_ids)
-        }
+        evidence_sources = inputs_by_id[candidate_id].change_evidence_sources
         used_earlier: set[str] = set()
         used_later: set[str] = set()
         candidate_proposals = []
         for raw in results_by_id[candidate_id].proposals:
             _validate_members(raw.earlier_population_id, raw.later_population_id, window, used_earlier, used_later)
-            evidence = bind_population_evidence(raw.evidence, chunk_text_by_id)
+            evidence = bind_population_evidence(raw.evidence, evidence_sources)
             if not evidence:
                 msg = "A legal-change proposal requires exact evidence from the later document"
                 raise ValueError(msg)
@@ -237,13 +226,10 @@ def _window_input(
         later_records=[
             summarize_population_record(records_by_id[population_id]) for population_id in window.later_population_ids
         ],
-        change_source_chunks=[
-            ChangeSourceChunkInput(
-                chunk_id=chunk_id,
-                text=chunks_by_id[chunk_id].text,
-                source_name=chunks_by_id[chunk_id].source_name,
-            )
+        change_evidence_sources=[
+            source
             for chunk_id in window.change_source_chunk_ids
+            for source in fragment_evidence_sources(chunk_id, chunks_by_id[chunk_id].text)
         ],
     )
 

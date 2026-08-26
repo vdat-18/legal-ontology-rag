@@ -114,3 +114,21 @@ def test_external_reuse_registry_change_invalidates_semantic_digest(
     )
 
     assert semantic_input_sha256(copied_paths, copied_settings) != original
+
+
+def test_evolution_policy_change_invalidates_semantic_digest(
+    tmp_path: Path,
+    project_root: Path,
+) -> None:
+    """Semantic evidence becomes stale when its evolution contract changes."""
+    copied_root = tmp_path / "project"
+    shutil.copytree(project_root / "ontology", copied_root / "ontology")
+    copied_paths = OntologyPaths(copied_root)
+    copied_settings = SemanticQaSettings.from_path(copied_paths.semantic_qa_contract, copied_root)
+    original = semantic_input_sha256(copied_paths, copied_settings)
+    copied_paths.evolution_policy.write_text(
+        copied_paths.evolution_policy.read_text(encoding="utf-8") + "\n",
+        encoding="utf-8",
+    )
+
+    assert semantic_input_sha256(copied_paths, copied_settings) != original

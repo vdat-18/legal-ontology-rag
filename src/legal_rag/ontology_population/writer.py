@@ -10,6 +10,8 @@ from pathlib import Path
 
 from legal_rag.io_utils import write_jsonl_atomic
 from legal_rag.ontology_population.models import (
+    LEGACY_ONTOLOGY_POPULATION_PROGRESS_SCHEMA_VERSION,
+    LEGACY_ONTOLOGY_POPULATION_SCHEMA_VERSION,
     ONTOLOGY_POPULATION_PROGRESS_SCHEMA_VERSION,
     ONTOLOGY_POPULATION_SCHEMA_VERSION,
     OntologyPopulationRecord,
@@ -17,11 +19,14 @@ from legal_rag.ontology_population.models import (
     PopulationConsequence,
     PopulationEvidence,
     PopulationProgressRecord,
+    validate_population_condition_tree,
 )
 
 
 def write_population_records(path: Path, records: Sequence[OntologyPopulationRecord]) -> None:
     """Atomically replace ontology population JSONL records."""
+    for record in records:
+        _validate_current_record_identity(record)
     write_jsonl_atomic(path, (record.to_dict() for record in records))
 
 
@@ -31,7 +36,10 @@ def read_population_records(path: Path) -> tuple[OntologyPopulationRecord, ...]:
     with path.open(encoding="utf-8") as source_file:
         for line in source_file:
             payload = json.loads(line)
-            if payload["schema_version"] != ONTOLOGY_POPULATION_SCHEMA_VERSION:
+            if payload["schema_version"] not in {
+                LEGACY_ONTOLOGY_POPULATION_SCHEMA_VERSION,
+                ONTOLOGY_POPULATION_SCHEMA_VERSION,
+            }:
                 msg = f"Unsupported ontology population schema: {payload['schema_version']}"
                 raise ValueError(msg)
             records.append(population_record_from_dict(payload))
@@ -49,16 +57,25 @@ def read_population_progress(path: Path) -> tuple[PopulationProgressRecord, ...]
     with path.open(encoding="utf-8") as source_file:
         for line in source_file:
             payload = json.loads(line)
-            if payload["schema_version"] != ONTOLOGY_POPULATION_PROGRESS_SCHEMA_VERSION:
+            schema_version = payload["schema_version"]
+            if schema_version not in {
+                LEGACY_ONTOLOGY_POPULATION_PROGRESS_SCHEMA_VERSION,
+                ONTOLOGY_POPULATION_PROGRESS_SCHEMA_VERSION,
+            }:
                 msg = f"Unsupported ontology population progress schema: {payload['schema_version']}"
                 raise ValueError(msg)
-            records.append(PopulationProgressRecord(chunk_id=payload["chunk_id"]))
+            records.append(
+                PopulationProgressRecord(
+                    chunk_id=payload["chunk_id"],
+                    run_id=payload.get("run_id"),
+                )
+            )
     return tuple(records)
 
 
 def population_record_from_dict(payload: dict[str, object]) -> OntologyPopulationRecord:
     """Build one typed population record from trusted persisted data."""
-    return OntologyPopulationRecord(
+    record = OntologyPopulationRecord(
         population_id=payload["population_id"],
         source_chunk_id=payload["source_chunk_id"],
         conduct_label_vi=payload["conduct_label_vi"],
@@ -98,9 +115,27 @@ def population_record_from_dict(payload: dict[str, object]) -> OntologyPopulatio
         document_number=payload["document_number"],
         provision_path=payload["provision_path"],
         evidence=_parse_evidence(payload["evidence"]),
+        ontology_version=payload.get("ontology_version"),
+        ontology_semantic_sha256=payload.get("ontology_semantic_sha256"),
+        population_run_id=payload.get("population_run_id"),
     )
+    validate_population_condition_tree(record.condition_root_id, record.conditions)
+    return record
 
 
 def _parse_evidence(entries: list[dict[str, str]]) -> tuple[PopulationEvidence, ...]:
     """Parse persisted evidence references."""
     return tuple(PopulationEvidence(chunk_id=item["chunk_id"], exact_text=item["exact_text"]) for item in entries)
+
+
+def _validate_current_record_identity(record: OntologyPopulationRecord) -> None:
+    """Require new persisted records to identify their ontology and extraction run."""
+    if not record.ontology_version:
+        msg = "Current ontology population records require an ontology version"
+        raise ValueError(msg)
+    if not record.ontology_semantic_sha256:
+        msg = "Current ontology population records require an ontology semantic hash"
+        raise ValueError(msg)
+    if not record.population_run_id:
+        msg = "Current ontology population records require a population run ID"
+        raise ValueError(msg)

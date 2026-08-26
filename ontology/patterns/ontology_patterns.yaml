@@ -1,0 +1,112 @@
+schema_version: "0.1.0"
+artifact_id: road-traffic-ontology-patterns
+artifact_version: "0.1.0"
+patterns:
+  - id: penalty_rule
+    purpose: Represent one contextual, version-specific regulated conduct and its legal consequences.
+    cq_ids: [CQ-RULE-001]
+    ontology_term_iris:
+      - https://w3id.org/legal-ontology-rag/ontology/normative-rule#PenaltyRule
+      - https://w3id.org/legal-ontology-rag/ontology/normative-rule#ConductSpecification
+    shape_iris:
+      - https://w3id.org/legal-ontology-rag/shapes#PenaltyRuleShape
+      - https://w3id.org/legal-ontology-rag/shapes#ConductSpecificationShape
+    positive_fixture_ids: [FIX-NO-PLATE-RULE]
+    boundary_fixture_ids: [FIX-RULE-MISSING-CONTEXT]
+
+  - id: applicability_profile
+    purpose: Separate subject role, vehicle, and other applicability dimensions from the regulated conduct.
+    cq_ids: [CQ-APPLICABILITY-001, CQ-NEGATIVE-001, CQ-COMPARISON-001]
+    ontology_term_iris:
+      - https://w3id.org/legal-ontology-rag/ontology/normative-rule#ApplicabilityProfile
+      - https://w3id.org/legal-ontology-rag/ontology/occurrence-context#LegalSubjectRole
+      - https://w3id.org/legal-ontology-rag/ontology/occurrence-context#VehicleCategory
+    shape_iris:
+      - https://w3id.org/legal-ontology-rag/shapes#ApplicabilityProfileShape
+      - https://w3id.org/legal-ontology-rag/shapes#LegalSubjectRoleShape
+      - https://w3id.org/legal-ontology-rag/shapes#VehicleCategoryShape
+    positive_fixture_ids: [FIX-RIGHT-PASS-MOTORCYCLE]
+    boundary_fixture_ids: [FIX-RIGHT-PASS-MISSING-VEHICLE]
+
+  - id: condition_expression
+    purpose: Preserve source logic as an evidenced Atomic, AllOf, AnyOf, or Not expression tree.
+    cq_ids: [CQ-CONDITION-001]
+    ontology_term_iris:
+      - https://w3id.org/legal-ontology-rag/ontology/normative-rule#ConditionExpression
+      - https://w3id.org/legal-ontology-rag/ontology/normative-rule#AtomicCondition
+      - https://w3id.org/legal-ontology-rag/ontology/normative-rule#Not
+    shape_iris:
+      - https://w3id.org/legal-ontology-rag/shapes#ConditionExpressionShape
+      - https://w3id.org/legal-ontology-rag/shapes#AtomicConditionShape
+      - https://w3id.org/legal-ontology-rag/shapes#NotShape
+    positive_fixture_ids: [FIX-NO-PLATE-RULE]
+    boundary_fixture_ids: [FIX-NO-PLATE-NONREQUIRED-VEHICLE]
+
+  - id: legal_exception
+    purpose: Model an evidenced exception separately from both conduct identity and redirected rule versions.
+    cq_ids: [CQ-EXCEPTION-001]
+    ontology_term_iris:
+      - https://w3id.org/legal-ontology-rag/ontology/normative-rule#LegalException
+      - https://w3id.org/legal-ontology-rag/ontology/source-provenance#ProvisionCitation
+    shape_iris:
+      - https://w3id.org/legal-ontology-rag/shapes#LegalExceptionShape
+      - https://w3id.org/legal-ontology-rag/shapes#ProvisionCitationShape
+    positive_fixture_ids: [FIX-SIGN-TRAFFIC-LIGHT-EXCLUDED]
+    boundary_fixture_ids: [FIX-SIGN-GENERAL-NONEXCLUDED]
+
+  - id: consequence_bundle
+    purpose: Keep monetary, point, additional-sanction, and remedial consequences independently evidenced.
+    cq_ids: [CQ-PENALTY-001, CQ-CONSEQUENCE-001, CQ-POINTS-001, CQ-ADDITIONAL-001, CQ-REMEDY-001]
+    ontology_term_iris:
+      - https://w3id.org/legal-ontology-rag/ontology/legal-consequence#LegalConsequence
+      - https://w3id.org/legal-ontology-rag/ontology/legal-consequence#MonetaryPenalty
+      - https://w3id.org/legal-ontology-rag/ontology/legal-consequence#PointDeduction
+      - https://w3id.org/legal-ontology-rag/ontology/legal-consequence#AdditionalSanction
+      - https://w3id.org/legal-ontology-rag/ontology/legal-consequence#RemedialMeasure
+    shape_iris:
+      - https://w3id.org/legal-ontology-rag/shapes#LegalConsequenceShape
+      - https://w3id.org/legal-ontology-rag/shapes#MonetaryPenaltyShape
+      - https://w3id.org/legal-ontology-rag/shapes#PointDeductionShape
+      - https://w3id.org/legal-ontology-rag/shapes#AdditionalSanctionShape
+      - https://w3id.org/legal-ontology-rag/shapes#RemedialMeasureShape
+    positive_fixture_ids: [FIX-NO-PLATE-RULE]
+    boundary_fixture_ids: [FIX-CONSEQUENCE-ABSENCE-UNKNOWN]
+
+  - id: source_and_evidence
+    purpose: Trace every material assertion to a legal provision, source chunk, and exact evidence span.
+    cq_ids: [CQ-SOURCE-001, CQ-EVIDENCE-001]
+    ontology_term_iris:
+      - https://w3id.org/legal-ontology-rag/ontology/source-provenance#LegalProvision
+      - https://w3id.org/legal-ontology-rag/ontology/source-provenance#SourceChunk
+      - https://w3id.org/legal-ontology-rag/ontology/source-provenance#EvidenceSpan
+      - https://w3id.org/legal-ontology-rag/ontology/source-provenance#SupportedAssertion
+    shape_iris:
+      - https://w3id.org/legal-ontology-rag/shapes#LegalProvisionShape
+      - https://w3id.org/legal-ontology-rag/shapes#SourceChunkShape
+      - https://w3id.org/legal-ontology-rag/shapes#EvidenceSpanShape
+      - https://w3id.org/legal-ontology-rag/shapes#SupportedAssertionShape
+    positive_fixture_ids: [FIX-NO-PLATE-RULE]
+    boundary_fixture_ids: [FIX-RELATED-SPAN-NOT-EVIDENCE]
+
+  - id: temporal_rule_version
+    purpose: Represent rule validity and evidenced change events without inferring succession from similarity.
+    cq_ids: [CQ-TEMPORAL-001, CQ-TEMPORAL-002]
+    ontology_term_iris:
+      - https://w3id.org/legal-ontology-rag/ontology/temporal-change#ValidityInterval
+      - https://w3id.org/legal-ontology-rag/ontology/temporal-change#LegalChange
+    shape_iris:
+      - https://w3id.org/legal-ontology-rag/shapes#ValidityIntervalShape
+      - https://w3id.org/legal-ontology-rag/shapes#LegalChangeShape
+    positive_fixture_ids: [FIX-ARTICLE13-EXPLICIT-AMENDMENT]
+    boundary_fixture_ids: [FIX-ND168-ND336-NO-CHANGE-LINK]
+
+  - id: cross_provision_assembly
+    purpose: Combine separately evidenced components only when they form one coherent version-specific rule.
+    cq_ids: [CQ-ASSEMBLY-001]
+    ontology_term_iris:
+      - https://w3id.org/legal-ontology-rag/ontology/normative-rule#RuleComponent
+      - https://w3id.org/legal-ontology-rag/ontology/source-provenance#SupportedAssertion
+    shape_iris:
+      - https://w3id.org/legal-ontology-rag/shapes#RuleComponentShape
+    positive_fixture_ids: [FIX-ACCIDENT-ASSEMBLY]
+    boundary_fixture_ids: [FIX-NEARBY-CHUNKS-NOT-A-RULE]

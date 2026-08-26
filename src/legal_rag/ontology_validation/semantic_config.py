@@ -36,6 +36,7 @@ class SemanticQaSettings:
     require_local_term_traceability: bool
     require_named_shape_traceability: bool
     require_mandatory_cq_coverage: bool
+    require_ontology_pattern_coverage: bool
     profile_report_file: str
     reasoned_ontology_file: str
     quality_report_file: str
@@ -79,6 +80,7 @@ class SemanticQaSettings:
             require_local_term_traceability=traceability["require_local_term_traceability"],
             require_named_shape_traceability=traceability["require_named_shape_traceability"],
             require_mandatory_cq_coverage=traceability["require_mandatory_cq_coverage"],
+            require_ontology_pattern_coverage=traceability["require_ontology_pattern_coverage"],
             profile_report_file=output["profile_report_file"],
             reasoned_ontology_file=output["reasoned_ontology_file"],
             quality_report_file=output["quality_report_file"],

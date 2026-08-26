@@ -6,6 +6,7 @@ import tomllib
 from pathlib import Path
 
 from legal_rag.ontology_population.config import PopulationSettings
+from legal_rag.ontology_population.extraction import ONTOLOGY_POPULATION_PROMPT_VERSION
 from legal_rag.ontology_validation.loader import load_yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -84,10 +85,13 @@ def test_population_contract_requires_atomic_target_conducts_and_canonical_paths
 
 
 def test_population_contract_versions_complete_rule_assembly_policy() -> None:
-    """V0.14 inventories only conducts stated directly in each Target."""
+    """V0.16 pins condition-tree integrity and ontology-bound population output."""
     contract = load_yaml(CONTRACT_PATH)
 
-    assert contract["artifact_version"] == "0.14.0"
+    assert contract["artifact_version"] == "0.16.0"
+    assert contract["artifact_version"] == ONTOLOGY_POPULATION_PROMPT_VERSION
+    assert contract["ontology_version"] == "0.2.0"
+    assert contract["output"]["record_schema_version"] == "0.2.0"
     assert any("applicability exception" in boundary for boundary in contract["semantic_boundaries"])
 
 
@@ -95,36 +99,34 @@ def test_population_prompt_audits_conditional_variants_and_local_exceptions() ->
     """The typed prompt protects the reviewed population regression boundaries."""
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
 
-    assert "Với mỗi conduct, xác định heading" in prompt
-    assert "ArticleContext" in prompt
+    assert "heading hậu quả chính" in prompt
+    assert "catalog trực tiếp hoặc dẫn chiếu trong cùng Điều" in prompt
     assert "Chỉ bind khi tuple" in prompt
-    assert "cùng Khoản nhưng liệt kê Điểm khác" in prompt
-    assert "Audit từng target_conduct_id" in prompt
-    assert "thuộc phạm vi" in prompt
+    assert "cùng Khoản, vị trí gần" in prompt
+    assert "Audit lần lượt mọi target_conduct_id" in prompt
+    assert "Ngoại lệ giới hạn phạm vi" in prompt
     assert "variant riêng" in prompt
-    assert "quả chính gần nhất còn mở" in prompt
     assert "tối đa một MonetaryPenalty" in prompt
-    assert "không thay thế" in prompt
-    assert "Đọc toàn bộ các danh mục consequence" in prompt
+    assert "Catalog chỉ bổ sung hậu" in prompt
 
 
 def test_population_prompt_preserves_vietnamese_legal_structure() -> None:
     """Vietnamese locators and coordinated conduct remain source-faithful."""
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
+    compact_prompt = " ".join(prompt.split())
 
-    assert "danh sách đóng" in prompt
-    assert "`d` và `đ` là hai Điểm khác nhau" in prompt
-    assert "tuple đầy đủ (Điều, Khoản, Điểm)" in prompt
-    assert "khớp chính xác provision của rule" in prompt
-    assert "lặp lại ý nghĩa đó trong từng label" in prompt
-    assert "không được chỉ ghi chuỗi ID" in prompt
-    assert "không biến hành động tuân thủ thành hành vi vi phạm" in prompt
-    assert "Không mở rộng một dẫn chiếu" in prompt
-    assert "Không dựng conduct từ tên hình phạt" in prompt
-    assert "không trỏ tới clause catalog" in prompt
-    assert "loại entry không có direct conduct clause" in prompt
+    assert "closed inventory" in prompt
+    assert "`d` và `đ` là khác nhau" in prompt
+    assert "tuple Điều/Khoản/Điểm đầy đủ" in prompt
+    assert "khớp chính xác locked provision" in prompt
+    assert "Giữ đúng phủ định" in prompt
+    assert "Không dùng kiến thức ngoài" in compact_prompt
+    assert "clause chỉ nói `hành vi quy định tại <provision>`" in prompt
+    assert "Clause hậu quả vẫn có thể trực tiếp định nghĩa một variant" in prompt
+    assert "tên hậu quả, đối tượng" in prompt
     assert "function ExtractOntologyTargetConductBatch" in prompt
     assert "function BindOntologyPopulationBatch" in prompt
+    assert len(prompt) < 14000
 
 
 def test_population_console_script_is_published() -> None:
@@ -134,3 +136,6 @@ def test_population_console_script_is_published() -> None:
 
     assert project["scripts"]["legal-populate-ontology"] == "legal_rag.ontology_population_cli:main"
     assert project["scripts"]["legal-check-ontology-population"] == "legal_rag.ontology_population_preflight_cli:main"
+    assert (
+        project["scripts"]["legal-evaluate-ontology-population"] == "legal_rag.ontology_population_evaluation_cli:main"
+    )

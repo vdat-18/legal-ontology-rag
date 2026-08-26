@@ -19,7 +19,7 @@ class OntologyConceptOccurrenceInput {
   population_id string
   document_number string
   provision_path string
-  evidence OntologyEvidenceEntry[]
+  evidence OntologyEvidenceSource[]
 }
 
 class ConceptResolutionPairInput {
@@ -34,8 +34,8 @@ class ConceptRelationProposalEntry {
     For SameConcept, exactly one supplied left/right Vietnamese label selected as the canonical preferred label.
     For every other relation, return an empty string.
   "#)
-  left_evidence OntologyEvidenceEntry[] @description(#"Exact evidence supplied with the left occurrence."#)
-  right_evidence OntologyEvidenceEntry[] @description(#"Exact evidence supplied with the right occurrence."#)
+  left_evidence OntologyEvidenceReference[] @description(#"Evidence references supplied with the left occurrence."#)
+  right_evidence OntologyEvidenceReference[] @description(#"Evidence references supplied with the right occurrence."#)
   rationale_vi string @description(#"Giải thích ngắn gọn dựa trên ý nghĩa pháp lý, không chỉ dựa trên từ giống nhau."#)
 }
 
@@ -61,7 +61,7 @@ function ProposeOntologyConceptRelations(pairs: ConceptResolutionPairInput[]) ->
     - Related giữ hai identity riêng; Distinct ghi nhận một phân biệt pháp lý quan trọng. Nếu evidence chưa đủ hoặc không
       có quan hệ đáng ghi nhận, trả proposal=null.
     - preferred_label_vi của SameConcept phải copy chính xác label_vi của left hoặc right. Quan hệ khác phải để rỗng.
-    - left_evidence và right_evidence phải là exact quotation từ evidence đã cung cấp đúng occurrence/chunk_id.
+    - left_evidence và right_evidence chỉ dùng evidence_id đã cung cấp đúng occurrence.
     - Không tạo owl:equivalentClass, rdfs:subClassOf, rule identity, applicability hoặc legal priority.
     - Human reviewer quyết định cuối cùng. Trả đúng một result cho mỗi candidate_id.
 

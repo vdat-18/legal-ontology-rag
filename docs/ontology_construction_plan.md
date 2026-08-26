@@ -1222,6 +1222,14 @@ Validation must cover CQ satisfaction, logical consistency, unintended unsatisfi
 domain review, minimality, traceability, and regression. Separate OWL semantic axioms from SHACL data-quality
 constraints, and document open-world implications for every validation decision that depends on them.
 
+## V0.2 Candidate Delta
+
+V0.1 remains the immutable reviewed baseline. The editable V0.2 candidate adds source-stated duration bounds and restores
+strict condition-expression invariants: every node has direct evidence, `Atomic` has no operands, `Not` has one, and
+`AllOf`/`AnyOf` have at least two. Population outputs are bound to the exact ontology semantic SHA-256 and execution run.
+The evolution gate now compares OWL axiom closures and named SHACL constraint closures, while ignoring documentation and
+traceability-only annotation edits. V0.2 must pass fresh semantic QA and project-owner review before release.
+
 ## LLM Participation Policy
 
 | Activity | LLM may do | Human must own |

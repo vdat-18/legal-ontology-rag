@@ -9,8 +9,8 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 <https://w3id.org/legal-ontology-rag/ontology/source-provenance> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/legal-ontology-rag/ontology/0.1.0/source-provenance> ;
-    owl:versionInfo "0.1.0" ;
+    owl:versionIRI <https://w3id.org/legal-ontology-rag/ontology/0.2.0/source-provenance> ;
+    owl:versionInfo "0.2.0" ;
     dcterms:title "Source and Provenance Module"@en,
         "Mô-đun nguồn và xuất xứ"@vi ;
     dcterms:description "Document identity, legal expressions, structural provisions, source carriers, chunks, exact evidence, and assertion-level provenance."@en ;

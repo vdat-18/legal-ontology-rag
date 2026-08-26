@@ -36,6 +36,6 @@ def test_w3id_bundle_is_contract_derived_and_contains_required_maintainer_contex
     assert htaccess == expected_w3id_htaccess(publication_settings)
     assert readme == expected_w3id_readme(publication_settings)
     assert "RewriteRule ^ontology/?$" in htaccess
-    assert "RewriteRule ^shapes/0\\.5\\.0/?$" in htaccess
+    assert "RewriteRule ^shapes/0\\.6\\.0/?$" in htaccess
     assert "[R=303,L,NE]" in htaccess
     assert "GitHub: [@vdat-18]" in readme

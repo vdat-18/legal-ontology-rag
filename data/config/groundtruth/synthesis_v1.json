@@ -32,8 +32,8 @@
     },
     "fact_extraction": {
       "batch_size": 1,
-      "max_concurrency": 4,
-      "max_preceding_chunks": 2,
+      "max_concurrency": 20,
+      "max_preceding_chunks": 3,
       "max_following_chunks": 1,
       "max_output_tokens": 32768,
       "temperature": 0.0,

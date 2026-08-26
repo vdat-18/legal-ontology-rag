@@ -75,12 +75,12 @@ def test_materialization_is_deterministic(
     assert set(first) == set(second)
 
 
-def test_logical_condition_operator_uses_operand_evidence(
+def test_logical_condition_operator_requires_direct_evidence(
     legal_chunk: Chunk,
     document_metadata: DocumentMetadataRecord,
     population_record: OntologyPopulationRecord,
 ) -> None:
-    """Logical operators may rely on direct evidence carried by atomic operands."""
+    """Every condition expression remains independently traceable to exact source evidence."""
     logical_root = replace(population_record.conditions[0], evidence=())
     graph = materialize_population_graph(
         (legal_chunk,),
@@ -89,16 +89,17 @@ def test_logical_condition_operator_uses_operand_evidence(
         INSTANCE_NAMESPACE,
     )
 
-    assert validate_population_graph(graph, OntologyPaths(PROJECT_ROOT))
+    with pytest.raises(ValueError, match="exact evidence span"):
+        validate_population_graph(graph, OntologyPaths(PROJECT_ROOT))
 
 
-def test_single_operand_all_of_preserves_model_structure(
+def test_single_operand_all_of_is_rejected(
     legal_chunk: Chunk,
     document_metadata: DocumentMetadataRecord,
     population_record: OntologyPopulationRecord,
 ) -> None:
-    """A unary logical operator is redundant but preserves the typed model output."""
-    logical_root = replace(population_record.conditions[0], operand_ids=("required",), evidence=())
+    """A redundant unary group cannot weaken the reviewed condition-expression model."""
+    logical_root = replace(population_record.conditions[0], operand_ids=("required",))
     graph = materialize_population_graph(
         (legal_chunk,),
         document_metadata,
@@ -106,7 +107,8 @@ def test_single_operand_all_of_preserves_model_structure(
         INSTANCE_NAMESPACE,
     )
 
-    assert validate_population_graph(graph, OntologyPaths(PROJECT_ROOT))
+    with pytest.raises(ValueError, match="at least two"):
+        validate_population_graph(graph, OntologyPaths(PROJECT_ROOT))
 
 
 def test_incomplete_monetary_values_are_rejected_by_shacl(

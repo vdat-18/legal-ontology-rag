@@ -9,8 +9,8 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 <https://w3id.org/legal-ontology-rag/ontology/legal-consequence> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/legal-ontology-rag/ontology/0.1.0/legal-consequence> ;
-    owl:versionInfo "0.1.0" ;
+    owl:versionIRI <https://w3id.org/legal-ontology-rag/ontology/0.2.0/legal-consequence> ;
+    owl:versionInfo "0.2.0" ;
     owl:imports <https://w3id.org/legal-ontology-rag/ontology/normative-rule>,
         <https://w3id.org/legal-ontology-rag/ontology/occurrence-context>,
         <https://w3id.org/legal-ontology-rag/ontology/source-provenance> ;

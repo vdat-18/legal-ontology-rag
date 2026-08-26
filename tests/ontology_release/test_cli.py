@@ -6,6 +6,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 from legal_rag import ontology_release_cli
 from legal_rag.ontology_validation.paths import OntologyPaths
 from legal_rag.ontology_validation.release_config import OntologyReleaseSettings
@@ -14,12 +16,12 @@ from legal_rag.ontology_validation.semantic_models import SEMANTIC_QA_REPORT_SCH
 from legal_rag.ontology_validation.semantic_qa import semantic_input_sha256
 
 
-def test_cli_builds_the_approved_internal_v0_1_release(
+def test_cli_persists_blocked_v0_2_candidate_report(
     monkeypatch,
     tmp_path: Path,
     project_root: Path,
 ) -> None:
-    """The approved contract emits a durable internal archive, checksum, and release report."""
+    """The candidate contract records pending approvals instead of emitting an unauthorized release."""
     contract_path = project_root / "ontology" / "release_contract.yaml"
     settings = OntologyReleaseSettings.from_path(contract_path, project_root)
     semantic_settings = SemanticQaSettings.from_path(settings.semantic_contract_path, project_root)
@@ -48,9 +50,10 @@ def test_cli_builds_the_approved_internal_v0_1_release(
         ],
     )
 
-    ontology_release_cli.main()
+    with pytest.raises(ValueError, match="release is blocked"):
+        ontology_release_cli.main()
 
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    assert report["overall_status"] == "released"
-    assert Path(report["archive_path"]).is_file()
-    assert (tmp_path / "release" / settings.checksum_file).is_file()
+    assert report["overall_status"] == "blocked"
+    assert report["archive_path"] is None
+    assert not (tmp_path / "release" / settings.checksum_file).exists()

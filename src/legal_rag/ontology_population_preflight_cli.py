@@ -30,10 +30,12 @@ def main() -> None:
     from legal_rag.ontology_population.preflight import (
         load_population_inputs,
         load_population_target_selection,
+        population_ontology_semantic_sha256,
         run_population_preflight,
     )
 
     arguments = _parser().parse_args()
+    project_root = Path(__file__).resolve().parents[2]
     settings = PopulationSettings.from_path(arguments.contract_path)
     bundle = load_population_inputs(arguments.chunks_path, arguments.screening_path, arguments.metadata_path)
     target_selection = (
@@ -52,6 +54,7 @@ def main() -> None:
         settings,
         tuple(artifact_paths),
         datetime.now(UTC),
+        ontology_semantic_sha256=population_ontology_semantic_sha256(project_root),
         target_limit=arguments.target_limit,
         target_selection=target_selection,
     )

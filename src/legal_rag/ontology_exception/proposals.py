@@ -7,16 +7,14 @@ from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from typing import Protocol
 
-from baml_py.logging import set_log_level
-
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import (
-    ChangeSourceChunkInput,
     ExceptionCitationProposalEntry,
     ExceptionResolutionWindowInput,
     ExceptionResolutionWindowResult,
+    OntologyEvidenceSource,
 )
-from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.baml_transport import BamlCaller
 from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
 from legal_rag.ontology_change.corpus import ChangeCorpus, ChangeCorpusDocument
 from legal_rag.ontology_exception.config import ExceptionResolutionSettings
@@ -26,6 +24,7 @@ from legal_rag.ontology_exception.models import (
     LegalExceptionProposal,
 )
 from legal_rag.ontology_population.assembly_proposals import summarize_population_record
+from legal_rag.ontology_population.evidence import fragment_evidence_sources
 from legal_rag.ontology_population.extraction import bind_population_evidence
 from legal_rag.ontology_population.models import OntologyPopulationRecord, population_identity
 from legal_rag.settings import Settings
@@ -49,17 +48,12 @@ class BamlExceptionProposalClient:
 
     def __init__(self, settings: Settings, exception_settings: ExceptionResolutionSettings) -> None:
         """Create a bounded runtime BAML client."""
-        set_log_level("OFF")
-        self._registry = build_client_registry(
-            base_url=settings.llm_base_url,
-            api_key=settings.llm_api_key,
-            model=settings.llm_model,
+        self._caller = BamlCaller.from_settings(
+            settings,
             max_output_tokens=exception_settings.max_output_tokens,
             temperature=exception_settings.temperature,
-            timeout_seconds=settings.llm_timeout_seconds,
+            max_response_bytes=exception_settings.max_response_bytes,
         )
-        self._timeout_seconds = settings.llm_timeout_seconds
-        self._max_response_bytes = exception_settings.max_response_bytes
         self._model = settings.llm_model
 
     @property
@@ -71,11 +65,9 @@ class BamlExceptionProposalClient:
         self, windows: Sequence[ExceptionResolutionWindowInput]
     ) -> Sequence[ExceptionResolutionWindowResult]:
         """Run one bounded BAML call over exception windows."""
-        request = b.request.ProposeLegalExceptionResolutions(
-            list(windows), baml_options={"client_registry": self._registry}
-        )
-        raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        return b.parse.ProposeLegalExceptionResolutions(raw_output, baml_options={"client_registry": self._registry})
+        request = b.request.ProposeLegalExceptionResolutions(list(windows), baml_options=self._caller.options)
+        raw_output = self._caller.execute(request)
+        return b.parse.ProposeLegalExceptionResolutions(raw_output, baml_options=self._caller.options)
 
 
 def build_exception_proposal_run_id(
@@ -93,6 +85,7 @@ def build_exception_proposal_run_id(
             "temperature": exception_settings.temperature,
             "llm_base_url": settings.llm_base_url,
             "llm_model": settings.llm_model,
+            "llm_extra_request_body": dict(settings.llm_extra_request_body),
         }
     )
 
@@ -150,27 +143,24 @@ def _build_batch_proposals(
         msg = "Exception response must contain exactly one result per candidate window"
         raise ValueError(msg)
     results_by_id = {result.candidate_id: result for result in results}
+    inputs_by_id = {item.candidate_id: item for item in inputs}
     windows_by_id = {window.candidate_id: window for window in windows}
     translated = []
     for candidate_id in requested_ids:
         window = windows_by_id[candidate_id]
         source_document = documents_by_id[window.source_document_id]
-        source_text_by_id = {
-            chunk.chunk_id: chunk.text
-            for chunk in source_document.chunks
-            if chunk.chunk_id in set(window.source_chunk_ids)
-        }
+        evidence_sources = inputs_by_id[candidate_id].source_evidence_sources
         used_exception_keys: set[tuple[object, ...]] = set()
         candidate_proposals = []
         for raw in results_by_id[candidate_id].proposals:
             if raw.general_population_id not in window.general_population_ids:
                 msg = "Exception general rule must belong to the candidate window"
                 raise ValueError(msg)
-            evidence = bind_population_evidence(raw.evidence, source_text_by_id)
+            evidence = bind_population_evidence(raw.evidence, evidence_sources)
             if not evidence or not raw.citations:
                 msg = "Exception proposals require exact evidence and at least one resolved citation"
                 raise ValueError(msg)
-            citations = _translate_citations(raw.citations, source_text_by_id, window)
+            citations = _translate_citations(raw.citations, evidence_sources, window)
             exception_key = (
                 raw.general_population_id,
                 raw.exception_provision_path,
@@ -211,14 +201,14 @@ def _build_batch_proposals(
 
 def _translate_citations(
     raw_citations: Sequence[ExceptionCitationProposalEntry],
-    source_text_by_id: Mapping[str, str],
+    evidence_sources: Sequence[OntologyEvidenceSource],
     window: ExceptionCandidateWindow,
 ) -> tuple[ExceptionCitationResolution, ...]:
     """Bind citation wording exactly and validate every target rule candidate."""
     citations = []
     seen: set[tuple[str, str]] = set()
     for raw in raw_citations:
-        bound = bind_population_evidence((raw.citation,), source_text_by_id)
+        bound = bind_population_evidence((raw.citation,), evidence_sources)
         target_ids = tuple(sorted(raw.target_population_ids))
         if not target_ids or len(target_ids) != len(set(target_ids)):
             msg = "Each grouped exception citation requires unique target rule versions"
@@ -258,13 +248,10 @@ def _window_input(
         target_records=[
             summarize_population_record(records_by_id[population_id]) for population_id in window.target_population_ids
         ],
-        source_chunks=[
-            ChangeSourceChunkInput(
-                chunk_id=chunk_id,
-                text=chunks_by_id[chunk_id].text,
-                source_name=chunks_by_id[chunk_id].source_name,
-            )
+        source_evidence_sources=[
+            source
             for chunk_id in window.source_chunk_ids
+            for source in fragment_evidence_sources(chunk_id, chunks_by_id[chunk_id].text)
         ],
     )
 

@@ -3,7 +3,7 @@ class AssemblyConditionSummary {
   kind OntologyConditionKind
   text_vi string
   operand_ids string[]
-  evidence OntologyEvidenceEntry[]
+  evidence OntologyEvidenceSource[]
 }
 
 class AssemblyConsequenceSummary {
@@ -18,7 +18,7 @@ class AssemblyConsequenceSummary {
   maximum_duration_months int?
   target_label_vi string?
   responsible_role_label_vi string?
-  evidence OntologyEvidenceEntry[]
+  evidence OntologyEvidenceSource[]
 }
 
 class OntologyPopulationSummary {
@@ -35,7 +35,7 @@ class OntologyPopulationSummary {
   valid_to string?
   document_number string
   provision_path string
-  evidence OntologyEvidenceEntry[]
+  evidence OntologyEvidenceSource[]
 }
 
 class RuleAssemblyWindowInput {

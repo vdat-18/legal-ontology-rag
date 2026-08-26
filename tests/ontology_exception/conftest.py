@@ -166,4 +166,7 @@ def _record(
         document_number=document_number,
         provision_path=provision_path,
         evidence=evidence,
+        ontology_version="0.2.0",
+        ontology_semantic_sha256="ontology-semantic-sha256",
+        population_run_id="population-run-id",
     )

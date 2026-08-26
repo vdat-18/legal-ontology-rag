@@ -1,11 +1,11 @@
 schema_version: "0.1.0"
 artifact_id: road-traffic-ontology-formalization-policy
-artifact_version: "0.1.0"
-status: v0.1_frozen
+artifact_version: "0.2.0"
+status: v0.2_candidate
 source_plan: docs/ontology_construction_plan.md
 review:
-  ontology_engineering_status: approved_v0.1
-  stakeholder_approval: user-confirmed:2026-08-18:ILR-001-through-ILR-011
+  ontology_engineering_status: pending_v0.2_semantic_qa
+  stakeholder_approval: pending_v0.2_review
   namespace_resolution: deferred_not_required_for_internal_freeze
   ontology_license: approved_cc_by_4_0
 profile:
@@ -18,7 +18,7 @@ profile:
     unique_name_assumption: false
   rationale: >-
     OWL 2 DL provides a decidable semantic baseline for the approved reified rule, role, provenance, and temporal
-    patterns without committing V0.1 to the restrictions of OWL 2 EL, QL, or RL before formal axioms exist.
+    patterns without committing V0.2 to the restrictions of OWL 2 EL, QL, or RL before formal axioms exist.
   authoring_constraints:
     - Keep controlled subject kinds, vehicle categories, and conduct concepts as SKOS concepts rather than OWL classes used as values.
     - Keep source logic as an evidenced condition-expression structure; do not add SWRL or executable rule-language semantics.
@@ -39,7 +39,7 @@ namespace_policy:
   canonical_root:
     ontology_iri: https://w3id.org/legal-ontology-rag/ontology
     term_namespace: https://w3id.org/legal-ontology-rag/ontology#
-    version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0
+    version_iri: https://w3id.org/legal-ontology-rag/ontology/0.2.0
     preferred_prefix: lor
     resolution_status: publication_bundle_ready_pending_deployment_and_w3id_merge
   versioning:
@@ -101,7 +101,7 @@ prefixes:
     use: Reviewed controlled-vocabulary primitives referenced by published IRI.
   - prefix: eli
     namespace: http://data.europa.eu/eli/ontology#
-    use: Candidate alignment targets only; not imported or asserted equivalent in V0.1.
+    use: Candidate alignment targets only; not imported or asserted equivalent in V0.2.
   - prefix: lorsh
     namespace: https://w3id.org/legal-ontology-rag/shapes#
     use: SHACL node and property shapes kept outside the OWL import graph.
@@ -111,7 +111,7 @@ module_policy:
     id: MOD-ROOT
     file: ontology/legal_ontology.ttl
     ontology_iri: https://w3id.org/legal-ontology-rag/ontology
-    version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0
+    version_iri: https://w3id.org/legal-ontology-rag/ontology/0.2.0
     namespace: https://w3id.org/legal-ontology-rag/ontology#
     planned_imports: [MOD-SOURCE, MOD-OCCURRENCE, MOD-TEMPORAL, MOD-NORMATIVE, MOD-CONSEQUENCE]
     active_imports: [MOD-SOURCE, MOD-OCCURRENCE, MOD-TEMPORAL, MOD-NORMATIVE, MOD-CONSEQUENCE]
@@ -120,7 +120,7 @@ module_policy:
       formalization_status: active
       file: ontology/modules/source_provenance.ttl
       ontology_iri: https://w3id.org/legal-ontology-rag/ontology/source-provenance
-      version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/source-provenance
+      version_iri: https://w3id.org/legal-ontology-rag/ontology/0.2.0/source-provenance
       namespace: https://w3id.org/legal-ontology-rag/ontology/source-provenance#
       imports: []
       external_term_namespaces: [prov]
@@ -128,7 +128,7 @@ module_policy:
       formalization_status: active
       file: ontology/modules/occurrence_context.ttl
       ontology_iri: https://w3id.org/legal-ontology-rag/ontology/occurrence-context
-      version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/occurrence-context
+      version_iri: https://w3id.org/legal-ontology-rag/ontology/0.2.0/occurrence-context
       namespace: https://w3id.org/legal-ontology-rag/ontology/occurrence-context#
       imports: [MOD-SOURCE]
       external_term_namespaces: [skos, time]
@@ -136,7 +136,7 @@ module_policy:
       formalization_status: active
       file: ontology/modules/temporal_change.ttl
       ontology_iri: https://w3id.org/legal-ontology-rag/ontology/temporal-change
-      version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/temporal-change
+      version_iri: https://w3id.org/legal-ontology-rag/ontology/0.2.0/temporal-change
       namespace: https://w3id.org/legal-ontology-rag/ontology/temporal-change#
       imports: [MOD-SOURCE]
       external_term_namespaces: [time, skos]
@@ -144,7 +144,7 @@ module_policy:
       formalization_status: active
       file: ontology/modules/normative_rule.ttl
       ontology_iri: https://w3id.org/legal-ontology-rag/ontology/normative-rule
-      version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/normative-rule
+      version_iri: https://w3id.org/legal-ontology-rag/ontology/0.2.0/normative-rule
       namespace: https://w3id.org/legal-ontology-rag/ontology/normative-rule#
       imports: [MOD-SOURCE, MOD-OCCURRENCE, MOD-TEMPORAL]
       external_term_namespaces: [skos]
@@ -152,7 +152,7 @@ module_policy:
       formalization_status: active
       file: ontology/modules/legal_consequence.ttl
       ontology_iri: https://w3id.org/legal-ontology-rag/ontology/legal-consequence
-      version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0/legal-consequence
+      version_iri: https://w3id.org/legal-ontology-rag/ontology/0.2.0/legal-consequence
       namespace: https://w3id.org/legal-ontology-rag/ontology/legal-consequence#
       imports: [MOD-SOURCE, MOD-OCCURRENCE, MOD-NORMATIVE]
       external_term_namespaces: [skos]
@@ -161,7 +161,7 @@ module_policy:
     - Each module imports only its direct local dependencies, and the local import graph must remain acyclic.
     - A module must declare every direct local dependency whose terms appear in its axioms; do not rely on accidental transitive imports.
     - Canonical ontology IRIs are used in `owl:imports`; development tools resolve them to repository files through an XML catalog.
-    - External standards are referenced by reviewed term IRIs without `owl:imports` in V0.1.
+    - External standards are referenced by reviewed term IRIs without `owl:imports` in V0.2.
     - Minimal entity declarations for referenced external terms live in MOD-SOURCE so every module import closure is
       OWL 2 DL; these declarations do not copy or import external ontology semantics.
     - Adding an external `owl:imports` statement requires semantic, license, version, dependency-size, and CQ-impact review.

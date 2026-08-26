@@ -12,7 +12,7 @@ from legal_rag.baml_client.types import (
     OntologyConsequenceEntry,
     OntologyConsequenceKind,
     OntologyCurrency,
-    OntologyEvidenceEntry,
+    OntologyEvidenceReference,
     OntologyRuleEntry,
     OntologySubjectKind,
     RuleAssemblyProposal,
@@ -35,9 +35,8 @@ class _AssemblyClient:
 
     model = "test-model"
 
-    def __init__(self, member_ids: Sequence[str], chunks: Sequence[Chunk], *, empty: bool = False) -> None:
+    def __init__(self, member_ids: Sequence[str], *, empty: bool = False) -> None:
         self._member_ids = list(member_ids)
-        self._chunks = chunks
         self._empty = empty
         self.inputs: tuple[RuleAssemblyWindowInput, ...] = ()
 
@@ -52,7 +51,7 @@ class _AssemblyClient:
                 else [
                     RuleAssemblyProposal(
                         member_population_ids=self._member_ids,
-                        assembled_rule=_assembled_rule(self._chunks),
+                        assembled_rule=_assembled_rule(window),
                         rationale_vi="Hai chunk nêu hậu quả của cùng một hành vi và cùng điều khoản.",
                     )
                 ],
@@ -61,9 +60,12 @@ class _AssemblyClient:
         )
 
 
-def _assembled_rule(chunks: Sequence[Chunk]) -> OntologyRuleEntry:
-    """Return one complete typed rule grounded in both source chunks."""
-    first, second = chunks
+def _assembled_rule(window: RuleAssemblyWindowInput) -> OntologyRuleEntry:
+    """Return one complete typed rule grounded in both supplied records."""
+    first_source = window.records[0].evidence[0]
+    second_source = window.records[1].evidence[0]
+    first = OntologyEvidenceReference(evidence_id=first_source.evidence_id)
+    second = OntologyEvidenceReference(evidence_id=second_source.evidence_id)
     return OntologyRuleEntry(
         conduct_label_vi="Điều khiển xe không gắn biển số",
         subject_kind=OntologySubjectKind.NaturalPerson,
@@ -81,7 +83,7 @@ def _assembled_rule(chunks: Sequence[Chunk]) -> OntologyRuleEntry:
                 point_value=None,
                 target_label_vi=None,
                 responsible_role_label_vi=None,
-                evidence=[OntologyEvidenceEntry(chunk_id=first.chunk_id, quoted_span=first.text)],
+                evidence=[first],
             ),
             OntologyConsequenceEntry(
                 consequence_id="points",
@@ -92,15 +94,15 @@ def _assembled_rule(chunks: Sequence[Chunk]) -> OntologyRuleEntry:
                 point_value=6,
                 target_label_vi="Giấy phép lái xe",
                 responsible_role_label_vi=None,
-                evidence=[OntologyEvidenceEntry(chunk_id=second.chunk_id, quoted_span=second.text)],
+                evidence=[second],
             ),
         ],
         valid_from=None,
         valid_to=None,
         provision_path="Điều 13 khoản 9 điểm b",
         evidence=[
-            OntologyEvidenceEntry(chunk_id=first.chunk_id, quoted_span=first.text),
-            OntologyEvidenceEntry(chunk_id=second.chunk_id, quoted_span=second.text),
+            first,
+            second,
         ],
     )
 
@@ -135,12 +137,15 @@ def test_proposal_preserves_complete_summaries_and_exact_evidence(
     assembly_metadata: DocumentMetadataRecord,
 ) -> None:
     """The model sees full records and accepted output is rebound to exact source text."""
-    client = _AssemblyClient([record.population_id for record in assembly_records], assembly_chunks)
+    client = _AssemblyClient([record.population_id for record in assembly_records])
     first = _propose(assembly_records, assembly_chunks, assembly_metadata, client)
     second = _propose(assembly_records, assembly_chunks, assembly_metadata, client)
 
     assert first == second
     assert first[0].assembled_record.source_chunk_id == assembly_chunks[0].chunk_id
+    assert first[0].assembled_record.ontology_version == "0.2.0"
+    assert first[0].assembled_record.ontology_semantic_sha256 == "ontology-semantic-sha256"
+    assert first[0].assembled_record.population_run_id == "proposal-run"
     assert [item.exact_text for item in first[0].assembled_record.evidence] == [
         assembly_chunks[0].text,
         assembly_chunks[1].text,
@@ -182,7 +187,7 @@ def test_proposal_rejects_invalid_candidate_members(
 ) -> None:
     """Only two or more unique members of the current candidate may be assembled."""
     with pytest.raises(LlmTaskExhaustedError):
-        _propose(assembly_records, assembly_chunks, assembly_metadata, _AssemblyClient(member_ids, assembly_chunks))
+        _propose(assembly_records, assembly_chunks, assembly_metadata, _AssemblyClient(member_ids))
 
 
 def test_empty_proposal_result_is_valid_and_checkpointed(
@@ -203,7 +208,7 @@ def test_empty_proposal_result_is_valid_and_checkpointed(
         assembly_records,
         assembly_chunks,
         assembly_metadata,
-        _AssemblyClient([], assembly_chunks, empty=True),
+        _AssemblyClient([], empty=True),
         settings,
         run_id="proposal-run",
         on_batch_processed=processed.extend,

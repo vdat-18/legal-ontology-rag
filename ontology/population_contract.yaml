@@ -1,8 +1,8 @@
 schema_version: "0.1.0"
 artifact_id: road-traffic-ontology-population-contract
-artifact_version: "0.14.0"
+artifact_version: "0.16.0"
 status: pilot_internal_validation
-ontology_version: "0.1.0"
+ontology_version: "0.2.0"
 instance_namespace: https://w3id.org/legal-ontology-rag/data/
 language: vi
 input:
@@ -15,7 +15,7 @@ input:
     max_article_context_chunks: 32
     includes_structural_context: true
 output:
-  record_schema_version: "0.1.0"
+  record_schema_version: "0.2.0"
   rdf_serialization: turtle
   validated_graph_only: true
 extraction:
@@ -94,6 +94,9 @@ semantic_boundaries:
   - Mutually exclusive monetary or point consequences never coexist in one rule variant.
   - Every Target conduct governed by an explicit primary-sanction heading retains that primary consequence even when the heading is outside Target.
   - Every source-grounded applicability exception is represented in the condition tree and repeated for each affected atomic conduct.
+  - Every condition-expression node retains direct source evidence, including AllOf, AnyOf, and Not operators.
+  - Atomic conditions have no operands, Not has exactly one operand, and AllOf or AnyOf has at least two operands.
+  - Condition IDs are unique within a rule, operand references are local, the graph is acyclic, and every node is reachable from the declared root.
   - Locally scoped exceptions remain attached only to the affected atomic conduct while shared exceptions are repeated across all affected records.
   - The LLM distinguishes applicability exceptions from intrinsic conduct or object qualifiers; deterministic code does not classify them from wording.
   - Every populated conduct must have exact evidence in the target chunk; adjacent chunks may only complete its context and consequence.

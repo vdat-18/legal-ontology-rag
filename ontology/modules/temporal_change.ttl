@@ -8,8 +8,8 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 <https://w3id.org/legal-ontology-rag/ontology/temporal-change> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/legal-ontology-rag/ontology/0.1.0/temporal-change> ;
-    owl:versionInfo "0.1.0" ;
+    owl:versionIRI <https://w3id.org/legal-ontology-rag/ontology/0.2.0/temporal-change> ;
+    owl:versionInfo "0.2.0" ;
     owl:imports <https://w3id.org/legal-ontology-rag/ontology/source-provenance> ;
     dcterms:title "Temporal Validity and Legal Change Module"@en,
         "Mô-đun hiệu lực và thay đổi pháp lý"@vi ;

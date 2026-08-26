@@ -4,19 +4,13 @@ enum OntologyLegalChangeType {
   RepealOrSupersession
 }
 
-class ChangeSourceChunkInput {
-  chunk_id string
-  text string
-  source_name string
-}
-
 class CrossDocumentChangeWindowInput {
   candidate_id string
   earlier_document_number string
   later_document_number string
   earlier_records OntologyPopulationSummary[]
   later_records OntologyPopulationSummary[]
-  change_source_chunks ChangeSourceChunkInput[]
+  change_evidence_sources OntologyEvidenceSource[]
 }
 
 class LegalChangeProposalEntry {
@@ -28,8 +22,8 @@ class LegalChangeProposalEntry {
   change_type OntologyLegalChangeType
   effective_on string @description(#"Authoritatively supported effective date in YYYY-MM-DD format."#)
   change_provision_path string @description(#"Fullest structural path supported for the authoritative change provision."#)
-  evidence OntologyEvidenceEntry[] @description(#"
-    Exact quotations from change_source_chunks that explicitly support the change, its target, type, and effective date.
+  evidence OntologyEvidenceReference[] @description(#"
+    References to supplied source evidence that explicitly supports the change, its target, type, and effective date.
   "#)
   rationale_vi string @description(#"Giải thích ngắn gọn vì sao source trực tiếp chứng minh quan hệ thay đổi này."#)
 }
@@ -49,14 +43,14 @@ function ProposeCrossDocumentLegalChanges(windows: CrossDocumentChangeWindowInpu
     không chứng minh chúng là cùng rule hoặc có quan hệ kế thừa.
 
     Nguyên tắc bắt buộc:
-    - Chỉ đề xuất khi change_source_chunks chứa phát biểu pháp lý trực tiếp về sửa đổi, thay thế, bãi bỏ hoặc làm hết
+    - Chỉ đề xuất khi change_evidence_sources chứa phát biểu pháp lý trực tiếp về sửa đổi, thay thế, bãi bỏ hoặc làm hết
       hiệu lực rule/provision trước, cùng bằng chứng đủ để xác định target và ngày hiệu lực.
     - Không suy ra change từ conduct, role, vehicle, condition, consequence, provision path hoặc câu chữ tương tự.
     - Không suy ra change chỉ từ thứ tự ban hành, ngày hiệu lực, hay việc valid_to đang null.
     - earlier_population_id phải thuộc earlier_records. later_population_id nếu có phải thuộc later_records.
     - Amendment/Replacement thông thường phải chỉ ra later rule. RepealOrSupersession có thể không có later rule chỉ khi
       source trực tiếp chứng minh điều đó. Nếu candidate chưa chứa later rule cần thiết, không tự chọn record gần giống.
-    - evidence phải là exact quotation từ change_source_chunks; không dùng knowledge ngoài source hoặc paraphrase.
+    - evidence chỉ dùng evidence_id từ change_evidence_sources; không dùng knowledge ngoài source.
     - effective_on và change_provision_path phải được source hỗ trợ. Không tự dùng metadata date làm kết luận pháp lý.
     - Không tạo enduring rule identity, concept equivalence, exception redirect hay transitional applicability.
     - Nếu evidence chưa đủ, trả proposals rỗng. Human reviewer quyết định cuối cùng.
@@ -68,7 +62,7 @@ function ProposeCrossDocumentLegalChanges(windows: CrossDocumentChangeWindowInpu
     later_document={{ window.later_document_number }}
     earlier_records={{ window.earlier_records }}
     later_records={{ window.later_records }}
-    change_source_chunks={{ window.change_source_chunks }}
+    change_evidence_sources={{ window.change_evidence_sources }}
     === end candidate_id={{ window.candidate_id }} ===
     {% endfor %}
 

@@ -44,6 +44,10 @@ def main() -> None:
         write_change_proposals,
         write_change_reviews,
     )
+    from legal_rag.ontology_proposal_resume import (
+        load_compatible_proposal_resume_state,
+        replace_replayed_proposals,
+    )
     from legal_rag.settings import Settings
 
     arguments = _parser().parse_args()
@@ -61,26 +65,20 @@ def main() -> None:
     existing_progress = (
         read_change_progress(arguments.progress_output_path) if arguments.progress_output_path.exists() else ()
     )
-    if any(proposal.run_id != run_id for proposal in existing_proposals) or any(
-        progress.run_id != run_id for progress in existing_progress
-    ):
-        msg = "Existing legal-change outputs belong to a different candidate, prompt, or model run"
-        raise ValueError(msg)
     candidate_ids = {window.candidate_id for window in candidates.windows}
-    processed_ids = {progress.candidate_id for progress in existing_progress}
-    if not processed_ids <= candidate_ids:
-        msg = "Existing legal-change progress references unknown candidate windows"
-        raise ValueError(msg)
-    proposals_by_id = {proposal.proposal_id: proposal for proposal in existing_proposals}
-    if len(proposals_by_id) != len(existing_proposals):
-        msg = "Existing legal-change proposal identifiers must be unique"
-        raise ValueError(msg)
+    proposals_by_id, processed_ids = load_compatible_proposal_resume_state(
+        existing_proposals,
+        existing_progress,
+        candidate_ids,
+        run_id,
+        workflow_label="legal-change",
+        candidate_scope="windows",
+    )
     remaining = tuple(window for window in candidates.windows if window.candidate_id not in processed_ids)
 
     def persist_batch(batch_results: Sequence[tuple[str, tuple[LegalChangeProposal, ...]]]) -> None:
         """Persist proposals before marking candidate windows complete."""
-        for _, proposals in batch_results:
-            proposals_by_id.update({proposal.proposal_id: proposal for proposal in proposals})
+        replace_replayed_proposals(proposals_by_id, batch_results)
         write_change_proposals(arguments.proposals_output_path, tuple(proposals_by_id.values()))
         processed_ids.update(candidate_id for candidate_id, _ in batch_results)
         write_change_progress(

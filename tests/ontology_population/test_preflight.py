@@ -31,6 +31,7 @@ from legal_rag.ontology_population.preflight import (
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_PATH = PROJECT_ROOT / "ontology" / "population_contract.yaml"
 CHECKED_AT = datetime(2026, 8, 18, tzinfo=UTC)
+ONTOLOGY_SEMANTIC_SHA256 = "ontology-semantic-sha256"
 
 
 def _write_inputs(
@@ -63,6 +64,7 @@ def _run_report(paths: tuple[Path, Path, Path], *, target_limit: int | None = No
             ("population_contract", CONTRACT_PATH),
         ),
         CHECKED_AT,
+        ontology_semantic_sha256=ONTOLOGY_SEMANTIC_SHA256,
         target_limit=target_limit,
     )
 
@@ -207,6 +209,7 @@ def test_reviewed_target_selection_controls_pilot_membership(
             ("target_selection", selection_path),
         ),
         CHECKED_AT,
+        ontology_semantic_sha256=ONTOLOGY_SEMANTIC_SHA256,
         target_selection=selection,
     )
 
@@ -287,7 +290,42 @@ def test_resume_state_rejects_records_outside_bounded_pilot(
 
 def test_resume_state_rejects_duplicate_progress(legal_chunk: Chunk) -> None:
     """Duplicate checkpoints cannot be collapsed silently during resume."""
-    progress = PopulationProgressRecord(chunk_id=legal_chunk.chunk_id)
+    progress = PopulationProgressRecord(chunk_id=legal_chunk.chunk_id, run_id="population-run")
 
     with pytest.raises(ValueError, match="duplicate progress chunk IDs: 1"):
         validate_population_resume_state((legal_chunk,), (), (progress, progress))
+
+
+def test_resume_state_rejects_progress_from_another_execution(legal_chunk: Chunk) -> None:
+    """Prompt, model, or input changes cannot silently reuse completed targets."""
+    progress = PopulationProgressRecord(chunk_id=legal_chunk.chunk_id, run_id="old-run")
+
+    with pytest.raises(ValueError, match="different prompt, model, input, or ontology run"):
+        validate_population_resume_state(
+            (legal_chunk,),
+            (),
+            (progress,),
+            expected_run_id="current-run",
+        )
+
+
+def test_resume_state_rejects_legacy_population_records(
+    legal_chunk: Chunk,
+    population_record: OntologyPopulationRecord,
+) -> None:
+    """Readable migration data cannot resume without the current ontology hash and run identity."""
+    legacy = replace(
+        population_record,
+        ontology_version=None,
+        ontology_semantic_sha256=None,
+        population_run_id=None,
+    )
+
+    with pytest.raises(ValueError, match="different prompt, model, input, or ontology run"):
+        validate_population_resume_state(
+            (legal_chunk,),
+            (legacy,),
+            (),
+            expected_run_id="current-run",
+            expected_ontology_semantic_sha256=ONTOLOGY_SEMANTIC_SHA256,
+        )

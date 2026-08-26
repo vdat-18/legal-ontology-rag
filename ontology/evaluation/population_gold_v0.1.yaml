@@ -1,0 +1,193 @@
+schema_version: "0.2.0"
+document_number: 168/2024/NĐ-CP
+cases:
+  - source_chunk_id: 790bf21447f7ece4daec4ec0586b04a1b6d025373be7da30e3bc2219d9bb4a4d
+    expected_record_count: 11
+    required_records:
+      - id: GOLD-D6-K1-A
+        provision_path: Chương II > Mục 1 > Điều 6 > Khoản 1 > Điểm a
+        conduct_label_vi: Không chấp hành hiệu lệnh, chỉ dẫn của biển báo hiệu, vạch kẻ đường
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "400000"
+            maximum_amount: "600000"
+      - id: GOLD-D6-K2-A
+        provision_path: Chương II > Mục 1 > Điều 6 > Khoản 2 > Điểm a
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "600000"
+            maximum_amount: "800000"
+    forbidden_records:
+      - id: GOLD-D6-K1-A-WRONG-ACCIDENT-PENALTY
+        provision_path: Chương II > Mục 1 > Điều 6 > Khoản 1 > Điểm a
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "20000000"
+            maximum_amount: "22000000"
+      - id: GOLD-D6-K1-B-WRONG-ACCIDENT-PENALTY
+        provision_path: Chương II > Mục 1 > Điều 6 > Khoản 1 > Điểm b
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "20000000"
+            maximum_amount: "22000000"
+
+  - source_chunk_id: 2513761b022fbb1b49a58ea4ef699b7641b8bb51d9f2a64b36b47bad968ad2b7
+    expected_record_count: 14
+    required_records:
+      - id: GOLD-D6-K3-P
+        provision_path: Chương II > Mục 1 > Điều 6 > Khoản 3 > Điểm p
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "800000"
+            maximum_amount: "1000000"
+      - id: GOLD-D6-K4-A
+        provision_path: Chương II > Mục 1 > Điều 6 > Khoản 4 > Điểm a
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "2000000"
+            maximum_amount: "3000000"
+          - kind: PointDeduction
+            point_value: 2
+    forbidden_records: []
+
+  - source_chunk_id: 6d4e34c2c9327289fdeaff5ed439c61e5d95c34d47de4eae7d661498e1f58f86
+    expected_record_count: 19
+    required_records:
+      - id: GOLD-D6-K5-E
+        provision_path: Chương II > Mục 1 > Điều 6 > Khoản 5 > Điểm e
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "4000000"
+            maximum_amount: "6000000"
+          - kind: PointDeduction
+            point_value: 2
+          - kind: AdditionalSanction
+    forbidden_records: []
+
+  - source_chunk_id: 368ebb2f7afb74221d262706e9b31a408f0dbc30bca80b2217b68c751145b0f7
+    expected_record_count: 18
+    required_records:
+      - id: GOLD-D6-K9-A
+        provision_path: Chương II > Mục 1 > Điều 6 > Khoản 9 > Điểm a
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "18000000"
+            maximum_amount: "20000000"
+          - kind: PointDeduction
+            point_value: 10
+      - id: GOLD-D6-K10-A-SPEED
+        provision_path: Chương II > Mục 1 > Điều 6 > Khoản 10 > Điểm a
+        conduct_label_vi: Điều khiển xe chạy quá tốc độ quy định gây tai nạn giao thông
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "20000000"
+            maximum_amount: "22000000"
+          - kind: PointDeduction
+            point_value: 10
+    forbidden_records: []
+
+  - source_chunk_id: c3f86ad86d9709085d010a069f71c51f2197b8991dd75323a7a4fd6e3548aa69
+    expected_record_count: 9
+    required_records:
+      - id: GOLD-D6-K11-B
+        provision_path: Chương II > Mục 1 > Điều 6 > Khoản 11 > Điểm b
+        conduct_label_vi: Không chấp hành yêu cầu kiểm tra về nồng độ cồn của người thi hành công vụ
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "30000000"
+            maximum_amount: "40000000"
+      - id: GOLD-D6-K12-LANG-LACH
+        provision_path: Chương II > Mục 1 > Điều 6 > Khoản 12
+        conduct_label_vi: Điều khiển xe lạng lách trên đường bộ
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "40000000"
+            maximum_amount: "50000000"
+    forbidden_records: []
+
+  - source_chunk_id: c6b8c9891fca196614e5bd5a3c8d03c3b41a40d1e0839db8ded8347ca439214b
+    expected_record_count: 2
+    required_records:
+      - id: GOLD-D6-K14-LANG-LACH
+        provision_path: Chương II > Mục 1 > Điều 6 > Khoản 14
+        conduct_label_vi: Tái phạm hành vi điều khiển xe lạng lách
+        consequences:
+          - kind: AdditionalSanction
+      - id: GOLD-D6-K14-DANH-VONG
+        provision_path: Chương II > Mục 1 > Điều 6 > Khoản 14
+        conduct_label_vi: Tái phạm hành vi điều khiển xe đánh võng
+        consequences:
+          - kind: AdditionalSanction
+    forbidden_records:
+      - id: GOLD-D6-K15-A-NOT-STANDALONE
+        provision_path: Chương II > Mục 1 > Điều 6 > Khoản 15 > Điểm a
+
+  - source_chunk_id: 0ef2602b355b525fc0376b65ca7ddc17f00f58343fc90eace735bb9fd1f78ad0
+    expected_record_count: 11
+    required_records:
+      - id: GOLD-D7-K1-A
+        provision_path: Chương II > Mục 1 > Điều 7 > Khoản 1 > Điểm a
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "200000"
+            maximum_amount: "400000"
+    forbidden_records: []
+
+  - source_chunk_id: ce4826dad68bf4f6fec6885668becd5d922bb0c9b311236e3f43bff7afb64a6a
+    expected_record_count: 14
+    required_records:
+      - id: GOLD-D7-K4-A
+        provision_path: Chương II > Mục 1 > Điều 7 > Khoản 4 > Điểm a
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "800000"
+            maximum_amount: "1000000"
+      - id: GOLD-D7-K6-A
+        provision_path: Chương II > Mục 1 > Điều 7 > Khoản 6 > Điểm a
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "2000000"
+            maximum_amount: "3000000"
+          - kind: PointDeduction
+            point_value: 4
+    forbidden_records: []
+
+  - source_chunk_id: e11ab2629a4d0765c77082ad2952ddebd0fbde64b77b86a358562f9f138102ca
+    expected_record_count: 18
+    required_records:
+      - id: GOLD-D7-K9-D
+        provision_path: Chương II > Mục 1 > Điều 7 > Khoản 9 > Điểm d
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "8000000"
+            maximum_amount: "10000000"
+          - kind: AdditionalSanction
+      - id: GOLD-D7-K9-C-NOT-STOP
+        provision_path: Chương II > Mục 1 > Điều 7 > Khoản 9 > Điểm c
+        conduct_label_vi: Gây tai nạn giao thông không dừng ngay phương tiện
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "8000000"
+            maximum_amount: "10000000"
+          - kind: PointDeduction
+            point_value: 6
+    forbidden_records: []
+
+  - source_chunk_id: c1524de34f739dcccfae9eead0747403ceb12ba7077832695d0d2068d30a483f
+    expected_record_count: 29
+    required_records:
+      - id: GOLD-D7-K10-A-SPEED
+        provision_path: Chương II > Mục 1 > Điều 7 > Khoản 10 > Điểm a
+        conduct_label_vi: Điều khiển xe chạy quá tốc độ quy định gây tai nạn giao thông
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "10000000"
+            maximum_amount: "14000000"
+          - kind: PointDeduction
+            point_value: 10
+      - id: GOLD-D7-K11-A-HANDS
+        provision_path: Chương II > Mục 1 > Điều 7 > Khoản 11 > Điểm a
+        conduct_label_vi: Buông cả hai tay khi đang điều khiển xe
+        consequences:
+          - kind: AdditionalSanction
+    forbidden_records: []

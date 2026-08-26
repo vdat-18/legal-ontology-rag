@@ -20,7 +20,7 @@ from legal_rag.baml_client.types import (
     ExceptionResolutionWindowInput,
     ExceptionResolutionWindowResult,
     LegalExceptionProposalEntry,
-    OntologyEvidenceEntry,
+    OntologyEvidenceReference,
 )
 from legal_rag.ontology_change.corpus import ChangeCorpus
 from legal_rag.ontology_change.writer import write_legal_change_events
@@ -52,33 +52,53 @@ class _CliExceptionClient:
     ) -> Sequence[ExceptionResolutionWindowResult]:
         """Return one exact-evidenced exception for each fixture window."""
         type(self).calls += 1
-        return tuple(
-            ExceptionResolutionWindowResult(
-                candidate_id=window.candidate_id,
-                proposals=[
-                    LegalExceptionProposalEntry(
-                        general_population_id="general-population",
-                        exception_provision_path="Điều 6 khoản 1 điểm a",
-                        evidence=[
-                            OntologyEvidenceEntry(
-                                chunk_id="general-chunk",
-                                quoted_span="Trừ trường hợp quy định tại Điều 3.",
-                            )
-                        ],
-                        citations=[
-                            ExceptionCitationProposalEntry(
-                                citation=OntologyEvidenceEntry(
-                                    chunk_id="general-chunk",
-                                    quoted_span="Điều 3",
-                                ),
-                                target_population_ids=["target-population"],
-                            )
-                        ],
-                        rationale_vi="Source trực tiếp loại trừ và dẫn tới Điều 3.",
-                    )
-                ],
+        results = []
+        for window in windows:
+            source = next(
+                item for item in window.source_evidence_sources if item.text == "Trừ trường hợp quy định tại Điều 3."
             )
-            for window in windows
+            citation_text = "Điều 3"
+            citation_start = source.text.index(citation_text)
+            results.append(
+                ExceptionResolutionWindowResult(
+                    candidate_id=window.candidate_id,
+                    proposals=[
+                        LegalExceptionProposalEntry(
+                            general_population_id="general-population",
+                            exception_provision_path="Điều 6 khoản 1 điểm a",
+                            evidence=[OntologyEvidenceReference(evidence_id=source.evidence_id)],
+                            citations=[
+                                ExceptionCitationProposalEntry(
+                                    citation=OntologyEvidenceReference(
+                                        evidence_id=source.evidence_id,
+                                        start_char=citation_start,
+                                        end_char=citation_start + len(citation_text),
+                                    ),
+                                    target_population_ids=["target-population"],
+                                )
+                            ],
+                            rationale_vi="Source trực tiếp loại trừ và dẫn tới Điều 3.",
+                        )
+                    ],
+                )
+            )
+        return tuple(results)
+
+
+class _EmptyExceptionClient:
+    """Return a completed candidate result with no legal-exception proposal."""
+
+    model = "test-model"
+
+    def __init__(self, *_: object) -> None:
+        """Accept production constructor arguments."""
+
+    def propose_batch(
+        self, windows: Sequence[ExceptionResolutionWindowInput]
+    ) -> Sequence[ExceptionResolutionWindowResult]:
+        """Return an explicit no-proposal result for every replayed window."""
+        return tuple(
+            ExceptionResolutionWindowResult(candidate_id=window.candidate_id, proposals=[]) for window in windows
         )
 
 
@@ -170,3 +190,11 @@ def test_cli_runs_candidate_proposal_review_and_offline_exception_finalization(
 
     assert len(read_legal_exception_records(exceptions_path)) == 1
     assert len(Graph().parse(graph_path, format="turtle")) > 0
+
+    progress_path.unlink()
+    monkeypatch.setattr(exception_proposals, "BamlExceptionProposalClient", _EmptyExceptionClient)
+    monkeypatch.setattr(sys, "argv", proposal_argv)
+    ontology_exception_proposals_cli.main()
+
+    assert read_exception_proposals(proposals_path) == ()
+    assert read_exception_reviews(reviews_path) == ()

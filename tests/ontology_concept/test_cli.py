@@ -20,6 +20,7 @@ from legal_rag.baml_client.types import (
     ConceptResolutionPairInput,
     ConceptResolutionPairResult,
     OntologyConceptRelation,
+    OntologyEvidenceReference,
 )
 from legal_rag.ontology_change.corpus import ChangeCorpus
 from legal_rag.ontology_change.writer import write_legal_change_events
@@ -56,8 +57,12 @@ class _CliConceptClient:
                 proposal=ConceptRelationProposalEntry(
                     relation=OntologyConceptRelation.SameConcept,
                     preferred_label_vi=pair.left.label_vi,
-                    left_evidence=pair.left.evidence,
-                    right_evidence=pair.right.evidence,
+                    left_evidence=[
+                        OntologyEvidenceReference(evidence_id=source.evidence_id) for source in pair.left.evidence
+                    ],
+                    right_evidence=[
+                        OntologyEvidenceReference(evidence_id=source.evidence_id) for source in pair.right.evidence
+                    ],
                     rationale_vi="Hai occurrence biểu đạt cùng vai trò pháp lý.",
                 )
                 if pair.left.kind.value == "LegalSubjectRole"
@@ -65,6 +70,19 @@ class _CliConceptClient:
             )
             for pair in pairs
         )
+
+
+class _EmptyConceptClient:
+    """Return completed concept-pair results with no relation proposals."""
+
+    model = "test-model"
+
+    def __init__(self, *_: object) -> None:
+        """Accept production constructor arguments."""
+
+    def propose_batch(self, pairs: Sequence[ConceptResolutionPairInput]) -> Sequence[ConceptResolutionPairResult]:
+        """Return an explicit no-proposal result for every replayed pair."""
+        return tuple(ConceptResolutionPairResult(candidate_id=pair.candidate_id, proposal=None) for pair in pairs)
 
 
 def test_cli_runs_resumable_proposal_review_and_offline_finalization(
@@ -159,3 +177,11 @@ def test_cli_runs_resumable_proposal_review_and_offline_finalization(
 
     assert len(read_canonical_concepts(concepts_path)) == 5
     assert len(Graph().parse(graph_path, format="turtle")) > 0
+
+    progress_path.unlink()
+    monkeypatch.setattr(concept_proposals, "BamlConceptProposalClient", _EmptyConceptClient)
+    monkeypatch.setattr(sys, "argv", proposal_argv)
+    ontology_concept_proposals_cli.main()
+
+    assert read_concept_proposals(proposals_path) == ()
+    assert read_concept_reviews(reviews_path) == ()

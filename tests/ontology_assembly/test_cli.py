@@ -19,6 +19,7 @@ from legal_rag.baml_client.types import (
     OntologyConsequenceEntry,
     OntologyConsequenceKind,
     OntologyCurrency,
+    OntologyEvidenceReference,
     OntologyRuleEntry,
     OntologySubjectKind,
     RuleAssemblyProposal,
@@ -80,7 +81,10 @@ class _CliAssemblyClient:
                                         point_value=item.point_value,
                                         target_label_vi=item.target_label_vi,
                                         responsible_role_label_vi=item.responsible_role_label_vi,
-                                        evidence=item.evidence,
+                                        evidence=[
+                                            OntologyEvidenceReference(evidence_id=source.evidence_id)
+                                            for source in item.evidence
+                                        ],
                                     )
                                     for record in window.records
                                     for item in record.consequences
@@ -88,7 +92,11 @@ class _CliAssemblyClient:
                                 valid_from=first.valid_from,
                                 valid_to=first.valid_to,
                                 provision_path=first.provision_path,
-                                evidence=[item for record in window.records for item in record.evidence],
+                                evidence=[
+                                    OntologyEvidenceReference(evidence_id=source.evidence_id)
+                                    for record in window.records
+                                    for source in record.evidence
+                                ],
                             ),
                             rationale_vi="Cùng hành vi và điều khoản; chunk sau tiếp tục hậu quả pháp lý.",
                         )
@@ -96,6 +104,19 @@ class _CliAssemblyClient:
                 )
             )
         return tuple(results)
+
+
+class _EmptyAssemblyClient:
+    """Return a completed candidate result with no assembly proposal."""
+
+    model = "test-model"
+
+    def __init__(self, *_: object) -> None:
+        """Accept production constructor arguments."""
+
+    def propose_batch(self, windows: Sequence[RuleAssemblyWindowInput]) -> Sequence[RuleAssemblyWindowResult]:
+        """Return an explicit no-proposal result for every replayed window."""
+        return tuple(RuleAssemblyWindowResult(candidate_id=window.candidate_id, proposals=[]) for window in windows)
 
 
 def test_cli_runs_candidate_proposal_review_and_offline_finalization(
@@ -138,21 +159,18 @@ def test_cli_runs_candidate_proposal_review_and_offline_finalization(
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     monkeypatch.setenv("LLM_MODEL", "test-model")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "legal-propose-rule-assemblies",
-            str(chunks_path),
-            str(metadata_path),
-            str(records_path),
-            str(candidates_path),
-            str(PROJECT_ROOT / "ontology" / "assembly_contract.yaml"),
-            str(proposals_path),
-            str(progress_path),
-            str(reviews_path),
-        ],
-    )
+    proposal_argv = [
+        "legal-propose-rule-assemblies",
+        str(chunks_path),
+        str(metadata_path),
+        str(records_path),
+        str(candidates_path),
+        str(PROJECT_ROOT / "ontology" / "assembly_contract.yaml"),
+        str(proposals_path),
+        str(progress_path),
+        str(reviews_path),
+    ]
+    monkeypatch.setattr(sys, "argv", proposal_argv)
     ontology_assembly_proposals_cli.main()
     ontology_assembly_proposals_cli.main()
 
@@ -195,3 +213,11 @@ def test_cli_runs_candidate_proposal_review_and_offline_finalization(
 
     assert len(read_population_records(canonical_path)) == 1
     assert len(Graph().parse(graph_path, format="turtle")) > 0
+
+    progress_path.unlink()
+    monkeypatch.setattr(assembly_proposals, "BamlAssemblyProposalClient", _EmptyAssemblyClient)
+    monkeypatch.setattr(sys, "argv", proposal_argv)
+    ontology_assembly_proposals_cli.main()
+
+    assert read_assembly_proposals(proposals_path) == ()
+    assert read_assembly_reviews(reviews_path) == ()

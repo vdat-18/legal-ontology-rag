@@ -17,7 +17,7 @@ from legal_rag.baml_client.types import (
     OntologyConsequenceEntry,
     OntologyConsequenceKind,
     OntologyCurrency,
-    OntologyEvidenceEntry,
+    OntologyEvidenceReference,
     OntologyPopulationBatchResult,
     OntologyPopulationBindingBatchResult,
     OntologyRuleEntry,
@@ -26,67 +26,99 @@ from legal_rag.baml_client.types import (
     OntologyTargetConductEntry,
 )
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
-from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError
+from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError, LlmTaskExhaustedError
 from legal_rag.chunker.models import Chunk
 from legal_rag.ontology_population.config import PopulationSettings
+from legal_rag.ontology_population.evidence import evidence_source, fragment_evidence_sources
 from legal_rag.ontology_population.extraction import (
     build_population_binding_items,
     build_population_reading_window,
     build_population_record,
+    build_population_run_id,
     extract_population_from_document,
     finalize_population_binding_results,
 )
 from legal_rag.ontology_population.models import OntologyPopulationRecord
+from legal_rag.settings import Settings
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+ONTOLOGY_SEMANTIC_SHA256 = "ontology-semantic-sha256"
+POPULATION_RUN_ID = "population-run-id"
+EXTRACTION_RUN = {
+    "ontology_semantic_sha256": ONTOLOGY_SEMANTIC_SHA256,
+    "population_run_id": POPULATION_RUN_ID,
+}
+RECORD_RUN = {"ontology_version": "0.2.0", **EXTRACTION_RUN}
+
+
+def test_population_run_identity_tracks_semantic_provider_configuration() -> None:
+    """Resume identity changes with model behavior but not credential rotation."""
+    settings = Settings(
+        llm_base_url="https://provider.test/v1",
+        llm_api_key="key-one",
+        llm_model="model-one",
+        llm_timeout_seconds=30,
+    )
+    run_id = build_population_run_id("pilot-run", settings)
+
+    assert build_population_run_id("pilot-run", replace(settings, llm_api_key="key-two")) == run_id
+    assert build_population_run_id("pilot-run", replace(settings, llm_model="model-two")) != run_id
+    assert (
+        build_population_run_id(
+            "pilot-run",
+            replace(settings, llm_extra_request_body={"thinking": {"type": "disabled"}}),
+        )
+        != run_id
+    )
 
 
 class _PopulationClient:
     """Return one typed rule for each requested target."""
 
-    def __init__(self, quoted_span: str) -> None:
-        self._quoted_span = quoted_span
-
     def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
         """Build source-grounded typed BAML responses."""
-        return tuple(
-            OntologyPopulationBatchResult(
-                target_chunk_id=item.target_chunk_id,
-                rules=[
-                    OntologyRuleEntry(
-                        conduct_label_vi="Điều khiển xe không gắn biển số",
-                        subject_kind=OntologySubjectKind.NaturalPerson,
-                        role_labels_vi=["Người điều khiển"],
-                        vehicle_category_labels_vi=["Xe mô tô"],
-                        condition_root_id=None,
-                        conditions=[],
-                        consequences=[
-                            OntologyConsequenceEntry(
-                                consequence_id="money",
-                                kind=OntologyConsequenceKind.MonetaryPenalty,
-                                minimum_amount="4000000",
-                                maximum_amount="6000000",
-                                currency=OntologyCurrency.VND,
-                                point_value=None,
-                                consequence_label_vi=None,
-                                minimum_duration_months=None,
-                                maximum_duration_months=None,
-                                target_label_vi=None,
-                                responsible_role_label_vi=None,
-                                evidence=[
-                                    OntologyEvidenceEntry(chunk_id=item.target_chunk_id, quoted_span=self._quoted_span)
-                                ],
-                            )
-                        ],
-                        valid_from=None,
-                        valid_to=None,
-                        provision_path="Điều 13 khoản 9 điểm b",
-                        evidence=[OntologyEvidenceEntry(chunk_id=item.target_chunk_id, quoted_span=self._quoted_span)],
-                    )
-                ],
+        results = []
+        for item in items:
+            target = next(entry for entry in item.window if entry.role == ChunkWindowRole.Target)
+            reference = OntologyEvidenceReference(
+                evidence_id=fragment_evidence_sources(target.chunk_id, target.text)[0].evidence_id
             )
-            for item in items
-        )
+            results.append(
+                OntologyPopulationBatchResult(
+                    target_chunk_id=item.target_chunk_id,
+                    rules=[
+                        OntologyRuleEntry(
+                            conduct_label_vi="Điều khiển xe không gắn biển số",
+                            subject_kind=OntologySubjectKind.NaturalPerson,
+                            role_labels_vi=["Người điều khiển"],
+                            vehicle_category_labels_vi=["Xe mô tô"],
+                            condition_root_id=None,
+                            conditions=[],
+                            consequences=[
+                                OntologyConsequenceEntry(
+                                    consequence_id="money",
+                                    kind=OntologyConsequenceKind.MonetaryPenalty,
+                                    minimum_amount="4000000",
+                                    maximum_amount="6000000",
+                                    currency=OntologyCurrency.VND,
+                                    point_value=None,
+                                    consequence_label_vi=None,
+                                    minimum_duration_months=None,
+                                    maximum_duration_months=None,
+                                    target_label_vi=None,
+                                    responsible_role_label_vi=None,
+                                    evidence=[reference],
+                                )
+                            ],
+                            valid_from=None,
+                            valid_to=None,
+                            provision_path="Điều 13 khoản 9 điểm b",
+                            evidence=[reference],
+                        )
+                    ],
+                )
+            )
+        return tuple(results)
 
 
 def test_extraction_binds_evidence_and_uses_reviewed_document_validity(
@@ -94,7 +126,7 @@ def test_extraction_binds_evidence_and_uses_reviewed_document_validity(
     document_metadata: DocumentMetadataRecord,
 ) -> None:
     """Typed model output becomes deterministic source-grounded population records."""
-    quoted_span = legal_chunk.text.split(". ", maxsplit=1)[0] + "."
+    evidence_text = fragment_evidence_sources(legal_chunk.chunk_id, legal_chunk.text)[0].text
     settings = replace(
         PopulationSettings.from_path(PROJECT_ROOT / "ontology" / "population_contract.yaml"),
         max_retries=0,
@@ -102,39 +134,45 @@ def test_extraction_binds_evidence_and_uses_reviewed_document_validity(
     )
 
     first = extract_population_from_document(
-        (legal_chunk,), (legal_chunk,), _PopulationClient(quoted_span), document_metadata, settings
+        (legal_chunk,), (legal_chunk,), _PopulationClient(), document_metadata, settings, **EXTRACTION_RUN
     )
     second = extract_population_from_document(
-        (legal_chunk,), (legal_chunk,), _PopulationClient(quoted_span), document_metadata, settings
+        (legal_chunk,), (legal_chunk,), _PopulationClient(), document_metadata, settings, **EXTRACTION_RUN
     )
 
     assert first == second
     assert first[0].valid_from == document_metadata.valid_from
-    assert first[0].evidence[0].exact_text == quoted_span
+    assert first[0].evidence[0].exact_text == evidence_text
     assert str(first[0].consequences[0].minimum_amount) == "4000000"
 
 
-def test_extraction_preserves_model_evidence_without_text_matching(
+def test_extraction_rejects_unknown_evidence_reference(
     legal_chunk: Chunk,
     document_metadata: DocumentMetadataRecord,
 ) -> None:
-    """Ontology population trusts typed LLM evidence without exact matching."""
+    """Ontology population accepts only source IDs supplied to the model."""
     settings = replace(
         PopulationSettings.from_path(PROJECT_ROOT / "ontology" / "population_contract.yaml"),
         max_retries=0,
         retry_delay_seconds=0,
     )
-    evidence_text = "Nội dung do mô hình xác định."
 
-    records = extract_population_from_document(
-        (legal_chunk,),
-        (legal_chunk,),
-        _PopulationClient(evidence_text),
-        document_metadata,
-        settings,
-    )
+    class _UnknownEvidenceClient(_PopulationClient):
+        def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
+            results = list(super().extract_batch(items))
+            results[0].rules[0].evidence = [OntologyEvidenceReference(evidence_id="ev_unknown")]
+            return tuple(results)
 
-    assert records[0].evidence[0].exact_text == evidence_text
+    with pytest.raises(LlmTaskExhaustedError) as error:
+        extract_population_from_document(
+            (legal_chunk,),
+            (legal_chunk,),
+            _UnknownEvidenceClient(),
+            document_metadata,
+            settings,
+            **EXTRACTION_RUN,
+        )
+    assert "Unknown evidence reference" in str(error.value.__cause__)
 
 
 def test_extraction_runs_batches_concurrently_and_preserves_target_order(
@@ -150,7 +188,6 @@ def test_extraction_runs_batches_concurrently_and_preserves_target_order(
     second_checkpointed = threading.Event()
     calls: list[str] = []
     completion_order: list[str] = []
-    quoted_span = legal_chunk.text.split(". ", maxsplit=1)[0] + "."
 
     class _ConcurrentPopulationClient(_PopulationClient):
         def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
@@ -177,9 +214,10 @@ def test_extraction_runs_batches_concurrently_and_preserves_target_order(
     records = extract_population_from_document(
         targets,
         targets,
-        _ConcurrentPopulationClient(quoted_span),
+        _ConcurrentPopulationClient(),
         document_metadata,
         settings,
+        **EXTRACTION_RUN,
         max_concurrency=2,
         on_batch_processed=checkpoint,
     )
@@ -217,6 +255,7 @@ def test_extraction_reports_all_concurrent_exhausted_batches(
             _FailingPopulationClient(),
             document_metadata,
             settings,
+            **EXTRACTION_RUN,
             max_concurrency=2,
         )
 
@@ -306,9 +345,9 @@ def test_population_window_uses_local_context_for_structural_variants(legal_chun
 def test_population_binding_inventory_requires_target_only_evidence(legal_chunk: Chunk) -> None:
     """A conduct inventory cannot cite context that the inventory stage never receives."""
     item, inventory, _ = _target_inventory_fixture(legal_chunk)
-    inventory.conducts[0].evidence = [OntologyEvidenceEntry(chunk_id="context", quoted_span=legal_chunk.text)]
+    inventory.conducts[0].evidence = [OntologyEvidenceReference(evidence_id="ev_context")]
 
-    with pytest.raises(ValueError, match="target chunk"):
+    with pytest.raises(ValueError, match="Unknown evidence reference"):
         build_population_binding_items((item,), (inventory,))
 
 
@@ -379,7 +418,7 @@ def test_population_record_requires_target_conduct_evidence(
 ) -> None:
     """Context-only conduct evidence cannot create a rule for the target chunk."""
     context_chunk_id = "context"
-    evidence = OntologyEvidenceEntry(chunk_id=context_chunk_id, quoted_span=legal_chunk.text)
+    source, evidence = _source_reference(context_chunk_id, legal_chunk.text)
     raw = _rule_with_consequence(
         OntologyConsequenceEntry(
             consequence_id="money",
@@ -403,7 +442,8 @@ def test_population_record_requires_target_conduct_evidence(
             raw,
             legal_chunk.chunk_id,
             document_metadata,
-            {context_chunk_id: legal_chunk.text, legal_chunk.chunk_id: legal_chunk.text},
+            [source, evidence_source(legal_chunk.chunk_id, legal_chunk.text)],
+            **RECORD_RUN,
         )
 
 
@@ -412,7 +452,7 @@ def test_population_record_rejects_remedial_measure_without_responsible_role(
     document_metadata: DocumentMetadataRecord,
 ) -> None:
     """An incomplete remedial measure fails before persisted RDF validation."""
-    evidence = OntologyEvidenceEntry(chunk_id=legal_chunk.chunk_id, quoted_span=legal_chunk.text)
+    source, evidence = _source_reference(legal_chunk.chunk_id, legal_chunk.text)
     raw = OntologyRuleEntry(
         conduct_label_vi="Vi phạm hành chính nói chung",
         subject_kind=None,
@@ -447,7 +487,8 @@ def test_population_record_rejects_remedial_measure_without_responsible_role(
             raw,
             legal_chunk.chunk_id,
             document_metadata,
-            {legal_chunk.chunk_id: legal_chunk.text},
+            [source],
+            **RECORD_RUN,
         )
 
 
@@ -458,7 +499,7 @@ def test_population_record_requires_named_non_numeric_consequence(
     document_metadata: DocumentMetadataRecord,
 ) -> None:
     """Non-numeric consequences retain the source-grounded legal effect name."""
-    evidence = OntologyEvidenceEntry(chunk_id=legal_chunk.chunk_id, quoted_span=legal_chunk.text)
+    source, evidence = _source_reference(legal_chunk.chunk_id, legal_chunk.text)
     raw = _rule_with_consequence(
         OntologyConsequenceEntry(
             consequence_id="effect",
@@ -478,7 +519,7 @@ def test_population_record_requires_named_non_numeric_consequence(
     )
 
     with pytest.raises(ValueError, match="consequence label"):
-        build_population_record(raw, legal_chunk.chunk_id, document_metadata, {legal_chunk.chunk_id: legal_chunk.text})
+        build_population_record(raw, legal_chunk.chunk_id, document_metadata, [source], **RECORD_RUN)
 
 
 @pytest.mark.parametrize(
@@ -499,7 +540,7 @@ def test_population_record_rejects_invalid_duration_bounds(
     document_metadata: DocumentMetadataRecord,
 ) -> None:
     """Duration normalization is complete, positive, ordered, and sanction-specific."""
-    evidence = OntologyEvidenceEntry(chunk_id=legal_chunk.chunk_id, quoted_span=legal_chunk.text)
+    source, evidence = _source_reference(legal_chunk.chunk_id, legal_chunk.text)
     raw = _rule_with_consequence(
         OntologyConsequenceEntry(
             consequence_id="effect",
@@ -519,7 +560,7 @@ def test_population_record_rejects_invalid_duration_bounds(
     )
 
     with pytest.raises(ValueError, match=message):
-        build_population_record(raw, legal_chunk.chunk_id, document_metadata, {legal_chunk.chunk_id: legal_chunk.text})
+        build_population_record(raw, legal_chunk.chunk_id, document_metadata, [source], **RECORD_RUN)
 
 
 @pytest.mark.parametrize(
@@ -536,7 +577,7 @@ def test_population_record_rejects_multiple_exclusive_consequences(
     document_metadata: DocumentMetadataRecord,
 ) -> None:
     """Alternative numeric consequences must be emitted as separate rule variants."""
-    evidence = OntologyEvidenceEntry(chunk_id=legal_chunk.chunk_id, quoted_span=legal_chunk.text)
+    source, evidence = _source_reference(legal_chunk.chunk_id, legal_chunk.text)
     consequences = [
         OntologyConsequenceEntry(
             consequence_id=f"effect_{index}",
@@ -569,12 +610,12 @@ def test_population_record_rejects_multiple_exclusive_consequences(
     )
 
     with pytest.raises(ValueError, match=message):
-        build_population_record(raw, legal_chunk.chunk_id, document_metadata, {legal_chunk.chunk_id: legal_chunk.text})
+        build_population_record(raw, legal_chunk.chunk_id, document_metadata, [source], **RECORD_RUN)
 
 
 def _rule_with_consequence(
     consequence: OntologyConsequenceEntry,
-    evidence: OntologyEvidenceEntry,
+    evidence: OntologyEvidenceReference,
 ) -> OntologyRuleEntry:
     """Build a minimal typed rule for consequence-boundary tests."""
     return OntologyRuleEntry(
@@ -594,9 +635,10 @@ def _rule_with_consequence(
 
 def _target_inventory_fixture(
     legal_chunk: Chunk,
-) -> tuple[FactExtractionBatchItem, OntologyTargetConductBatchResult, OntologyEvidenceEntry]:
+) -> tuple[FactExtractionBatchItem, OntologyTargetConductBatchResult, OntologyEvidenceReference]:
     """Build one locked Target conduct and its isolated extraction input."""
-    evidence = OntologyEvidenceEntry(chunk_id=legal_chunk.chunk_id, quoted_span=legal_chunk.text)
+    source = fragment_evidence_sources(legal_chunk.chunk_id, legal_chunk.text)[0]
+    evidence = OntologyEvidenceReference(evidence_id=source.evidence_id)
     item = FactExtractionBatchItem(
         target_chunk_id=legal_chunk.chunk_id,
         window=[
@@ -622,7 +664,7 @@ def _target_inventory_fixture(
     return item, inventory, evidence
 
 
-def _money_consequence(evidence: OntologyEvidenceEntry) -> OntologyConsequenceEntry:
+def _money_consequence(evidence: OntologyEvidenceReference) -> OntologyConsequenceEntry:
     """Build one complete monetary consequence for binding tests."""
     return OntologyConsequenceEntry(
         consequence_id="money",
@@ -638,3 +680,9 @@ def _money_consequence(evidence: OntologyEvidenceEntry) -> OntologyConsequenceEn
         responsible_role_label_vi=None,
         evidence=[evidence],
     )
+
+
+def _source_reference(chunk_id: str, text: str):
+    """Build matching source and model reference for one test fragment."""
+    source = evidence_source(chunk_id, text)
+    return source, OntologyEvidenceReference(evidence_id=source.evidence_id)

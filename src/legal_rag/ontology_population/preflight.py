@@ -21,7 +21,7 @@ from legal_rag.ontology_population.config import PopulationSettings
 from legal_rag.ontology_population.models import OntologyPopulationRecord, PopulationProgressRecord
 from legal_rag.parser.hashing import sha256_json
 
-POPULATION_PREFLIGHT_SCHEMA_VERSION = "0.1.0"
+POPULATION_PREFLIGHT_SCHEMA_VERSION = "0.2.0"
 POPULATION_TARGET_SELECTION_SCHEMA_VERSION = "0.1.0"
 
 CheckStatus = Literal["passed", "failed", "warning"]
@@ -83,6 +83,7 @@ class PopulationPreflightReport:
     checked_at: datetime
     overall_status: Literal["ready", "blocked"]
     pilot_run_id: str
+    ontology_semantic_sha256: str
     document_number: str
     chunk_count: int
     screening_count: int
@@ -99,6 +100,7 @@ class PopulationPreflightReport:
             "checked_at": self.checked_at.isoformat(),
             "overall_status": self.overall_status,
             "pilot_run_id": self.pilot_run_id,
+            "ontology_semantic_sha256": self.ontology_semantic_sha256,
             "document_number": self.document_number,
             "chunk_count": self.chunk_count,
             "screening_count": self.screening_count,
@@ -117,6 +119,17 @@ def load_population_inputs(chunks_path: Path, screening_path: Path, metadata_pat
         screening=read_chunk_screening(screening_path),
         metadata=read_document_metadata(metadata_path),
     )
+
+
+def population_ontology_semantic_sha256(project_root: Path) -> str:
+    """Hash the complete versioned ontology input closure used by population."""
+    from legal_rag.ontology_validation.paths import OntologyPaths
+    from legal_rag.ontology_validation.semantic_config import SemanticQaSettings
+    from legal_rag.ontology_validation.semantic_qa import semantic_input_sha256
+
+    paths = OntologyPaths(project_root)
+    settings = SemanticQaSettings.from_path(paths.semantic_qa_contract, project_root)
+    return semantic_input_sha256(paths, settings)
 
 
 def load_population_target_selection(path: Path) -> PopulationTargetSelection:
@@ -170,6 +183,9 @@ def validate_population_resume_state(
     selected_targets: Sequence[Chunk],
     records: Sequence[OntologyPopulationRecord],
     progress: Sequence[PopulationProgressRecord],
+    *,
+    expected_run_id: str | None = None,
+    expected_ontology_semantic_sha256: str | None = None,
 ) -> None:
     """Require persisted outputs to belong uniquely to the current target selection."""
     duplicate_population_ids = _duplicates(record.population_id for record in records)
@@ -189,6 +205,17 @@ def validate_population_resume_state(
             f"{len(unexpected_record_ids)} record source IDs, {len(unexpected_progress_ids)} progress IDs"
         )
         raise ValueError(msg)
+    if expected_run_id is not None and any(record.run_id != expected_run_id for record in progress):
+        msg = "Persisted population progress belongs to a different prompt, model, input, or ontology run"
+        raise ValueError(msg)
+    if expected_run_id is not None and any(record.population_run_id != expected_run_id for record in records):
+        msg = "Persisted population records belong to a different prompt, model, input, or ontology run"
+        raise ValueError(msg)
+    if expected_ontology_semantic_sha256 is not None and any(
+        record.ontology_semantic_sha256 != expected_ontology_semantic_sha256 for record in records
+    ):
+        msg = "Persisted population records belong to different ontology semantics"
+        raise ValueError(msg)
 
 
 def run_population_preflight(
@@ -197,6 +224,7 @@ def run_population_preflight(
     artifact_paths: Sequence[tuple[str, Path]],
     checked_at: datetime,
     *,
+    ontology_semantic_sha256: str,
     target_limit: int | None = None,
     target_selection: PopulationTargetSelection | None = None,
 ) -> PopulationPreflightReport:
@@ -215,6 +243,7 @@ def run_population_preflight(
     pilot_run_id = sha256_json(
         {
             "artifacts": [{"artifact_type": item.artifact_type, "sha256": item.sha256} for item in artifacts],
+            "ontology_semantic_sha256": ontology_semantic_sha256,
             "selected_target_ids": [chunk.chunk_id for chunk in selected_targets],
         }
     )
@@ -223,6 +252,7 @@ def run_population_preflight(
         checked_at=checked_at,
         overall_status=overall_status,
         pilot_run_id=pilot_run_id,
+        ontology_semantic_sha256=ontology_semantic_sha256,
         document_number=bundle.metadata.document_number,
         chunk_count=len(bundle.chunks),
         screening_count=len(bundle.screening),

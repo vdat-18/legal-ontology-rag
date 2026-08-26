@@ -1,10 +1,10 @@
 schema_version: "0.1.0"
 artifact_id: legal-ontology-rag-release
-artifact_version: "0.1.0"
-status: approved_for_internal_v0.1_freeze
+artifact_version: "0.2.0"
+status: candidate_pending_semantic_qa_and_review
 ontology:
   ontology_iri: https://w3id.org/legal-ontology-rag/ontology
-  version_iri: https://w3id.org/legal-ontology-rag/ontology/0.1.0
+  version_iri: https://w3id.org/legal-ontology-rag/ontology/0.2.0
   root_file: ontology/legal_ontology.ttl
   license_file: ontology/LICENSE
 approvals:
@@ -12,11 +12,11 @@ approvals:
     status: approved
     evidence: user-confirmed:2026-08-18:CC-BY-4.0
   external_reuse_review:
-    status: approved
-    evidence: user-confirmed:2026-08-18:REUSE-DCTERMS-001-through-REUSE-ODP-001; ontology/external_reuse_registry.yaml; ontology/reports/external_reuse_review.json
+    status: pending_v0.2_review
+    evidence:
   project_owner_model_review:
-    status: approved
-    evidence: user-confirmed:2026-08-18:ILR-001-through-ILR-011; ontology/legal_review_decisions.yaml; ontology/reviews/v0.1/legal_review_readiness.json
+    status: pending_v0.2_review
+    evidence:
 required_reuse_decisions:
   - REUSE-DCTERMS-001
   - REUSE-PROV-001
@@ -48,11 +48,13 @@ inputs:
     - ontology/legal_review_contract.yaml
     - ontology/legal_review_decisions.yaml
     - ontology/semantic_qa_contract.yaml
+    - ontology/evolution_policy.yaml
     - ontology/release_contract.yaml
     - ontology/requirements/competency_questions.yaml
     - ontology/requirements/ontology_requirements.yaml
     - ontology/glossary/terms.yaml
     - ontology/decisions/modeling_decisions.yaml
+    - ontology/patterns/ontology_patterns.yaml
     - ontology/tests/cq_queries/query_manifest.yaml
     - ontology/tests/cq_queries/cq_additional_001.rq
     - ontology/tests/cq_queries/cq_applicability_001.rq
@@ -86,9 +88,9 @@ inputs:
     - ontology/reviews/v0.1/legal_review_packet.md
     - ontology/reviews/v0.1/legal_review_readiness.json
 output:
-  archive_root: legal-ontology-rag-0.1.0
-  archive_file: legal-ontology-rag-0.1.0.zip
-  checksum_file: legal-ontology-rag-0.1.0.zip.sha256
+  archive_root: legal-ontology-rag-0.2.0
+  archive_file: legal-ontology-rag-0.2.0.zip
+  checksum_file: legal-ontology-rag-0.2.0.zip.sha256
   manifest_archive_path: MANIFEST.json
   report_schema_version: "0.1.0"
 release_boundaries:

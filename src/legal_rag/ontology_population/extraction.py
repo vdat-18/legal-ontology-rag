@@ -10,22 +10,22 @@ from decimal import Decimal
 from functools import partial
 from typing import Protocol
 
-from baml_py.logging import set_log_level
-
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import (
     ChunkWindowEntry,
     ChunkWindowRole,
     FactExtractionBatchItem,
+    OntologyChunkWindowEntry,
+    OntologyEvidenceReference,
+    OntologyEvidenceSource,
     OntologyPopulationBatchResult,
     OntologyPopulationBindingBatchResult,
     OntologyPopulationBindingItem,
     OntologyTargetConductBatchResult,
     OntologyTargetConductInput,
 )
-from legal_rag.baml_client.types import OntologyEvidenceEntry as BamlEvidence
 from legal_rag.baml_client.types import OntologyRuleEntry as BamlRule
-from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.baml_transport import BamlCaller
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
 from legal_rag.benchmark_synthesis.fact_extraction import build_reading_window
 from legal_rag.benchmark_synthesis.llm_execution import (
@@ -36,16 +36,31 @@ from legal_rag.benchmark_synthesis.llm_execution import (
 )
 from legal_rag.chunker.models import Chunk
 from legal_rag.ontology_population.config import PopulationSettings
+from legal_rag.ontology_population.evidence import fragment_evidence_sources, resolve_evidence_references
 from legal_rag.ontology_population.models import (
     OntologyPopulationRecord,
     PopulationCondition,
     PopulationConsequence,
     PopulationEvidence,
     population_identity,
+    validate_population_condition_tree,
 )
 from legal_rag.settings import Settings
 
-ONTOLOGY_POPULATION_PROMPT_VERSION = "0.13.0"
+ONTOLOGY_POPULATION_PROMPT_VERSION = "0.16.0"
+
+
+def build_population_run_id(pilot_run_id: str, settings: Settings) -> str:
+    """Fingerprint every external input that can change population output."""
+    return population_identity(
+        {
+            "pilot_run_id": pilot_run_id,
+            "prompt_version": ONTOLOGY_POPULATION_PROMPT_VERSION,
+            "llm_base_url": settings.llm_base_url,
+            "llm_model": settings.llm_model,
+            "llm_extra_request_body": dict(settings.llm_extra_request_body),
+        }
+    )
 
 
 class OntologyPopulationClient(Protocol):
@@ -60,54 +75,39 @@ class BamlOntologyPopulationClient:
 
     def __init__(self, settings: Settings, population_settings: PopulationSettings) -> None:
         """Create a bounded runtime BAML client."""
-        set_log_level("OFF")
-        self._registry = build_client_registry(
-            base_url=settings.llm_base_url,
-            api_key=settings.llm_api_key,
-            model=settings.llm_model,
+        self._caller = BamlCaller.from_settings(
+            settings,
             max_output_tokens=population_settings.max_output_tokens,
             temperature=population_settings.temperature,
-            timeout_seconds=settings.llm_timeout_seconds,
+            max_response_bytes=population_settings.max_response_bytes,
         )
-        self._timeout_seconds = settings.llm_timeout_seconds
-        self._max_response_bytes = population_settings.max_response_bytes
 
     def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
         """Inventory target conducts before binding consequences from context."""
         target_inputs = tuple(_target_conduct_input(item) for item in items)
         inventory_request = b.request.ExtractOntologyTargetConductBatch(
-            list(target_inputs), baml_options={"client_registry": self._registry}
+            list(target_inputs), baml_options=self._caller.options
         )
-        inventory_output = execute_baml_request(inventory_request, self._timeout_seconds, self._max_response_bytes)
-        inventories = b.parse.ExtractOntologyTargetConductBatch(
-            inventory_output, baml_options={"client_registry": self._registry}
-        )
+        inventory_output = self._caller.execute(inventory_request)
+        inventories = b.parse.ExtractOntologyTargetConductBatch(inventory_output, baml_options=self._caller.options)
         binding_items = build_population_binding_items(items, inventories)
         if not any(item.target_conducts for item in binding_items):
             return tuple(
                 OntologyPopulationBatchResult(target_chunk_id=item.target_chunk_id, rules=[]) for item in binding_items
             )
-        binding_request = b.request.BindOntologyPopulationBatch(
-            list(binding_items), baml_options={"client_registry": self._registry}
-        )
-        binding_output = execute_baml_request(binding_request, self._timeout_seconds, self._max_response_bytes)
-        binding_results = b.parse.BindOntologyPopulationBatch(
-            binding_output, baml_options={"client_registry": self._registry}
-        )
+        binding_request = b.request.BindOntologyPopulationBatch(list(binding_items), baml_options=self._caller.options)
+        binding_output = self._caller.execute(binding_request)
+        binding_results = b.parse.BindOntologyPopulationBatch(binding_output, baml_options=self._caller.options)
         return finalize_population_binding_results(binding_items, binding_results)
 
 
 def _target_conduct_input(item: FactExtractionBatchItem) -> OntologyTargetConductInput:
     """Build the isolated Target-only input for conduct inventory."""
-    target_entries = [entry for entry in item.window if entry.role == ChunkWindowRole.Target]
-    if len(target_entries) != 1:
-        msg = "Population reading window must contain exactly one Target entry"
-        raise ValueError(msg)
-    target = target_entries[0]
+    target = _target_entry(item)
     return OntologyTargetConductInput(
         target_chunk_id=item.target_chunk_id,
         structural_context=target.context_text,
-        target_text=target.text,
+        evidence_sources=list(fragment_evidence_sources(target.chunk_id, target.text)),
     )
 
 
@@ -133,13 +133,23 @@ def build_population_binding_items(
             if not conduct.evidence:
                 msg = "Every target conduct must cite Target evidence"
                 raise ValueError(msg)
-            if any(entry.chunk_id != item.target_chunk_id for entry in conduct.evidence):
+            target_sources = fragment_evidence_sources(item.target_chunk_id, _target_entry(item).text)
+            bound_evidence = resolve_evidence_references(conduct.evidence, target_sources)
+            if any(entry.chunk_id != item.target_chunk_id for entry in bound_evidence):
                 msg = "Target conduct evidence must reference its target chunk"
                 raise ValueError(msg)
         binding_items.append(
             OntologyPopulationBindingItem(
                 target_chunk_id=item.target_chunk_id,
-                window=list(item.window),
+                window=[
+                    OntologyChunkWindowEntry(
+                        role=entry.role,
+                        chunk_id=entry.chunk_id,
+                        structural_context=entry.context_text,
+                        evidence_sources=list(fragment_evidence_sources(entry.chunk_id, entry.text)),
+                    )
+                    for entry in item.window
+                ],
                 target_conducts=list(inventory.conducts),
             )
         )
@@ -174,8 +184,8 @@ def finalize_population_binding_results(
             if bound.rule.provision_path != conduct.provision_path:
                 msg = "Population rule cannot change its locked Target provision path"
                 raise ValueError(msg)
-            inventory_evidence = {entry.chunk_id for entry in conduct.evidence}
-            rule_evidence = {entry.chunk_id for entry in bound.rule.evidence}
+            inventory_evidence = {entry.evidence_id for entry in conduct.evidence}
+            rule_evidence = {entry.evidence_id for entry in bound.rule.evidence}
             if not inventory_evidence.issubset(rule_evidence):
                 msg = "Population rule must retain its locked Target conduct evidence"
                 raise ValueError(msg)
@@ -191,6 +201,8 @@ def extract_population_from_document(
     metadata: DocumentMetadataRecord,
     population_settings: PopulationSettings,
     *,
+    ontology_semantic_sha256: str,
+    population_run_id: str,
     max_concurrency: int = 1,
     on_batch_processed: Callable[[Sequence[tuple[str, tuple[OntologyPopulationRecord, ...]]]], None] | None = None,
 ) -> tuple[OntologyPopulationRecord, ...]:
@@ -225,7 +237,15 @@ def extract_population_from_document(
             future = executor.submit(
                 execute_llm_task,
                 task_key,
-                partial(_extract_batch_records, client, items, metadata),
+                partial(
+                    _extract_batch_records,
+                    client,
+                    items,
+                    metadata,
+                    ontology_version=population_settings.ontology_version,
+                    ontology_semantic_sha256=ontology_semantic_sha256,
+                    population_run_id=population_run_id,
+                ),
                 max_retries=population_settings.max_retries,
                 retry_delay_seconds=population_settings.retry_delay_seconds,
             )
@@ -259,6 +279,10 @@ def _extract_batch_records(
     client: OntologyPopulationClient,
     items: Sequence[FactExtractionBatchItem],
     metadata: DocumentMetadataRecord,
+    *,
+    ontology_version: str,
+    ontology_semantic_sha256: str,
+    population_run_id: str,
 ) -> tuple[tuple[str, tuple[OntologyPopulationRecord, ...]], ...]:
     """Extract one batch and preserve the model-selected source evidence."""
     results = client.extract_batch(items)
@@ -268,12 +292,25 @@ def _extract_batch_records(
         msg = "Ontology population response must contain exactly one result per target chunk"
         raise ValueError(msg)
     results_by_target = {result.target_chunk_id: result for result in results}
-    text_by_target = {item.target_chunk_id: {entry.chunk_id: entry.text for entry in item.window} for item in items}
+    evidence_sources_by_target = {
+        item.target_chunk_id: tuple(
+            source for entry in item.window for source in fragment_evidence_sources(entry.chunk_id, entry.text)
+        )
+        for item in items
+    }
     return tuple(
         (
             target_id,
             tuple(
-                build_population_record(rule, target_id, metadata, text_by_target[target_id])
+                build_population_record(
+                    rule,
+                    target_id,
+                    metadata,
+                    evidence_sources_by_target[target_id],
+                    ontology_version=ontology_version,
+                    ontology_semantic_sha256=ontology_semantic_sha256,
+                    population_run_id=population_run_id,
+                )
                 for rule in results_by_target[target_id].rules
             ),
         )
@@ -285,10 +322,15 @@ def build_population_record(
     raw: BamlRule,
     source_chunk_id: str,
     metadata: DocumentMetadataRecord,
-    chunk_text_by_id: Mapping[str, str],
+    evidence_sources: Sequence[OntologyEvidenceSource],
+    *,
+    ontology_version: str,
+    ontology_semantic_sha256: str,
+    population_run_id: str,
 ) -> OntologyPopulationRecord:
     """Convert one typed model result into a stable reviewable record."""
-    if not any(item.chunk_id == source_chunk_id for item in raw.evidence):
+    bound_rule_evidence = bind_population_evidence(raw.evidence, evidence_sources)
+    if not any(item.chunk_id == source_chunk_id for item in bound_rule_evidence):
         msg = "Population rule conduct must retain evidence from its target chunk"
         raise ValueError(msg)
     for kind in ("MonetaryPenalty", "PointDeduction"):
@@ -318,17 +360,18 @@ def build_population_record(
         if durations[0] is not None and (durations[0] < 1 or durations[1] < durations[0]):
             msg = "Consequence duration month bounds must be positive and ordered"
             raise ValueError(msg)
-    evidence = bind_population_evidence(raw.evidence, chunk_text_by_id)
+    evidence = bound_rule_evidence
     conditions = tuple(
         PopulationCondition(
             condition_id=condition.condition_id,
             kind=condition.kind.value,
             text_vi=condition.text_vi,
             operand_ids=tuple(condition.operand_ids),
-            evidence=bind_population_evidence(condition.evidence, chunk_text_by_id),
+            evidence=bind_population_evidence(condition.evidence, evidence_sources),
         )
         for condition in raw.conditions
     )
+    validate_population_condition_tree(raw.condition_root_id, conditions)
     consequences = tuple(
         PopulationConsequence(
             consequence_id=consequence.consequence_id,
@@ -339,7 +382,7 @@ def build_population_record(
             point_value=consequence.point_value,
             target_label_vi=consequence.target_label_vi,
             responsible_role_label_vi=consequence.responsible_role_label_vi,
-            evidence=bind_population_evidence(consequence.evidence, chunk_text_by_id),
+            evidence=bind_population_evidence(consequence.evidence, evidence_sources),
             consequence_label_vi=consequence.consequence_label_vi,
             minimum_duration_months=consequence.minimum_duration_months,
             maximum_duration_months=consequence.maximum_duration_months,
@@ -360,6 +403,9 @@ def build_population_record(
         "document_number": metadata.document_number,
         "provision_path": raw.provision_path,
         "evidence": [item.to_dict() for item in evidence],
+        "ontology_version": ontology_version,
+        "ontology_semantic_sha256": ontology_semantic_sha256,
+        "population_run_id": population_run_id,
     }
     return OntologyPopulationRecord(
         population_id=population_identity(content),
@@ -376,14 +422,26 @@ def build_population_record(
         document_number=metadata.document_number,
         provision_path=raw.provision_path,
         evidence=evidence,
+        ontology_version=ontology_version,
+        ontology_semantic_sha256=ontology_semantic_sha256,
+        population_run_id=population_run_id,
     )
 
 
 def bind_population_evidence(
-    entries: Sequence[BamlEvidence], chunk_text_by_id: Mapping[str, str]
+    entries: Sequence[OntologyEvidenceReference], evidence_sources: Sequence[OntologyEvidenceSource]
 ) -> tuple[PopulationEvidence, ...]:
-    """Preserve typed model evidence without semantic text matching."""
-    return tuple(PopulationEvidence(chunk_id=entry.chunk_id, exact_text=entry.quoted_span) for entry in entries)
+    """Resolve typed model references to authoritative source fragments."""
+    return resolve_evidence_references(entries, evidence_sources)
+
+
+def _target_entry(item: FactExtractionBatchItem) -> ChunkWindowEntry:
+    """Return the sole Target entry from one population reading window."""
+    targets = [entry for entry in item.window if entry.role == ChunkWindowRole.Target]
+    if len(targets) != 1:
+        msg = "Population reading window must contain exactly one Target entry"
+        raise ValueError(msg)
+    return targets[0]
 
 
 def build_population_reading_window(

@@ -49,6 +49,7 @@ data/evaluation/*metrics.json
 data/evaluation/*predictions.jsonl
 data/benchmark_synthesis/*metrics.json
 data/benchmark_synthesis/*predictions.jsonl
+data/ontology/evaluation/
 
 # Naive RAG
 *.db

@@ -10,6 +10,7 @@ from legal_rag.ontology_validation.paths import OntologyPaths
 from legal_rag.ontology_validation.traceability import (
     REFERENCE_PREDICATES,
     collect_ids,
+    ontology_pattern_issues,
     referenced_ids,
     shapes_without_traceability,
     subjects_for_cq,
@@ -88,3 +89,19 @@ def test_every_mandatory_cq_has_formal_and_executable_coverage(
         assert subjects_for_cq((ontology_graph, shapes_graph), cq_id)
         assert query_cases[cq_id].query_path.is_file()
         assert query_cases[cq_id].fixture_path.is_file()
+
+
+def test_ontology_patterns_are_minimal_complete_and_reference_existing_artifacts(
+    ontology_paths: OntologyPaths,
+    ontology_graph: Graph,
+) -> None:
+    """Every mandatory CQ is implemented through a tested reusable ontology pattern."""
+    issues = ontology_pattern_issues(
+        load_yaml(ontology_paths.patterns),
+        load_yaml(ontology_paths.competency_questions),
+        load_yaml(ontology_paths.pilot_fixtures),
+        ontology_graph,
+        load_graph(ontology_paths.shapes),
+    )
+
+    assert not issues

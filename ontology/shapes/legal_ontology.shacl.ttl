@@ -14,8 +14,8 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 <https://w3id.org/legal-ontology-rag/shapes> a owl:Ontology ;
-    owl:versionIRI <https://w3id.org/legal-ontology-rag/shapes/0.5.0> ;
-    owl:versionInfo "0.5.0" ;
+    owl:versionIRI <https://w3id.org/legal-ontology-rag/shapes/0.6.0> ;
+    owl:versionInfo "0.6.0" ;
     dcterms:title "Vietnamese Road Traffic Legal Ontology SHACL Shapes"@en ;
     dcterms:description "Closed-world data-quality constraints maintained separately from the OWL ontology."@en ;
     dcterms:issued "2026-08-18"^^xsd:date ;
@@ -119,24 +119,6 @@ lorsh:EvidenceSpanShape a sh:NodeShape ;
     lorsp:competencyQuestionReference "CQ-EVIDENCE-001" ;
     lorsp:modelingDecisionReference "MD-PROV-001" .
 
-lorsh:DirectEvidenceOrLogicalOperatorShape a sh:NodeShape ;
-    sh:or (
-        [ sh:class lornr:AllOf ]
-        [ sh:class lornr:AnyOf ]
-        [ sh:class lornr:Not ]
-        [
-            sh:property [
-                sh:path lorsp:supportedBy ;
-                sh:minCount 1 ;
-                sh:class lorsp:EvidenceSpan
-            ]
-        ]
-    ) ;
-    sh:message "An assertion must have direct evidence unless it is a logical operator over evidenced operands."@en ;
-    lorsp:requirementReference "PURP-003", "SCOPE-004", "SCOPE-007", "GRAN-004", "GRAN-006" ;
-    lorsp:competencyQuestionReference "CQ-CONDITION-001", "CQ-EVIDENCE-001" ;
-    lorsp:modelingDecisionReference "MD-COND-001", "MD-PROV-001" .
-
 lorsh:SupportedAssertionShape a sh:NodeShape ;
     sh:targetClass lorsp:SupportedAssertion ;
     sh:property [
@@ -144,8 +126,12 @@ lorsh:SupportedAssertionShape a sh:NodeShape ;
         sh:minCount 1 ;
         sh:class lorsp:LegalProvision ;
         sh:message "A supported assertion must be grounded in at least one legal provision."@en
+    ], [
+        sh:path lorsp:supportedBy ;
+        sh:minCount 1 ;
+        sh:class lorsp:EvidenceSpan ;
+        sh:message "A supported assertion must have at least one exact evidence span."@en
     ] ;
-    sh:node lorsh:DirectEvidenceOrLogicalOperatorShape ;
     lorsp:requirementReference "PURP-003", "SCOPE-007" ;
     lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EVIDENCE-001" ;
     lorsp:modelingDecisionReference "MD-PROV-001" .
@@ -471,8 +457,12 @@ lorsh:RuleComponentShape a sh:NodeShape ;
         sh:minCount 1 ;
         sh:class lorsp:LegalProvision ;
         sh:message "A material rule component must be grounded in at least one authoritative provision."@en
+    ], [
+        sh:path lorsp:supportedBy ;
+        sh:minCount 1 ;
+        sh:class lorsp:EvidenceSpan ;
+        sh:message "A material rule component must have at least one exact evidence span."@en
     ] ;
-    sh:node lorsh:DirectEvidenceOrLogicalOperatorShape ;
     lorsp:requirementReference "PURP-003", "SCOPE-007", "GRAN-004", "GRAN-006" ;
     lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EVIDENCE-001", "CQ-ASSEMBLY-001" ;
     lorsp:modelingDecisionReference "MD-RULE-002", "MD-PROV-001", "MD-PROV-002" .
@@ -547,9 +537,9 @@ lorsh:AllOfShape a sh:NodeShape ;
     sh:targetClass lornr:AllOf ;
     sh:property [
         sh:path lornr:hasOperand ;
-        sh:minCount 1 ;
+        sh:minCount 2 ;
         sh:class lornr:ConditionExpression ;
-        sh:message "An AllOf expression must have at least one condition-expression operand."@en
+        sh:message "An AllOf expression must have at least two condition-expression operands."@en
     ] ;
     lorsp:requirementReference "PURP-002", "SCOPE-004", "GRAN-004" ;
     lorsp:competencyQuestionReference "CQ-CONDITION-001", "CQ-NEGATIVE-001" ;
@@ -559,9 +549,9 @@ lorsh:AnyOfShape a sh:NodeShape ;
     sh:targetClass lornr:AnyOf ;
     sh:property [
         sh:path lornr:hasOperand ;
-        sh:minCount 1 ;
+        sh:minCount 2 ;
         sh:class lornr:ConditionExpression ;
-        sh:message "An AnyOf expression must have at least one condition-expression operand."@en
+        sh:message "An AnyOf expression must have at least two condition-expression operands."@en
     ] ;
     lorsp:requirementReference "PURP-002", "SCOPE-004", "GRAN-004" ;
     lorsp:competencyQuestionReference "CQ-CONDITION-001", "CQ-NEGATIVE-001" ;

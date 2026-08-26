@@ -13,7 +13,7 @@ from legal_rag.baml_client.types import (
     ExceptionResolutionWindowInput,
     ExceptionResolutionWindowResult,
     LegalExceptionProposalEntry,
-    OntologyEvidenceEntry,
+    OntologyEvidenceReference,
 )
 from legal_rag.benchmark_synthesis.llm_execution import LlmTaskExhaustedError
 from legal_rag.ontology_change.corpus import ChangeCorpus
@@ -51,36 +51,50 @@ class _ExceptionClient:
     ) -> Sequence[ExceptionResolutionWindowResult]:
         """Capture complete windows and return one typed result per candidate."""
         self.inputs = tuple(windows)
-        return tuple(
-            ExceptionResolutionWindowResult(
-                candidate_id=window.candidate_id,
-                proposals=[]
-                if self._empty
-                else [
-                    LegalExceptionProposalEntry(
-                        general_population_id=self._general_id,
-                        exception_provision_path="Điều 6 khoản 1 điểm a",
-                        evidence=[
-                            OntologyEvidenceEntry(
-                                chunk_id="general-chunk",
-                                quoted_span=self._exception_text,
-                            )
-                        ],
-                        citations=[
-                            ExceptionCitationProposalEntry(
-                                citation=OntologyEvidenceEntry(
-                                    chunk_id="general-chunk",
-                                    quoted_span=self._citation_text,
-                                ),
-                                target_population_ids=[self._target_id],
-                            )
-                        ],
-                        rationale_vi="Source trực tiếp loại trừ trường hợp thuộc Điều 3.",
-                    )
-                ],
+        results = []
+        for window in windows:
+            exception_source = next(
+                (item for item in window.source_evidence_sources if self._exception_text in item.text),
+                None,
             )
-            for window in windows
-        )
+            citation_source = next(
+                (item for item in window.source_evidence_sources if self._citation_text in item.text),
+                None,
+            )
+            exception_reference = OntologyEvidenceReference(
+                evidence_id=exception_source.evidence_id if exception_source else "ev_unknown"
+            )
+            if citation_source:
+                citation_start = citation_source.text.index(self._citation_text)
+                citation_reference = OntologyEvidenceReference(
+                    evidence_id=citation_source.evidence_id,
+                    start_char=citation_start,
+                    end_char=citation_start + len(self._citation_text),
+                )
+            else:
+                citation_reference = OntologyEvidenceReference(evidence_id="ev_unknown")
+            results.append(
+                ExceptionResolutionWindowResult(
+                    candidate_id=window.candidate_id,
+                    proposals=[]
+                    if self._empty
+                    else [
+                        LegalExceptionProposalEntry(
+                            general_population_id=self._general_id,
+                            exception_provision_path="Điều 6 khoản 1 điểm a",
+                            evidence=[exception_reference],
+                            citations=[
+                                ExceptionCitationProposalEntry(
+                                    citation=citation_reference,
+                                    target_population_ids=[self._target_id],
+                                )
+                            ],
+                            rationale_vi="Source trực tiếp loại trừ trường hợp thuộc Điều 3.",
+                        )
+                    ],
+                )
+            )
+        return tuple(results)
 
 
 def _propose(corpus: ChangeCorpus, client: _ExceptionClient) -> tuple[LegalExceptionProposal, ...]:

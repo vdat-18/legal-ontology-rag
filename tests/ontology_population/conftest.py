@@ -153,4 +153,7 @@ def population_record(legal_chunk: Chunk) -> OntologyPopulationRecord:
         document_number="168/2024/NĐ-CP",
         provision_path="Điều 13 khoản 9 điểm b",
         evidence=(PopulationEvidence(legal_chunk.chunk_id, rule_text),),
+        ontology_version="0.2.0",
+        ontology_semantic_sha256="ontology-semantic-sha256",
+        population_run_id="population-run-id",
     )

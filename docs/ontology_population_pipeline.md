@@ -2,7 +2,8 @@
 
 ## Scope
 
-This pipeline converts reviewed legal-document chunks into a SHACL-validated RDF instance graph for ontology V0.1. It
+This pipeline converts reviewed legal-document chunks into a SHACL-validated RDF instance graph for ontology candidate
+V0.2. It
 runs after chunking and chunk screening, but before retrieval, GraphRAG, or Graphiti indexing.
 
 The versioned execution and semantic contract is `ontology/population_contract.yaml`. The typed LLM contract is
@@ -82,6 +83,8 @@ Deterministic code owns:
 - rule-scoped candidate concepts, avoiding unsupported cross-rule merging;
 - SHACL execution and rejection of non-conformant graphs;
 - checkpoint and resume behavior.
+- condition-tree identity, arity, connectivity, cycle, reachability, and direct-evidence validation;
+- ontology-version, ontology-semantic-hash, and population-run provenance.
 
 An LLM result is a candidate population record, not a final legal-applicability decision. Independent legal review
 still owns effective dates, legal classification, rule identity, change type, and disputed interpretations.
@@ -103,7 +106,7 @@ Outputs:
 | Artifact | Purpose |
 | --- | --- |
 | Population-record JSONL | Reviewable typed intermediate data before RDF |
-| Population-progress JSONL | Completed target chunks, including chunks that yielded zero rules |
+| Population-progress JSONL | Completed target chunks plus the compatible input, prompt, provider, and model run identity |
 | Turtle graph | Written only after the complete instance graph conforms to SHACL |
 
 `valid_from` falls back to reviewed document metadata only when the extracted rule has no source-specific date.
@@ -138,7 +141,8 @@ uv run --extra dev legal-check-ontology-population `
 The command does not call an LLM. It verifies unique chunk identity, one root document, exact screening coverage,
 persisted previous/next links, target availability, and document metadata. A target-selection file must name the same
 document, contain unique known chunk IDs, and cannot bypass a rejected screening verdict. The report fingerprints every
-input, records the deterministic target IDs, estimates LLM batches, and emits a stable `pilot_run_id`. It does not
+input plus the complete ontology semantic closure, records the deterministic target IDs, estimates LLM batches, and
+emits a stable `pilot_run_id`. It does not
 reconsider the semantic screening verdict or make any legal classification.
 
 A missing document-level `valid_from` is a warning rather than an invented date. Population remains possible only when
@@ -163,11 +167,18 @@ uv run --extra dev legal-populate-ontology `
 Required provider environment variables are `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, and `LLM_TIMEOUT_SECONDS`.
 
 Use either `--target-ids-path` for a reviewed pilot or `--target-limit` for a simple document-order smoke test; omit both
-for a full-document run. Selection uses no lexical or semantic scoring. The command runs the same preflight before
-loading provider settings, writes each successful batch before marking its target chunks complete, and skips completed
-targets on rerun, including valid zero-rule results. It rejects duplicate checkpoints and any persisted record or
-progress row outside the current target selection, then rematerializes and revalidates the graph from all persisted
-records. Use separate output paths when changing target selection.
+for a full-document run. Selection uses no lexical or semantic scoring. The command runs the same preflight, loads the
+provider settings, and fingerprints the preflight inputs, prompt version, provider URL, and model into one run ID. It
+writes each successful batch before marking its target chunks complete and skips completed targets on a compatible
+rerun, including valid zero-rule results. It rejects duplicate checkpoints, state outside the current target selection,
+and progress or records produced by a different run or ontology semantic hash. Replayed chunks replace their prior
+records before persistence, so a crash
+between record and progress writes cannot leave stale candidates in the final graph.
+
+Population/progress schema V0.1 remains readable for migration and offline evaluation but has no compatible ontology/run
+identity and therefore cannot be resumed. Current schema V0.2 stores the ontology version, semantic SHA-256, and run ID.
+Start a new versioned output set when migrating legacy files or intentionally changing ontology semantics, prompt,
+provider, model, contract, input artifacts, or target selection.
 
 Population creates `PenaltyRule` candidates only for specifically described prohibited conduct or duties tied to a
 source-grounded consequence. General sanction/remedy catalogs, multi-violation principles, enforcement authority,
@@ -193,7 +204,7 @@ completion order cannot change the JSONL or RDF output. The default remains one 
 ## Failure Boundaries
 
 - A missing or paraphrased evidence span fails exact evidence binding.
-- Missing condition references raise during RDF materialization.
+- Invalid condition IDs, roots, operands, arity, cycles, reachability, or direct evidence fail before persistence.
 - Missing semantic exceptions must be found through LLM/pilot review; deterministic validation cannot infer them from
   words such as `trừ` without becoming a prohibited rule-based legal classifier.
 - Missing required consequence values, targets, provenance, or validity fail SHACL.
@@ -209,6 +220,26 @@ screening only proposes which chunks reach the downstream typed LLM extraction b
 extraction, exact evidence rejection, deterministic identity, all four consequence types, condition trees, JSONL round
 trips, SHACL rejection, and the complete CLI pipeline with an offline fake typed client.
 
+## Pilot Gold Evaluation
+
+Before scaling a prompt or model configuration beyond the reviewed pilot, evaluate its completed JSONL and progress
+against source-reviewed structured assertions:
+
+```powershell
+uv run --extra dev legal-evaluate-ontology-population `
+  data/ontology/population/168_2024_ND-CP_619502.pilot-v0.16.jsonl `
+  data/ontology/progress/168_2024_ND-CP_619502.pilot-v0.16.jsonl `
+  ontology/evaluation/population_gold_v0.1.yaml `
+  data/ontology/evaluation/168_2024_ND-CP_619502.pilot-v0.16.json
+```
+
+The evaluator compares only typed exact fields declared by the gold artifact. It does not use regex, fuzzy matching,
+keyword rules, embeddings, or another LLM. It verifies target completion, the exact source-reviewed record inventory
+for every chunk, distinct required legal-rule signatures, and forbidden misassemblies. One populated record cannot
+satisfy two required variants. This detects both missing and over-generated rules. The command writes the report and
+fails when any gate remains open. The V0.1 gold cases use the reviewed target IDs in
+`ontology/pilots/168_2024_ND-CP_penalty_rules_v0.3.json`.
+
 ## Cross-Chunk Rule Assembly
 
 Population is intentionally chunk-local. A monetary penalty in one chunk and a point deduction in the next may belong
@@ -219,7 +250,7 @@ separate reviewed workflow after population:
 population records
   -> bounded same-document, same-scope structural windows
   -> typed LLM assembly proposals
-  -> mandatory human decisions
+  -> mandatory project-owner decisions
   -> accepted-member replacement
   -> complete SHACL validation
   -> canonical population JSONL + Turtle graph
@@ -262,10 +293,12 @@ uv run --extra dev legal-propose-rule-assemblies `
 
 The command persists each completed candidate window. Rerunning it with the same candidate, prompt, and model identity
 skips completed windows, including windows for which the model correctly returned no proposal.
+If an uncheckpointed window is replayed, the new result replaces every prior proposal and review template for that
+window, including when the replay returns no proposal.
 
 ### 3. Review every proposal manually
 
-The proposal command creates pending rows in `document.reviews.jsonl`. A legal reviewer must inspect the member records,
+The proposal command creates pending rows in `document.reviews.jsonl`. The project owner must inspect the member records,
 assembled rule, provision path, condition tree, consequence values, validity, and every exact evidence span. Edit each
 row to either `accepted` or `rejected` and provide reviewer identity and review date:
 
@@ -281,7 +314,7 @@ row to either `accepted` or `rejected` and provide reviewer identity and review 
 ```
 
 Do not accept a proposal merely because records are adjacent or use similar labels. The LLM output remains a proposal;
-the human decision is the authority for canonical assembly.
+the attributable project-owner decision is the authority for canonical assembly.
 
 ### 4. Finalize offline
 
@@ -316,7 +349,7 @@ as proof of legal succession.
 ordered corpus manifest + per-document canonical rules
   -> exhaustive bounded cross-document windows
   -> typed LLM legal-change proposals with exact later-document evidence
-  -> mandatory human review
+  -> mandatory project-owner review
   -> reviewed earlier/later validity updates
   -> canonical LegalChange events
   -> complete multi-document SHACL validation
@@ -389,6 +422,8 @@ The LLM may propose a change only when a later-document chunk directly supports 
 controlled change type, effective date, authoritative provision path, and exact evidence. Similar conduct, provisions,
 consequences, publication order, or missing `valid_to` are explicitly insufficient. Completed windows, including valid
 zero-proposal results, are checkpointed and skipped on a compatible rerun.
+If an uncheckpointed window is replayed, the new result replaces every prior proposal and review template for that
+window instead of accumulating stale model output.
 
 ### 4. Review every proposal manually
 
@@ -445,7 +480,7 @@ creates version-specific redirects.
 canonical multi-document rules + source chunks
   -> exhaustive bounded source/general/target windows
   -> typed LLM exception and grouped-citation proposals
-  -> mandatory human review
+  -> mandatory project-owner review
   -> merged canonical exception records
   -> LegalException + ProvisionCitation + redirectsTo RDF
   -> complete SHACL and CQ-EXCEPTION-001 validation
@@ -497,6 +532,7 @@ window. Similar wording, locator shape, conduct labels, chronology, or a token s
 
 Completed windows, including valid zero-proposal results, are checkpointed. Proposal fragments for the same exception
 may come from different target batches and are merged only after each fragment is independently accepted.
+Replaying an uncheckpointed window replaces all earlier proposals and review templates owned by that window.
 
 ### 3. Review every proposal manually
 
@@ -559,7 +595,7 @@ canonical population
   -> extract rule-scoped conduct, role, and vehicle occurrences
   -> exhaustive same-kind candidate pairs
   -> typed LLM semantic proposals with exact evidence from both sides
-  -> mandatory human review
+  -> mandatory project-owner review
   -> accepted-equivalence components and reviewed taxonomy relations
   -> canonical concept registry + remapped RDF
   -> complete SHACL and CQ validation
@@ -603,6 +639,8 @@ For each pair the model may propose `SameConcept`, `LeftBroaderThanRight`, `Left
 `Distinct`, or return no proposal when evidence is insufficient. Every proposal must copy exact evidence owned by both
 occurrences. `SameConcept` must select one supplied Vietnamese label; other relations cannot silently choose a canonical
 label. Completed zero-proposal pairs are checkpointed so retries do not repeat finished model work.
+Replaying an uncheckpointed pair replaces its earlier proposal and review template, including when the new result has no
+proposal.
 
 ### 3. Review every proposal manually
 

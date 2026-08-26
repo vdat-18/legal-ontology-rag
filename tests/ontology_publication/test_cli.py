@@ -35,4 +35,4 @@ def test_cli_builds_site_and_persists_report(
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["overall_status"] == "built"
     assert (site_path / "publication-manifest.json").is_file()
-    assert (site_path / "shapes" / "0.5.0" / "ontology.ttl").is_file()
+    assert (site_path / "shapes" / "0.6.0" / "ontology.ttl").is_file()

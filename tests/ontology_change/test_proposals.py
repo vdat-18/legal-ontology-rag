@@ -12,7 +12,7 @@ from legal_rag.baml_client.types import (
     CrossDocumentChangeWindowInput,
     CrossDocumentChangeWindowResult,
     LegalChangeProposalEntry,
-    OntologyEvidenceEntry,
+    OntologyEvidenceReference,
     OntologyLegalChangeType,
 )
 from legal_rag.benchmark_synthesis.llm_execution import LlmTaskExhaustedError
@@ -48,25 +48,32 @@ class _ChangeClient:
     ) -> Sequence[CrossDocumentChangeWindowResult]:
         """Capture complete windows and return one result per candidate."""
         self.inputs = tuple(windows)
-        return tuple(
-            CrossDocumentChangeWindowResult(
-                candidate_id=window.candidate_id,
-                proposals=[]
-                if self._empty
-                else [
-                    LegalChangeProposalEntry(
-                        earlier_population_id=self._earlier_id,
-                        later_population_id=self._later_id,
-                        change_type=OntologyLegalChangeType.Amendment,
-                        effective_on="2026-08-15",
-                        change_provision_path="Điều 3",
-                        evidence=[OntologyEvidenceEntry(chunk_id="later-chunk", quoted_span=self._evidence_text)],
-                        rationale_vi="Văn bản sau trực tiếp sửa đổi đúng điều khoản của rule trước.",
-                    )
-                ],
+        results = []
+        for window in windows:
+            source = next(
+                (item for item in window.change_evidence_sources if item.text == self._evidence_text),
+                None,
             )
-            for window in windows
-        )
+            evidence_id = source.evidence_id if source else "ev_unknown"
+            results.append(
+                CrossDocumentChangeWindowResult(
+                    candidate_id=window.candidate_id,
+                    proposals=[]
+                    if self._empty
+                    else [
+                        LegalChangeProposalEntry(
+                            earlier_population_id=self._earlier_id,
+                            later_population_id=self._later_id,
+                            change_type=OntologyLegalChangeType.Amendment,
+                            effective_on="2026-08-15",
+                            change_provision_path="Điều 3",
+                            evidence=[OntologyEvidenceReference(evidence_id=evidence_id)],
+                            rationale_vi="Văn bản sau trực tiếp sửa đổi đúng điều khoản của rule trước.",
+                        )
+                    ],
+                )
+            )
+        return tuple(results)
 
 
 def _propose(corpus: ChangeCorpus, client: _ChangeClient) -> tuple:
@@ -94,7 +101,7 @@ def test_proposal_preserves_complete_rules_and_binds_exact_change_evidence(
     assert first[0].evidence[0].exact_text == change_evidence_text
     assert client.inputs[0].earlier_records[0].consequences[0].minimum_amount == "3000000"
     assert client.inputs[0].later_records[0].consequences[0].maximum_amount == "6000000"
-    assert change_evidence_text in client.inputs[0].change_source_chunks[0].text
+    assert change_evidence_text in {item.text for item in client.inputs[0].change_evidence_sources}
 
 
 @pytest.mark.parametrize(
@@ -120,7 +127,7 @@ def test_proposal_rejects_paraphrased_change_evidence(change_corpus: ChangeCorpu
     with pytest.raises(LlmTaskExhaustedError) as error:
         _propose(change_corpus, _ChangeClient("Nội dung sửa đổi do mô hình diễn giải."))
 
-    assert "not exact source text" in str(error.value.__cause__)
+    assert "Unknown evidence reference" in str(error.value.__cause__)
 
 
 def test_empty_change_result_is_valid_and_checkpointed(

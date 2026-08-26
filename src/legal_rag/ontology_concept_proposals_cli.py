@@ -44,6 +44,10 @@ def main() -> None:
         write_concept_proposals,
         write_concept_reviews,
     )
+    from legal_rag.ontology_proposal_resume import (
+        load_compatible_proposal_resume_state,
+        replace_replayed_proposals,
+    )
     from legal_rag.settings import Settings
 
     arguments = _parser().parse_args()
@@ -53,8 +57,7 @@ def main() -> None:
     provider_settings = Settings.from_environment()
     concept_settings = ConceptResolutionSettings.from_path(arguments.concept_contract_path)
     candidates = read_concept_candidates(arguments.candidates_path)
-    corpus = read_change_corpus_manifest(arguments.corpus_manifest_path)
-    chunk_text_by_id = {chunk.chunk_id: chunk.text for document in corpus.documents for chunk in document.chunks}
+    read_change_corpus_manifest(arguments.corpus_manifest_path)
     run_id = build_concept_proposal_run_id(candidates.run_id, concept_settings, provider_settings)
     existing_proposals = (
         read_concept_proposals(arguments.proposals_output_path) if arguments.proposals_output_path.exists() else ()
@@ -62,26 +65,20 @@ def main() -> None:
     existing_progress = (
         read_concept_progress(arguments.progress_output_path) if arguments.progress_output_path.exists() else ()
     )
-    if any(item.run_id != run_id for item in existing_proposals) or any(
-        item.run_id != run_id for item in existing_progress
-    ):
-        msg = "Existing concept outputs belong to a different candidate, prompt, or model run"
-        raise ValueError(msg)
     candidate_ids = {item.candidate_id for item in candidates.pairs}
-    processed_ids = {item.candidate_id for item in existing_progress}
-    if not processed_ids <= candidate_ids:
-        msg = "Existing concept progress references unknown candidate pairs"
-        raise ValueError(msg)
-    proposals_by_id = {item.proposal_id: item for item in existing_proposals}
-    if len(proposals_by_id) != len(existing_proposals):
-        msg = "Existing concept proposal identifiers must be unique"
-        raise ValueError(msg)
+    proposals_by_id, processed_ids = load_compatible_proposal_resume_state(
+        existing_proposals,
+        existing_progress,
+        candidate_ids,
+        run_id,
+        workflow_label="concept",
+        candidate_scope="pairs",
+    )
     remaining = tuple(item for item in candidates.pairs if item.candidate_id not in processed_ids)
 
     def persist_batch(batch_results: Sequence[tuple[str, tuple[ConceptRelationProposal, ...]]]) -> None:
         """Persist proposals before marking candidate pairs complete."""
-        for _, proposals in batch_results:
-            proposals_by_id.update({item.proposal_id: item for item in proposals})
+        replace_replayed_proposals(proposals_by_id, batch_results)
         write_concept_proposals(arguments.proposals_output_path, tuple(proposals_by_id.values()))
         processed_ids.update(candidate_id for candidate_id, _ in batch_results)
         write_concept_progress(
@@ -98,7 +95,6 @@ def main() -> None:
         propose_concept_relations(
             remaining,
             candidates.occurrences,
-            chunk_text_by_id,
             client,
             concept_settings,
             run_id=run_id,

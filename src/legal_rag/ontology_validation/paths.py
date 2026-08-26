@@ -58,9 +58,24 @@ class OntologyPaths:
         return self.ontology_dir / "decisions" / "modeling_decisions.yaml"
 
     @property
+    def patterns(self) -> Path:
+        """Return the CQ-backed ontology-pattern manifest path."""
+        return self.ontology_dir / "patterns" / "ontology_patterns.yaml"
+
+    @property
+    def pilot_fixtures(self) -> Path:
+        """Return the ontology CQ fixture registry path."""
+        return self.ontology_dir / "tests" / "fixtures" / "pilot_cq_fixtures.yaml"
+
+    @property
     def semantic_qa_contract(self) -> Path:
         """Return the ontology semantic-QA contract path."""
         return self.ontology_dir / "semantic_qa_contract.yaml"
+
+    @property
+    def evolution_policy(self) -> Path:
+        """Return the ontology evolution policy path."""
+        return self.ontology_dir / "evolution_policy.yaml"
 
     @property
     def release_contract(self) -> Path:

@@ -85,6 +85,9 @@ def assembly_records(assembly_chunks: tuple[Chunk, Chunk]) -> tuple[OntologyPopu
         "valid_from": date(2025, 1, 1),
         "valid_to": None,
         "document_number": "168/2024/NĐ-CP",
+        "ontology_version": "0.2.0",
+        "ontology_semantic_sha256": "ontology-semantic-sha256",
+        "population_run_id": "population-run-id",
     }
     monetary = OntologyPopulationRecord(
         population_id="population-money",

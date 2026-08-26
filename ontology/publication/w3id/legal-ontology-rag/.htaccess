@@ -16,10 +16,10 @@ RewriteRule ^ontology/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/o
 
 # PUB-ROOT version
 RewriteCond %{HTTP_ACCEPT} (text/html|application/xhtml\+xml) [NC]
-RewriteRule ^ontology/0\.1\.0/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/index.html [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/index.html [R=303,L,NE]
 RewriteCond %{HTTP_ACCEPT} (text/turtle|application/x-turtle) [NC]
-RewriteRule ^ontology/0\.1\.0/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/ontology.ttl [R=303,L,NE]
-RewriteRule ^ontology/0\.1\.0/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/ontology.ttl [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/ontology.ttl [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/ontology.ttl [R=303,L,NE]
 
 # PUB-SOURCE canonical
 RewriteCond %{HTTP_ACCEPT} (text/html|application/xhtml\+xml) [NC]
@@ -30,10 +30,10 @@ RewriteRule ^ontology/source\-provenance/?$ https://vdat-18.github.io/legal-onto
 
 # PUB-SOURCE version
 RewriteCond %{HTTP_ACCEPT} (text/html|application/xhtml\+xml) [NC]
-RewriteRule ^ontology/0\.1\.0/source\-provenance/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/source-provenance/index.html [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/source\-provenance/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/source-provenance/index.html [R=303,L,NE]
 RewriteCond %{HTTP_ACCEPT} (text/turtle|application/x-turtle) [NC]
-RewriteRule ^ontology/0\.1\.0/source\-provenance/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/source-provenance/ontology.ttl [R=303,L,NE]
-RewriteRule ^ontology/0\.1\.0/source\-provenance/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/source-provenance/ontology.ttl [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/source\-provenance/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/source-provenance/ontology.ttl [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/source\-provenance/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/source-provenance/ontology.ttl [R=303,L,NE]
 
 # PUB-OCCURRENCE canonical
 RewriteCond %{HTTP_ACCEPT} (text/html|application/xhtml\+xml) [NC]
@@ -44,10 +44,10 @@ RewriteRule ^ontology/occurrence\-context/?$ https://vdat-18.github.io/legal-ont
 
 # PUB-OCCURRENCE version
 RewriteCond %{HTTP_ACCEPT} (text/html|application/xhtml\+xml) [NC]
-RewriteRule ^ontology/0\.1\.0/occurrence\-context/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/occurrence-context/index.html [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/occurrence\-context/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/occurrence-context/index.html [R=303,L,NE]
 RewriteCond %{HTTP_ACCEPT} (text/turtle|application/x-turtle) [NC]
-RewriteRule ^ontology/0\.1\.0/occurrence\-context/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/occurrence-context/ontology.ttl [R=303,L,NE]
-RewriteRule ^ontology/0\.1\.0/occurrence\-context/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/occurrence-context/ontology.ttl [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/occurrence\-context/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/occurrence-context/ontology.ttl [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/occurrence\-context/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/occurrence-context/ontology.ttl [R=303,L,NE]
 
 # PUB-TEMPORAL canonical
 RewriteCond %{HTTP_ACCEPT} (text/html|application/xhtml\+xml) [NC]
@@ -58,10 +58,10 @@ RewriteRule ^ontology/temporal\-change/?$ https://vdat-18.github.io/legal-ontolo
 
 # PUB-TEMPORAL version
 RewriteCond %{HTTP_ACCEPT} (text/html|application/xhtml\+xml) [NC]
-RewriteRule ^ontology/0\.1\.0/temporal\-change/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/temporal-change/index.html [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/temporal\-change/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/temporal-change/index.html [R=303,L,NE]
 RewriteCond %{HTTP_ACCEPT} (text/turtle|application/x-turtle) [NC]
-RewriteRule ^ontology/0\.1\.0/temporal\-change/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/temporal-change/ontology.ttl [R=303,L,NE]
-RewriteRule ^ontology/0\.1\.0/temporal\-change/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/temporal-change/ontology.ttl [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/temporal\-change/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/temporal-change/ontology.ttl [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/temporal\-change/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/temporal-change/ontology.ttl [R=303,L,NE]
 
 # PUB-NORMATIVE canonical
 RewriteCond %{HTTP_ACCEPT} (text/html|application/xhtml\+xml) [NC]
@@ -72,10 +72,10 @@ RewriteRule ^ontology/normative\-rule/?$ https://vdat-18.github.io/legal-ontolog
 
 # PUB-NORMATIVE version
 RewriteCond %{HTTP_ACCEPT} (text/html|application/xhtml\+xml) [NC]
-RewriteRule ^ontology/0\.1\.0/normative\-rule/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/normative-rule/index.html [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/normative\-rule/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/normative-rule/index.html [R=303,L,NE]
 RewriteCond %{HTTP_ACCEPT} (text/turtle|application/x-turtle) [NC]
-RewriteRule ^ontology/0\.1\.0/normative\-rule/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/normative-rule/ontology.ttl [R=303,L,NE]
-RewriteRule ^ontology/0\.1\.0/normative\-rule/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/normative-rule/ontology.ttl [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/normative\-rule/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/normative-rule/ontology.ttl [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/normative\-rule/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/normative-rule/ontology.ttl [R=303,L,NE]
 
 # PUB-CONSEQUENCE canonical
 RewriteCond %{HTTP_ACCEPT} (text/html|application/xhtml\+xml) [NC]
@@ -86,10 +86,10 @@ RewriteRule ^ontology/legal\-consequence/?$ https://vdat-18.github.io/legal-onto
 
 # PUB-CONSEQUENCE version
 RewriteCond %{HTTP_ACCEPT} (text/html|application/xhtml\+xml) [NC]
-RewriteRule ^ontology/0\.1\.0/legal\-consequence/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/legal-consequence/index.html [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/legal\-consequence/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/legal-consequence/index.html [R=303,L,NE]
 RewriteCond %{HTTP_ACCEPT} (text/turtle|application/x-turtle) [NC]
-RewriteRule ^ontology/0\.1\.0/legal\-consequence/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/legal-consequence/ontology.ttl [R=303,L,NE]
-RewriteRule ^ontology/0\.1\.0/legal\-consequence/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.1.0/legal-consequence/ontology.ttl [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/legal\-consequence/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/legal-consequence/ontology.ttl [R=303,L,NE]
+RewriteRule ^ontology/0\.2\.0/legal\-consequence/?$ https://vdat-18.github.io/legal-ontology-rag/ontology/0.2.0/legal-consequence/ontology.ttl [R=303,L,NE]
 
 # PUB-SHAPES canonical
 RewriteCond %{HTTP_ACCEPT} (text/html|application/xhtml\+xml) [NC]
@@ -100,10 +100,10 @@ RewriteRule ^shapes/?$ https://vdat-18.github.io/legal-ontology-rag/shapes/ontol
 
 # PUB-SHAPES version
 RewriteCond %{HTTP_ACCEPT} (text/html|application/xhtml\+xml) [NC]
-RewriteRule ^shapes/0\.5\.0/?$ https://vdat-18.github.io/legal-ontology-rag/shapes/0.5.0/index.html [R=303,L,NE]
+RewriteRule ^shapes/0\.6\.0/?$ https://vdat-18.github.io/legal-ontology-rag/shapes/0.6.0/index.html [R=303,L,NE]
 RewriteCond %{HTTP_ACCEPT} (text/turtle|application/x-turtle) [NC]
-RewriteRule ^shapes/0\.5\.0/?$ https://vdat-18.github.io/legal-ontology-rag/shapes/0.5.0/ontology.ttl [R=303,L,NE]
-RewriteRule ^shapes/0\.5\.0/?$ https://vdat-18.github.io/legal-ontology-rag/shapes/0.5.0/ontology.ttl [R=303,L,NE]
+RewriteRule ^shapes/0\.6\.0/?$ https://vdat-18.github.io/legal-ontology-rag/shapes/0.6.0/ontology.ttl [R=303,L,NE]
+RewriteRule ^shapes/0\.6\.0/?$ https://vdat-18.github.io/legal-ontology-rag/shapes/0.6.0/ontology.ttl [R=303,L,NE]
 
 # Unknown identifiers remain unresolved instead of falling through to an unrelated resource.
 RewriteRule ^ - [R=404,L]

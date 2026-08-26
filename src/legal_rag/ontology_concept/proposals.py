@@ -7,8 +7,6 @@ from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from typing import Protocol
 
-from baml_py.logging import set_log_level
-
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import (
     ConceptRelationProposalEntry,
@@ -16,9 +14,9 @@ from legal_rag.baml_client.types import (
     ConceptResolutionPairResult,
     OntologyConceptKind,
     OntologyConceptOccurrenceInput,
-    OntologyEvidenceEntry,
+    OntologyEvidenceSource,
 )
-from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.baml_transport import BamlCaller
 from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
 from legal_rag.ontology_concept.config import ConceptResolutionSettings
 from legal_rag.ontology_concept.models import (
@@ -26,6 +24,7 @@ from legal_rag.ontology_concept.models import (
     ConceptOccurrence,
     ConceptRelationProposal,
 )
+from legal_rag.ontology_population.evidence import population_evidence_sources
 from legal_rag.ontology_population.extraction import bind_population_evidence
 from legal_rag.ontology_population.models import population_identity
 from legal_rag.settings import Settings
@@ -53,17 +52,12 @@ class BamlConceptProposalClient:
 
     def __init__(self, settings: Settings, concept_settings: ConceptResolutionSettings) -> None:
         """Create a bounded runtime BAML client."""
-        set_log_level("OFF")
-        self._registry = build_client_registry(
-            base_url=settings.llm_base_url,
-            api_key=settings.llm_api_key,
-            model=settings.llm_model,
+        self._caller = BamlCaller.from_settings(
+            settings,
             max_output_tokens=concept_settings.max_output_tokens,
             temperature=concept_settings.temperature,
-            timeout_seconds=settings.llm_timeout_seconds,
+            max_response_bytes=concept_settings.max_response_bytes,
         )
-        self._timeout_seconds = settings.llm_timeout_seconds
-        self._max_response_bytes = concept_settings.max_response_bytes
         self._model = settings.llm_model
 
     @property
@@ -73,11 +67,9 @@ class BamlConceptProposalClient:
 
     def propose_batch(self, pairs: Sequence[ConceptResolutionPairInput]) -> Sequence[ConceptResolutionPairResult]:
         """Run one bounded BAML call over concept pairs."""
-        request = b.request.ProposeOntologyConceptRelations(
-            list(pairs), baml_options={"client_registry": self._registry}
-        )
-        raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        return b.parse.ProposeOntologyConceptRelations(raw_output, baml_options={"client_registry": self._registry})
+        request = b.request.ProposeOntologyConceptRelations(list(pairs), baml_options=self._caller.options)
+        raw_output = self._caller.execute(request)
+        return b.parse.ProposeOntologyConceptRelations(raw_output, baml_options=self._caller.options)
 
 
 def build_concept_proposal_run_id(
@@ -95,6 +87,7 @@ def build_concept_proposal_run_id(
             "temperature": concept_settings.temperature,
             "llm_base_url": settings.llm_base_url,
             "llm_model": settings.llm_model,
+            "llm_extra_request_body": dict(settings.llm_extra_request_body),
         }
     )
 
@@ -102,7 +95,6 @@ def build_concept_proposal_run_id(
 def propose_concept_relations(
     pairs: Sequence[ConceptCandidatePair],
     occurrences: Sequence[ConceptOccurrence],
-    chunk_text_by_id: Mapping[str, str],
     client: ConceptProposalClient,
     settings: ConceptResolutionSettings,
     *,
@@ -123,7 +115,6 @@ def propose_concept_relations(
                 inputs,
                 batch,
                 occurrences_by_id,
-                chunk_text_by_id,
                 settings,
                 run_id,
             ),
@@ -142,7 +133,6 @@ def _build_batch_proposals(
     inputs: Sequence[ConceptResolutionPairInput],
     pairs: Sequence[ConceptCandidatePair],
     occurrences_by_id: Mapping[str, ConceptOccurrence],
-    chunk_text_by_id: Mapping[str, str],
     settings: ConceptResolutionSettings,
     run_id: str,
 ) -> tuple[tuple[str, tuple[ConceptRelationProposal, ...]], ...]:
@@ -154,6 +144,7 @@ def _build_batch_proposals(
         msg = "Concept response must contain exactly one result per candidate pair"
         raise ValueError(msg)
     results_by_id = {item.candidate_id: item for item in results}
+    inputs_by_id = {item.candidate_id: item for item in inputs}
     pairs_by_id = {item.candidate_id: item for item in pairs}
     translated = []
     for candidate_id in requested_ids:
@@ -164,8 +155,9 @@ def _build_batch_proposals(
         pair = pairs_by_id[candidate_id]
         left = occurrences_by_id[pair.left_occurrence_id]
         right = occurrences_by_id[pair.right_occurrence_id]
-        left_evidence = _bind_occurrence_evidence(raw, left, chunk_text_by_id, side="left")
-        right_evidence = _bind_occurrence_evidence(raw, right, chunk_text_by_id, side="right")
+        pair_input = inputs_by_id[candidate_id]
+        left_evidence = _bind_occurrence_evidence(raw, left, pair_input.left.evidence, side="left")
+        right_evidence = _bind_occurrence_evidence(raw, right, pair_input.right.evidence, side="right")
         relation = raw.relation.value
         if relation == "SameConcept":
             if raw.preferred_label_vi not in {left.label_vi, right.label_vi}:
@@ -213,13 +205,13 @@ def _build_batch_proposals(
 def _bind_occurrence_evidence(
     raw: ConceptRelationProposalEntry,
     occurrence: ConceptOccurrence,
-    chunk_text_by_id: Mapping[str, str],
+    evidence_sources: Sequence[OntologyEvidenceSource],
     *,
     side: str,
 ) -> tuple:
     """Bind one proposal side to exact evidence owned by that occurrence."""
     raw_evidence = raw.left_evidence if side == "left" else raw.right_evidence
-    evidence = bind_population_evidence(raw_evidence, chunk_text_by_id)
+    evidence = bind_population_evidence(raw_evidence, evidence_sources)
     if not evidence or not set(evidence) <= set(occurrence.evidence):
         msg = f"Concept {side} evidence must belong to its supplied occurrence"
         raise ValueError(msg)
@@ -247,9 +239,7 @@ def _occurrence_input(occurrence: ConceptOccurrence) -> OntologyConceptOccurrenc
         population_id=occurrence.population_id,
         document_number=occurrence.document_number,
         provision_path=occurrence.provision_path,
-        evidence=[
-            OntologyEvidenceEntry(chunk_id=item.chunk_id, quoted_span=item.exact_text) for item in occurrence.evidence
-        ],
+        evidence=list(population_evidence_sources(occurrence.evidence)),
     )
 
 
