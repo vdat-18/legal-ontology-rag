@@ -54,9 +54,18 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     Reading window:
     - Target là chunk cần trích và phải chứa một phần source text trực
       tiếp cho mỗi fact.
-    - Các chunk context chỉ hoàn chỉnh quy định bị chia, lược chủ thể
-      hoặc tiếp nối; không tạo fact có nội dung pháp lý đặc trưng chỉ
-      xuất hiện ngoài Target.
+    - Mỗi fact thuộc về Target chứa nội dung pháp lý đặc trưng của quy
+      tắc như hành vi, chủ thể, điều kiện, ngoại lệ hoặc hậu quả; tiêu
+      đề, câu dẫn, đánh số hay dẫn chiếu chung không đủ để sở hữu fact.
+    - Dùng Preceding khi Target bắt đầu giữa câu, khoản hoặc danh sách
+      để khôi phục đầy đủ chủ thể, quy tắc chung, điều kiện và các phần
+      không thể tách. Không trả một phần tiếp nối làm thay đổi hoặc bỏ
+      sót phạm vi của quy tắc hoàn chỉnh.
+    - Chỉ dùng Following để khép lại câu, khoản hoặc danh sách đã có
+      nội dung pháp lý đặc trưng trong Target. Nếu Target chỉ giới
+      thiệu quy tắc hoặc danh sách còn nội dung đặc trưng bắt đầu ở
+      Following thì không trích nội dung đó cho Target.
+    - Không trích lại cùng một quy tắc dưới dạng gộp và dạng tách.
     - Structural context chỉ giúp hiểu cấu trúc, không phải source text.
 
     Output contract:
@@ -74,8 +83,9 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     - Trả đúng một kết quả cho mỗi input, giữ nguyên target_chunk_id;
       facts=[] là hợp lệ.
 
-    Tự kiểm tra: mỗi fact neo vào Target, statement tự đủ nghĩa, không
-    trộn quy định và evidence phủ toàn bộ statement.
+    Tự kiểm tra: Target sở hữu nội dung đặc trưng của fact; statement
+    tự đủ nghĩa, không thiếu phần đầu của quy tắc, không trích sang
+    Following và không lặp quy định; evidence phủ toàn bộ statement.
 
     {{ _.role("user") }}
 
