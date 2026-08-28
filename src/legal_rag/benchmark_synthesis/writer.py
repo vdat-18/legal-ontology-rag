@@ -43,6 +43,14 @@ from legal_rag.benchmark_synthesis.fact_extraction import (
     ExtractionProgressRecord,
 )
 from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.multi_hop_3 import (
+    MULTI_HOP_3_BUNDLE_SCHEMA_VERSION,
+    MULTI_HOP_3_CANDIDATE_SET_SCHEMA_VERSION,
+    MULTI_HOP_3_PROGRESS_SCHEMA_VERSION,
+    ConfirmedMultiHop3Bundle,
+    MultiHop3CandidateSet,
+    MultiHop3ProgressRecord,
+)
 from legal_rag.benchmark_synthesis.scenario_sampling import SCENARIO_SCHEMA_VERSION, Scenario
 from legal_rag.io_utils import write_json_atomic, write_jsonl_atomic
 
@@ -240,6 +248,79 @@ def read_evidence_relation_progress(input_path: Path) -> tuple[EvidenceRelationP
 def write_scenarios(output_path: Path, scenarios: Sequence[Scenario]) -> None:
     """Atomically replace one UTF-8 JSONL output with scenario records."""
     write_jsonl_atomic(output_path, (scenario.to_dict() for scenario in scenarios))
+
+
+def write_multi_hop_3_candidate_set(output_path: Path, candidate_set: MultiHop3CandidateSet) -> None:
+    """Atomically replace one multi-hop-3 candidate cache."""
+    write_json_atomic(output_path, candidate_set.to_dict())
+
+
+def read_multi_hop_3_candidate_set(input_path: Path) -> MultiHop3CandidateSet:
+    """Read and validate one multi-hop-3 candidate cache."""
+    payload = json.loads(input_path.read_text(encoding="utf-8"))
+    if payload["schema_version"] != MULTI_HOP_3_CANDIDATE_SET_SCHEMA_VERSION:
+        msg = f"Unsupported multi-hop-3 candidate schema: {payload['schema_version']}"
+        raise ValueError(msg)
+    triples = tuple(tuple(triple) for triple in payload["triples"])
+    if any(len(triple) != 3 or tuple(sorted(set(triple))) != triple for triple in triples):
+        msg = "Multi-hop-3 candidates must contain canonical distinct fact-id triples"
+        raise ValueError(msg)
+    if len(triples) != len(set(triples)):
+        msg = "Multi-hop-3 candidates must be unique"
+        raise ValueError(msg)
+    return MultiHop3CandidateSet(run_id=payload["run_id"], triples=triples)
+
+
+def write_multi_hop_3_bundles(output_path: Path, bundles: Sequence[ConfirmedMultiHop3Bundle]) -> None:
+    """Atomically replace one confirmed multi-hop-3 bundle output."""
+    write_jsonl_atomic(output_path, (bundle.to_dict() for bundle in bundles))
+
+
+def read_multi_hop_3_bundles(input_path: Path) -> tuple[ConfirmedMultiHop3Bundle, ...]:
+    """Read confirmed multi-hop-3 bundles."""
+    bundles: list[ConfirmedMultiHop3Bundle] = []
+    with input_path.open(encoding="utf-8") as source_file:
+        for line in source_file:
+            payload = json.loads(line)
+            if payload["schema_version"] != MULTI_HOP_3_BUNDLE_SCHEMA_VERSION:
+                msg = f"Unsupported multi-hop-3 bundle schema: {payload['schema_version']}"
+                raise ValueError(msg)
+            bundles.append(
+                ConfirmedMultiHop3Bundle(
+                    bundle_id=payload["bundle_id"],
+                    fact_ids=tuple(payload["fact_ids"]),
+                    bridge=payload["bridge"],
+                    confirmed_by_model=payload["confirmed_by_model"],
+                    run_id=payload["run_id"],
+                    prompt_version=payload["prompt_version"],
+                )
+            )
+    return tuple(bundles)
+
+
+def write_multi_hop_3_progress(output_path: Path, records: Sequence[MultiHop3ProgressRecord]) -> None:
+    """Atomically replace one multi-hop-3 progress output."""
+    write_jsonl_atomic(output_path, (record.to_dict() for record in records))
+
+
+def read_multi_hop_3_progress(input_path: Path) -> tuple[MultiHop3ProgressRecord, ...]:
+    """Read multi-hop-3 confirmation progress."""
+    records: list[MultiHop3ProgressRecord] = []
+    with input_path.open(encoding="utf-8") as source_file:
+        for line in source_file:
+            payload = json.loads(line)
+            if payload["schema_version"] != MULTI_HOP_3_PROGRESS_SCHEMA_VERSION:
+                msg = f"Unsupported multi-hop-3 progress schema: {payload['schema_version']}"
+                raise ValueError(msg)
+            records.append(
+                MultiHop3ProgressRecord(
+                    candidate_id=payload["candidate_id"],
+                    run_id=payload["run_id"],
+                    prompt_version=payload["prompt_version"],
+                    confirmed_by_model=payload.get("confirmed_by_model"),
+                )
+            )
+    return tuple(records)
 
 
 def read_scenarios(input_path: Path) -> tuple[Scenario, ...]:

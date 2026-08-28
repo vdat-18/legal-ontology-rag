@@ -73,12 +73,15 @@ def _validate_resume_state(
     existing_relations: Sequence[EvidenceRelation],
     existing_progress: Sequence[EvidenceRelationProgressRecord],
     candidate_pairs: Sequence[tuple[str, str]],
+    relation_run_id: str,
     reconfirm_pairs: frozenset[tuple[str, str]],
 ) -> tuple[
     dict[str, EvidenceRelation],
     dict[tuple[str, str], EvidenceRelationProgressRecord],
 ]:
     """Validate persisted relation state and return mutable resume indexes."""
+    from legal_rag.benchmark_synthesis.evidence_graph import EVIDENCE_RELATION_PROMPT_VERSION
+
     relations_by_id = {relation.relation_id: relation for relation in existing_relations}
     if len(relations_by_id) != len(existing_relations):
         msg = "Existing evidence relations contain duplicate relation IDs"
@@ -91,6 +94,14 @@ def _validate_resume_state(
     if not progress_by_pair.keys() <= candidate_pair_set:
         msg = "Evidence-relation progress contains pairs outside the current candidate set"
         raise ValueError(msg)
+    if not reconfirm_pairs and any(
+        record.run_id != relation_run_id
+        and record.prompt_version == EVIDENCE_RELATION_PROMPT_VERSION
+        and record.confirmed_by_model is None
+        for record in existing_progress
+    ):
+        msg = "Existing evidence-relation progress belongs to a different synthesis run"
+        raise ValueError(msg)
     existing_relation_pairs = {relation.fact_ids for relation in existing_relations}
     if len(existing_relation_pairs) != len(existing_relations):
         msg = "Existing evidence relations contain multiple results for one candidate pair"
@@ -98,10 +109,14 @@ def _validate_resume_state(
     if not existing_relation_pairs <= candidate_pair_set:
         msg = "Evidence relations contain pairs outside the current candidate set"
         raise ValueError(msg)
-    if not existing_relation_pairs <= progress_by_pair.keys():
-        msg = "Every evidence relation must have a matching progress record"
+    orphan_relations = tuple(relation for relation in existing_relations if relation.fact_ids not in progress_by_pair)
+    if any(relation.run_id != relation_run_id for relation in orphan_relations):
+        msg = "Existing evidence relations belong to a different synthesis run"
         raise ValueError(msg)
-    _validate_relation_provenance(existing_relations, progress_by_pair)
+    _validate_relation_provenance(
+        tuple(relation for relation in existing_relations if relation.fact_ids in progress_by_pair),
+        progress_by_pair,
+    )
 
     if reconfirm_pairs:
         from legal_rag.benchmark_synthesis.evidence_relation_selection import validate_selective_confirmation
@@ -325,6 +340,7 @@ def main() -> None:
         existing_relations,
         existing_progress,
         candidate_pairs,
+        relation_run_id,
         reconfirm_pairs,
     )
     if reconfirm_pairs:

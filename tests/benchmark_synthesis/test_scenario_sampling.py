@@ -150,6 +150,36 @@ def test_sample_scenarios_sets_reasoning_hops_and_gold_chunks_from_bundle() -> N
     assert scenario.gold_chunk_ids == ("chunk-a", "chunk-b")
 
 
+def test_sample_scenarios_balances_two_and_three_fact_multi_hop_bundles() -> None:
+    """Multi-hop sampling covers both reasoning depths evenly when both are available."""
+    facts_by_id = {fact_id: _fact(fact_id) for fact_id in ("a", "b", "c", "d", "e")}
+    bundles = [
+        _bundle("multi-hop-2", ("a", "b"), kind="multi_hop"),
+        _bundle("multi-hop-3", ("c", "d", "e"), kind="multi_hop"),
+    ]
+
+    scenarios = _sample_scenarios(bundles, facts_by_id, _config(), total_samples=4)
+
+    assert [scenario.reasoning_hops for scenario in scenarios].count(2) == 2
+    assert [scenario.reasoning_hops for scenario in scenarios].count(3) == 2
+
+
+def test_sample_scenarios_does_not_overuse_scarce_three_fact_bundles() -> None:
+    """A scarce reasoning depth is used once before another depth's unused bundles are repeated."""
+    facts_by_id = {fact_id: _fact(fact_id) for fact_id in ("a", "b", "c", "d", "e", "f")}
+    bundles = [
+        _bundle("multi-hop-2-a", ("a", "b"), kind="multi_hop"),
+        _bundle("multi-hop-2-b", ("c", "d"), kind="multi_hop"),
+        _bundle("multi-hop-2-c", ("e", "f"), kind="multi_hop"),
+        _bundle("multi-hop-3", ("a", "c", "e"), kind="multi_hop"),
+    ]
+
+    scenarios = _sample_scenarios(bundles, facts_by_id, _config(), total_samples=4)
+
+    assert [scenario.reasoning_hops for scenario in scenarios].count(2) == 3
+    assert [scenario.reasoning_hops for scenario in scenarios].count(3) == 1
+
+
 def test_sample_scenarios_prioritizes_unused_persona_bundle_pairing() -> None:
     """Each sample gets a different persona for one bundle until personas are exhausted."""
     facts_by_id = {"a": _fact("a")}

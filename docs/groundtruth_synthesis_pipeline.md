@@ -264,6 +264,35 @@ Các relation đã xác nhận được chuyển thành:
 - `multi_hop` bundle: hai fact bổ sung trực tiếp cho cùng câu hỏi;
 - `temporal` bundle: hai fact thể hiện thay đổi hoặc chế độ hiệu lực khác nhau.
 
+Để tạo multi-hop sâu hơn mà không làm pair confirmation phát sinh thêm chi
+phí mặc định, chạy Step 4B riêng:
+
+```powershell
+uv run legal-build-multi-hop-3-bundles `
+  data/benchmark_synthesis/legal_facts.jsonl `
+  data/benchmark_synthesis/evidence_relations.jsonl `
+  data/benchmark_synthesis/multi_hop_3_bundles.jsonl `
+  data/benchmark_synthesis/multi_hop_3_progress.jsonl `
+  data/benchmark_synthesis/scenarios.jsonl `
+  --candidate-cache data/benchmark_synthesis/multi_hop_3_candidates.json `
+  --personas data/config/groundtruth/personas.json `
+  --scenario-distribution data/config/groundtruth/scenario_distribution.json `
+  --total-samples 1000 `
+  --synthesis-config data/config/groundtruth/synthesis_v1.json
+```
+
+Step 4B tạo các đường nối ba fact `A-B-C` chỉ từ relation `multi_hop` đã
+xác nhận. Candidate được lấy round-robin theo fact trung tâm và giới hạn bởi
+config để node có bậc lớn không chiếm toàn bộ ngân sách. LLM sau đó kiểm tra
+phép loại bỏ: bundle chỉ được giữ khi bỏ bất kỳ fact nào cũng khiến câu trả
+lời không còn đầy đủ. Progress checkpoint theo candidate và hỗ trợ selective
+rerun bằng `--reconfirm-candidate-id` hoặc `--reconfirm-candidate-ids`.
+
+Bundle được xác nhận vẫn có `bundle_kind=multi_hop`, nhưng chứa ba `fact_ids`
+và tạo scenario có `reasoning_hops=3`. Scenario sampling cân bằng bundle
+multi-hop hai và ba facts trong phạm vi bundle chưa dùng; nếu bundle ba facts
+ít, chúng không bị lặp chỉ để ép tỷ lệ bằng nhau.
+
 `bridge` là một string do LLM tạo, không phải danh sách nhãn hoặc số Điều.
 Không còn bundle kind `synthesis` và không suy luận loại bundle từ việc hai
 fact cùng hay khác văn bản.
@@ -401,9 +430,9 @@ fact IDs vẫn được giữ để phân tích theo lát cắt.
   run ID trực tiếp trong cache và progress.
 - Cấu hình synthesis nằm tại
   `data/config/groundtruth/synthesis_v1.json`.
-- Synthesis config hiện dùng schema `5.0.0`; mỗi LLM stage khai báo rõ
+- Synthesis config hiện dùng schema `5.2.0`; mỗi LLM stage khai báo rõ
   `reasoning_effort`, hiện đặt là `medium`.
-- `LegalFact 3.0.0`, `EvidenceRelation 3.0.0` và `Scenario 4.0.0` vẫn dùng lại
+- `LegalFact 3.0.0`, `EvidenceRelation 3.1.0` và `Scenario 4.0.0` vẫn dùng lại
   được nếu đã được sinh bởi Steps 1-5 hiện tại.
 - `Candidate 6.0.0`, `CandidateProgress 5.0.0` và `GroundTruth 5.0.0` không
   tương thích với artifact Step 6-7 cũ; cần chạy lại Step 6 và Step 7, không

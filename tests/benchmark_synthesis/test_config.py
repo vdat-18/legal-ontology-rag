@@ -40,6 +40,11 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.fact_extraction.reasoning_effort == "medium"
     assert settings.evidence_relation_batch_size == 10
     assert settings.evidence_relation_max_concurrency == 20
+    assert settings.multi_hop_3_candidate_limit == 3000
+    assert settings.multi_hop_3_batch_size == 10
+    assert settings.multi_hop_3_max_concurrency == 20
+    assert settings.multi_hop_3.max_output_tokens == 8192
+    assert settings.multi_hop_3.reasoning_effort == "medium"
     assert settings.candidate_generation_batch_size == 5
     assert settings.candidate_generation_max_concurrency == 10
     assert settings.evidence_retrieval.retrieval_pool_size == 30
@@ -121,6 +126,16 @@ def test_synthesis_settings_reject_non_positive_evidence_relation_max_concurrenc
 
     with pytest.raises(ValueError, match="evidence_relation_max_concurrency must be positive"):
         replace(settings, evidence_relation_max_concurrency=0)
+
+
+def test_synthesis_settings_reject_non_positive_multi_hop_3_limits() -> None:
+    """Three-fact candidate and execution bounds must remain positive."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+
+    with pytest.raises(ValueError, match="multi_hop_3_candidate_limit must be positive"):
+        replace(settings, multi_hop_3_candidate_limit=0)
+    with pytest.raises(ValueError, match="multi_hop_3_max_concurrency must be positive"):
+        replace(settings, multi_hop_3_max_concurrency=0)
 
 
 def test_synthesis_settings_reject_non_positive_candidate_generation_max_concurrency() -> None:

@@ -132,12 +132,13 @@ def sample_scenarios(
         "query_form": Counter(),
         "answerability": Counter(),
     }
-    bundles_by_kind: dict[BundleKind, list[tuple[EvidenceBundle, tuple[LegalFact, ...]]]] = {}
+    bundles_by_kind: dict[BundleKind, dict[int, list[tuple[EvidenceBundle, tuple[LegalFact, ...]]]]] = {}
     for bundle in bundles:
         facts = tuple(facts_by_id[fact_id] for fact_id in bundle.fact_ids)
-        bundles_by_kind.setdefault(bundle.kind, []).append((bundle, facts))
-    for kind_bundles in bundles_by_kind.values():
-        kind_bundles.sort(key=lambda item: item[0].bundle_id)
+        bundles_by_kind.setdefault(bundle.kind, {}).setdefault(len(bundle.fact_ids), []).append((bundle, facts))
+    for bundles_by_hops in bundles_by_kind.values():
+        for hop_bundles in bundles_by_hops.values():
+            hop_bundles.sort(key=lambda item: item[0].bundle_id)
     weighted_kinds = tuple(
         (kind, weight)
         for kind, weight in config.distribution.bundle_kind_weights
@@ -148,7 +149,8 @@ def sample_scenarios(
 
     scenarios: list[Scenario] = []
     kind_usage: Counter[BundleKind] = Counter()
-    bundle_offsets: Counter[BundleKind] = Counter()
+    hop_usage: Counter[tuple[BundleKind, int]] = Counter()
+    bundle_offsets: Counter[tuple[BundleKind, int]] = Counter()
     bundle_attempts: Counter[str] = Counter()
     kind_order = {kind: index for index, (kind, _weight) in enumerate(weighted_kinds)}
     weights = dict(weighted_kinds)
@@ -158,9 +160,18 @@ def sample_scenarios(
             weights,
             key=lambda kind: (kind_usage[kind] / weights[kind], kind_order[kind]),
         )
-        kind_bundles = bundles_by_kind[bundle_kind]
-        bundle, facts = kind_bundles[bundle_offsets[bundle_kind] % len(kind_bundles)]
-        bundle_offsets[bundle_kind] += 1
+        bundles_by_hops = bundles_by_kind[bundle_kind]
+        unused_hops = tuple(
+            hops for hops, hop_bundles in bundles_by_hops.items() if hop_usage[(bundle_kind, hops)] < len(hop_bundles)
+        )
+        reasoning_hops = min(
+            unused_hops or bundles_by_hops,
+            key=lambda hops: (hop_usage[(bundle_kind, hops)], hops),
+        )
+        hop_bundles = bundles_by_hops[reasoning_hops]
+        offset_key = (bundle_kind, reasoning_hops)
+        bundle, facts = hop_bundles[bundle_offsets[offset_key] % len(hop_bundles)]
+        bundle_offsets[offset_key] += 1
         attempt_index = bundle_attempts[bundle.bundle_id]
         bundle_attempts[bundle.bundle_id] += 1
 
@@ -177,6 +188,7 @@ def sample_scenarios(
 
         used_persona_bundle_pairs.add((persona, bundle.bundle_id))
         kind_usage[bundle_kind] += 1
+        hop_usage[offset_key] += 1
         usage_counts["persona"][persona] += 1
         usage_counts["query_style"][query_style] += 1
         usage_counts["query_length"][query_length] += 1

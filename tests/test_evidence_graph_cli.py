@@ -391,6 +391,7 @@ def test_evidence_graph_cli_does_not_recheck_a_pair_confirmed_unrelated(
             fact_id_a="fact-a",
             fact_id_b="fact-b",
             run_id=_relation_run_id([fact_a, fact_b]),
+            confirmed_by_model="provider/test-model",
         ),
     )
 

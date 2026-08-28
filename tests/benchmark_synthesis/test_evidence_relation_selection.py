@@ -75,6 +75,7 @@ def test_validate_resume_state_invalidates_only_selected_pair() -> None:
         relations,
         progress,
         (selected, retained),
+        "current-run",
         frozenset({selected}),
     )
 
