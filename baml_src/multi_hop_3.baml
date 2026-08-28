@@ -66,6 +66,10 @@ function ConfirmMultiHop3BundleBatch(items: MultiHop3BundleBatchItem[]) -> Multi
       thể/phương tiện không thể đồng thời đúng trong một tình huống.
     - Hai facts đã đủ và fact còn lại chỉ diễn giải, lặp lại hoặc cung cấp
       ví dụ khác.
+    - Một fact chỉ xác nhận trạng thái nền hoặc tính hợp pháp chung nhưng
+      không làm thay đổi điều kiện, chế tài hay kết luận khi áp dụng hai
+      facts còn lại. Việc ba facts nói về cùng một phương tiện hoặc giấy
+      tờ không đủ tạo thành quan hệ multi-hop-3.
     - Chủ thể, phương tiện, điều kiện, phạm vi hoặc thời gian không thể
       kết hợp thành cùng một vấn đề pháp lý nhất quán.
     - Nội dung chủ yếu là so sánh quy định theo thời gian; trường hợp đó

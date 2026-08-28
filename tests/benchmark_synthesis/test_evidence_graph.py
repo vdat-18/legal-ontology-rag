@@ -26,7 +26,21 @@ from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.embedding.profiles import load_configured_embedding_profile
 from legal_rag.settings import Settings
 
+_EVIDENCE_RELATION_PROMPT_PATH = Path(__file__).resolve().parents[2] / "baml_src" / "evidence_relations.baml"
+
 _SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
+
+
+def test_evidence_relation_prompt_enforces_bridge_language_and_temporal_scope() -> None:
+    """The relation prompt guards known bridge and relation-kind failure modes."""
+    prompt = _EVIDENCE_RELATION_PROMPT_PATH.read_text(encoding="utf-8")
+
+    assert "một câu tiếng Việt tự nhiên" in prompt
+    assert 'Không nhắc "Fact A", "Fact B"' in prompt
+    assert "giữa quy định cũ và mới" in prompt
+    assert "chuyển tiếp" in prompt
+    assert "việc được miễn một nghĩa vụ không tự động có nghĩa" in prompt
+    assert "suy luận chưa được hai statement" in prompt
 
 
 def _fact(

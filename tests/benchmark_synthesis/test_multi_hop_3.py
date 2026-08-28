@@ -27,7 +27,7 @@ from legal_rag.benchmark_synthesis.writer import (
     write_multi_hop_3_candidate_set,
     write_multi_hop_3_progress,
 )
-from legal_rag.multi_hop_3_cli import _validate_resume_state
+from legal_rag.multi_hop_3_cli import _load_or_create_candidates, _validate_resume_state
 from legal_rag.settings import Settings
 
 _PROMPT_PATH = Path(__file__).resolve().parents[2] / "baml_src" / "multi_hop_3.baml"
@@ -40,6 +40,7 @@ def test_multi_hop_3_prompt_requires_one_concrete_compositional_case() -> None:
     assert "MỘT tình huống cụ thể" in prompt
     assert "Ít nhất hai bước nối phải có phụ thuộc nội dung" in prompt
     assert "những nhánh điều kiện loại trừ nhau" in prompt
+    assert "chỉ xác nhận trạng thái nền hoặc tính hợp pháp chung" in prompt
     assert "Chỉ dùng tiếng Việt" in prompt
 
 
@@ -268,3 +269,82 @@ def test_resume_accepts_provenance_rich_records_retained_by_selective_migration(
 
     assert bundles_by_id == {bundle.bundle_id: bundle}
     assert progress_by_id == {candidate_id: progress}
+
+
+def test_candidate_migration_rebuilds_cache_and_invalidates_changed_paths(tmp_path: Path) -> None:
+    """A changed relation graph retains unaffected triples and selects changed paths for replay."""
+    candidate_path = tmp_path / "candidates.json"
+    previous = MultiHop3CandidateSet(
+        run_id="previous-run",
+        triples=(("a", "b", "c"), ("d", "e", "f"), ("x", "y", "z")),
+    )
+    write_multi_hop_3_candidate_set(candidate_path, previous)
+    relations = (
+        _relation("a", "b"),
+        _relation("b", "c"),
+        _relation("d", "e"),
+        _relation("e", "f"),
+    )
+
+    run_id, candidates, invalidated_ids = _load_or_create_candidates(
+        candidate_path,
+        relations,
+        SynthesisSettings.from_path(_CONFIG_PATH),
+        frozenset({("a", "b")}),
+    )
+
+    assert set(candidates) == {("a", "b", "c"), ("d", "e", "f")}
+    assert invalidated_ids == frozenset({multi_hop_3_candidate_id(("a", "b", "c"))})
+    assert read_multi_hop_3_candidate_set(candidate_path) == MultiHop3CandidateSet(
+        run_id=run_id,
+        triples=candidates,
+    )
+
+
+def test_resume_migration_prunes_obsolete_and_invalidated_state() -> None:
+    """Migration reuses only completed candidates whose relation inputs are unchanged."""
+    retained_bundle = ConfirmedMultiHop3Bundle(
+        bundle_id="retained-bundle",
+        fact_ids=("a", "b", "c"),
+        bridge="Retained",
+        confirmed_by_model="provider/model",
+        run_id="old-run",
+    )
+    invalidated_bundle = ConfirmedMultiHop3Bundle(
+        bundle_id="invalidated-bundle",
+        fact_ids=("d", "e", "f"),
+        bridge="Invalidated",
+        confirmed_by_model="provider/model",
+        run_id="old-run",
+    )
+    obsolete_bundle = ConfirmedMultiHop3Bundle(
+        bundle_id="obsolete-bundle",
+        fact_ids=("x", "y", "z"),
+        bridge="Obsolete",
+        confirmed_by_model="provider/model",
+        run_id="old-run",
+    )
+    retained_id = multi_hop_3_candidate_id(retained_bundle.fact_ids)
+    invalidated_id = multi_hop_3_candidate_id(invalidated_bundle.fact_ids)
+    new_id = multi_hop_3_candidate_id(("g", "h", "i"))
+    progress = tuple(
+        MultiHop3ProgressRecord(
+            candidate_id=multi_hop_3_candidate_id(bundle.fact_ids),
+            run_id=bundle.run_id,
+            prompt_version=bundle.prompt_version,
+            confirmed_by_model=bundle.confirmed_by_model,
+        )
+        for bundle in (retained_bundle, invalidated_bundle, obsolete_bundle)
+    )
+
+    bundles_by_id, progress_by_id = _validate_resume_state(
+        (retained_bundle, invalidated_bundle, obsolete_bundle),
+        progress,
+        frozenset({retained_id, invalidated_id, new_id}),
+        "new-run",
+        frozenset(),
+        frozenset({invalidated_id, new_id}),
+    )
+
+    assert bundles_by_id == {retained_bundle.bundle_id: retained_bundle}
+    assert progress_by_id == {retained_id: progress[0]}

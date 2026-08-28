@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import time
 from collections.abc import Sequence
+from itertools import combinations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -39,6 +40,13 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--reconfirm-candidate-ids", type=Path, help="JSON string array of candidate IDs to confirm again"
     )
+    parser.add_argument(
+        "--migrate-relation-pair-ids",
+        action="append",
+        default=[],
+        type=Path,
+        help="JSON fact-pair selection used to migrate state after the relation graph changes",
+    )
     parser.add_argument("--personas", type=Path, required=True, help="Persona config JSON path")
     parser.add_argument("--scenario-distribution", type=Path, required=True, help="Scenario distribution JSON path")
     parser.add_argument("--total-samples", type=int, required=True, help="Target scenario count")
@@ -52,6 +60,7 @@ def _validate_resume_state(
     candidate_ids: frozenset[str],
     run_id: str,
     reconfirm_ids: frozenset[str],
+    migration_invalidated_ids: frozenset[str] | None = None,
 ) -> tuple[dict[str, ConfirmedMultiHop3Bundle], dict[str, MultiHop3ProgressRecord]]:
     """Validate persisted state and invalidate only explicitly selected candidates."""
     from legal_rag.benchmark_synthesis.multi_hop_3 import (
@@ -68,6 +77,12 @@ def _validate_resume_state(
     if len(progress_by_id) != len(existing_progress):
         msg = "Existing multi-hop-3 progress contains duplicate candidate IDs"
         raise ValueError(msg)
+    if migration_invalidated_ids is not None:
+        progress_by_id = {
+            candidate_id: record
+            for candidate_id, record in progress_by_id.items()
+            if candidate_id in candidate_ids and candidate_id not in migration_invalidated_ids
+        }
     if not progress_by_id.keys() <= candidate_ids:
         msg = "Multi-hop-3 progress contains candidates outside the current candidate set"
         raise ValueError(msg)
@@ -84,11 +99,19 @@ def _validate_resume_state(
     if len(bundle_candidate_ids) != len(set(bundle_candidate_ids)):
         msg = "Existing multi-hop-3 bundles contain multiple results for one candidate"
         raise ValueError(msg)
+    if migration_invalidated_ids is not None:
+        bundles_by_id = {
+            bundle_id: bundle
+            for bundle_id, bundle in bundles_by_id.items()
+            if (candidate_id := multi_hop_3_candidate_id(bundle.fact_ids)) in candidate_ids
+            and candidate_id not in migration_invalidated_ids
+        }
+        bundle_candidate_ids = [multi_hop_3_candidate_id(bundle.fact_ids) for bundle in bundles_by_id.values()]
     if not set(bundle_candidate_ids) <= candidate_ids:
         msg = "Multi-hop-3 bundles contain candidates outside the current candidate set"
         raise ValueError(msg)
 
-    _validate_bundle_provenance(existing_bundles, bundle_candidate_ids, progress_by_id, run_id)
+    _validate_bundle_provenance(tuple(bundles_by_id.values()), bundle_candidate_ids, progress_by_id, run_id)
 
     if reconfirm_ids:
         validate_selective_confirmation(candidate_ids, frozenset(progress_by_id), reconfirm_ids)
@@ -129,12 +152,14 @@ def _load_or_create_candidates(
     candidate_cache: Path,
     relations: Sequence[EvidenceRelation],
     synthesis_settings: SynthesisSettings,
-) -> tuple[str, tuple[tuple[str, str, str], ...]]:
+    changed_relation_pairs: frozenset[tuple[str, str]],
+) -> tuple[str, tuple[tuple[str, str, str], ...], frozenset[str] | None]:
     """Load a compatible candidate cache or build it from the pair graph."""
     from legal_rag.benchmark_synthesis.multi_hop_3 import (
         MultiHop3CandidateSet,
         build_multi_hop_3_candidate_run_id,
         find_multi_hop_3_candidates,
+        multi_hop_3_candidate_id,
     )
     from legal_rag.benchmark_synthesis.writer import (
         read_multi_hop_3_candidate_set,
@@ -144,11 +169,31 @@ def _load_or_create_candidates(
     run_id = build_multi_hop_3_candidate_run_id(relations, synthesis_settings.multi_hop_3_candidate_limit)
     if candidate_cache.exists():
         candidate_set = read_multi_hop_3_candidate_set(candidate_cache)
-        if candidate_set.run_id != run_id:
+        if candidate_set.run_id == run_id:
+            logger.info("Loaded {} cached multi-hop-3 candidates from {}", len(candidate_set.triples), candidate_cache)
+            return run_id, candidate_set.triples, None
+        if not changed_relation_pairs:
             msg = "Existing multi-hop-3 candidates belong to a different pair graph or selection run"
             raise ValueError(msg)
-        logger.info("Loaded {} cached multi-hop-3 candidates from {}", len(candidate_set.triples), candidate_cache)
-        return run_id, candidate_set.triples
+        candidates = find_multi_hop_3_candidates(relations, limit=synthesis_settings.multi_hop_3_candidate_limit)
+        previous_candidates = frozenset(candidate_set.triples)
+        invalidated_ids = frozenset(
+            multi_hop_3_candidate_id(candidate)
+            for candidate in candidates
+            if candidate not in previous_candidates
+            or any(tuple(sorted(pair)) in changed_relation_pairs for pair in combinations(candidate, 2))
+        )
+        write_multi_hop_3_candidate_set(
+            candidate_cache,
+            MultiHop3CandidateSet(run_id=run_id, triples=candidates),
+        )
+        logger.info(
+            "Migrated multi-hop-3 candidates: retained={}, invalidated={}, removed={}",
+            len(candidates) - len(invalidated_ids),
+            len(invalidated_ids),
+            len(previous_candidates - frozenset(candidates)),
+        )
+        return run_id, candidates, invalidated_ids
 
     candidates = find_multi_hop_3_candidates(relations, limit=synthesis_settings.multi_hop_3_candidate_limit)
     write_multi_hop_3_candidate_set(
@@ -156,7 +201,27 @@ def _load_or_create_candidates(
         MultiHop3CandidateSet(run_id=run_id, triples=candidates),
     )
     logger.info("Selected {} multi-hop-3 candidates, wrote {}", len(candidates), candidate_cache)
-    return run_id, candidates
+    return run_id, candidates, None
+
+
+def _load_changed_relation_pairs(paths: Sequence[Path]) -> frozenset[tuple[str, str]]:
+    """Load the union of explicit relation-pair selections used for migration."""
+    from legal_rag.benchmark_synthesis.evidence_relation_selection import load_reconfirm_pairs
+
+    pairs: set[tuple[str, str]] = set()
+    for path in paths:
+        pairs.update(load_reconfirm_pairs((), path))
+    return frozenset(pairs)
+
+
+def _validate_requested_operations(
+    reconfirm_ids: frozenset[str],
+    changed_relation_pairs: frozenset[tuple[str, str]],
+) -> None:
+    """Keep selective reconfirmation and graph migration as separate operations."""
+    if reconfirm_ids and changed_relation_pairs:
+        msg = "Candidate reconfirmation and relation-graph migration must run separately"
+        raise ValueError(msg)
 
 
 def _require_completed_confirmation(failures: Sequence[LlmTaskFailure], *, allow_incomplete: bool) -> None:
@@ -215,13 +280,16 @@ def main() -> None:
         arguments.reconfirm_candidate_id,
         arguments.reconfirm_candidate_ids,
     )
+    changed_relation_pairs = _load_changed_relation_pairs(arguments.migrate_relation_pair_ids)
+    _validate_requested_operations(reconfirm_ids, changed_relation_pairs)
 
     facts = read_legal_facts(arguments.facts_path)
     relations = read_evidence_relations(arguments.relations_path)
-    candidate_run_id, candidates = _load_or_create_candidates(
+    candidate_run_id, candidates, migration_invalidated_ids = _load_or_create_candidates(
         arguments.candidate_cache,
         relations,
         synthesis_settings,
+        changed_relation_pairs,
     )
     if arguments.prepare_candidates_only:
         return
@@ -245,9 +313,16 @@ def main() -> None:
         candidate_ids,
         run_id,
         reconfirm_ids,
+        migration_invalidated_ids,
     )
     if reconfirm_ids:
         logger.info("Selectively invalidated {} multi-hop-3 candidate(s)", len(reconfirm_ids))
+    if migration_invalidated_ids is not None:
+        logger.info(
+            "Migrated multi-hop-3 state: retained_progress={}, remaining={}",
+            len(progress_by_id),
+            len(candidate_ids - progress_by_id.keys()),
+        )
     candidates_by_id = {multi_hop_3_candidate_id(triple): triple for triple in candidates}
     remaining = tuple(triple for triple in candidates if multi_hop_3_candidate_id(triple) not in progress_by_id)
     logger.info(
@@ -289,7 +364,7 @@ def main() -> None:
         )
         logger.debug("Checkpointed {} multi-hop-3 candidate(s)", len(batch_results))
 
-    if reconfirm_ids:
+    if reconfirm_ids or migration_invalidated_ids is not None:
         write_multi_hop_3_bundles(
             arguments.bundles_output_path,
             tuple(sorted(bundles_by_id.values(), key=lambda bundle: (bundle.fact_ids, bundle.bridge))),
