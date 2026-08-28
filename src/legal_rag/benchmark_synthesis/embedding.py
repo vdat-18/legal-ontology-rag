@@ -107,6 +107,7 @@ class SynthesisEmbeddingEncoder:
 
     def encode(self, texts: Sequence[str]) -> np.ndarray:
         """Return L2-normalized embeddings in input order, resuming completed batches."""
+        started_at = time.perf_counter()
         batches = tuple(
             _EmbeddingBatch(index, tuple(texts[start : start + self._batch_size]))
             for index, start in enumerate(range(0, len(texts), self._batch_size))
@@ -148,26 +149,44 @@ class SynthesisEmbeddingEncoder:
                     )
         if failures:
             raise IncompleteEmbeddingBatchesError(sorted(failures, key=lambda failure: failure.batch.index))
-        return np.concatenate([vectors_by_batch[batch.index] for batch in batches])
+        vectors = np.concatenate([vectors_by_batch[batch.index] for batch in batches])
+        logger.info(
+            "Embedding completed: texts={}, batches={}, elapsed_seconds={:.2f}",
+            len(texts),
+            len(batches),
+            time.perf_counter() - started_at,
+        )
+        return vectors
 
     def _encode_batch_with_retries(self, batch: _EmbeddingBatch) -> np.ndarray:
         """Encode one batch with bounded retries."""
         logger.info("Embedding batch {} started: texts={}", batch.index + 1, len(batch.texts))
         for attempt in range(self._max_retries + 1):
+            attempt_started_at = time.perf_counter()
             try:
-                return self._encode_batch(batch.texts)
+                vectors = self._encode_batch(batch.texts)
             except _RETRYABLE_EMBEDDING_ERRORS as error:
                 logger.warning(
-                    "{} failed on attempt {}/{}: {}",
+                    "{} failed on attempt {}/{} after {:.2f} seconds: {}",
                     batch.task_key,
                     attempt + 1,
                     self._max_retries + 1,
+                    time.perf_counter() - attempt_started_at,
                     error,
                 )
                 if attempt == self._max_retries:
                     raise _EmbeddingBatchExhaustedError(error) from error
                 logger.info("Retrying {} in {} seconds", batch.task_key, self._retry_delay_seconds)
                 time.sleep(self._retry_delay_seconds)
+            else:
+                logger.info(
+                    "{} completed on attempt {}/{} in {:.2f} seconds",
+                    batch.task_key,
+                    attempt + 1,
+                    self._max_retries + 1,
+                    time.perf_counter() - attempt_started_at,
+                )
+                return vectors
         raise AssertionError("unreachable")
 
     def _encode_batch(self, texts: Sequence[str]) -> np.ndarray:
@@ -192,6 +211,7 @@ class SynthesisEmbeddingEncoder:
             raise ValueError(msg)
 
         payload = json.loads(response_body)
+        self._log_token_usage(payload)
         records = sorted(payload["data"], key=lambda record: record["index"])
         if [record["index"] for record in records] != list(range(len(texts))):
             msg = "Embedding response indices do not match the request"
@@ -201,6 +221,19 @@ class SynthesisEmbeddingEncoder:
         norms = np.linalg.norm(vectors, axis=1, keepdims=True)
         logger.debug("Encoded {} synthesis facts with {}", len(texts), self._settings.model)
         return vectors / norms
+
+    def _log_token_usage(self, payload: dict[str, object]) -> None:
+        """Log standard embedding token counts when the provider returns them."""
+        usage = payload.get("usage")
+        if not isinstance(usage, dict):
+            logger.debug("Embedding token usage unavailable: model={}", self._settings.model)
+            return
+        logger.info(
+            "Embedding token usage: model={} input_tokens={} total_tokens={}",
+            self._settings.model,
+            usage.get("prompt_tokens"),
+            usage.get("total_tokens"),
+        )
 
     def _load_checkpoints(
         self,

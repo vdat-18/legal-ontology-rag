@@ -10,6 +10,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+from loguru import logger
 
 from legal_rag.benchmark_synthesis import embedding
 from legal_rag.benchmark_synthesis.embedding import IncompleteEmbeddingBatchesError, SynthesisEmbeddingEncoder
@@ -78,6 +79,37 @@ def test_synthesis_embedding_encoder_batches_orders_and_normalizes(monkeypatch: 
 
     assert len(requests) == 2
     assert np.allclose(vectors, np.array([[1.0, 0.0], [0.0, 1.0], [0.6, 0.8]]))
+
+
+def test_synthesis_embedding_encoder_logs_provider_token_usage(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Embedding responses expose standard provider token counts in logs."""
+    monkeypatch.setattr(
+        embedding,
+        "urlopen",
+        lambda request, *, timeout: _Response(
+            {
+                "data": [{"index": 0, "embedding": [1.0, 0.0]}],
+                "usage": {"prompt_tokens": 12, "total_tokens": 12},
+            }
+        ),
+    )
+    messages: list[str] = []
+    sink_id = logger.add(messages.append, format="{message}")
+
+    try:
+        SynthesisEmbeddingEncoder(
+            _settings(),
+            _profile(),
+            batch_size=1,
+            max_response_bytes=4096,
+        ).encode(["a"])
+    finally:
+        logger.remove(sink_id)
+
+    assert any(
+        "Embedding token usage: model=provider/bge-m3 input_tokens=12 total_tokens=12" in message
+        for message in messages
+    )
 
 
 def test_synthesis_embedding_encoder_rejects_wrong_dimensions(monkeypatch: pytest.MonkeyPatch) -> None:

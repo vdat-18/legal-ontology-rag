@@ -66,14 +66,16 @@ def execute_llm_task(
 ) -> _T:
     """Execute one LLM operation with bounded retries and preserve the final cause."""
     for attempt in range(max_retries + 1):
+        attempt_started_at = time.perf_counter()
         try:
-            return operation()
+            result = operation()
         except _RETRYABLE_LLM_ERRORS as error:
             logger.warning(
-                "LLM task {} failed on attempt {}/{}: {}",
+                "LLM task {} failed on attempt {}/{} after {:.2f} seconds: {}",
                 task_key,
                 attempt + 1,
                 max_retries + 1,
+                time.perf_counter() - attempt_started_at,
                 error,
             )
             if attempt == max_retries:
@@ -81,4 +83,13 @@ def execute_llm_task(
                 raise exhausted_error from error
             logger.info("Retrying LLM task {} in {} seconds", task_key, retry_delay_seconds)
             time.sleep(retry_delay_seconds)
+        else:
+            logger.info(
+                "LLM task {} completed on attempt {}/{} in {:.2f} seconds",
+                task_key,
+                attempt + 1,
+                max_retries + 1,
+                time.perf_counter() - attempt_started_at,
+            )
+            return result
     raise AssertionError("unreachable")

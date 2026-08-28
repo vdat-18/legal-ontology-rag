@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import time
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -183,6 +184,7 @@ def main() -> None:
     from legal_rag.embedding.profiles import load_configured_embedding_profile
     from legal_rag.settings import Settings, SynthesisEmbeddingSettings
 
+    started_at = time.perf_counter()
     arguments = _parser().parse_args()
     dotenv_path = find_dotenv(usecwd=True)
     if dotenv_path:
@@ -345,6 +347,7 @@ def main() -> None:
 
     bundles = sample_bundles(facts, relations, overlap_threshold=synthesis_settings.bundle_overlap_threshold)
     _sample_scenarios(arguments, bundles, facts)
+    logger.info("Evidence graph command completed in {:.2f} seconds", time.perf_counter() - started_at)
 
 
 if __name__ == "__main__":
