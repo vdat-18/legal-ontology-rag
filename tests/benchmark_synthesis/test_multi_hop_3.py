@@ -30,6 +30,19 @@ from legal_rag.benchmark_synthesis.writer import (
 from legal_rag.multi_hop_3_cli import _validate_resume_state
 from legal_rag.settings import Settings
 
+_PROMPT_PATH = Path(__file__).resolve().parents[2] / "baml_src" / "multi_hop_3.baml"
+
+
+def test_multi_hop_3_prompt_requires_one_concrete_compositional_case() -> None:
+    """The prompt rejects broad aggregation, exclusive branches, and mixed-language bridges."""
+    prompt = _PROMPT_PATH.read_text(encoding="utf-8")
+
+    assert "MỘT tình huống cụ thể" in prompt
+    assert "Ít nhất hai bước nối phải có phụ thuộc nội dung" in prompt
+    assert "những nhánh điều kiện loại trừ nhau" in prompt
+    assert "Chỉ dùng tiếng Việt" in prompt
+
+
 _CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
 
 
@@ -232,3 +245,26 @@ def test_resume_replays_bundle_written_before_progress() -> None:
 
     assert bundles_by_id == {bundle.bundle_id: bundle}
     assert progress_by_id == {}
+
+
+def test_resume_accepts_provenance_rich_records_retained_by_selective_migration() -> None:
+    """A later normal resume preserves unselected records from an older prompt run."""
+    bundle = _bundle()
+    candidate_id = multi_hop_3_candidate_id(bundle.fact_ids)
+    progress = MultiHop3ProgressRecord(
+        candidate_id=candidate_id,
+        run_id=bundle.run_id,
+        prompt_version=bundle.prompt_version,
+        confirmed_by_model=bundle.confirmed_by_model,
+    )
+
+    bundles_by_id, progress_by_id = _validate_resume_state(
+        (bundle,),
+        (progress,),
+        frozenset({candidate_id}),
+        "new-run",
+        frozenset(),
+    )
+
+    assert bundles_by_id == {bundle.bundle_id: bundle}
+    assert progress_by_id == {candidate_id: progress}

@@ -37,16 +37,33 @@ function ConfirmMultiHop3BundleBatch(items: MultiHop3BundleBatchItem[]) -> Multi
     duy nhất. Metadata và bridge chỉ hỗ trợ hiểu cách nối, không được dùng
     để bổ sung nội dung không có trong statement.
 
-    Đặt is_valid=true chỉ khi tồn tại một câu hỏi pháp lý tự nhiên, hữu
-    ích và grounded mà câu trả lời thực sự cần nội dung riêng của đủ cả
-    ba facts. Thực hiện phép kiểm tra loại bỏ: nếu bỏ bất kỳ một fact nào
-    mà câu hỏi vẫn được trả lời đầy đủ, trả is_valid=false.
+    Mục tiêu là tìm quan hệ hợp thành cho MỘT tình huống cụ thể, không
+    phải tạo câu hỏi đủ rộng để bao phủ ba facts. Ưu tiên precision hơn
+    recall; nếu chưa chắc cả ba facts cùng cần thiết thì trả is_valid=false.
+
+    Đặt is_valid=true chỉ khi có thể đặt một câu hỏi tự nhiên về cùng một
+    chủ thể, phương tiện, sự kiện và phạm vi áp dụng, trong đó mỗi fact
+    cung cấp một phần riêng cần thiết để giải quyết đúng cùng intent đó.
+    Ít nhất hai bước nối phải có phụ thuộc nội dung: điều kiện, kết quả
+    hoặc kết luận từ một fact cần để hiểu hay áp dụng fact tiếp theo.
+
+    Trước khi kết luận, tự kiểm tra:
+    1. Viết thầm một tình huống và một câu hỏi cụ thể, không mở rộng câu
+       hỏi sau khi thấy các facts.
+    2. Xác định đóng góp riêng của từng fact.
+    3. Lần lượt bỏ từng fact. Nếu câu hỏi vẫn trả lời đầy đủ, hoặc chỉ mất
+       một nhánh so sánh/liệt kê độc lập, trả is_valid=false.
+    4. Kiểm tra cả ba facts có thể đồng thời áp dụng cho chính tình huống
+       đó hay không.
 
     Luôn trả is_valid=false khi:
     - Ba facts chỉ cùng chủ đề, cùng hậu quả hoặc là các phần tử độc lập
       trong một danh sách.
     - Candidate chỉ phù hợp với câu hỏi liệt kê, tổng hợp hoặc so sánh
       được ghép tùy ý.
+    - Các facts là những nhánh điều kiện loại trừ nhau, như có/không có
+      một dấu hiệu, các khoảng giá trị không giao nhau, hoặc các loại chủ
+      thể/phương tiện không thể đồng thời đúng trong một tình huống.
     - Hai facts đã đủ và fact còn lại chỉ diễn giải, lặp lại hoặc cung cấp
       ví dụ khác.
     - Chủ thể, phương tiện, điều kiện, phạm vi hoặc thời gian không thể
@@ -54,9 +71,11 @@ function ConfirmMultiHop3BundleBatch(items: MultiHop3BundleBatchItem[]) -> Multi
     - Nội dung chủ yếu là so sánh quy định theo thời gian; trường hợp đó
       thuộc temporal, không phải multi-hop-3.
 
-    Khi valid, bridge là một câu ngắn nêu vấn đề pháp lý thống nhất và
-    vai trò bổ sung của cả ba facts. Không chép lại toàn bộ statements,
-    không ghi ID/Điều khoản thay cho nội dung. Khi invalid, bridge=null.
+    Khi valid, bridge là một câu tiếng Việt ngắn nêu đúng một vấn đề pháp
+    lý thống nhất và thể hiện chuỗi phụ thuộc. Chỉ dùng tiếng Việt; không
+    chèn từ hoặc liên từ thuộc ngôn ngữ khác. Không chép lại toàn bộ
+    statements, không ghi ID/Điều khoản thay cho nội dung. Khi invalid,
+    bridge=null.
 
     Trả đúng một kết quả cho mỗi input và giữ nguyên candidate_id.
 

@@ -54,7 +54,10 @@ def _validate_resume_state(
     reconfirm_ids: frozenset[str],
 ) -> tuple[dict[str, ConfirmedMultiHop3Bundle], dict[str, MultiHop3ProgressRecord]]:
     """Validate persisted state and invalidate only explicitly selected candidates."""
-    from legal_rag.benchmark_synthesis.multi_hop_3 import multi_hop_3_candidate_id
+    from legal_rag.benchmark_synthesis.multi_hop_3 import (
+        MULTI_HOP_3_PROMPT_VERSION,
+        multi_hop_3_candidate_id,
+    )
     from legal_rag.benchmark_synthesis.multi_hop_3_selection import validate_selective_confirmation
 
     bundles_by_id = {bundle.bundle_id: bundle for bundle in existing_bundles}
@@ -68,7 +71,12 @@ def _validate_resume_state(
     if not progress_by_id.keys() <= candidate_ids:
         msg = "Multi-hop-3 progress contains candidates outside the current candidate set"
         raise ValueError(msg)
-    if not reconfirm_ids and any(record.run_id != run_id for record in existing_progress):
+    if not reconfirm_ids and any(
+        record.run_id != run_id
+        and record.prompt_version == MULTI_HOP_3_PROMPT_VERSION
+        and record.confirmed_by_model is None
+        for record in existing_progress
+    ):
         msg = "Existing multi-hop-3 progress belongs to a different synthesis run"
         raise ValueError(msg)
 
