@@ -1,8 +1,11 @@
 {
-  "schema_version": "5.0.0",
+  "schema_version": "5.1.0",
   "embedding_profile": "bge_m3",
   "embedding": {
-    "batch_size": 64,
+    "batch_size": 100,
+    "max_concurrency": 10,
+    "max_retries": 2,
+    "retry_delay_seconds": 120,
     "max_response_bytes": 16777216
   },
   "lexical_retrieval": {

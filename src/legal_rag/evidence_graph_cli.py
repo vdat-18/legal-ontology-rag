@@ -34,6 +34,11 @@ def _parser() -> argparse.ArgumentParser:
         help="Fingerprint-validated candidate-pair JSON cache; defaults beside the relations output",
     )
     parser.add_argument(
+        "--embedding-cache-directory",
+        type=Path,
+        help="Resumable embedding batch cache; defaults beside the candidate-pair cache",
+    )
+    parser.add_argument(
         "--prepare-candidates-only",
         action="store_true",
         help="Build or validate the candidate-pair cache, then exit before any relation LLM calls",
@@ -229,7 +234,12 @@ def main() -> None:
             embedding_settings,
             profile,
             batch_size=synthesis_settings.embedding_batch_size,
+            max_concurrency=synthesis_settings.embedding_max_concurrency,
+            max_retries=synthesis_settings.embedding_max_retries,
+            retry_delay_seconds=synthesis_settings.embedding_retry_delay_seconds,
             max_response_bytes=synthesis_settings.embedding_max_response_bytes,
+            checkpoint_directory=arguments.embedding_cache_directory or candidate_cache_path.with_suffix(".embeddings"),
+            run_id=candidate_run_id,
         )
         vncorenlp_settings = SynthesisVnCoreNlpSettings.from_environment()
         word_segmenter = VnCoreNlpWordSegmenter(

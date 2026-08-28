@@ -234,6 +234,12 @@ Candidate retrieval đề xuất các cặp fact có khả năng liên quan bằ
 lexical retrieval trên duy nhất `statement`, rồi gộp thứ hạng bằng RRF. Đây
 chỉ là bước đề xuất ứng viên.
 
+Dense retrieval embedding toàn bộ statement theo batch 100, tối đa 10 batch
+đồng thời. Mỗi batch retry độc lập theo cấu hình embedding và checkpoint ngay
+thành file vector riêng. Khi resume, chỉ batch còn thiếu được gọi lại; vectors
+được ghép về đúng thứ tự corpus trước khi dense search bắt đầu. Candidate-pair
+cache hoàn tất vẫn bỏ qua toàn bộ embedding như trước.
+
 LLM đọc `fact_id`, `statement`, `document_number`, `valid_from` và `valid_to`
 để quyết định hai fact có thực sự cần nhau cho một câu hỏi grounded hay không.
 Nếu có, LLM chọn trực tiếp `bundle_kind` là `multi_hop` hoặc `temporal` và viết

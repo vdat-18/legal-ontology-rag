@@ -18,7 +18,10 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
 
     assert settings.embedding_profile == "bge_m3"
-    assert settings.embedding_batch_size == 64
+    assert settings.embedding_batch_size == 100
+    assert settings.embedding_max_concurrency == 10
+    assert settings.embedding_max_retries == 2
+    assert settings.embedding_retry_delay_seconds == 120
     assert settings.embedding_max_response_bytes == 16_777_216
     assert settings.vncorenlp_max_heap_megabytes == 512
     assert settings.vncorenlp_timeout_seconds == 120
@@ -66,6 +69,18 @@ def test_synthesis_settings_reject_negative_retry_delay() -> None:
 
     with pytest.raises(ValueError, match="llm_retry_delay_seconds must not be negative"):
         replace(settings, llm_retry_delay_seconds=-1)
+
+
+def test_synthesis_settings_reject_invalid_embedding_execution_bounds() -> None:
+    """Embedding concurrency and retry settings must remain bounded and usable."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+
+    with pytest.raises(ValueError, match="embedding_max_concurrency must be positive"):
+        replace(settings, embedding_max_concurrency=0)
+    with pytest.raises(ValueError, match="embedding_max_retries must not be negative"):
+        replace(settings, embedding_max_retries=-1)
+    with pytest.raises(ValueError, match="embedding_retry_delay_seconds must not be negative"):
+        replace(settings, embedding_retry_delay_seconds=-1)
 
 
 def test_synthesis_settings_reject_non_positive_fact_extraction_batch_size() -> None:

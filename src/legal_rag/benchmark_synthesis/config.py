@@ -10,7 +10,7 @@ from typing import Any
 
 from legal_rag.baml_transport import ReasoningEffort
 
-SYNTHESIS_CONFIG_SCHEMA_VERSION = "5.0.0"
+SYNTHESIS_CONFIG_SCHEMA_VERSION = "5.1.0"
 _MAX_LLM_TEMPERATURE = 2.0
 
 
@@ -70,6 +70,9 @@ class SynthesisSettings:
 
     embedding_profile: str
     embedding_batch_size: int
+    embedding_max_concurrency: int
+    embedding_max_retries: int
+    embedding_retry_delay_seconds: float
     embedding_max_response_bytes: int
     vncorenlp_max_heap_megabytes: int
     vncorenlp_timeout_seconds: float
@@ -100,6 +103,8 @@ class SynthesisSettings:
             msg = "embedding_profile must not be empty"
             raise ValueError(msg)
         for name, value in {
+            "embedding_max_retries": self.embedding_max_retries,
+            "embedding_retry_delay_seconds": self.embedding_retry_delay_seconds,
             "llm_max_retries": self.llm_max_retries,
             "llm_retry_delay_seconds": self.llm_retry_delay_seconds,
             "vncorenlp_timeout_seconds": self.vncorenlp_timeout_seconds,
@@ -110,6 +115,7 @@ class SynthesisSettings:
         positive_limits = {
             "max_response_bytes": self.max_response_bytes,
             "embedding_batch_size": self.embedding_batch_size,
+            "embedding_max_concurrency": self.embedding_max_concurrency,
             "embedding_max_response_bytes": self.embedding_max_response_bytes,
             "vncorenlp_max_heap_megabytes": self.vncorenlp_max_heap_megabytes,
             "vncorenlp_timeout_seconds": self.vncorenlp_timeout_seconds,
@@ -154,6 +160,9 @@ class SynthesisSettings:
         return cls(
             embedding_profile=config["embedding_profile"],
             embedding_batch_size=embedding["batch_size"],
+            embedding_max_concurrency=embedding["max_concurrency"],
+            embedding_max_retries=embedding["max_retries"],
+            embedding_retry_delay_seconds=embedding["retry_delay_seconds"],
             embedding_max_response_bytes=embedding["max_response_bytes"],
             vncorenlp_max_heap_megabytes=lexical_retrieval["vncorenlp_max_heap_megabytes"],
             vncorenlp_timeout_seconds=lexical_retrieval["vncorenlp_timeout_seconds"],
