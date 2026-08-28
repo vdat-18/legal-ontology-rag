@@ -240,6 +240,10 @@ thành file vector riêng. Khi resume, chỉ batch còn thiếu được gọi l
 được ghép về đúng thứ tự corpus trước khi dense search bắt đầu. Candidate-pair
 cache hoàn tất vẫn bỏ qua toàn bộ embedding như trước.
 
+Sau khi chuẩn bị corpus, dense search và BM25L search chạy song song trên toàn
+bộ fact. RRF chỉ bắt đầu khi cả hai nhánh đã hoàn tất, sau đó giữ top candidate
+cho từng fact và loại cặp đối xứng trùng nhau.
+
 LLM đọc `fact_id`, `statement`, `document_number`, `valid_from` và `valid_to`
 để quyết định hai fact có thực sự cần nhau cho một câu hỏi grounded hay không.
 Nếu có, LLM chọn trực tiếp `bundle_kind` là `multi_hop` hoặc `temporal` và viết

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
+from threading import Barrier, get_ident
 from unicodedata import normalize
 
 import numpy as np
@@ -213,6 +214,33 @@ def test_find_candidate_fact_pairs_respects_max_candidates_per_fact() -> None:
 
     assert ("anchor", "close") in pairs
     assert ("anchor", "farther") not in pairs
+
+
+def test_find_candidate_fact_pairs_runs_dense_and_lexical_retrieval_concurrently(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Dense and lexical corpus rankings overlap before per-fact RRF starts."""
+    facts = [_fact("fact-a", statement="alpha"), _fact("fact-b", statement="beta")]
+    barrier = Barrier(2, timeout=2)
+    worker_ids: list[int] = []
+
+    def _ranking(*args: object) -> tuple[tuple[int, ...], ...]:
+        worker_ids.append(get_ident())
+        barrier.wait()
+        return ((1,), (0,))
+
+    monkeypatch.setattr(evidence_graph, "_dense_rankings", _ranking)
+    monkeypatch.setattr(evidence_graph, "_lexical_rankings", _ranking)
+
+    pairs = find_candidate_fact_pairs(
+        facts,
+        _FakeEncoder({"alpha": np.array([1.0]), "beta": np.array([1.0])}),
+        _FakeWordSegmenter(),
+        _retrieval_settings(),
+    )
+
+    assert len(set(worker_ids)) == 2
+    assert pairs == (("fact-a", "fact-b"),)
 
 
 class _FakeRelationClient:

@@ -171,6 +171,13 @@ class _FactEncoder(Protocol):
         """Return one normalized vector per input text."""
 
 
+class _Bm25Scorer(Protocol):
+    """BM25 scoring behavior required by lexical candidate retrieval."""
+
+    def get_scores(self, query: Sequence[str]) -> np.ndarray:
+        """Return one lexical score per corpus item."""
+
+
 def _top_indices(scored: Sequence[tuple[int, float]], fact_ids: Sequence[str], limit: int) -> list[int]:
     """Return indices ordered by descending score then fact ID, capped at limit."""
     return [index for index, _ in sorted(scored, key=lambda item: (-item[1], fact_ids[item[0]]))[:limit]]
@@ -183,6 +190,50 @@ def _reciprocal_rank_fusion(rankings: Sequence[Sequence[int]], rrf_k: int) -> di
         for rank, item_index in enumerate(ranking, start=1):
             fused[item_index] = fused.get(item_index, 0.0) + 1.0 / (rrf_k + rank)
     return fused
+
+
+def _dense_rankings(
+    vectors: np.ndarray,
+    fact_ids: Sequence[str],
+    pool_size: int,
+) -> tuple[tuple[int, ...], ...]:
+    """Rank dense neighbors for every fact in corpus order."""
+    return tuple(
+        tuple(
+            _top_indices(
+                [(other, float(score)) for other, score in enumerate(np.dot(vectors, vector)) if other != index],
+                fact_ids,
+                pool_size,
+            )
+        )
+        for index, vector in enumerate(vectors)
+    )
+
+
+def _lexical_rankings(
+    bm25: _Bm25Scorer,
+    lexical_corpus: Sequence[Sequence[str]],
+    fact_ids: Sequence[str],
+    pool_size: int,
+) -> tuple[tuple[int, ...], ...]:
+    """Rank positive-score BM25L neighbors for every fact in corpus order."""
+    rankings: list[tuple[int, ...]] = []
+    for index, query in enumerate(lexical_corpus):
+        scores = bm25.get_scores(query)
+        rankings.append(
+            tuple(
+                _top_indices(
+                    [
+                        (other, float(score))
+                        for other, score in enumerate(scores)
+                        if other != index and float(score) > 0.0
+                    ],
+                    fact_ids,
+                    pool_size,
+                )
+            )
+        )
+    return tuple(rankings)
 
 
 def build_evidence_candidate_run_id(
@@ -266,26 +317,29 @@ def find_candidate_fact_pairs(
         delta=settings.bm25_delta,
     )
 
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        dense_future = executor.submit(
+            _dense_rankings,
+            vectors,
+            fact_ids,
+            settings.retrieval_pool_size,
+        )
+        lexical_future = executor.submit(
+            _lexical_rankings,
+            bm25,
+            lexical_corpus,
+            fact_ids,
+            settings.retrieval_pool_size,
+        )
+        dense_rankings = dense_future.result()
+        lexical_rankings = lexical_future.result()
+
     pairs: set[tuple[str, str]] = set()
     for index, fact in enumerate(facts):
-        dense_scores = np.dot(vectors, vectors[index])
-        dense_ranking = _top_indices(
-            [(other, float(dense_scores[other])) for other in range(len(facts)) if other != index],
-            fact_ids,
-            settings.retrieval_pool_size,
+        fused = _reciprocal_rank_fusion(
+            (dense_rankings[index], lexical_rankings[index]),
+            settings.rrf_k,
         )
-        lexical_scores = bm25.get_scores(lexical_corpus[index])
-        lexical_ranking = _top_indices(
-            [
-                (other, float(lexical_scores[other]))
-                for other in range(len(facts))
-                if other != index and float(lexical_scores[other]) > 0.0
-            ],
-            fact_ids,
-            settings.retrieval_pool_size,
-        )
-
-        fused = _reciprocal_rank_fusion((dense_ranking, lexical_ranking), settings.rrf_k)
 
         best = sorted(fused, key=lambda other_index: (-fused[other_index], fact_ids[other_index]))
         for other_index in best[: settings.max_candidates_per_fact]:
