@@ -39,7 +39,7 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.fact_extraction.max_output_tokens == 32_768
     assert settings.fact_extraction.reasoning_effort == "medium"
     assert settings.evidence_relation_batch_size == 10
-    assert settings.evidence_relation_max_concurrency == 10
+    assert settings.evidence_relation_max_concurrency == 20
     assert settings.candidate_generation_batch_size == 5
     assert settings.candidate_generation_max_concurrency == 10
     assert settings.evidence_retrieval.retrieval_pool_size == 30

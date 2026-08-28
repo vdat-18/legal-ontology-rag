@@ -49,6 +49,17 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Sample scenarios from confirmed relations even if some candidate pairs failed after retries",
     )
+    parser.add_argument(
+        "--reconfirm-pair-id",
+        action="append",
+        default=[],
+        help="Fact pair to confirm again, formatted as fact_id_a::fact_id_b",
+    )
+    parser.add_argument(
+        "--reconfirm-pair-ids",
+        type=Path,
+        help="JSON file containing fact_id_a::fact_id_b strings to confirm again",
+    )
     parser.add_argument("--personas", type=Path, required=True, help="Persona config JSON path")
     parser.add_argument(
         "--scenario-distribution", type=Path, required=True, help="Scenario-distribution config JSON path"
@@ -62,25 +73,22 @@ def _validate_resume_state(
     existing_relations: Sequence[EvidenceRelation],
     existing_progress: Sequence[EvidenceRelationProgressRecord],
     candidate_pairs: Sequence[tuple[str, str]],
-    relation_run_id: str,
-) -> tuple[dict[str, EvidenceRelation], set[tuple[str, str]]]:
+    reconfirm_pairs: frozenset[tuple[str, str]],
+) -> tuple[
+    dict[str, EvidenceRelation],
+    dict[tuple[str, str], EvidenceRelationProgressRecord],
+]:
     """Validate persisted relation state and return mutable resume indexes."""
-    if any(relation.run_id != relation_run_id for relation in existing_relations):
-        msg = "Existing evidence relations belong to a different synthesis run"
-        raise ValueError(msg)
     relations_by_id = {relation.relation_id: relation for relation in existing_relations}
     if len(relations_by_id) != len(existing_relations):
         msg = "Existing evidence relations contain duplicate relation IDs"
         raise ValueError(msg)
-    if any(record.run_id != relation_run_id for record in existing_progress):
-        msg = "Existing evidence-relation progress belongs to a different synthesis run"
-        raise ValueError(msg)
-    checked_pairs = {(record.fact_id_a, record.fact_id_b) for record in existing_progress}
-    if len(checked_pairs) != len(existing_progress):
+    progress_by_pair = {(record.fact_id_a, record.fact_id_b): record for record in existing_progress}
+    if len(progress_by_pair) != len(existing_progress):
         msg = "Evidence-relation progress contains duplicate candidate pairs"
         raise ValueError(msg)
     candidate_pair_set = set(candidate_pairs)
-    if not checked_pairs <= candidate_pair_set:
+    if not progress_by_pair.keys() <= candidate_pair_set:
         msg = "Evidence-relation progress contains pairs outside the current candidate set"
         raise ValueError(msg)
     existing_relation_pairs = {relation.fact_ids for relation in existing_relations}
@@ -90,7 +98,41 @@ def _validate_resume_state(
     if not existing_relation_pairs <= candidate_pair_set:
         msg = "Evidence relations contain pairs outside the current candidate set"
         raise ValueError(msg)
-    return relations_by_id, checked_pairs
+    if not existing_relation_pairs <= progress_by_pair.keys():
+        msg = "Every evidence relation must have a matching progress record"
+        raise ValueError(msg)
+    _validate_relation_provenance(existing_relations, progress_by_pair)
+
+    if reconfirm_pairs:
+        from legal_rag.benchmark_synthesis.evidence_relation_selection import validate_selective_confirmation
+
+        validate_selective_confirmation(
+            frozenset(candidate_pairs),
+            frozenset(progress_by_pair),
+            reconfirm_pairs,
+        )
+        progress_by_pair = {pair: record for pair, record in progress_by_pair.items() if pair not in reconfirm_pairs}
+        relations_by_id = {
+            relation_id: relation
+            for relation_id, relation in relations_by_id.items()
+            if relation.fact_ids not in reconfirm_pairs
+        }
+    return relations_by_id, progress_by_pair
+
+
+def _validate_relation_provenance(
+    relations: Sequence[EvidenceRelation],
+    progress_by_pair: dict[tuple[str, str], EvidenceRelationProgressRecord],
+) -> None:
+    """Require each confirmed relation to match its pair-level progress provenance."""
+    for relation in relations:
+        progress = progress_by_pair[relation.fact_ids]
+        if relation.run_id != progress.run_id or relation.prompt_version != progress.prompt_version:
+            msg = "Evidence relation provenance must match its progress record"
+            raise ValueError(msg)
+        if progress.confirmed_by_model is not None and relation.confirmed_by_model != progress.confirmed_by_model:
+            msg = "Evidence relation model must match its progress record"
+            raise ValueError(msg)
 
 
 def _log_relation_confirmation_failures(failures: Sequence[LlmTaskFailure]) -> bool:
@@ -161,6 +203,7 @@ def main() -> None:
     from legal_rag.benchmark_synthesis.config import SynthesisSettings
     from legal_rag.benchmark_synthesis.embedding import SynthesisEmbeddingEncoder
     from legal_rag.benchmark_synthesis.evidence_graph import (
+        EVIDENCE_RELATION_PROMPT_VERSION,
         BamlEvidenceRelationClient,
         EvidenceCandidateSet,
         EvidenceRelationProgressRecord,
@@ -171,6 +214,7 @@ def main() -> None:
         find_candidate_fact_pairs,
         sample_bundles,
     )
+    from legal_rag.benchmark_synthesis.evidence_relation_selection import load_reconfirm_pairs
     from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError
     from legal_rag.benchmark_synthesis.writer import (
         read_evidence_candidate_set,
@@ -192,6 +236,10 @@ def main() -> None:
     settings = Settings.from_environment()
     embedding_settings = SynthesisEmbeddingSettings.from_environment()
     synthesis_settings = SynthesisSettings.from_path(arguments.synthesis_config)
+    reconfirm_pairs = load_reconfirm_pairs(
+        arguments.reconfirm_pair_id,
+        arguments.reconfirm_pair_ids,
+    )
 
     facts = read_legal_facts(arguments.facts_path)
     logger.info("Loaded {} facts from {}", len(facts), arguments.facts_path)
@@ -273,12 +321,23 @@ def main() -> None:
         if arguments.relations_progress_output_path.exists()
         else ()
     )
-    relations_by_id, checked_pairs = _validate_resume_state(
+    relations_by_id, progress_by_pair = _validate_resume_state(
         existing_relations,
         existing_progress,
         candidate_pairs,
-        relation_run_id,
+        reconfirm_pairs,
     )
+    if reconfirm_pairs:
+        logger.info("Selectively invalidated {} evidence-relation pair(s)", len(reconfirm_pairs))
+        write_evidence_relations(
+            arguments.relations_output_path,
+            tuple(sorted(relations_by_id.values(), key=evidence_relation_sort_key)),
+        )
+        write_evidence_relation_progress(
+            arguments.relations_progress_output_path,
+            tuple(progress_by_pair[pair] for pair in candidate_pairs if pair in progress_by_pair),
+        )
+    checked_pairs = set(progress_by_pair)
     remaining_pairs = tuple(pair for pair in candidate_pairs if pair not in checked_pairs)
     logger.info(
         "Loaded {} candidate pairs; {} already checked, {} remaining",
@@ -296,14 +355,19 @@ def main() -> None:
             arguments.relations_output_path,
             tuple(sorted(relations_by_id.values(), key=evidence_relation_sort_key)),
         )
-        checked_pairs.update(batch_pairs)
+        for fact_id_a, fact_id_b in batch_pairs:
+            pair = (fact_id_a, fact_id_b)
+            checked_pairs.add(pair)
+            progress_by_pair[pair] = EvidenceRelationProgressRecord(
+                fact_id_a=fact_id_a,
+                fact_id_b=fact_id_b,
+                run_id=relation_run_id,
+                prompt_version=EVIDENCE_RELATION_PROMPT_VERSION,
+                confirmed_by_model=settings.llm_model,
+            )
         write_evidence_relation_progress(
             arguments.relations_progress_output_path,
-            tuple(
-                EvidenceRelationProgressRecord(fact_id_a=fact_id_a, fact_id_b=fact_id_b, run_id=relation_run_id)
-                for fact_id_a, fact_id_b in candidate_pairs
-                if (fact_id_a, fact_id_b) in checked_pairs
-            ),
+            tuple(progress_by_pair[pair] for pair in candidate_pairs if pair in progress_by_pair),
         )
         logger.debug("Checkpointed {} evidence-relation pair(s)", len(batch_results))
 
@@ -329,11 +393,7 @@ def main() -> None:
         )
         write_evidence_relation_progress(
             arguments.relations_progress_output_path,
-            tuple(
-                EvidenceRelationProgressRecord(fact_id_a=fact_id_a, fact_id_b=fact_id_b, run_id=relation_run_id)
-                for fact_id_a, fact_id_b in candidate_pairs
-                if (fact_id_a, fact_id_b) in checked_pairs
-            ),
+            tuple(progress_by_pair[pair] for pair in candidate_pairs if pair in progress_by_pair),
         )
     relations = tuple(sorted(relations_by_id.values(), key=evidence_relation_sort_key))
     checked_candidate_count = len(checked_pairs & set(candidate_pairs))

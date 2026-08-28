@@ -1,0 +1,10 @@
+{
+  "batch_size": 100,
+  "dimensions": 1024,
+  "embedding_model": "deepinfra/BAAI/bge-m3",
+  "embedding_profile": "bge_m3",
+  "input_sha256": "169d5279bc28f6df0e784bdeb7ad6d68564c39b93c1ee47afed5895e49a6bf5f",
+  "run_id": "20a1bbe8fb3cb3bd1e7f3485442300bc791d525a6dde4d62318e6e9d258cbcf5",
+  "schema_version": "1.0.0",
+  "text_count": 5607
+}

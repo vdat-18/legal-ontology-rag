@@ -154,6 +154,19 @@ def test_evidence_relations_round_trip_through_jsonl(tmp_path: Path) -> None:
     assert relations == (relation,)
 
 
+def test_evidence_relations_read_legacy_prompt_provenance(tmp_path: Path) -> None:
+    """Version 3 relation outputs are assigned their known prompt version during migration."""
+    output_path = tmp_path / "evidence_relations.jsonl"
+    output_path.write_text(
+        '{"schema_version":"3.0.0","relation_id":"relation-1",'
+        '"fact_ids":["fact-1","fact-2"],"bundle_kind":"multi_hop",'
+        '"bridge":"Cùng vấn đề","confirmed_by_model":"provider/model","run_id":"run-1"}\n',
+        encoding="utf-8",
+    )
+
+    assert read_evidence_relations(output_path)[0].prompt_version == "5.0.0"
+
+
 def test_evidence_candidate_set_round_trips_through_json(tmp_path: Path) -> None:
     """A fingerprinted candidate set reads back with deterministic pair ordering."""
     output_path = tmp_path / "evidence_relation_candidates.json"
@@ -178,6 +191,19 @@ def test_evidence_relation_progress_round_trips_through_jsonl(tmp_path: Path) ->
     write_evidence_relation_progress(output_path, records)
 
     assert read_evidence_relation_progress(output_path) == records
+
+
+def test_evidence_relation_progress_reads_legacy_prompt_provenance(tmp_path: Path) -> None:
+    """Version 1.1 progress remains usable for a selective prompt migration."""
+    output_path = tmp_path / "evidence_relation_progress.jsonl"
+    output_path.write_text(
+        '{"schema_version":"1.1.0","fact_id_a":"fact-1","fact_id_b":"fact-2","run_id":"run-1"}\n',
+        encoding="utf-8",
+    )
+
+    record = read_evidence_relation_progress(output_path)[0]
+    assert record.prompt_version == "5.0.0"
+    assert record.confirmed_by_model is None
 
 
 def test_scenarios_round_trip_through_jsonl(tmp_path: Path) -> None:

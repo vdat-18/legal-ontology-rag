@@ -53,6 +53,15 @@ function ConfirmEvidenceRelationBatch(items: EvidenceRelationBatchItem[]) -> Evi
     giống bề mặt/cùng chủ đề, hoặc chỉ có thể ghép thành hai câu hỏi
     độc lập.
 
+    Cổng precision bắt buộc:
+    - Hai căn cứ, hành vi, trường hợp hoặc phần tử độc lập trong cùng
+      một danh sách không tạo thành quan hệ, kể cả khi cùng dẫn đến một
+      hậu quả. Khi cách nối trung thực nhất phải gọi chúng là "độc lập",
+      trả is_related=false.
+    - Không xác nhận chỉ để tạo câu hỏi liệt kê, tổng hợp hoặc so sánh
+      tùy ý. Chỉ xác nhận so sánh khi sự khác biệt giữa hai fact là nội
+      dung pháp lý cần thiết của cùng một vấn đề.
+
     Khi related, bundle_kind chỉ mô tả hình dạng evidence, không phải
     taxonomy quan hệ pháp lý:
     - MultiHop: hai fact bổ sung nhau cho cùng một vấn đề không chủ yếu
@@ -61,9 +70,12 @@ function ConfirmEvidenceRelationBatch(items: EvidenceRelationBatchItem[]) -> Evi
       do thay đổi quy định hoặc phạm vi hiệu lực theo thời gian. Chỉ khác
       văn bản hay mốc thời gian chưa đủ để xác nhận.
 
-    bridge là một cụm ngắn, cụ thể và có căn cứ trong input, nêu
-    nội dung thực sự nối hai fact; không chỉ ghi ID, số Điều hay chủ đề
-    chung. Khi is_related=false, trả bundle_kind=null và bridge=null.
+    bridge là một câu ngắn, cụ thể và có căn cứ trong input, nêu nội
+    dung thực sự nối hai fact; không chỉ ghi ID, số Điều hay chủ đề
+    chung. Với Temporal, nói rõ điểm giữ nguyên hoặc thay đổi; đặt các
+    từ như "cũ", "chưa đổi" cạnh đúng đối tượng để không tạo nghĩa mơ
+    hồ. Không chép lại toàn bộ hai statement. Khi is_related=false, trả
+    bundle_kind=null và bridge=null.
 
     Trả đúng một kết quả cho mỗi input và giữ nguyên pair_id.
 

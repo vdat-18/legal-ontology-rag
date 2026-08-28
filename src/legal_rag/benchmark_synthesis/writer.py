@@ -30,6 +30,9 @@ from legal_rag.benchmark_synthesis.evidence_graph import (
     EVIDENCE_CANDIDATE_SET_SCHEMA_VERSION,
     EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION,
     EVIDENCE_RELATION_SCHEMA_VERSION,
+    LEGACY_EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION,
+    LEGACY_EVIDENCE_RELATION_PROMPT_VERSION,
+    LEGACY_EVIDENCE_RELATION_SCHEMA_VERSION,
     EvidenceCandidateSet,
     EvidenceRelation,
     EvidenceRelationProgressRecord,
@@ -179,7 +182,10 @@ def read_evidence_relations(input_path: Path) -> tuple[EvidenceRelation, ...]:
     with input_path.open(encoding="utf-8") as source_file:
         for line in source_file:
             payload = json.loads(line)
-            if payload["schema_version"] != EVIDENCE_RELATION_SCHEMA_VERSION:
+            if payload["schema_version"] not in {
+                LEGACY_EVIDENCE_RELATION_SCHEMA_VERSION,
+                EVIDENCE_RELATION_SCHEMA_VERSION,
+            }:
                 msg = f"Unsupported evidence-relation schema: {payload['schema_version']}"
                 raise ValueError(msg)
             relations.append(
@@ -190,6 +196,10 @@ def read_evidence_relations(input_path: Path) -> tuple[EvidenceRelation, ...]:
                     bridge=payload["bridge"],
                     confirmed_by_model=payload["confirmed_by_model"],
                     run_id=payload["run_id"],
+                    prompt_version=payload.get(
+                        "prompt_version",
+                        LEGACY_EVIDENCE_RELATION_PROMPT_VERSION,
+                    ),
                 )
             )
     return tuple(relations)
@@ -206,7 +216,10 @@ def read_evidence_relation_progress(input_path: Path) -> tuple[EvidenceRelationP
     with input_path.open(encoding="utf-8") as source_file:
         for line in source_file:
             payload = json.loads(line)
-            if payload["schema_version"] != EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION:
+            if payload["schema_version"] not in {
+                LEGACY_EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION,
+                EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION,
+            }:
                 msg = f"Unsupported evidence-relation-progress schema: {payload['schema_version']}"
                 raise ValueError(msg)
             records.append(
@@ -214,6 +227,11 @@ def read_evidence_relation_progress(input_path: Path) -> tuple[EvidenceRelationP
                     fact_id_a=payload["fact_id_a"],
                     fact_id_b=payload["fact_id_b"],
                     run_id=payload["run_id"],
+                    prompt_version=payload.get(
+                        "prompt_version",
+                        LEGACY_EVIDENCE_RELATION_PROMPT_VERSION,
+                    ),
+                    confirmed_by_model=payload.get("confirmed_by_model"),
                 )
             )
     return tuple(records)

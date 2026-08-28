@@ -32,10 +32,13 @@ from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
-EVIDENCE_RELATION_SCHEMA_VERSION = "3.0.0"
+LEGACY_EVIDENCE_RELATION_SCHEMA_VERSION = "3.0.0"
+EVIDENCE_RELATION_SCHEMA_VERSION = "3.1.0"
 EVIDENCE_BUNDLE_SCHEMA_VERSION = "3.0.0"
-EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.1.0"
-EVIDENCE_RELATION_PROMPT_VERSION = "5.0.0"
+LEGACY_EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.1.0"
+EVIDENCE_RELATION_PROGRESS_SCHEMA_VERSION = "1.2.0"
+LEGACY_EVIDENCE_RELATION_PROMPT_VERSION = "5.0.0"
+EVIDENCE_RELATION_PROMPT_VERSION = "5.1.0"
 EVIDENCE_CANDIDATE_SELECTION_VERSION = "4.1.0"
 EVIDENCE_CANDIDATE_SET_SCHEMA_VERSION = "1.0.0"
 FACT_RETRIEVAL_TEXT_VERSION = "4.0.0"
@@ -59,6 +62,7 @@ class EvidenceRelation:
     bridge: str
     confirmed_by_model: str
     run_id: str
+    prompt_version: str = EVIDENCE_RELATION_PROMPT_VERSION
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable evidence-relation record."""
@@ -70,6 +74,7 @@ class EvidenceRelation:
             "bridge": self.bridge,
             "confirmed_by_model": self.confirmed_by_model,
             "run_id": self.run_id,
+            "prompt_version": self.prompt_version,
         }
 
 
@@ -100,6 +105,8 @@ class EvidenceRelationProgressRecord:
     fact_id_a: str
     fact_id_b: str
     run_id: str
+    prompt_version: str = EVIDENCE_RELATION_PROMPT_VERSION
+    confirmed_by_model: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable evidence-relation-progress record."""
@@ -108,6 +115,8 @@ class EvidenceRelationProgressRecord:
             "fact_id_a": self.fact_id_a,
             "fact_id_b": self.fact_id_b,
             "run_id": self.run_id,
+            "prompt_version": self.prompt_version,
+            "confirmed_by_model": self.confirmed_by_model,
         }
 
 
@@ -438,6 +447,7 @@ def _build_relation(
         bridge=result.bridge,
         confirmed_by_model=model,
         run_id=run_id,
+        prompt_version=EVIDENCE_RELATION_PROMPT_VERSION,
     )
 
 

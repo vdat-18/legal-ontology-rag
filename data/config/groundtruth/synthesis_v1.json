@@ -44,7 +44,7 @@
     },
     "evidence_relation": {
       "batch_size": 10,
-      "max_concurrency": 10,
+      "max_concurrency": 20,
       "retrieval": {
         "retrieval_pool_size": 30,
         "max_candidates_per_fact": 10,
