@@ -26,6 +26,25 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
 _SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
+_FACT_EXTRACTION_PROMPT_PATH = Path(__file__).resolve().parents[2] / "baml_src" / "legal_fact_extraction.baml"
+
+
+def test_fact_extraction_prompt_prioritizes_ground_truth_precision() -> None:
+    """The prompt rejects ambiguous facts without skipping clear neighboring rules."""
+    prompt = _FACT_EXTRACTION_PROMPT_PATH.read_text(encoding="utf-8")
+
+    assert "Thứ tự ưu tiên bắt buộc" in prompt
+    assert "ưu tiên precision\n    hơn recall" in prompt
+    assert "Việc bỏ một fact chưa rõ không ảnh hưởng các fact rõ ràng" in prompt
+    assert "Lập inventory theo đúng thứ tự Target" in prompt
+    assert "vế sau dấu chấm phẩy" in prompt
+    assert "Inventory phải bao phủ cả mệnh đề hoàn chỉnh ở đầu hoặc cuối" in prompt
+    assert 'Cấu trúc đối lập trạng thái như "chưa/không' in prompt
+    assert 'nguồn\n      "A quản lý X; thực hiện Y;" phải bảo toàn cả X và Y' in prompt
+    assert "Dẫn chiếu phụ thuộc là thành phần bắt buộc" in prompt
+    assert "bỏ fact thay vì suy đoán hoặc xóa locator" in prompt
+    assert "Khi chính Target chứa một locator cần thiết" in prompt
+    assert "Khi phân vân giữa giữ và bỏ, giữ quy tắc" not in prompt
 
 
 def _metadata(**overrides: object) -> DocumentMetadataRecord:
@@ -135,6 +154,62 @@ def test_build_reading_window_keeps_structural_context_separate_from_source_text
 
     assert entry.context_text == target.context_text
     assert entry.text == target.text
+
+
+def test_build_reading_window_adds_source_grounded_structural_context() -> None:
+    """A distant source heading remains available as evidence without widening local neighbors."""
+    context = "[LEGAL_STRUCTURE 1.0.0]\nChương II\nĐiều 6. Xử phạt người điều khiển xe ô tô\n[/LEGAL_STRUCTURE]"
+    chapter = _chunk("chapter", "Chương II\n\nQuy định xử phạt", context_text=context, chunk_index=0)
+    heading = _chunk(
+        "heading",
+        "Điều 6. Xử phạt người điều khiển xe ô tô\n\n1. Phạt tiền đối với hành vi sau:",
+        context_text=context,
+        chunk_index=1,
+    )
+    distant = _chunk("distant", "Nội dung ở giữa.", context_text=context, chunk_index=2)
+    near = _chunk("near", "Phần ngay trước.", previous_chunk_id="distant", context_text=context, chunk_index=3)
+    target = _chunk(
+        "target",
+        "Thực hiện hành vi tại khoản 1 Điều này bị trừ điểm.",
+        previous_chunk_id="near",
+        context_text=context,
+        chunk_index=4,
+    )
+    chunks_by_id = {chunk.chunk_id: chunk for chunk in (chapter, heading, distant, near, target)}
+
+    window = build_reading_window(target, chunks_by_id, max_preceding_chunks=1, max_following_chunks=0)
+
+    assert [entry.chunk_id for entry in window] == ["heading", "chapter", "near", "target"]
+    assert {entry.chunk_id: entry.role for entry in window} == {
+        "heading": ChunkWindowRole.ArticleContext,
+        "chapter": ChunkWindowRole.ArticleContext,
+        "near": ChunkWindowRole.Preceding,
+        "target": ChunkWindowRole.Target,
+    }
+
+
+def test_build_reading_window_keeps_prior_context_at_a_structural_boundary() -> None:
+    """A target containing the next heading still receives the prior heading from its context variants."""
+    context = (
+        "[LEGAL_STRUCTURE_VARIANTS 1.0.0]\nĐiều 7. Quy tắc trước\nĐiều 8. Quy tắc sau\n[/LEGAL_STRUCTURE_VARIANTS]"
+    )
+    prior_heading = _chunk("prior", "Điều 7. Quy tắc trước", context_text=context, chunk_index=1)
+    target = _chunk(
+        "target",
+        "Khoản cuối của Điều này.\n\nĐiều 8. Quy tắc sau",
+        context_text=context,
+        chunk_index=4,
+    )
+
+    window = build_reading_window(
+        target,
+        {prior_heading.chunk_id: prior_heading, target.chunk_id: target},
+        max_preceding_chunks=0,
+        max_following_chunks=0,
+    )
+
+    assert [entry.chunk_id for entry in window] == ["prior", "target"]
+    assert window[0].role == ChunkWindowRole.ArticleContext
 
 
 def test_build_reading_window_limits_preceding_chunk_depth() -> None:

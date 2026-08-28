@@ -35,7 +35,7 @@ from legal_rag.settings import Settings
 
 LEGACY_EXTRACTION_PROGRESS_SCHEMA_VERSION = "1.0.0"
 EXTRACTION_PROGRESS_SCHEMA_VERSION = "2.0.0"
-FACT_EXTRACTION_PROMPT_VERSION = "5.5.6"
+FACT_EXTRACTION_PROMPT_VERSION = "5.5.33"
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,6 +100,32 @@ def _window_entry(
     )
 
 
+def _source_grounded_context_chunks(
+    target: Chunk,
+    chunks_by_id: Mapping[str, Chunk],
+) -> tuple[Chunk, ...]:
+    """Resolve parser ancestry to source chunks, ordered from most to least specific."""
+    context_lines = tuple(dict.fromkeys(line.strip() for line in target.context_text.splitlines() if line.strip()))
+    preceding_chunks = tuple(
+        sorted(
+            (
+                chunk
+                for chunk in chunks_by_id.values()
+                if chunk.scope_id == target.scope_id and chunk.chunk_index < target.chunk_index
+            ),
+            key=lambda chunk: chunk.chunk_index,
+        )
+    )
+    matched_by_id: dict[str, Chunk] = {}
+    for line in reversed(context_lines):
+        if line in target.text:
+            continue
+        source_chunk = next((chunk for chunk in reversed(preceding_chunks) if line in chunk.text), None)
+        if source_chunk is not None:
+            matched_by_id.setdefault(source_chunk.chunk_id, source_chunk)
+    return tuple(matched_by_id.values())
+
+
 def build_reading_window(
     target: Chunk,
     chunks_by_id: Mapping[str, Chunk],
@@ -108,7 +134,7 @@ def build_reading_window(
     max_following_chunks: int,
     extraction_target_ids: Set[str] = frozenset(),
 ) -> tuple[ChunkWindowEntry, ...]:
-    """Assemble one document-ordered window from persisted neighbor links."""
+    """Assemble local neighbors plus source chunks for parser-derived structural context."""
     preceding = _walk_adjacent_chunks(
         target.previous_chunk_id,
         chunks_by_id,
@@ -121,14 +147,23 @@ def build_reading_window(
         max_chunks=max_following_chunks,
         next_chunk_id=lambda chunk: chunk.next_chunk_id,
     )
-    return (
-        *(
-            _window_entry(chunk, ChunkWindowRole.Preceding, extraction_target_ids)
-            for chunk in reversed(preceding)
-        ),
+    local_window = (
+        *(_window_entry(chunk, ChunkWindowRole.Preceding, extraction_target_ids) for chunk in reversed(preceding)),
         _window_entry(target, ChunkWindowRole.Target, extraction_target_ids),
         *(_window_entry(chunk, ChunkWindowRole.Following, extraction_target_ids) for chunk in following),
     )
+    local_chunk_ids = {entry.chunk_id for entry in local_window}
+    article_context = tuple(
+        ChunkWindowEntry(
+            chunk_id=chunk.chunk_id,
+            role=ChunkWindowRole.ArticleContext,
+            context_text=chunk.context_text,
+            text=chunk.text,
+        )
+        for chunk in _source_grounded_context_chunks(target, chunks_by_id)
+        if chunk.chunk_id not in local_chunk_ids
+    )
+    return article_context + local_window
 
 
 class FactExtractionClient(Protocol):
@@ -178,8 +213,7 @@ def build_extracted_fact(
         msg = "A legal fact must cite its target chunk"
         raise ValueError(msg)
     if any(
-        character.isalpha() and not unicodedata.name(character, "").startswith("LATIN")
-        for character in raw.statement
+        character.isalpha() and not unicodedata.name(character, "").startswith("LATIN") for character in raw.statement
     ):
         msg = "A legal fact statement must use Latin-script Vietnamese text"
         raise ValueError(msg)

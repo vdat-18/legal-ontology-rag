@@ -1,0 +1,7 @@
+{
+  "model": "mixed",
+  "prompt_version": "mixed",
+  "run_id": "2bb6883943a24cd2982e733f4a73e19c307c28d7edbea33afbe5d91cc12fed98",
+  "schema_version": "1.0.0",
+  "stage": "fact_extraction"
+}
