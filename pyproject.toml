@@ -55,6 +55,7 @@ legal-backfill-extraction-progress = "legal_rag.extraction_progress_backfill_cli
 legal-build-evidence-graph = "legal_rag.evidence_graph_cli:main"
 legal-build-multi-hop-3-bundles = "legal_rag.multi_hop_3_cli:main"
 legal-build-multi-hop-4-bundles = "legal_rag.multi_hop_4_cli:main"
+legal-build-multi-hop-5-bundles = "legal_rag.multi_hop_5_cli:main"
 legal-build-assembly-candidates = "legal_rag.ontology_assembly_candidates_cli:main"
 legal-propose-rule-assemblies = "legal_rag.ontology_assembly_proposals_cli:main"
 legal-finalize-rule-assemblies = "legal_rag.ontology_assembly_finalize_cli:main"

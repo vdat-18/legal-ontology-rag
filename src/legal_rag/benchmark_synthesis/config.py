@@ -10,7 +10,7 @@ from typing import Any
 
 from legal_rag.baml_transport import ReasoningEffort
 
-SYNTHESIS_CONFIG_SCHEMA_VERSION = "5.3.0"
+SYNTHESIS_CONFIG_SCHEMA_VERSION = "5.4.0"
 _MAX_LLM_TEMPERATURE = 2.0
 
 
@@ -94,6 +94,9 @@ class SynthesisSettings:
     multi_hop_4_candidate_limit: int
     multi_hop_4_batch_size: int
     multi_hop_4_max_concurrency: int
+    multi_hop_5_candidate_limit: int
+    multi_hop_5_batch_size: int
+    multi_hop_5_max_concurrency: int
     candidate_generation_batch_size: int
     candidate_generation_max_concurrency: int
     evidence_retrieval: EvidenceRetrievalSettings
@@ -103,6 +106,7 @@ class SynthesisSettings:
     evidence_relation: LlmStageSettings
     multi_hop_3: LlmStageSettings
     multi_hop_4: LlmStageSettings
+    multi_hop_5: LlmStageSettings
     candidate_generation: LlmStageSettings
 
     def __post_init__(self) -> None:
@@ -139,6 +143,9 @@ class SynthesisSettings:
             "multi_hop_4_candidate_limit": self.multi_hop_4_candidate_limit,
             "multi_hop_4_batch_size": self.multi_hop_4_batch_size,
             "multi_hop_4_max_concurrency": self.multi_hop_4_max_concurrency,
+            "multi_hop_5_candidate_limit": self.multi_hop_5_candidate_limit,
+            "multi_hop_5_batch_size": self.multi_hop_5_batch_size,
+            "multi_hop_5_max_concurrency": self.multi_hop_5_max_concurrency,
             "candidate_generation_batch_size": self.candidate_generation_batch_size,
             "candidate_generation_max_concurrency": self.candidate_generation_max_concurrency,
         }
@@ -172,6 +179,7 @@ class SynthesisSettings:
         relation = stages["evidence_relation"]
         multi_hop_3 = stages["multi_hop_3"]
         multi_hop_4 = stages["multi_hop_4"]
+        multi_hop_5 = stages["multi_hop_5"]
         retrieval = relation["retrieval"]
         return cls(
             embedding_profile=config["embedding_profile"],
@@ -200,6 +208,9 @@ class SynthesisSettings:
             multi_hop_4_candidate_limit=multi_hop_4["candidate_limit"],
             multi_hop_4_batch_size=multi_hop_4["batch_size"],
             multi_hop_4_max_concurrency=multi_hop_4["max_concurrency"],
+            multi_hop_5_candidate_limit=multi_hop_5["candidate_limit"],
+            multi_hop_5_batch_size=multi_hop_5["batch_size"],
+            multi_hop_5_max_concurrency=multi_hop_5["max_concurrency"],
             candidate_generation_batch_size=stages["candidate_generation"]["batch_size"],
             candidate_generation_max_concurrency=stages["candidate_generation"]["max_concurrency"],
             evidence_retrieval=_evidence_retrieval_settings(retrieval),
@@ -209,6 +220,7 @@ class SynthesisSettings:
             evidence_relation=_stage_settings(relation),
             multi_hop_3=_stage_settings(multi_hop_3),
             multi_hop_4=_stage_settings(multi_hop_4),
+            multi_hop_5=_stage_settings(multi_hop_5),
             candidate_generation=_stage_settings(stages["candidate_generation"]),
         )
 

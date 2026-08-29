@@ -322,6 +322,35 @@ candidate chưa có progress; selective rerun dùng `--reconfirm-candidate-id`
 hoặc `--reconfirm-candidate-ids`. Scenario sampling nhận cả bundle hai, ba và
 bốn facts, rồi cân bằng theo `reasoning_hops` trong phạm vi bundle chưa dùng.
 
+Để mở rộng thành năm facts, chạy Step 4D sau khi Step 4C đã hoàn tất:
+
+```powershell
+uv run legal-build-multi-hop-5-bundles `
+  data/benchmark_synthesis/legal_facts.jsonl `
+  data/benchmark_synthesis/evidence_relations.jsonl `
+  data/benchmark_synthesis/multi_hop_3_bundles.jsonl `
+  data/benchmark_synthesis/multi_hop_4_bundles.jsonl `
+  data/benchmark_synthesis/multi_hop_5_bundles.jsonl `
+  data/benchmark_synthesis/multi_hop_5_progress.jsonl `
+  data/benchmark_synthesis/scenarios.jsonl `
+  --candidate-cache data/benchmark_synthesis/multi_hop_5_candidates.json `
+  --personas data/config/groundtruth/personas.json `
+  --scenario-distribution data/config/groundtruth/scenario_distribution.json `
+  --total-samples 1000 `
+  --synthesis-config data/config/groundtruth/synthesis_v1.json
+```
+
+Step 4D cũng không chạy lại retrieval. Mỗi bundle bốn facts đã xác nhận được
+nối thêm đúng một fact qua relation `multi_hop`; candidate được lấy
+round-robin và loại trùng theo tập năm facts. LLM chỉ giữ candidate khi fact
+thứ năm tạo bước phụ thuộc thứ tư cho cùng một tình huống, không tạo nhánh
+câu hỏi độc lập, và phép loại bỏ lần lượt cả năm facts đều thất bại.
+
+Artifacts năm facts tách riêng và có cùng cơ chế fingerprint, retry,
+checkpoint, resume và selective rerun như Step 4C. Khi ghi lại scenarios,
+Step 4D đưa bundle multi-hop hai, ba, bốn và năm facts vào cùng pool; sampler
+cân bằng theo số `fact_ids` mà không cần tỷ lệ hop hard-code.
+
 `bridge` là một string do LLM tạo, không phải danh sách nhãn hoặc số Điều.
 Không còn bundle kind `synthesis` và không suy luận loại bundle từ việc hai
 fact cùng hay khác văn bản.

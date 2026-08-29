@@ -180,6 +180,23 @@ def test_sample_scenarios_balances_two_three_and_four_fact_multi_hop_bundles() -
     assert [scenario.reasoning_hops for scenario in scenarios].count(4) == 2
 
 
+def test_sample_scenarios_balances_two_through_five_fact_multi_hop_bundles() -> None:
+    """Multi-hop sampling covers every available reasoning depth evenly."""
+    fact_ids = tuple("abcdefghijklmn")
+    facts_by_id = {fact_id: _fact(fact_id) for fact_id in fact_ids}
+    bundles = [
+        _bundle("multi-hop-2", ("a", "b"), kind="multi_hop"),
+        _bundle("multi-hop-3", ("c", "d", "e"), kind="multi_hop"),
+        _bundle("multi-hop-4", ("f", "g", "h", "i"), kind="multi_hop"),
+        _bundle("multi-hop-5", ("j", "k", "l", "m", "n"), kind="multi_hop"),
+    ]
+
+    scenarios = _sample_scenarios(bundles, facts_by_id, _config(), total_samples=8)
+
+    for reasoning_hops in (2, 3, 4, 5):
+        assert [scenario.reasoning_hops for scenario in scenarios].count(reasoning_hops) == 2
+
+
 def test_sample_scenarios_does_not_overuse_scarce_three_fact_bundles() -> None:
     """A scarce reasoning depth is used once before another depth's unused bundles are repeated."""
     facts_by_id = {fact_id: _fact(fact_id) for fact_id in ("a", "b", "c", "d", "e", "f")}
