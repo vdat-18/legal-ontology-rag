@@ -293,6 +293,35 @@ và tạo scenario có `reasoning_hops=3`. Scenario sampling cân bằng bundle
 multi-hop hai và ba facts trong phạm vi bundle chưa dùng; nếu bundle ba facts
 ít, chúng không bị lặp chỉ để ép tỷ lệ bằng nhau.
 
+Để mở rộng tiếp thành bốn facts, chạy Step 4C sau khi Step 4B đã hoàn tất:
+
+```powershell
+uv run legal-build-multi-hop-4-bundles `
+  data/benchmark_synthesis/legal_facts.jsonl `
+  data/benchmark_synthesis/evidence_relations.jsonl `
+  data/benchmark_synthesis/multi_hop_3_bundles.jsonl `
+  data/benchmark_synthesis/multi_hop_4_bundles.jsonl `
+  data/benchmark_synthesis/multi_hop_4_progress.jsonl `
+  data/benchmark_synthesis/scenarios.jsonl `
+  --candidate-cache data/benchmark_synthesis/multi_hop_4_candidates.json `
+  --personas data/config/groundtruth/personas.json `
+  --scenario-distribution data/config/groundtruth/scenario_distribution.json `
+  --total-samples 1000 `
+  --synthesis-config data/config/groundtruth/synthesis_v1.json
+```
+
+Step 4C không chạy lại embedding, BM25L, dense search hoặc RRF. Mỗi bundle
+ba facts đã xác nhận được nối thêm một fact qua relation `multi_hop` hiện có;
+candidate được lấy round-robin theo bundle nguồn và loại trùng theo tập bốn
+fact. LLM nhận đủ bốn statements, bundle ba facts nguồn và mọi pair connection
+đã xác nhận giữa bốn facts. Bundle chỉ được giữ khi fact thứ tư tạo một bước
+phụ thuộc thực sự và bỏ bất kỳ fact nào cũng làm câu trả lời không còn đầy đủ.
+
+Candidate, progress và bundle bốn facts được lưu riêng. Lệnh resume chỉ xử lý
+candidate chưa có progress; selective rerun dùng `--reconfirm-candidate-id`
+hoặc `--reconfirm-candidate-ids`. Scenario sampling nhận cả bundle hai, ba và
+bốn facts, rồi cân bằng theo `reasoning_hops` trong phạm vi bundle chưa dùng.
+
 `bridge` là một string do LLM tạo, không phải danh sách nhãn hoặc số Điều.
 Không còn bundle kind `synthesis` và không suy luận loại bundle từ việc hai
 fact cùng hay khác văn bản.

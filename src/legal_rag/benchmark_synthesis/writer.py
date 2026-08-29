@@ -51,6 +51,15 @@ from legal_rag.benchmark_synthesis.multi_hop_3 import (
     MultiHop3CandidateSet,
     MultiHop3ProgressRecord,
 )
+from legal_rag.benchmark_synthesis.multi_hop_4 import (
+    MULTI_HOP_4_BUNDLE_SCHEMA_VERSION,
+    MULTI_HOP_4_CANDIDATE_SET_SCHEMA_VERSION,
+    MULTI_HOP_4_PROGRESS_SCHEMA_VERSION,
+    ConfirmedMultiHop4Bundle,
+    MultiHop4Candidate,
+    MultiHop4CandidateSet,
+    MultiHop4ProgressRecord,
+)
 from legal_rag.benchmark_synthesis.scenario_sampling import SCENARIO_SCHEMA_VERSION, Scenario
 from legal_rag.io_utils import write_json_atomic, write_jsonl_atomic
 
@@ -314,6 +323,92 @@ def read_multi_hop_3_progress(input_path: Path) -> tuple[MultiHop3ProgressRecord
                 raise ValueError(msg)
             records.append(
                 MultiHop3ProgressRecord(
+                    candidate_id=payload["candidate_id"],
+                    run_id=payload["run_id"],
+                    prompt_version=payload["prompt_version"],
+                    confirmed_by_model=payload.get("confirmed_by_model"),
+                )
+            )
+    return tuple(records)
+
+
+def write_multi_hop_4_candidate_set(output_path: Path, candidate_set: MultiHop4CandidateSet) -> None:
+    """Atomically replace one multi-hop-4 candidate cache."""
+    write_json_atomic(output_path, candidate_set.to_dict())
+
+
+def read_multi_hop_4_candidate_set(input_path: Path) -> MultiHop4CandidateSet:
+    """Read and validate one multi-hop-4 candidate cache."""
+    payload = json.loads(input_path.read_text(encoding="utf-8"))
+    if payload["schema_version"] != MULTI_HOP_4_CANDIDATE_SET_SCHEMA_VERSION:
+        msg = f"Unsupported multi-hop-4 candidate schema: {payload['schema_version']}"
+        raise ValueError(msg)
+    candidates = tuple(
+        MultiHop4Candidate(
+            fact_ids=tuple(candidate["fact_ids"]),
+            source_bundle_id=candidate["source_bundle_id"],
+        )
+        for candidate in payload["candidates"]
+    )
+    if any(
+        len(candidate.fact_ids) != 4 or tuple(sorted(set(candidate.fact_ids))) != candidate.fact_ids
+        for candidate in candidates
+    ):
+        msg = "Multi-hop-4 candidates must contain canonical distinct four-fact IDs"
+        raise ValueError(msg)
+    if len({candidate.fact_ids for candidate in candidates}) != len(candidates):
+        msg = "Multi-hop-4 candidates must contain unique fact-id sets"
+        raise ValueError(msg)
+    return MultiHop4CandidateSet(run_id=payload["run_id"], candidates=candidates)
+
+
+def write_multi_hop_4_bundles(output_path: Path, bundles: Sequence[ConfirmedMultiHop4Bundle]) -> None:
+    """Atomically replace one confirmed multi-hop-4 bundle output."""
+    write_jsonl_atomic(output_path, (bundle.to_dict() for bundle in bundles))
+
+
+def read_multi_hop_4_bundles(input_path: Path) -> tuple[ConfirmedMultiHop4Bundle, ...]:
+    """Read confirmed multi-hop-4 bundles."""
+    bundles: list[ConfirmedMultiHop4Bundle] = []
+    with input_path.open(encoding="utf-8") as source_file:
+        for line in source_file:
+            payload = json.loads(line)
+            if payload["schema_version"] != MULTI_HOP_4_BUNDLE_SCHEMA_VERSION:
+                msg = f"Unsupported multi-hop-4 bundle schema: {payload['schema_version']}"
+                raise ValueError(msg)
+            fact_ids = tuple(payload["fact_ids"])
+            if len(fact_ids) != 4 or tuple(sorted(set(fact_ids))) != fact_ids:
+                msg = "Multi-hop-4 bundles must contain canonical distinct four-fact IDs"
+                raise ValueError(msg)
+            bundles.append(
+                ConfirmedMultiHop4Bundle(
+                    bundle_id=payload["bundle_id"],
+                    fact_ids=fact_ids,
+                    bridge=payload["bridge"],
+                    confirmed_by_model=payload["confirmed_by_model"],
+                    run_id=payload["run_id"],
+                    prompt_version=payload["prompt_version"],
+                )
+            )
+    return tuple(bundles)
+
+
+def write_multi_hop_4_progress(output_path: Path, records: Sequence[MultiHop4ProgressRecord]) -> None:
+    """Atomically replace one multi-hop-4 progress output."""
+    write_jsonl_atomic(output_path, (record.to_dict() for record in records))
+
+
+def read_multi_hop_4_progress(input_path: Path) -> tuple[MultiHop4ProgressRecord, ...]:
+    """Read multi-hop-4 confirmation progress."""
+    records: list[MultiHop4ProgressRecord] = []
+    with input_path.open(encoding="utf-8") as source_file:
+        for line in source_file:
+            payload = json.loads(line)
+            if payload["schema_version"] != MULTI_HOP_4_PROGRESS_SCHEMA_VERSION:
+                msg = f"Unsupported multi-hop-4 progress schema: {payload['schema_version']}"
+                raise ValueError(msg)
+            records.append(
+                MultiHop4ProgressRecord(
                     candidate_id=payload["candidate_id"],
                     run_id=payload["run_id"],
                     prompt_version=payload["prompt_version"],
