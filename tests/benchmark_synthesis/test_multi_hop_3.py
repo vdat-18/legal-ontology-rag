@@ -41,6 +41,8 @@ def test_multi_hop_3_prompt_requires_one_concrete_compositional_case() -> None:
     assert "Ít nhất hai bước nối phải có phụ thuộc nội dung" in prompt
     assert "những nhánh điều kiện loại trừ nhau" in prompt
     assert "chỉ xác nhận trạng thái nền hoặc tính hợp pháp chung" in prompt
+    assert "giữ đúng danh tính và vai trò pháp lý của chủ thể" in prompt
+    assert "statements phải trực tiếp xác lập đúng" in prompt
     assert "Chỉ dùng tiếng Việt" in prompt
 
 

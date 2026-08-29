@@ -72,6 +72,11 @@ function ConfirmMultiHop3BundleBatch(items: MultiHop3BundleBatchItem[]) -> Multi
       tờ không đủ tạo thành quan hệ multi-hop-3.
     - Chủ thể, phương tiện, điều kiện, phạm vi hoặc thời gian không thể
       kết hợp thành cùng một vấn đề pháp lý nhất quán.
+    - Chuỗi nối phải giữ đúng danh tính và vai trò pháp lý của chủ thể.
+      Không đồng nhất một lực lượng, cơ quan hoặc nhóm người có thẩm quyền
+      với một chức danh cụ thể chỉ vì cùng thuộc phạm vi xử phạt. Khi có
+      giao quyền hoặc ủy quyền, statements phải trực tiếp xác lập đúng
+      chức danh giao quyền, người nhận quyền và thẩm quyền được chuyển.
     - Nội dung chủ yếu là so sánh quy định theo thời gian; trường hợp đó
       thuộc temporal, không phải multi-hop-3.
 
