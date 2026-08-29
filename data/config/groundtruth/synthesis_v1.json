@@ -26,12 +26,12 @@
       "max_concurrency": 20,
       "max_output_tokens": 16384,
       "temperature": 0.0,
-      "reasoning_effort": "medium"
+      "reasoning_effort": "high"
     },
     "document_metadata": {
       "max_output_tokens": 1024,
       "temperature": 0.0,
-      "reasoning_effort": "medium"
+      "reasoning_effort": "high"
     },
     "fact_extraction": {
       "batch_size": 1,
@@ -40,7 +40,7 @@
       "max_following_chunks": 1,
       "max_output_tokens": 32768,
       "temperature": 0.0,
-      "reasoning_effort": "medium"
+      "reasoning_effort": "high"
     },
     "evidence_relation": {
       "batch_size": 10,
@@ -57,7 +57,7 @@
       },
       "max_output_tokens": 4096,
       "temperature": 0.0,
-      "reasoning_effort": "medium"
+      "reasoning_effort": "high"
     },
     "multi_hop_3": {
       "candidate_limit": 3000,
@@ -65,7 +65,7 @@
       "max_concurrency": 20,
       "max_output_tokens": 8192,
       "temperature": 0.0,
-      "reasoning_effort": "medium"
+      "reasoning_effort": "high"
     },
     "multi_hop_4": {
       "candidate_limit": 3000,
@@ -73,7 +73,7 @@
       "max_concurrency": 20,
       "max_output_tokens": 8192,
       "temperature": 0.0,
-      "reasoning_effort": "medium"
+      "reasoning_effort": "high"
     },
     "multi_hop_5": {
       "candidate_limit": 3000,
@@ -81,14 +81,14 @@
       "max_concurrency": 20,
       "max_output_tokens": 8192,
       "temperature": 0.0,
-      "reasoning_effort": "medium"
+      "reasoning_effort": "high"
     },
     "candidate_generation": {
       "batch_size": 5,
       "max_concurrency": 10,
       "max_output_tokens": 8192,
       "temperature": 0.0,
-      "reasoning_effort": "medium"
+      "reasoning_effort": "high"
     }
   }
 }

@@ -30,31 +30,31 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.chunk_screening_batch_size == 10
     assert settings.chunk_screening_max_concurrency == 20
     assert settings.chunk_screening.max_output_tokens == 16_384
-    assert settings.chunk_screening.reasoning_effort == "medium"
-    assert settings.document_metadata.reasoning_effort == "medium"
+    assert settings.chunk_screening.reasoning_effort == "high"
+    assert settings.document_metadata.reasoning_effort == "high"
     assert settings.fact_extraction_batch_size == 1
     assert settings.fact_extraction_max_concurrency == 20
     assert settings.fact_extraction_max_preceding_chunks == 3
     assert settings.fact_extraction_max_following_chunks == 1
     assert settings.fact_extraction.max_output_tokens == 32_768
-    assert settings.fact_extraction.reasoning_effort == "medium"
+    assert settings.fact_extraction.reasoning_effort == "high"
     assert settings.evidence_relation_batch_size == 10
     assert settings.evidence_relation_max_concurrency == 20
     assert settings.multi_hop_3_candidate_limit == 3000
     assert settings.multi_hop_3_batch_size == 10
     assert settings.multi_hop_3_max_concurrency == 20
     assert settings.multi_hop_3.max_output_tokens == 8192
-    assert settings.multi_hop_3.reasoning_effort == "medium"
+    assert settings.multi_hop_3.reasoning_effort == "high"
     assert settings.multi_hop_4_candidate_limit == 3000
     assert settings.multi_hop_4_batch_size == 10
     assert settings.multi_hop_4_max_concurrency == 20
     assert settings.multi_hop_4.max_output_tokens == 8192
-    assert settings.multi_hop_4.reasoning_effort == "medium"
+    assert settings.multi_hop_4.reasoning_effort == "high"
     assert settings.multi_hop_5_candidate_limit == 3000
     assert settings.multi_hop_5_batch_size == 10
     assert settings.multi_hop_5_max_concurrency == 20
     assert settings.multi_hop_5.max_output_tokens == 8192
-    assert settings.multi_hop_5.reasoning_effort == "medium"
+    assert settings.multi_hop_5.reasoning_effort == "high"
     assert settings.candidate_generation_batch_size == 5
     assert settings.candidate_generation_max_concurrency == 10
     assert settings.evidence_retrieval.retrieval_pool_size == 30
@@ -64,9 +64,9 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.evidence_retrieval.bm25_b == 0.4
     assert settings.evidence_retrieval.bm25_delta == 0.5
     assert settings.evidence_relation.max_output_tokens == 4096
-    assert settings.evidence_relation.reasoning_effort == "medium"
+    assert settings.evidence_relation.reasoning_effort == "high"
     assert settings.candidate_generation.max_output_tokens == 8192
-    assert settings.candidate_generation.reasoning_effort == "medium"
+    assert settings.candidate_generation.reasoning_effort == "high"
 
 
 def test_synthesis_settings_reject_unknown_schema(tmp_path: Path) -> None:
