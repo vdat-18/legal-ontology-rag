@@ -52,7 +52,7 @@ function ConfirmMultiHop5BundleBatch(items: MultiHop5BundleBatchItem[]) -> Multi
     1. Viết thầm một tình huống và một câu hỏi cụ thể trước khi ghép facts.
     2. Nêu đóng góp riêng của từng fact và bước phụ thuộc mà nó tạo ra.
     3. Lần lượt bỏ từng fact; nếu chỉ mất một nhánh liệt kê hoặc chi tiết
-       không ảnh hưởng kết luận, trả is_valid=false.
+       thủ tục mà kết luận pháp lý cuối vẫn giữ nguyên, trả is_valid=false.
     4. Kiểm tra danh tính và vai trò pháp lý của chủ thể không bị đánh tráo
        qua các nhãn chung như cơ quan, lực lượng hoặc người có thẩm quyền.
     5. Kiểm tra fact thứ năm nối vào chuỗi lập luận, không biến bundle thành
@@ -62,6 +62,9 @@ function ConfirmMultiHop5BundleBatch(items: MultiHop5BundleBatchItem[]) -> Multi
     7. Sắp xếp thầm thành chuỗi A -> B -> C -> D -> E, trong đó kết quả
        pháp lý của mỗi bước là tiền đề cần thiết để áp dụng bước sau. Nếu
        chỉ có thể nối các yêu cầu bằng "và", "khi" hoặc "trong đó", trả false.
+    8. Phân biệt suy luận pháp lý với mô tả quy trình: thứ tự tiếp nhận,
+       kiểm tra, thông báo, lập biên bản, lưu, cập nhật hoặc trả kết quả
+       không tạo thành hop nếu mỗi thao tác chỉ là một nghĩa vụ độc lập.
 
     Luôn trả is_valid=false khi:
     - Năm facts chỉ cùng chủ đề, cùng hậu quả hoặc ghép thành câu hỏi tổng
@@ -71,6 +74,9 @@ function ConfirmMultiHop5BundleBatch(items: MultiHop5BundleBatchItem[]) -> Multi
     - Các facts thuộc những nhánh điều kiện loại trừ nhau hoặc không thể
       đồng thời đúng trong một tình huống, như bản giấy/điện tử, được phép/
       bị cấm hoặc có mặt/vắng mặt.
+    - Candidate cần đồng thời nhánh đạt và không đạt, chấp thuận và từ chối,
+      hoặc thực hiện và không thực hiện để bao quát đủ facts. Một tình huống
+      cụ thể chỉ đi theo một nhánh kết quả nên các nhánh còn lại không cần thiết.
     - Một fact chỉ áp dụng cho nhóm chủ thể, loại phương tiện hoặc vai trò
       hẹp hơn nhưng tình huống không có statement nào xác lập đúng phạm vi đó.
     - Một định nghĩa, khoảng thời gian, ngoại lệ hoặc phạm vi từ văn bản hay
@@ -78,6 +84,9 @@ function ConfirmMultiHop5BundleBatch(items: MultiHop5BundleBatchItem[]) -> Multi
       statement trực tiếp xác lập phạm vi dùng chung.
     - Các facts chỉ ghép thành một quy trình hoặc vòng đời rộng; output của
       mỗi bước không phải tiền đề cần thiết cho bước kế tiếp.
+    - Candidate mô tả đầy đủ vòng đời xử lý như tiếp nhận hồ sơ, kiểm tra,
+      ban hành, thông báo, giao trả, lưu trữ hay cập nhật dữ liệu nhưng không
+      đi đến một kết luận pháp lý duy nhất cần suy ra qua đủ năm facts.
     - Các facts chỉ là checklist nghĩa vụ thủ tục cùng áp dụng trong một quy
       trình; thực hiện một nghĩa vụ không xác lập tiền đề pháp lý cho nghĩa
       vụ kế tiếp, dù tất cả có thể xuất hiện trong cùng một tình huống.
