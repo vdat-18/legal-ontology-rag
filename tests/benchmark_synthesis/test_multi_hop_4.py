@@ -29,7 +29,7 @@ from legal_rag.benchmark_synthesis.writer import (
     write_multi_hop_4_candidate_set,
     write_multi_hop_4_progress,
 )
-from legal_rag.multi_hop_4_cli import _validate_resume_state
+from legal_rag.multi_hop_4_cli import _load_or_create_candidates, _validate_resume_state
 from legal_rag.settings import Settings
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -255,6 +255,86 @@ def test_multi_hop_4_artifacts_round_trip(tmp_path: Path) -> None:
     assert read_multi_hop_4_progress(progress_path) == (progress,)
 
 
+def test_candidate_cache_rejects_changed_upstream_graph(tmp_path: Path) -> None:
+    """A cache cannot be reused after its source bundle or relation graph changes without migration."""
+    candidate_path = tmp_path / "candidates.json"
+    settings = SynthesisSettings.from_path(_CONFIG_PATH)
+    relations = (_relation("a", "b"), _relation("b", "c"), _relation("c", "d"))
+
+    _load_or_create_candidates(
+        candidate_path,
+        [_source_bundle()],
+        relations,
+        settings,
+        migrate_source_bundles=False,
+    )
+
+    with pytest.raises(ValueError, match="different source bundle or relation run"):
+        _load_or_create_candidates(
+            candidate_path,
+            [_source_bundle()],
+            (*relations, _relation("a", "e")),
+            settings,
+            migrate_source_bundles=False,
+        )
+
+
+def test_candidate_migration_retains_same_fact_set_after_source_reconfirmation(tmp_path: Path) -> None:
+    """A new source bundle identity does not invalidate an unchanged four-fact question."""
+    candidate_path = tmp_path / "candidates.json"
+    settings = SynthesisSettings.from_path(_CONFIG_PATH)
+    relations = (_relation("a", "b"), _relation("b", "c"), _relation("c", "d"))
+    _load_or_create_candidates(
+        candidate_path,
+        [_source_bundle()],
+        relations,
+        settings,
+        migrate_source_bundles=False,
+    )
+    changed_source = _source_bundle("source-changed")
+
+    run_id, candidates, invalidated_ids = _load_or_create_candidates(
+        candidate_path,
+        [changed_source],
+        relations,
+        settings,
+        migrate_source_bundles=True,
+    )
+
+    candidate_id = multi_hop_4_candidate_id(("a", "b", "c", "d"))
+    assert read_multi_hop_4_candidate_set(candidate_path) == MultiHop4CandidateSet(run_id, candidates)
+    assert candidates == (MultiHop4Candidate(("a", "b", "c", "d"), changed_source.bundle_id),)
+    assert candidate_id not in invalidated_ids
+
+
+def test_candidate_migration_invalidates_new_fact_sets(tmp_path: Path) -> None:
+    """A newly selected four-fact combination is queued while prior combinations remain reusable."""
+    candidate_path = tmp_path / "candidates.json"
+    settings = SynthesisSettings.from_path(_CONFIG_PATH)
+    initial_relations = (_relation("a", "b"), _relation("b", "c"), _relation("c", "d"))
+    _load_or_create_candidates(
+        candidate_path,
+        [_source_bundle()],
+        initial_relations,
+        settings,
+        migrate_source_bundles=False,
+    )
+
+    _run_id, candidates, invalidated_ids = _load_or_create_candidates(
+        candidate_path,
+        [_source_bundle()],
+        (*initial_relations, _relation("a", "e")),
+        settings,
+        migrate_source_bundles=True,
+    )
+
+    current_ids = {multi_hop_4_candidate_id(candidate.fact_ids) for candidate in candidates}
+    retained_id = multi_hop_4_candidate_id(("a", "b", "c", "d"))
+    new_id = multi_hop_4_candidate_id(("a", "b", "c", "e"))
+    assert retained_id in current_ids
+    assert invalidated_ids == frozenset({new_id})
+
+
 def test_selective_resume_invalidates_only_requested_candidate() -> None:
     """A targeted refresh retains every unselected bundle and progress record."""
     selected = _confirmed_bundle()
@@ -282,6 +362,44 @@ def test_selective_resume_invalidates_only_requested_candidate() -> None:
 
     assert bundles_by_id == {retained.bundle_id: retained}
     assert set(progress_by_id) == {retained_id}
+
+
+def test_resume_migration_prunes_changed_and_obsolete_candidates() -> None:
+    """Migration retains only completed candidates unaffected by the source change."""
+    changed = _confirmed_bundle()
+    retained = ConfirmedMultiHop4Bundle(
+        bundle_id="bundle-retained",
+        fact_ids=("e", "f", "g", "h"),
+        bridge="Retained",
+        confirmed_by_model="provider/model",
+        run_id="bundle-run",
+    )
+    obsolete = ConfirmedMultiHop4Bundle(
+        bundle_id="bundle-obsolete",
+        fact_ids=("i", "j", "k", "l"),
+        bridge="Obsolete",
+        confirmed_by_model="provider/model",
+        run_id="bundle-run",
+    )
+    changed_id = multi_hop_4_candidate_id(changed.fact_ids)
+    retained_id = multi_hop_4_candidate_id(retained.fact_ids)
+    obsolete_id = multi_hop_4_candidate_id(obsolete.fact_ids)
+    progress = tuple(
+        MultiHop4ProgressRecord(candidate_id, "bundle-run", confirmed_by_model="provider/model")
+        for candidate_id in (changed_id, retained_id, obsolete_id)
+    )
+
+    bundles_by_id, progress_by_id = _validate_resume_state(
+        (changed, retained, obsolete),
+        progress,
+        frozenset({changed_id, retained_id}),
+        "current-run",
+        frozenset(),
+        frozenset({changed_id}),
+    )
+
+    assert bundles_by_id == {retained.bundle_id: retained}
+    assert progress_by_id == {retained_id: progress[1]}
 
 
 def test_resume_rejects_stale_progress() -> None:
