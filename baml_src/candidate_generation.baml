@@ -56,6 +56,12 @@ function GenerateSingleTurnCandidateBatch(
       evidence. bridge chỉ gợi cách nối facts, không phải nguồn pháp lý.
     - Tự chọn một câu hỏi hữu ích và tự nhiên được facts hỗ trợ;
       không ghép facts chỉ để làm câu hỏi phức tạp.
+    - Trọng tâm query bắt buộc là xác định hành vi vi phạm giao thông đường
+      bộ, chế tài/hậu quả của vi phạm, hoặc phát hiện, chứng minh, thẩm quyền,
+      trình tự và thi hành trong một vụ vi phạm. Không chuyển facts thành câu
+      hỏi về cấp/đổi giấy phép, đào tạo, sát hạch, khám sức khỏe, bảo hiểm,
+      đăng kiểm, vận hành hoặc quản lý thông thường. Bundle đã qua scope gate;
+      vẫn phải tự kiểm tra query và reference_answer không rời domain.
 
     Scenario contract:
     - answerable: facts trả lời trọn câu hỏi. Chỉ hỏi kết luận áp dụng

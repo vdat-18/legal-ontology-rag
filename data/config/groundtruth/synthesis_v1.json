@@ -1,5 +1,5 @@
 {
-  "schema_version": "5.4.0",
+  "schema_version": "5.5.0",
   "embedding_profile": "bge_m3",
   "embedding": {
     "batch_size": 100,
@@ -80,6 +80,13 @@
       "batch_size": 10,
       "max_concurrency": 20,
       "max_output_tokens": 8192,
+      "temperature": 0.0,
+      "reasoning_effort": "high"
+    },
+    "bundle_scope": {
+      "batch_size": 10,
+      "max_concurrency": 30,
+      "max_output_tokens": 4096,
       "temperature": 0.0,
       "reasoning_effort": "high"
     },

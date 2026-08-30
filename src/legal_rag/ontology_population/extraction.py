@@ -53,7 +53,7 @@ from legal_rag.ontology_population.models import (
 )
 from legal_rag.settings import Settings
 
-ONTOLOGY_POPULATION_PROMPT_VERSION = "0.19.0"
+ONTOLOGY_POPULATION_PROMPT_VERSION = "0.20.0"
 
 
 def build_population_run_id(pilot_run_id: str, settings: Settings) -> str:

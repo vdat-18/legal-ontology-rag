@@ -31,24 +31,27 @@ function ProposeLegalExceptionResolutions(windows: ExceptionResolutionWindowInpu
   prompt #"
     {{ _.role("system") }}
 
-    Bối cảnh: xây dựng ontology có bằng chứng nguồn cho quy định xử lý vi phạm
-    giao thông đường bộ tại Việt Nam; không áp dụng luật vào vụ việc.
+    Bối cảnh: xây dựng ontology có bằng chứng chỉ cho quy định xử phạt vi phạm
+    hành chính về giao thông đường bộ Việt Nam; không dùng cho vụ việc hoặc domain
+    khác.
 
-    Mục đích bước 5/6: nối general rule với ngoại lệ và citation để ontology giữ
-    đúng phạm vi áp dụng mà không biến citation thành rule identity.
+    Mục đích bước 5/6: nối general rule với ngoại lệ/citation mà không biến
+    citation thành rule identity.
 
     Nhiệm vụ: xác định LegalException và ProvisionCitation cho rule versions trong
     từng candidate window.
 
-    - Chỉ đề xuất khi toàn ngữ cảnh trực tiếp chứng minh ngoại lệ làm hẹp general
-      rule; không quyết định bằng keyword hoặc similarity.
+    - Chỉ đề xuất khi ngữ cảnh trực tiếp chứng minh điều kiện loại trừ hoặc rule
+      chuyên biệt làm hẹp general rule; không dùng keyword hoặc similarity.
+    - Citation, danh sách điều khoản cùng hậu quả, hậu quả cộng dồn và LegalChange
+      không tự tạo ngoại lệ.
     - General ID thuộc general_records. Citation chỉ dùng source evidence đã cấp;
       target IDs thuộc target_records và phù hợp locator.
-    - Giữ citation, provision và target rule là các đối tượng riêng; không redirect
-      theo similarity, thứ tự văn bản hoặc lịch sử thay đổi.
-    - Provision path phải có source support. Không đánh giá priority hay vụ việc cụ
-      thể; thiếu căn cứ thì không đề xuất.
-    - Trả đúng một result cho mỗi candidate_id; không lặp exception/general rule.
+    - Giữ citation, provision và target rule riêng; resolve target bằng locator và
+      phạm vi pháp lý, không redirect theo similarity, thứ tự hoặc lịch sử văn bản.
+    - Provision path cần source support. Không đánh giá priority hoặc vụ việc;
+      thiếu căn cứ thì không đề xuất.
+    - Trả một result cho mỗi candidate_id; không lặp exception.
 
     {{ _.role("user") }}
 

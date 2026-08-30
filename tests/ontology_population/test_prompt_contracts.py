@@ -15,7 +15,7 @@ PROMPT_CASES = (
         (
             "Mục đích bước 3/6",
             "không chứng minh cùng rule",
-            "các proposal không dùng trùng member",
+            "các proposal không trùng member",
             "Không suy diễn role, LegalChange, LegalException",
         ),
     ),
@@ -24,7 +24,7 @@ PROMPT_CASES = (
         3200,
         (
             "Mục đích bước 4/6",
-            "source trực tiếp xác định target, loại thay đổi và ngày hiệu lực",
+            "trực tiếp xác định target, loại thay đổi và ngày hiệu lực",
             "không suy ra từ similarity",
             "Thiếu evidence thì không đề xuất",
         ),
@@ -34,8 +34,8 @@ PROMPT_CASES = (
         3000,
         (
             "Mục đích bước 5/6",
-            "ngoại lệ làm hẹp general rule",
-            "citation, provision và target rule là các đối tượng riêng",
+            "rule chuyên biệt làm hẹp general rule",
+            "citation, provision và target rule riêng",
             "không redirect theo similarity",
         ),
     ),
@@ -44,8 +44,8 @@ PROMPT_CASES = (
         2800,
         (
             "Mục đích bước 6/6",
-            "SameConcept chỉ khi dùng chung identity",
-            "Broader/Narrower chỉ cho quan hệ taxonomy thực sự",
+            "SameConcept chỉ khi hai occurrence có cùng nghĩa pháp lý",
+            "Broader/Narrower chỉ khi một nghĩa pháp lý bao hàm nghĩa kia",
             "proposal=null",
         ),
     ),
@@ -64,6 +64,7 @@ def test_downstream_ontology_prompt_is_concise_and_preserves_boundaries(
 
     assert "Bạn là chuyên gia" not in prompt
     assert "Bối cảnh: xây dựng ontology" in compact_prompt
+    assert "chỉ cho quy định xử phạt vi phạm hành chính về giao thông đường bộ Việt Nam" in compact_prompt
     assert '{{ _.role("system") }}' in prompt
     assert '{{ _.role("user") }}' in prompt
     assert "{{ ctx.output_format }}" in prompt

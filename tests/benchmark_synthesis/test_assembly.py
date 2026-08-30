@@ -8,6 +8,9 @@ from pathlib import Path
 import pytest
 
 from legal_rag.benchmark_synthesis.assembly import RUN_MANIFEST_SCHEMA_VERSION, assemble_groundtruth_corpus
+from legal_rag.benchmark_synthesis.chunk_screening import CHUNK_SCREENING_PROMPT_VERSION
+from legal_rag.benchmark_synthesis.document_metadata import DOCUMENT_METADATA_PROMPT_VERSION
+from legal_rag.benchmark_synthesis.fact_extraction import FACT_EXTRACTION_PROMPT_VERSION
 from legal_rag.benchmark_synthesis.models import LEGAL_FACT_SCHEMA_VERSION, EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.stage_cache import (
     StageCacheFingerprint,
@@ -79,9 +82,9 @@ def test_assembly_packages_facts_and_minimal_manifest(tmp_path: Path) -> None:
     assert result.manifest["fact_count"] == 1
     assert result.manifest["document_summaries"] == [{"document_id": _DOCUMENT_A, "fact_count": 1}]
     assert result.manifest["prompt_versions"] == {
-        "chunk_screening": "5.15.0",
-        "document_metadata": "5.1.0",
-        "fact_extraction": "5.5.33",
+        "chunk_screening": CHUNK_SCREENING_PROMPT_VERSION,
+        "document_metadata": DOCUMENT_METADATA_PROMPT_VERSION,
+        "fact_extraction": FACT_EXTRACTION_PROMPT_VERSION,
     }
     assert result.manifest["fact_corpus_sha256"]
     assert result.manifest["config_sha256"]

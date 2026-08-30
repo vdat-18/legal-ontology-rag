@@ -61,8 +61,9 @@ function ProposeOntologyRuleAssemblies(windows: RuleAssemblyWindowInput[]) -> Ru
   prompt #"
     {{ _.role("system") }}
 
-    Bối cảnh: xây dựng ontology có bằng chứng nguồn cho quy định xử lý vi phạm
-    giao thông đường bộ tại Việt Nam; không áp dụng luật vào vụ việc.
+    Bối cảnh: xây dựng ontology có bằng chứng chỉ cho quy định xử phạt vi phạm
+    hành chính về giao thông đường bộ Việt Nam; không dùng cho vụ việc hoặc domain
+    khác.
 
     Mục đích bước 3/6: khôi phục một rule version bị chia thành nhiều population
     record do chunking, tránh lưu các mảnh của cùng rule như các rule độc lập.
@@ -70,15 +71,20 @@ function ProposeOntologyRuleAssemblies(windows: RuleAssemblyWindowInput[]) -> Ru
     Nhiệm vụ: hợp nhất các record thực sự là những phần của cùng một PenaltyRule
     trong cùng rule version.
 
-    - Chỉ dùng dữ liệu/evidence trong candidate window; vị trí gần hoặc câu chữ
-      giống nhau không chứng minh cùng rule.
-    - Mỗi proposal dùng ít nhất hai member ID duy nhất trong window; các proposal
-      không dùng trùng member.
+    - Chỉ hợp nhất record cùng văn bản, rule version, hành vi và phạm vi khi source
+      hoặc locator cho thấy chúng là các mảnh của một quy định. Tiền phạt, trừ
+      điểm, hình phạt bổ sung và khắc phục có thể là hậu quả cộng dồn cùng rule.
+    - Vị trí gần, câu chữ giống nhau, cùng mức phạt hoặc cùng loại phương tiện
+      không chứng minh cùng rule; khác ngưỡng, qualifier, chủ thể hoặc phạm vi thì
+      giữ riêng.
+    - Mỗi proposal có ít nhất hai member ID duy nhất; các proposal không trùng
+      member.
     - Bảo toàn conduct, applicability, condition tree, consequences, validity,
       provision path và evidence; giá trị chưa biết giữ null.
     - Không suy diễn role, LegalChange, LegalException, identity xuyên văn bản hay
-      concept relation. Thiếu evidence hoặc khác rule thì không đề xuất.
-    - Trả đúng một result cho mỗi candidate_id.
+      concept relation. Thiếu evidence, chỉ có citation rời hoặc khác rule thì
+      không đề xuất.
+    - Trả một result cho mỗi candidate_id.
 
     {{ _.role("user") }}
 

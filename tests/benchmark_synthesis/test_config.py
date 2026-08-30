@@ -55,6 +55,10 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.multi_hop_5_max_concurrency == 20
     assert settings.multi_hop_5.max_output_tokens == 8192
     assert settings.multi_hop_5.reasoning_effort == "high"
+    assert settings.bundle_scope_batch_size == 10
+    assert settings.bundle_scope_max_concurrency == 30
+    assert settings.bundle_scope.max_output_tokens == 4096
+    assert settings.bundle_scope.reasoning_effort == "high"
     assert settings.candidate_generation_batch_size == 10
     assert settings.candidate_generation_max_concurrency == 30
     assert settings.evidence_retrieval.retrieval_pool_size == 30
@@ -178,6 +182,14 @@ def test_synthesis_settings_reject_non_positive_candidate_generation_max_concurr
 
     with pytest.raises(ValueError, match="candidate_generation_max_concurrency must be positive"):
         replace(settings, candidate_generation_max_concurrency=0)
+
+
+def test_synthesis_settings_reject_non_positive_bundle_scope_max_concurrency() -> None:
+    """Bundle-scope confirmation cannot start with a non-positive worker pool."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+
+    with pytest.raises(ValueError, match="bundle_scope_max_concurrency must be positive"):
+        replace(settings, bundle_scope_max_concurrency=0)
 
 
 def test_synthesis_settings_reject_non_positive_candidate_generation_batch_size() -> None:

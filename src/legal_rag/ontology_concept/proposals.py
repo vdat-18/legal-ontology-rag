@@ -29,7 +29,7 @@ from legal_rag.ontology_population.models import population_identity
 from legal_rag.ontology_proposal_execution import execute_proposal_batches
 from legal_rag.settings import Settings
 
-ONTOLOGY_CONCEPT_PROMPT_VERSION = "0.3.0"
+ONTOLOGY_CONCEPT_PROMPT_VERSION = "0.4.0"
 
 KIND_VALUES = {
     "RegulatedConduct": OntologyConceptKind.RegulatedConduct,

@@ -55,7 +55,7 @@ RECORD_RUN = {"ontology_version": "0.2.0", **EXTRACTION_RUN}
 
 def test_target_conduct_extraction_uses_configured_batch_size(legal_chunk: Chunk) -> None:
     """Step 1 groups target chunks using its dedicated contract limit."""
-    targets = tuple(replace(legal_chunk, chunk_id=f"target-{index}", chunk_index=index) for index in range(6))
+    targets = tuple(replace(legal_chunk, chunk_id=f"target-{index}", chunk_index=index) for index in range(11))
     batch_sizes = []
 
     class _ConductClient:
@@ -75,7 +75,7 @@ def test_target_conduct_extraction_uses_configured_batch_size(legal_chunk: Chunk
 
     records = extract_target_conducts(targets, _ConductClient(), settings, run_id="conduct-run")
 
-    assert batch_sizes == [5, 1]
+    assert batch_sizes == [10, 1]
     assert [record.target_chunk_id for record in records] == [chunk.chunk_id for chunk in targets]
 
 

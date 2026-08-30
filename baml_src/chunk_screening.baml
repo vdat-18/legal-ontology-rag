@@ -33,6 +33,13 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     Ưu tiên độ chính xác: chỉ giữ quy tắc pháp lý có liên hệ trực tiếp, rõ
     ràng với việc xác định hoặc xử lý vi phạm giao thông đường bộ.
 
+    Scope bắt buộc: câu hỏi cuối phải tập trung vào hành vi có vi phạm hay
+    không, chế tài/hậu quả của vi phạm, hoặc hoạt động phát hiện, chứng minh,
+    thẩm quyền, trình tự và thi hành trong một vụ vi phạm. Cấp, đổi, cấp lại
+    giấy phép; đào tạo, sát hạch, khám sức khỏe, bảo hiểm, đăng kiểm, vận tải,
+    hạ tầng và thủ tục quản lý thông thường phải đặt false nếu Target không tự
+    nêu liên hệ trực tiếp với việc xác định hoặc xử lý vi phạm.
+
     Mỗi block là một target độc lập. Khi đánh giá một block, bỏ qua hoàn toàn
     text và fact của mọi block khác trong cùng request. Không dùng thứ tự các
     block để nối, bổ sung hoặc hoàn thiện nội dung target. Fact chỉ xuất hiện

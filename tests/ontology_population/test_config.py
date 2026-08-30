@@ -18,7 +18,7 @@ def test_population_contract_loads_typed_execution_limits() -> None:
     settings = PopulationSettings.from_path(CONTRACT_PATH)
 
     assert settings.instance_namespace == "https://w3id.org/legal-ontology-rag/data/"
-    assert settings.conduct_batch_size == 5
+    assert settings.conduct_batch_size == 10
     assert settings.batch_size == 1
     assert settings.max_preceding_chunks == 2
     assert settings.max_following_chunks == 1
@@ -44,6 +44,7 @@ def test_population_prompt_preserves_core_semantic_boundaries() -> None:
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
     compact_prompt = " ".join(prompt.split())
 
+    assert "chỉ cho quy định xử phạt vi phạm hành chính về giao thông đường bộ Việt Nam" in compact_prompt
     assert "Không dùng kiến thức ngoài" in compact_prompt
     assert "Giữ nguyên target conducts" in compact_prompt
     assert "cây AND/OR/NOT" in compact_prompt
@@ -58,6 +59,9 @@ def test_population_prompt_preserves_vietnamese_legal_structure() -> None:
     compact_prompt = " ".join(prompt.split())
 
     assert "danh mục đóng" in compact_prompt
+    assert "không theo dấu câu" in compact_prompt
+    assert "cùng độ chi tiết cho cấu trúc tương đương" in compact_prompt
+    assert "locator hoặc cụm đối tượng không đủ" in compact_prompt
     assert "Chương > Mục > Điều > Khoản > Điểm" in compact_prompt
     assert "Giữ nguyên phủ định" in compact_prompt
     assert "Không dùng kiến thức ngoài" in compact_prompt

@@ -36,8 +36,9 @@ function ProposeCrossDocumentLegalChanges(windows: CrossDocumentChangeWindowInpu
   prompt #"
     {{ _.role("system") }}
 
-    Bối cảnh: xây dựng ontology có bằng chứng nguồn cho quy định xử lý vi phạm
-    giao thông đường bộ tại Việt Nam; không áp dụng luật vào vụ việc.
+    Bối cảnh: xây dựng ontology có bằng chứng chỉ cho quy định xử phạt vi phạm
+    hành chính về giao thông đường bộ Việt Nam; không dùng cho vụ việc hoặc domain
+    khác.
 
     Mục đích bước 4/6: nối các rule versions bằng LegalChange để ontology phản ánh
     diễn biến theo thời gian mà không đồng nhất rule cũ và rule mới.
@@ -45,8 +46,11 @@ function ProposeCrossDocumentLegalChanges(windows: CrossDocumentChangeWindowInpu
     Nhiệm vụ: xác định LegalChange giữa rule versions của hai văn bản trong từng
     candidate window.
 
-    - Chỉ đề xuất khi source trực tiếp xác định target, loại thay đổi và ngày hiệu
-      lực; không suy ra từ similarity, thứ tự văn bản, metadata hoặc valid_to null.
+    - Chỉ đề xuất khi quy định sửa đổi, thay thế hoặc bãi bỏ trực tiếp xác định
+      target, loại thay đổi và ngày hiệu lực của rule xử phạt. Văn bản sau có hành
+      vi hay mức phạt tương tự không tự tạo LegalChange.
+    - Không suy ra từ similarity, chênh lệch mức phạt, thứ tự văn bản, metadata
+      hoặc valid_to null.
     - earlier ID thuộc earlier_records; later ID nếu có thuộc later_records; mỗi ID
       chỉ dùng một lần trong result.
     - Amendment/Replacement cần later rule. RepealOrSupersession chỉ để later null

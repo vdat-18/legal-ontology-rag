@@ -124,25 +124,30 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
   prompt #"
     {{ _.role("system") }}
 
-    Bối cảnh: xây dựng ontology có bằng chứng nguồn cho quy định xử lý vi phạm
-    giao thông đường bộ tại Việt Nam; không áp dụng luật vào vụ việc.
+    Bối cảnh: xây dựng ontology có bằng chứng chỉ cho quy định xử phạt vi phạm
+    hành chính về giao thông đường bộ Việt Nam; không dùng cho vụ việc hoặc domain
+    khác.
 
     Mục đích bước 1/6: khóa danh mục hành vi trực tiếp thuộc mỗi Target làm
     anchor cho bước tạo PenaltyRule, để context sau không tự thêm hành vi.
 
-    Nhiệm vụ: lập danh mục đóng mọi hành vi vi phạm được từng Target trực tiếp
-    mô tả; chưa gắn applicability hoặc hậu quả.
+    Nhiệm vụ: với từng Target độc lập, lập danh mục đóng mọi hành vi trực tiếp
+    được mô tả và có thể làm căn cứ xử phạt; chưa gắn phạm vi hoặc hậu quả.
 
+    - Conduct nguyên tử là hành vi tự nó, cùng qualifier, có thể đủ căn cứ xử phạt.
+      Tách hành vi thay thế độc lập và giữ qualifier/ngoại lệ chung trong mỗi hành
+      vi; không tách thành phần phải kết hợp mới tạo thành vi phạm.
+    - Quyết định theo nghĩa pháp lý toàn câu, không theo dấu câu; dùng cùng độ chi
+      tiết cho cấu trúc tương đương trong mọi Target.
+    - Không tạo conduct từ mức phạt, trừ điểm, hình phạt bổ sung, biện pháp khắc
+      phục, định nghĩa, thủ tục hoặc thẩm quyền. Trong câu hậu quả/citation, chỉ
+      tạo anchor khi Target nhắc đủ hành vi; locator hoặc cụm đối tượng không đủ,
+      không suy lại nội dung điều được dẫn chiếu.
     - Chỉ dùng Target evidence; structural context chỉ xác định cấu trúc. Không
-      dùng kiến thức ngoài hoặc suy ra nội dung điều khoản được dẫn chiếu.
-    - Tách conduct có thể cấu thành vi phạm độc lập; không tạo conduct từ định
-      nghĩa, thủ tục, thẩm quyền, hậu quả hoặc citation không nhắc lại hành vi.
-    - Không tách các thành phần phải kết hợp mới thành một conduct. Giữ nguyên phủ
-      định, qualifier và phạm vi ngữ pháp tiếng Việt.
+      dùng kiến thức ngoài. Giữ nguyên phủ định, qualifier và phạm vi tiếng Việt.
     - provision_path chỉ gồm các cấp có thật theo `Chương > Mục > Điều > Khoản >
       Điểm`, không thêm tiêu đề. Evidence chỉ thuộc Target.
-    - Trả đúng một result cho mỗi target_chunk_id; conducts chỉ rỗng sau khi audit
-      toàn Target.
+    - Trả một result cho mỗi target_chunk_id; conducts chỉ rỗng sau khi audit.
 
     {{ _.role("user") }}
 
@@ -168,23 +173,26 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
   prompt #"
     {{ _.role("system") }}
 
-    Bối cảnh: xây dựng ontology có bằng chứng nguồn cho quy định xử lý vi phạm
-    giao thông đường bộ tại Việt Nam; không áp dụng luật vào vụ việc.
+    Bối cảnh: xây dựng ontology có bằng chứng chỉ cho quy định xử phạt vi phạm
+    hành chính về giao thông đường bộ Việt Nam; không dùng cho vụ việc hoặc domain
+    khác.
 
     Mục đích bước 2/6: hoàn thành các PenaltyRule theo conduct đã khóa, tạo rule
     versions có căn cứ cho các bước hợp nhất và giải quyết quan hệ pháp lý.
 
-    Nhiệm vụ: gắn applicability và hậu quả vào locked conduct inventory để tạo
+    Nhiệm vụ: gắn phạm vi áp dụng và hậu quả vào locked conduct inventory để tạo
     PenaltyRule có source support.
 
     - Giữ nguyên target conducts và trỏ đúng target_conduct_id; inventory rỗng thì
       rules rỗng.
-    - Chỉ dùng reading window cùng item. Structural context hỗ trợ cấu trúc,
-      subject, role và vehicle nhưng không phải evidence.
-    - Chỉ nối consequence khi source hoặc cấu trúc pháp lý xác định conduct bị chi
-      phối; không dựa vào vị trí gần hay câu chữ tương tự.
-    - Giữ consequence cộng dồn; tách variant khi hậu quả phụ thuộc điều kiện. Mỗi
-      consequence có evidence riêng.
+    - Không gộp hoặc tạo conduct. Chỉ dùng reading window cùng item; structural
+      context hỗ trợ provision, subject, role và vehicle nhưng không phải evidence.
+    - Chỉ nối hậu quả khi source, locator hoặc cấu trúc quy phạm xác định conduct
+      bị chi phối; danh sách dẫn chiếu có thể phân phối hậu quả chung nhưng vị trí,
+      câu chữ tương tự hoặc cùng mức phạt không đủ.
+    - Phân loại đúng hậu quả được source nêu: tiền phạt, trừ điểm, hình phạt bổ
+      sung và khắc phục. Giữ hậu quả cộng dồn; tách variant khi hậu quả hoặc phạm
+      vi phụ thuộc điều kiện khác nhau.
     - Biểu diễn applicability và ngoại lệ cục bộ bằng cây AND/OR/NOT đầy đủ, hợp lệ
       và có evidence; dữ liệu chưa được source hỗ trợ giữ null.
     - Không tạo LegalChange, concept relation hoặc occurrence. Trả đúng một result

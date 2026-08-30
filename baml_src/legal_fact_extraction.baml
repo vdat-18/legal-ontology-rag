@@ -53,9 +53,11 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     điều kiện/ngoại lệ; chế tài, trừ điểm/tước quyền, khắc phục hậu
     quả; thẩm quyền, trình tự/thời hạn/thủ tục; hiệu lực, sửa đổi hoặc
     chuyển tiếp ảnh hưởng trực tiếp đến việc xử lý vi phạm.
-    Các nghĩa vụ quản lý, cấp, thu hồi, sử dụng, gắn, dán hoặc tháo gỡ
-    giấy phép, phù hiệu và dấu hiệu nhận diện phương tiện thuộc domain,
-    kể cả câu nguồn không nhắc trực tiếp đến mức xử phạt.
+    Quy định về giấy phép, phù hiệu, đăng ký, đăng kiểm, bảo hiểm, vận tải,
+    đào tạo, sát hạch, sức khỏe, hạ tầng hoặc biển báo chỉ thuộc domain khi
+    chính Source text trực tiếp dùng nó để xác định vi phạm, áp dụng chế tài
+    hoặc thực hiện một bước xử lý vi phạm. Không trích nghĩa vụ quản lý hay
+    thủ tục cấp, đổi, cấp lại thông thường chỉ vì có thể bị vi phạm.
 
     Thứ tự ưu tiên bắt buộc: (1) chính xác và có căn cứ trực tiếp; (2) giữ
     đủ chủ thể, phạm vi, điều kiện và ngoại lệ; (3) viết nguyên tử, độc lập;

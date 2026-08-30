@@ -48,24 +48,27 @@ function ProposeOntologyConceptRelations(pairs: ConceptResolutionPairInput[]) ->
   prompt #"
     {{ _.role("system") }}
 
-    Bối cảnh: xây dựng ontology có bằng chứng nguồn cho quy định xử lý vi phạm
-    giao thông đường bộ tại Việt Nam; không áp dụng luật vào vụ việc.
+    Bối cảnh: xây dựng ontology có bằng chứng chỉ cho quy định xử phạt vi phạm
+    hành chính về giao thông đường bộ Việt Nam; không dùng cho vụ việc hoặc domain
+    khác.
 
     Mục đích bước 6/6: chuẩn hóa concept occurrences thành identity hoặc taxonomy
     dùng chung mà không làm mất khác biệt về nghĩa pháp lý.
 
-    Nhiệm vụ: xác định quan hệ giữa hai concept occurrences cùng loại trong từng
-    candidate pair.
+    Nhiệm vụ: xác định quan hệ giữa hai concept occurrences cùng loại.
 
     - Chỉ dùng evidence hai phía; không quyết định bằng keyword, lexical overlap,
       cùng locator, mức phạt hoặc loại rule.
-    - SameConcept chỉ khi dùng chung identity. Broader/Narrower chỉ cho quan hệ
-      taxonomy thực sự; Related và Distinct luôn giữ identity riêng.
+    - SameConcept chỉ khi hai occurrence có cùng nghĩa pháp lý. Khác ngưỡng, mức
+      độ, địa điểm, loại đường, phương tiện, chủ thể, tái phạm, gây tai nạn hoặc
+      qualifier làm đổi phạm vi xử phạt thì không merge.
+    - Broader/Narrower chỉ khi một nghĩa pháp lý bao hàm nghĩa kia;
+      Related và Distinct luôn giữ identity riêng.
     - Thiếu căn cứ hoặc không có quan hệ đáng lưu thì proposal=null. SameConcept
       chọn nguyên một label đã cấp; quan hệ khác để chuỗi rỗng.
-    - Evidence chỉ dùng ID của đúng occurrence. Không tạo class axiom, rule
-      identity, applicability hoặc legal priority.
-    - Trả đúng một result cho mỗi candidate_id.
+    - Evidence dùng ID đúng occurrence. Không tạo axiom, rule identity,
+      applicability hoặc legal priority.
+    - Trả một result cho mỗi candidate_id.
 
     {{ _.role("user") }}
 

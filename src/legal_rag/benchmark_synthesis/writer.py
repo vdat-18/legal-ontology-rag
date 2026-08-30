@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
 
+from legal_rag.benchmark_synthesis.bundle_scope import BUNDLE_SCOPE_SCHEMA_VERSION, BundleScopeRecord
 from legal_rag.benchmark_synthesis.candidate_generation import (
     CANDIDATE_SCHEMA_VERSION,
     LEGACY_CANDIDATE_GENERATION_PROMPT_VERSION,
@@ -269,6 +270,33 @@ def read_evidence_relation_progress(input_path: Path) -> tuple[EvidenceRelationP
 def write_scenarios(output_path: Path, scenarios: Sequence[Scenario]) -> None:
     """Atomically replace one UTF-8 JSONL output with scenario records."""
     write_jsonl_atomic(output_path, (scenario.to_dict() for scenario in scenarios))
+
+
+def write_bundle_scope_records(output_path: Path, records: Sequence[BundleScopeRecord]) -> None:
+    """Atomically replace one UTF-8 JSONL output with bundle-scope decisions."""
+    write_jsonl_atomic(output_path, (record.to_dict() for record in records))
+
+
+def read_bundle_scope_records(input_path: Path) -> tuple[BundleScopeRecord, ...]:
+    """Read persisted bundle-scope decisions."""
+    records: list[BundleScopeRecord] = []
+    with input_path.open(encoding="utf-8") as source_file:
+        for line in source_file:
+            payload = json.loads(line)
+            if payload["schema_version"] != BUNDLE_SCOPE_SCHEMA_VERSION:
+                msg = f"Unsupported bundle-scope schema: {payload['schema_version']}"
+                raise ValueError(msg)
+            records.append(
+                BundleScopeRecord(
+                    bundle_id=payload["bundle_id"],
+                    is_in_scope=payload["is_in_scope"],
+                    reason=payload["reason"],
+                    run_id=payload["run_id"],
+                    prompt_version=payload["prompt_version"],
+                    confirmed_by_model=payload["confirmed_by_model"],
+                )
+            )
+    return tuple(records)
 
 
 def write_multi_hop_3_candidate_set(output_path: Path, candidate_set: MultiHop3CandidateSet) -> None:
