@@ -1,4 +1,4 @@
-"""Generate typed legal-exception proposals for mandatory human review."""
+"""Generate typed legal-exception proposals."""
 
 from __future__ import annotations
 
@@ -29,13 +29,11 @@ from legal_rag.ontology_population.extraction import bind_population_evidence
 from legal_rag.ontology_population.models import OntologyPopulationRecord, population_identity
 from legal_rag.settings import Settings
 
+ONTOLOGY_EXCEPTION_PROMPT_VERSION = "0.2.0"
+
 
 class ExceptionProposalClient(Protocol):
     """Boundary implemented by a legal-exception language-model client."""
-
-    @property
-    def model(self) -> str:
-        """Return the model identifier recorded on proposals."""
 
     def propose_batch(
         self, windows: Sequence[ExceptionResolutionWindowInput]
@@ -54,12 +52,6 @@ class BamlExceptionProposalClient:
             temperature=exception_settings.temperature,
             max_response_bytes=exception_settings.max_response_bytes,
         )
-        self._model = settings.llm_model
-
-    @property
-    def model(self) -> str:
-        """Return the configured model identifier."""
-        return self._model
 
     def propose_batch(
         self, windows: Sequence[ExceptionResolutionWindowInput]
@@ -79,7 +71,7 @@ def build_exception_proposal_run_id(
     return population_identity(
         {
             "candidate_run_id": candidate_run_id,
-            "prompt_version": exception_settings.prompt_version,
+            "prompt_version": ONTOLOGY_EXCEPTION_PROMPT_VERSION,
             "batch_size": exception_settings.batch_size,
             "max_output_tokens": exception_settings.max_output_tokens,
             "temperature": exception_settings.temperature,
@@ -135,7 +127,7 @@ def _build_batch_proposals(
     exception_settings: ExceptionResolutionSettings,
     run_id: str,
 ) -> tuple[tuple[str, tuple[LegalExceptionProposal, ...]], ...]:
-    """Translate one typed response and enforce source and target membership."""
+    """Translate one typed response and bind source and target references."""
     results = client.propose_batch(inputs)
     requested_ids = [item.candidate_id for item in inputs]
     result_ids = [result.candidate_id for result in results]
@@ -150,26 +142,13 @@ def _build_batch_proposals(
         window = windows_by_id[candidate_id]
         source_document = documents_by_id[window.source_document_id]
         evidence_sources = inputs_by_id[candidate_id].source_evidence_sources
-        used_exception_keys: set[tuple[object, ...]] = set()
         candidate_proposals = []
         for raw in results_by_id[candidate_id].proposals:
             if raw.general_population_id not in window.general_population_ids:
                 msg = "Exception general rule must belong to the candidate window"
                 raise ValueError(msg)
             evidence = bind_population_evidence(raw.evidence, evidence_sources)
-            if not evidence or not raw.citations:
-                msg = "Exception proposals require exact evidence and at least one resolved citation"
-                raise ValueError(msg)
             citations = _translate_citations(raw.citations, evidence_sources, window)
-            exception_key = (
-                raw.general_population_id,
-                raw.exception_provision_path,
-                tuple((item.chunk_id, item.exact_text) for item in evidence),
-            )
-            if exception_key in used_exception_keys:
-                msg = "One candidate result must not repeat the same exception statement and general rule"
-                raise ValueError(msg)
-            used_exception_keys.add(exception_key)
             proposal_id = population_identity(
                 {
                     "run_id": run_id,
@@ -190,8 +169,6 @@ def _build_batch_proposals(
                     evidence=evidence,
                     citations=citations,
                     rationale_vi=raw.rationale_vi,
-                    proposed_by_model=client.model,
-                    prompt_version=exception_settings.prompt_version,
                     run_id=run_id,
                 )
             )
@@ -204,23 +181,14 @@ def _translate_citations(
     evidence_sources: Sequence[OntologyEvidenceSource],
     window: ExceptionCandidateWindow,
 ) -> tuple[ExceptionCitationResolution, ...]:
-    """Bind citation wording exactly and validate every target rule candidate."""
+    """Bind citation wording and target rule references."""
     citations = []
-    seen: set[tuple[str, str]] = set()
     for raw in raw_citations:
         bound = bind_population_evidence((raw.citation,), evidence_sources)
-        target_ids = tuple(sorted(raw.target_population_ids))
-        if not target_ids or len(target_ids) != len(set(target_ids)):
-            msg = "Each grouped exception citation requires unique target rule versions"
-            raise ValueError(msg)
+        target_ids = tuple(sorted(set(raw.target_population_ids)))
         if not set(target_ids) <= set(window.target_population_ids):
             msg = "Exception citation targets must belong to the candidate window"
             raise ValueError(msg)
-        citation_key = (bound[0].chunk_id, bound[0].exact_text)
-        if citation_key in seen:
-            msg = "One exception proposal must not repeat a grouped citation"
-            raise ValueError(msg)
-        seen.add(citation_key)
         citations.append(
             ExceptionCitationResolution(
                 citation_text=bound[0].exact_text,

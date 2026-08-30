@@ -28,14 +28,13 @@ def build_concept_candidates(
     pairs = []
     for kind in settings.included_kinds:
         for left, right in combinations(sorted(by_kind[kind], key=lambda item: item.occurrence_id), 2):
-            pairs.append(_candidate_pair(settings.candidate_version, left, right))
+            pairs.append(_candidate_pair(left, right))
             if len(pairs) > settings.max_total_pairs:
                 msg = "Concept candidate pair count exceeds the configured bound"
                 raise ValueError(msg)
     ordered_pairs = tuple(sorted(pairs, key=lambda item: item.candidate_id))
     run_id = population_identity(
         {
-            "candidate_version": settings.candidate_version,
             "included_kinds": settings.included_kinds,
             "max_total_pairs": settings.max_total_pairs,
             "occurrences": [item.to_dict() for item in occurrences],
@@ -86,14 +85,12 @@ def extract_concept_occurrences(
 
 
 def _candidate_pair(
-    candidate_version: str,
     left: ConceptOccurrence,
     right: ConceptOccurrence,
 ) -> ConceptCandidatePair:
     """Build one stable same-kind candidate pair."""
     candidate_id = population_identity(
         {
-            "candidate_version": candidate_version,
             "kind": left.kind,
             "left_occurrence_id": left.occurrence_id,
             "right_occurrence_id": right.occurrence_id,

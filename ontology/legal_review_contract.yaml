@@ -26,7 +26,7 @@ review_items:
     title: Rule and legal-expression identity
     pending_topics: [legal_identity, legal_expression_identity]
     question: Are version-specific penalty rules, legal resources, and legal expressions distinguished correctly?
-    affected_ids: [MD-RULE-001, MD-DOC-001, TERM-RULE-001, TERM-RULE-002, TERM-RULE-003, TERM-DOC-001, TERM-EXPR-001]
+    affected_ids: [MD-RULE-001, MD-DOC-001, TERM-RULE-001, TERM-RULE-002]
     evidence_files: [ontology/modules/normative_rule.ttl, ontology/modules/source_provenance.ttl]
     acceptance_criteria:
       - Similar wording alone never establishes identity across legal instruments or versions.
@@ -35,7 +35,7 @@ review_items:
     title: Conduct normalization boundary
     pending_topics: [conduct_normalization]
     question: Does the model correctly separate regulated conduct concepts, rule specifications, and concrete occurrences?
-    affected_ids: [MD-CONDUCT-001, TERM-CONDUCT-001, TERM-CONDUCT-002, TERM-CONDUCT-003, TERM-APP-001]
+    affected_ids: [MD-CONDUCT-001, TERM-CONDUCT-001, TERM-CONDUCT-002, TERM-APP-001]
     evidence_files: [ontology/modules/occurrence_context.ttl, ontology/modules/normative_rule.ttl]
     acceptance_criteria:
       - Normalized conduct does not erase legally material actor, vehicle, condition, or source differences.
@@ -44,7 +44,7 @@ review_items:
     title: Legal subject and contextual role taxonomy
     pending_topics: [legal_taxonomy]
     question: Are subject kinds, legal subjects, contextual roles, and role assignments legally distinguished?
-    affected_ids: [MD-SUBJECT-001, TERM-SUBJECT-001, TERM-SUBJECT-002, TERM-SUBJECT-003, TERM-SUBJECT-004, TERM-SUBJECT-005, TERM-SUBJECT-006]
+    affected_ids: [MD-SUBJECT-001, TERM-SUBJECT-002, TERM-SUBJECT-005, TERM-SUBJECT-006]
     evidence_files: [ontology/modules/occurrence_context.ttl, ontology/modules/normative_rule.ttl]
     acceptance_criteria:
       - Driver, owner, custodian, and operator roles are not inferred from one another.
@@ -53,7 +53,7 @@ review_items:
     title: Vehicle legal taxonomy
     pending_topics: [vehicle_taxonomy]
     question: Are vehicle categories represented at the distinctions required by the reviewed penalty provisions?
-    affected_ids: [MD-VEHICLE-001, TERM-VEHICLE-001, TERM-VEHICLE-002]
+    affected_ids: [MD-VEHICLE-001, TERM-VEHICLE-001]
     evidence_files: [ontology/modules/occurrence_context.ttl, ontology/shapes/legal_ontology.shacl.ttl]
     acceptance_criteria:
       - Vehicle categories preserve every distinction that changes applicability or consequence.
@@ -74,13 +74,13 @@ review_items:
     affected_ids: [MD-EXCEPTION-001, MD-REF-001, TERM-EXCEPTION-001, TERM-CITATION-001, TERM-PROVISION-001]
     evidence_files: [ontology/modules/normative_rule.ttl, ontology/tests/cq_queries/cq_exception_001.rq]
     acceptance_criteria:
-      - Citation grouping and exact exception evidence are preserved.
+      - Citation grouping and source provenance are preserved.
       - Redirects target reviewed version-specific rules and do not automate legal priority.
   - id: ILR-007
     title: Legal consequence classification
     pending_topics: [legal_classification]
     question: Are monetary penalties, point deductions, additional sanctions, and remedial measures classified correctly?
-    affected_ids: [MD-CONSEQUENCE-001, MD-CONSEQUENCE-002, TERM-CONSEQUENCE-001, TERM-MONEY-001, TERM-MONEY-002, TERM-MONEY-003, TERM-POINTS-001, TERM-ADDITIONAL-001, TERM-REMEDY-001, TERM-TARGET-001]
+    affected_ids: [MD-CONSEQUENCE-001, MD-CONSEQUENCE-002, TERM-CONSEQUENCE-001, TERM-MONEY-001, TERM-POINTS-001, TERM-ADDITIONAL-001, TERM-REMEDY-001]
     evidence_files: [ontology/modules/legal_consequence.ttl, ontology/tests/cq_queries/cq_consequence_001.rq]
     acceptance_criteria:
       - Every subtype is supported by normative source text, not a form or attachment alone.
@@ -89,7 +89,7 @@ review_items:
     title: Normative document and attachment legal status
     pending_topics: [legal_status]
     question: Does the model avoid treating files, attachments, or forms as normative provisions without legal authority?
-    affected_ids: [MD-DOC-002, TERM-FILE-001, TERM-CHUNK-001]
+    affected_ids: [MD-DOC-002]
     evidence_files: [ontology/modules/source_provenance.ttl, ontology/tests/cq_queries/cq_source_001.rq]
     acceptance_criteria:
       - File containment does not establish normative status.
@@ -98,19 +98,19 @@ review_items:
     title: Effective dates and legal change types
     pending_topics: [legal_effective_date, legal_change_type]
     question: Are validity intervals and amendment, replacement, repeal, or supersession events legally supported?
-    affected_ids: [MD-TIME-001, MD-CHANGE-001, TERM-TIME-001, TERM-CHANGE-001, TERM-CHANGE-002, TERM-CHANGE-003, TERM-CHANGE-004]
+    affected_ids: [MD-TIME-001, MD-CHANGE-001, TERM-TIME-001, TERM-CHANGE-004]
     evidence_files: [ontology/modules/temporal_change.ttl, ontology/tests/cq_queries/cq_temporal_002_change_projection.rq]
     acceptance_criteria:
       - Effective dates are supported at rule level by authoritative evidence.
       - Missing interval ends remain unknown and change types are never inferred from textual similarity.
   - id: ILR-010
-    title: Evidence and supported-assertion boundary
+    title: Source provenance boundary
     pending_topics: []
-    question: Is every material legal assertion reviewable through exact evidence and authoritative provenance?
-    affected_ids: [MD-PROV-001, MD-PROV-002, TERM-EVIDENCE-001, TERM-ASSERTION-001, TERM-ISSUER-001]
-    evidence_files: [ontology/modules/source_provenance.ttl, ontology/tests/cq_queries/cq_evidence_001.rq]
+    question: Is every material legal assertion traceable to an authoritative provision and source chunk?
+    affected_ids: [MD-PROV-001, MD-PROV-002, TERM-PROVISION-001, TERM-CITATION-001]
+    evidence_files: [ontology/modules/source_provenance.ttl, ontology/tests/cq_queries/cq_source_001.rq]
     acceptance_criteria:
-      - Evidence for one component does not silently support unrelated components.
+      - Provenance for one component does not silently support unrelated components.
       - Heading-derived scope retains both ancestor and leaf provision provenance.
   - id: ILR-011
     title: V0.1 scope, competency questions, and legal limitations

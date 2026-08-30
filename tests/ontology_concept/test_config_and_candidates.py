@@ -12,18 +12,23 @@ from legal_rag.ontology_change.corpus import ChangeCorpus
 from legal_rag.ontology_concept.candidates import build_concept_candidates
 from legal_rag.ontology_concept.config import ConceptResolutionSettings
 from legal_rag.ontology_concept.writer import read_concept_candidates, write_concept_candidates
+from legal_rag.ontology_validation.loader import load_yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_concept_contract_and_console_scripts_are_packaged() -> None:
-    """The contract and three commands expose exhaustive mandatory-review settings."""
+    """The contract and commands expose exhaustive bounded settings."""
     settings = ConceptResolutionSettings.from_path(PROJECT_ROOT / "ontology" / "concept_resolution_contract.yaml")
     scripts = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["scripts"]
 
     assert settings.included_kinds == ("RegulatedConduct", "LegalSubjectRole", "VehicleCategory")
     assert settings.max_total_pairs == 100_000
-    assert settings.require_every_proposal_reviewed is True
+    assert set(load_yaml(PROJECT_ROOT / "ontology" / "concept_resolution_contract.yaml")) == {
+        "schema_version",
+        "candidates",
+        "llm",
+    }
     assert scripts["legal-build-concept-candidates"] == "legal_rag.ontology_concept_candidates_cli:main"
     assert scripts["legal-propose-concept-relations"] == "legal_rag.ontology_concept_proposals_cli:main"
     assert scripts["legal-finalize-concept-resolution"] == "legal_rag.ontology_concept_finalize_cli:main"

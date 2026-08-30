@@ -156,7 +156,7 @@ modeling_decisions:
     rationale: >-
       The penalty amount, point deduction, condition, and additional sanction may be stated in different provisions.
     review_status: ontology_reviewed
-    cq_ids: [CQ-SOURCE-001, CQ-EVIDENCE-001, CQ-ASSEMBLY-001]
+    cq_ids: [CQ-SOURCE-001, CQ-ASSEMBLY-001]
     pilot_evidence: Money, points, confiscation, and remedies are supported by different clauses.
     stakeholder_approval: accepted_for_v0.1
     pending_review: []
@@ -197,7 +197,7 @@ modeling_decisions:
     rationale: >-
       Source-file containment alone did not make the NĐ 118 form text an authoritative remedial rule.
     review_status: ontology_reviewed
-    cq_ids: [CQ-EVIDENCE-001, CQ-REMEDY-001, CQ-SOURCE-001]
+    cq_ids: [CQ-REMEDY-001, CQ-SOURCE-001]
     pilot_evidence: Embedded form content must not become a normative provision through file containment alone.
     stakeholder_approval: accepted_for_v0.1
     pending_review: []

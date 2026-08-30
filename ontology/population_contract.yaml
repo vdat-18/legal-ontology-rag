@@ -1,106 +1,14 @@
-schema_version: "0.1.0"
-artifact_id: road-traffic-ontology-population-contract
-artifact_version: "0.16.0"
-status: pilot_internal_validation
+schema_version: "0.2.0"
 ontology_version: "0.2.0"
 instance_namespace: https://w3id.org/legal-ontology-rag/data/
-language: vi
-input:
-  chunk_schema_version: "1.0.0"
-  document_metadata_schema_version: "1.0.0"
-  requires_chunk_screening: true
-  reading_window:
-    max_preceding_chunks: 2
-    max_following_chunks: 1
-    max_article_context_chunks: 32
-    includes_structural_context: true
-output:
-  record_schema_version: "0.2.0"
-  rdf_serialization: turtle
-  validated_graph_only: true
-extraction:
+reading_window:
+  max_preceding_chunks: 2
+  max_following_chunks: 1
+  max_article_context_chunks: 32
+llm:
   batch_size: 1
   max_output_tokens: 32768
   temperature: 0.0
   max_retries: 2
   retry_delay_seconds: 120
   max_response_bytes: 1048576
-extraction_policy:
-  conduct_granularity: atomic_independently_matchable
-  requires_target_conduct_evidence: true
-  conduct_inventory:
-    source: target_only
-    closed_during_consequence_binding: true
-    preserves_label_path_and_evidence: true
-  target_coverage:
-    exhaustive_specific_conducts: true
-    internal_llm_audit: true
-    empty_only_after_complete_audit: true
-  consequence_assembly:
-    classification_owner: llm
-    include_preceding_structural_heading: true
-    include_adjacent_explicit_references: true
-    include_same_article_explicit_references: true
-    bind_by_specific_provision: true
-    require_governing_primary_heading: true
-    separate_conditional_variants: true
-    single_monetary_penalty_per_variant: true
-    single_point_deduction_per_variant: true
-    attach_all_supported_consequences: true
-  applicability_exceptions:
-    classification_owner: llm
-    representation: condition_tree
-    repeat_for_each_atomic_conduct: true
-    separate_from_conduct_label: true
-    preserve_local_scope: true
-  provision_path:
-    ordered_levels:
-      - Chương
-      - Mục
-      - Điều
-      - Khoản
-      - Điểm
-    separator: " > "
-    include_heading_titles: false
-population_scope:
-  included:
-    - source_provenance
-    - normative_rule
-    - temporal_validity
-    - legal_consequence
-  excluded:
-    - id: occurrence_context
-      reason: Concrete occurrences are case or query input, not facts extracted from normative source documents.
-    - id: cross_document_legal_change
-      reason: Amendment, replacement, and repeal links require reviewed multi-document assembly.
-    - id: concept_equivalence
-      reason: Lexical similarity is insufficient to merge conduct, role, vehicle, or target concepts.
-validation:
-  ontology_graph: ontology/legal_ontology.ttl
-  shapes_graph: ontology/shapes/legal_ontology.shacl.ttl
-  inference: rdfs
-  advanced_shacl: true
-semantic_boundaries:
-  - LLM output is a source-grounded candidate structure, not a final legal applicability decision.
-  - General sanction catalogs, procedural duties, authority rules, and abstract violation references are not populated as PenaltyRule instances.
-  - Every material component must retain exact chunk evidence and an authoritative provision path.
-  - Parser-derived structural context may establish provision ancestry and applicability but is never quoted evidence.
-  - Each population record represents one independently matchable regulated conduct, not an aggregate label for alternative acts.
-  - The LLM exhaustively audits every specific Target conduct before returning candidates or an empty result.
-  - Consequences in adjacent chunks are mandatory when they directly head or explicitly reference a Target conduct's provision.
-  - Same-article context supplies distant consequence catalogs; the LLM attaches only consequences that explicitly govern the Target rule's own provision.
-  - A consequence for a referenced base provision never replaces a distinct consequence that explicitly governs the Target rule's more specific provision.
-  - A consequence requiring an additional applicability condition creates a separate rule variant whose condition tree contains that condition.
-  - Mutually exclusive monetary or point consequences never coexist in one rule variant.
-  - Every Target conduct governed by an explicit primary-sanction heading retains that primary consequence even when the heading is outside Target.
-  - Every source-grounded applicability exception is represented in the condition tree and repeated for each affected atomic conduct.
-  - Every condition-expression node retains direct source evidence, including AllOf, AnyOf, and Not operators.
-  - Atomic conditions have no operands, Not has exactly one operand, and AllOf or AnyOf has at least two operands.
-  - Condition IDs are unique within a rule, operand references are local, the graph is acyclic, and every node is reachable from the declared root.
-  - Locally scoped exceptions remain attached only to the affected atomic conduct while shared exceptions are repeated across all affected records.
-  - The LLM distinguishes applicability exceptions from intrinsic conduct or object qualifiers; deterministic code does not classify them from wording.
-  - Every populated conduct must have exact evidence in the target chunk; adjacent chunks may only complete its context and consequence.
-  - Provision paths use the canonical ordered level format without heading titles.
-  - Missing validity end and missing consequence values remain unknown.
-  - Time-limited additional sanctions retain their source-grounded label and normalized lower and upper month bounds.
-  - Candidate concepts are scoped to a populated rule until a separate semantic consolidation review approves reuse.

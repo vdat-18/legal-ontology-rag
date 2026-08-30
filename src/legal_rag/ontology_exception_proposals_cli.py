@@ -13,7 +13,7 @@ from loguru import logger
 def _parser() -> argparse.ArgumentParser:
     """Build the exception-proposal command-line parser."""
     parser = argparse.ArgumentParser(
-        description="Generate exact-evidenced exception and citation proposals for mandatory human review."
+        description="Generate and persist typed source-grounded exception and citation proposals."
     )
     parser.add_argument("corpus_manifest_path", type=Path, help="Ordered multi-document corpus manifest JSON path")
     parser.add_argument("canonical_records_path", type=Path, help="Canonical multi-document population JSONL path")
@@ -21,12 +21,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("exception_contract_path", type=Path, help="Versioned exception-resolution contract YAML")
     parser.add_argument("proposals_output_path", type=Path, help="Exception proposal JSONL destination")
     parser.add_argument("progress_output_path", type=Path, help="Exception proposal progress JSONL destination")
-    parser.add_argument("reviews_output_path", type=Path, help="Human-review JSONL destination/template")
     return parser
 
 
 def main() -> None:
-    """Generate reviewable exception proposals with resumable checkpoints."""
+    """Generate typed exception proposals with resumable checkpoints."""
     from legal_rag.ontology_change.corpus import read_change_corpus_manifest, replace_change_corpus_records
     from legal_rag.ontology_exception.config import ExceptionResolutionSettings
     from legal_rag.ontology_exception.models import ExceptionProposalProgress, LegalExceptionProposal
@@ -36,14 +35,11 @@ def main() -> None:
         propose_legal_exceptions,
     )
     from legal_rag.ontology_exception.writer import (
-        pending_exception_review_template,
         read_exception_candidates,
         read_exception_progress,
         read_exception_proposals,
-        read_exception_reviews,
         write_exception_progress,
         write_exception_proposals,
-        write_exception_reviews,
     )
     from legal_rag.ontology_population.writer import read_population_records
     from legal_rag.ontology_proposal_resume import (
@@ -115,21 +111,8 @@ def main() -> None:
             if window.candidate_id in processed_ids
         ),
     )
-    existing_reviews = (
-        read_exception_reviews(arguments.reviews_output_path) if arguments.reviews_output_path.exists() else ()
-    )
-    reviews_by_id = {review.proposal_id: review for review in existing_reviews}
-    if len(reviews_by_id) != len(existing_reviews):
-        msg = "Existing exception review identifiers must be unique"
-        raise ValueError(msg)
-    for review in pending_exception_review_template(proposals):
-        reviews_by_id.setdefault(review.proposal_id, review)
-    write_exception_reviews(
-        arguments.reviews_output_path,
-        tuple(reviews_by_id[proposal.proposal_id] for proposal in proposals),
-    )
     logger.info(
-        "Completed {}/{} candidate windows and wrote {} exception proposals for human review",
+        "Completed {}/{} candidate windows and wrote {} exception proposals",
         len(processed_ids),
         len(candidates.windows),
         len(proposals),

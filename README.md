@@ -135,95 +135,51 @@ Populate the ontology from screened legal-document chunks before any GraphRAG in
 ```powershell
 uv run --extra dev legal-check-ontology-population `
   <chunks.jsonl> <screening.jsonl> <metadata.jsonl> ontology/population_contract.yaml `
-  <preflight-report.json> --target-ids-path <reviewed-target-selection.json>
+  <preflight-report.json> --target-ids-path <target-selection.json>
 ```
 
-This offline preflight fingerprints the inputs, validates their structural consistency, and records the exact pilot
-targets without reconsidering LLM screening decisions.
+This offline preflight fingerprints inputs, validates structural consistency, and records the selected pilot targets.
+
+The recommended runtime has six user-facing steps. Each command performs exactly one semantic LLM task and wraps its
+deterministic candidate preparation, checkpoint persistence, and finalization:
 
 ```powershell
-uv run --extra dev legal-populate-ontology `
-  data/chunks/document.jsonl `
-  data/benchmark_synthesis/screening/document.jsonl `
-  data/benchmark_synthesis/metadata/document.jsonl `
-  ontology/population_contract.yaml `
-  data/ontology/population/document.jsonl `
-  data/ontology/progress/document.jsonl `
-  data/ontology/graphs/document.ttl `
-  --target-ids-path ontology/pilots/168_2024_ND-CP_penalty_rules_v0.3.json `
-  --max-concurrency 2 `
-  --preflight-report-path data/ontology/preflight/document.run.json
-```
+uv run --extra dev legal-extract-ontology-conducts `
+  <chunks.jsonl> <screening.jsonl> <metadata.jsonl> ontology/population_contract.yaml `
+  <conducts.jsonl> --target-ids-path <selection.json> --max-concurrency 2
 
-Omit both pilot-selection options for the full document. The command repeats preflight before loading provider settings,
-persists reviewable typed records, excludes general catalogs and procedural duties from `PenaltyRule`, and writes the
-Turtle graph only after SHACL conformance. `--max-concurrency` bounds independent LLM batches while checkpoint writes
-remain serialized. See
-`docs/ontology_population_pipeline.md` for extraction boundaries, evidence requirements, resume behavior, and semantic
-limitations.
+uv run --extra dev legal-bind-ontology-population `
+  <chunks.jsonl> <screening.jsonl> <metadata.jsonl> ontology/population_contract.yaml `
+  <conducts.jsonl> <population.jsonl> <population-progress.jsonl> <population.ttl> `
+  --target-ids-path <selection.json> --max-concurrency 2
 
-After chunk-local population, assemble rule components that span nearby chunks with the reviewed three-command flow:
+uv run --extra dev legal-assemble-ontology-rules `
+  <chunks.jsonl> <metadata.jsonl> <population.jsonl> `
+  ontology/population_contract.yaml ontology/assembly_contract.yaml `
+  <assembly-candidates.json> <assembly-proposals.jsonl> <assembly-progress.jsonl> `
+  <canonical-population.jsonl> <canonical.ttl>
 
-```powershell
-uv run --extra dev legal-build-assembly-candidates <chunks.jsonl> <population.jsonl> `
-  ontology/assembly_contract.yaml <candidates.json>
-uv run --extra dev legal-propose-rule-assemblies <chunks.jsonl> <metadata.jsonl> <population.jsonl> `
-  <candidates.json> ontology/assembly_contract.yaml <proposals.jsonl> <progress.jsonl> <reviews.jsonl>
-uv run --extra dev legal-finalize-rule-assemblies <chunks.jsonl> <metadata.jsonl> <population.jsonl> `
-  <proposals.jsonl> <reviews.jsonl> ontology/population_contract.yaml ontology/assembly_contract.yaml `
-  <canonical.jsonl> <canonical.ttl>
-```
+uv run --extra dev legal-resolve-ontology-changes `
+  <corpus-manifest.json> ontology/change_resolution_contract.yaml ontology/population_contract.yaml `
+  <change-candidates.json> <change-proposals.jsonl> <change-progress.jsonl> `
+  <canonical-population.jsonl> <change-events.jsonl> <canonical.ttl>
 
-Only `legal-propose-rule-assemblies` calls the LLM. Every proposal must be explicitly accepted or rejected by a human
-reviewer before the offline finalizer can write SHACL-validated canonical outputs.
+uv run --extra dev legal-resolve-ontology-exceptions `
+  <corpus-manifest.json> <canonical-population.jsonl> <change-events.jsonl> `
+  ontology/exception_resolution_contract.yaml ontology/population_contract.yaml `
+  <exception-candidates.json> <exception-proposals.jsonl> <exception-progress.jsonl> `
+  <legal-exceptions.jsonl> <canonical.ttl>
 
-After every document has canonical within-document rules, resolve explicit cross-document legal changes:
-
-```powershell
-uv run --extra dev legal-build-change-candidates <corpus_manifest.json> `
-  ontology/change_resolution_contract.yaml <candidates.json>
-uv run --extra dev legal-propose-legal-changes <corpus_manifest.json> <candidates.json> `
-  ontology/change_resolution_contract.yaml <proposals.jsonl> <progress.jsonl> <reviews.jsonl>
-uv run --extra dev legal-finalize-legal-changes <corpus_manifest.json> <proposals.jsonl> <reviews.jsonl> `
-  ontology/population_contract.yaml ontology/change_resolution_contract.yaml `
-  <canonical_population.jsonl> <legal_change_events.jsonl> <canonical_graph.ttl>
-```
-
-Only the proposal command calls the LLM. Candidate generation is exhaustive and bounded rather than similarity-based;
-human acceptance owns change type, effective date, and rule-version linkage. See
-`docs/ontology_population_pipeline.md` for the manifest schema and review workflow.
-
-Resolve legal exceptions and grouped provision citations after canonical rule validity is available:
-
-```powershell
-uv run --extra dev legal-build-exception-candidates <corpus_manifest.json> <canonical_population.jsonl> `
-  ontology/exception_resolution_contract.yaml <candidates.json>
-uv run --extra dev legal-propose-legal-exceptions <corpus_manifest.json> <canonical_population.jsonl> `
-  <candidates.json> ontology/exception_resolution_contract.yaml <proposals.jsonl> <progress.jsonl> <reviews.jsonl>
-uv run --extra dev legal-finalize-legal-exceptions <corpus_manifest.json> <canonical_population.jsonl> `
-  <legal_change_events.jsonl> <proposals.jsonl> <reviews.jsonl> ontology/population_contract.yaml `
-  ontology/exception_resolution_contract.yaml <legal_exceptions.jsonl> <canonical_graph.ttl>
-```
-
-Only proposal generation calls the LLM. Human review owns exception scope, grouped citation resolution, and
-version-specific redirect targets; finalization writes outputs only after SHACL conformance.
-
-Normalize reusable conduct, role, and vehicle concepts after exception resolution:
-
-```powershell
-uv run --extra dev legal-build-concept-candidates <canonical_population.jsonl> `
-  ontology/concept_resolution_contract.yaml <candidates.json>
-uv run --extra dev legal-propose-concept-relations <corpus_manifest.json> <candidates.json> `
-  ontology/concept_resolution_contract.yaml <proposals.jsonl> <progress.jsonl> <reviews.jsonl>
-uv run --extra dev legal-finalize-concept-resolution <corpus_manifest.json> <canonical_population.jsonl> `
-  <legal_change_events.jsonl> <legal_exceptions.jsonl> <candidates.json> <proposals.jsonl> <reviews.jsonl> `
+uv run --extra dev legal-resolve-ontology-concepts `
+  <corpus-manifest.json> <canonical-population.jsonl> <change-events.jsonl> <legal-exceptions.jsonl> `
   ontology/population_contract.yaml ontology/concept_resolution_contract.yaml `
-  <canonical_concepts.jsonl> <concept_relations.jsonl> <canonical_graph.ttl>
+  <concept-candidates.json> <concept-proposals.jsonl> <concept-progress.jsonl> `
+  <canonical-concepts.jsonl> <concept-relations.jsonl> <canonical.ttl>
 ```
 
-Candidate generation exhaustively pairs concepts only within the same kind and makes no semantic decision. Only the
-proposal command calls the LLM. Accepted `SameConcept` decisions remap rules to a shared canonical identity; reviewed
-broader, narrower, and related decisions become SKOS relations without becoming OWL subclass or equivalence axioms.
+Omit pilot-selection options for the full document. Re-running a step resumes from compatible conduct/proposal progress
+instead of repeating completed LLM work. The lower-level candidate, proposal, and finalize commands remain available for
+debugging and backward compatibility. See `docs/ontology_population_pipeline.md` for dependencies and output contracts.
 
 Review the ontology's external vocabulary boundary locally with:
 

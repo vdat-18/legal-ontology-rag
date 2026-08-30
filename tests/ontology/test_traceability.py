@@ -58,6 +58,15 @@ def test_requirement_registry_uses_minimal_schema(ontology_paths: OntologyPaths)
         assert all(set(requirement) == {"id", "statement"} for requirement in category["requirements"])
 
 
+def test_glossary_registry_uses_minimal_schema(ontology_paths: OntologyPaths) -> None:
+    """Glossary entries retain only meaning, CQ traceability, and optional boundaries."""
+    document = load_yaml(ontology_paths.glossary)
+
+    assert set(document) == {"schema_version", "artifact_id", "artifact_version", "terms"}
+    required = {"id", "label_vi", "definition_vi", "cq_ids"}
+    assert all(required <= set(term) <= required | {"boundary"} for term in document["terms"])
+
+
 def test_all_local_terms_have_traceability(
     ontology_graph: Graph,
     module_policy: tuple[ModulePolicy, ...],
@@ -79,7 +88,7 @@ def test_every_mandatory_cq_has_formal_and_executable_coverage(
 ) -> None:
     """Each mandatory CQ maps to ontology terms or shapes and an executable fixture query."""
     cq_document = load_yaml(ontology_paths.competency_questions)
-    mandatory_cqs = {item["id"] for item in cq_document["competency_questions"] if item["priority"] == "must"}
+    mandatory_cqs = {item["id"] for item in cq_document["competency_questions"]}
     shapes_graph = load_graph(ontology_paths.shapes)
     query_cases = {
         case.cq_id: case for case in load_query_cases(ontology_paths.project_root, ontology_paths.query_manifest)

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from rdflib import DCTERMS, RDF, RDFS, SKOS, TIME, XSD, Graph, Literal, Namespace, URIRef
 
@@ -16,9 +17,9 @@ from legal_rag.ontology_population.models import (
     PopulationEvidence,
     population_identity,
 )
-from legal_rag.ontology_validation.loader import load_graph, load_module_policy, merge_graphs
-from legal_rag.ontology_validation.paths import OntologyPaths
-from legal_rag.ontology_validation.shacl import run_shacl
+
+if TYPE_CHECKING:
+    from legal_rag.ontology_validation.paths import OntologyPaths
 
 LORSP = Namespace("https://w3id.org/legal-ontology-rag/ontology/source-provenance#")
 LOROC = Namespace("https://w3id.org/legal-ontology-rag/ontology/occurrence-context#")
@@ -81,6 +82,9 @@ def materialize_population_graph(
 
 def validate_population_graph(graph: Graph, paths: OntologyPaths) -> str:
     """Validate a populated graph and return the SHACL report text."""
+    from legal_rag.ontology_validation.loader import load_graph, load_module_policy, merge_graphs
+    from legal_rag.ontology_validation.shacl import run_shacl
+
     modules = load_module_policy(paths.project_root, paths.policy)
     ontology_graph = merge_graphs(tuple(module.path for module in modules))
     result = run_shacl(graph, load_graph(paths.shapes), ontology_graph)
@@ -90,7 +94,7 @@ def validate_population_graph(graph: Graph, paths: OntologyPaths) -> str:
 
 
 def write_population_graph(path: Path, graph: Graph) -> None:
-    """Write a validated instance graph as UTF-8 Turtle."""
+    """Write an instance graph as UTF-8 Turtle."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(graph.serialize(format="turtle"), encoding="utf-8")
 
@@ -111,10 +115,11 @@ def _materialize_rule(
     graph.add((rule, RDF.type, LORNR.PenaltyRule))
     graph.add((rule, RDFS.label, Literal(record.conduct_label_vi, lang="vi")))
     graph.add((rule, LORSP.groundedIn, provision))
+    graph.add((rule, LORSP.sourcedFromChunk, population_chunk_iri(str(data), record.source_chunk_id)))
 
-    evidence = _materialize_evidence(graph, data, chunks_by_id, record.evidence)
-    for span in evidence:
-        graph.add((rule, LORSP.supportedBy, span))
+    source_chunks = _source_chunks(data, chunks_by_id, record.evidence)
+    for chunk in source_chunks:
+        graph.add((rule, LORSP.sourcedFromChunk, chunk))
 
     conduct = _scoped_concept(
         graph, data, record, "conduct", record.conduct_label_vi, LOROC.RegulatedConduct, LOROC.conductScheme
@@ -123,9 +128,9 @@ def _materialize_rule(
     graph.add((rule, LORNR.hasConductSpecification, conduct_specification))
     graph.add((conduct_specification, RDF.type, LORNR.ConductSpecification))
     graph.add((conduct_specification, LORNR.usesConductConcept, conduct))
-    _add_component_evidence(graph, conduct_specification, provision, evidence)
+    _add_component_provenance(graph, conduct_specification, provision, source_chunks)
 
-    applicability, roles = _materialize_applicability(graph, data, rule, provision, evidence, record)
+    applicability, roles = _materialize_applicability(graph, data, rule, provision, source_chunks, record)
     _materialize_conditions(graph, data, rule, provision, applicability, chunks_by_id, record)
     _materialize_consequences(graph, data, rule, provision, roles, chunks_by_id, record)
     _materialize_validity(graph, rule, record)
@@ -136,7 +141,7 @@ def _materialize_applicability(
     data: Namespace,
     rule: URIRef,
     provision: URIRef,
-    evidence: Sequence[URIRef],
+    source_chunks: Sequence[URIRef],
     record: OntologyPopulationRecord,
 ) -> tuple[URIRef, dict[str, URIRef]]:
     """Materialize one rule's controlled applicability profile."""
@@ -159,7 +164,7 @@ def _materialize_applicability(
     applicability = URIRef(f"{rule}/applicability")
     graph.add((rule, LORNR.hasApplicability, applicability))
     graph.add((applicability, RDF.type, LORNR.ApplicabilityProfile))
-    _add_component_evidence(graph, applicability, provision, evidence)
+    _add_component_provenance(graph, applicability, provision, source_chunks)
     if record.subject_kind is not None:
         subject_kind = LOROC.naturalPerson if record.subject_kind == "NaturalPerson" else LOROC.organization
         graph.add((applicability, LORNR.requiresSubjectKind, subject_kind))
@@ -192,8 +197,8 @@ def _materialize_conditions(
         condition_iri = conditions[condition.condition_id]
         graph.add((condition_iri, RDF.type, CONDITION_CLASSES[condition.kind]))
         graph.add((condition_iri, RDFS.label, Literal(condition.text_vi, lang="vi")))
-        condition_evidence = _materialize_evidence(graph, data, chunks_by_id, condition.evidence)
-        _add_component_evidence(graph, condition_iri, provision, condition_evidence)
+        source_chunks = _source_chunks(data, chunks_by_id, condition.evidence)
+        _add_component_provenance(graph, condition_iri, provision, source_chunks)
         for operand_id in condition.operand_ids:
             graph.add((condition_iri, LORNR.hasOperand, conditions[operand_id]))
     if record.condition_root_id is not None:
@@ -220,13 +225,13 @@ def _materialize_consequences(
         graph.add((rule, LORLC.imposesConsequence, consequence_iri))
         if consequence.consequence_label_vi is not None:
             graph.add((consequence_iri, RDFS.label, Literal(consequence.consequence_label_vi, lang="vi")))
-        consequence_evidence = _materialize_evidence(graph, data, chunks_by_id, consequence.evidence)
-        _add_component_evidence(graph, consequence_iri, provision, consequence_evidence)
+        source_chunks = _source_chunks(data, chunks_by_id, consequence.evidence)
+        _add_component_provenance(graph, consequence_iri, provision, source_chunks)
         _materialize_consequence_values(graph, data, record, consequence_iri, consequence, roles)
 
 
 def _materialize_validity(graph: Graph, rule: URIRef, record: OntologyPopulationRecord) -> None:
-    """Materialize the reviewed validity interval for one rule version."""
+    """Materialize the validity interval for one rule version."""
     interval = URIRef(f"{rule}/validity")
     graph.add((rule, LORTC.validDuring, interval))
     graph.add((interval, RDF.type, LORTC.ValidityInterval))
@@ -312,23 +317,15 @@ def _materialize_additional_sanction_duration(
         )
 
 
-def _materialize_evidence(
-    graph: Graph,
+def _source_chunks(
     data: Namespace,
     chunks_by_id: dict[str, Chunk],
     evidence: Sequence[PopulationEvidence],
 ) -> tuple[URIRef, ...]:
-    """Materialize exact evidence spans and their chunk containment."""
-    spans = []
-    for item in evidence:
-        chunk = chunks_by_id[item.chunk_id]
-        chunk_iri = population_chunk_iri(str(data), chunk.chunk_id)
-        span = population_evidence_span_iri(str(data), item)
-        graph.add((span, RDF.type, LORSP.EvidenceSpan))
-        graph.add((span, LORSP.exactText, Literal(item.exact_text, lang="vi")))
-        graph.add((chunk_iri, LORSP.containsSpan, span))
-        spans.append(span)
-    return tuple(spans)
+    """Resolve internal evidence references to canonical source chunks."""
+    return tuple(
+        dict.fromkeys(population_chunk_iri(str(data), chunks_by_id[item.chunk_id].chunk_id) for item in evidence)
+    )
 
 
 def _scoped_concept(
@@ -362,16 +359,16 @@ def population_scoped_concept_iri(
     )
 
 
-def _add_component_evidence(
+def _add_component_provenance(
     graph: Graph,
     component: URIRef,
     provision: URIRef,
-    evidence: Sequence[URIRef],
+    source_chunks: Sequence[URIRef],
 ) -> None:
-    """Attach authoritative provision and exact evidence to a material component."""
+    """Attach the authoritative provision and source chunks to a component."""
     graph.add((component, LORSP.groundedIn, provision))
-    for span in evidence:
-        graph.add((component, LORSP.supportedBy, span))
+    for chunk in source_chunks:
+        graph.add((component, LORSP.sourcedFromChunk, chunk))
 
 
 def _add_date_instant(graph: Graph, instant: URIRef, value: date) -> None:
@@ -423,11 +420,6 @@ def population_provision_iri(instance_namespace: str, expression: URIRef, provis
 def population_chunk_iri(instance_namespace: str, chunk_id: str) -> URIRef:
     """Return the stable source-chunk IRI."""
     return _iri(Namespace(instance_namespace), "chunk", {"chunk_id": chunk_id})
-
-
-def population_evidence_span_iri(instance_namespace: str, evidence: PopulationEvidence) -> URIRef:
-    """Return the stable exact-evidence-span IRI."""
-    return _iri(Namespace(instance_namespace), "span", evidence.to_dict())
 
 
 def _bind_namespaces(graph: Graph, instance_namespace: str) -> None:

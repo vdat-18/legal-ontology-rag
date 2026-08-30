@@ -1,4 +1,4 @@
-"""Materialize canonical multi-document rules and accepted legal changes."""
+"""Materialize canonical multi-document rules and legal changes."""
 
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ from legal_rag.ontology_population.materializer import (
     LORTC,
     materialize_population_graph,
     population_chunk_iri,
-    population_evidence_span_iri,
     population_expression_iri,
     population_provision_iri,
     population_rule_iri,
@@ -33,7 +32,7 @@ def materialize_legal_change_graph(
     events: Sequence[LegalChangeEvent],
     instance_namespace: str,
 ) -> Graph:
-    """Build one canonical multi-document graph with reviewed legal changes."""
+    """Build one canonical multi-document graph with legal changes."""
     graph = Graph()
     event_document_numbers = {event.change_document_number for event in events}
     for document in corpus.documents:
@@ -65,7 +64,7 @@ def _materialize_change_event(
     event: LegalChangeEvent,
     instance_namespace: str,
 ) -> None:
-    """Materialize one accepted change with authoritative provision and evidence."""
+    """Materialize one change with source provenance."""
     data = Namespace(instance_namespace)
     expression = population_expression_iri(instance_namespace, change_document.chunks, change_document.metadata)
     provision = population_provision_iri(instance_namespace, expression, event.change_provision_path)
@@ -94,8 +93,4 @@ def _materialize_change_event(
     for evidence in event.evidence:
         chunk = chunks_by_id[evidence.chunk_id]
         chunk_iri = population_chunk_iri(instance_namespace, chunk.chunk_id)
-        span = population_evidence_span_iri(instance_namespace, evidence)
-        graph.add((span, RDF.type, LORSP.EvidenceSpan))
-        graph.add((span, LORSP.exactText, Literal(evidence.exact_text, lang="vi")))
-        graph.add((chunk_iri, LORSP.containsSpan, span))
-        graph.add((change, LORSP.supportedBy, span))
+        graph.add((change, LORSP.sourcedFromChunk, chunk_iri))

@@ -60,10 +60,10 @@ def test_missing_foundational_declaration_is_rejected(
     assert "missing-foundational-declaration:http://www.w3.org/ns/prov#Agent" in _issues(project_root, settings)
 
 
-def test_candidate_namespace_use_is_rejected(
+def test_unregistered_research_namespace_use_is_rejected(
     copied_project: Callable[[], tuple[Path, ExternalReuseSettings]],
 ) -> None:
-    """Candidate alignment namespaces cannot become formal terms before a reviewed decision."""
+    """Research-only namespaces cannot become formal terms without an active registry entry."""
     project_root, settings = copied_project()
     root = project_root / "ontology" / "legal_ontology.ttl"
     root.write_text(
@@ -72,9 +72,7 @@ def test_candidate_namespace_use_is_rejected(
         encoding="utf-8",
     )
 
-    assert "non-active-namespace-used:REUSE-ELI-001:http://data.europa.eu/eli/ontology#title" in _issues(
-        project_root, settings
-    )
+    assert "unregistered-external-term:http://data.europa.eu/eli/ontology#title" in _issues(project_root, settings)
 
 
 def test_external_owl_import_is_rejected(

@@ -1,1 +1,1 @@
-"""Tests for reviewed ontology concept resolution."""
+"""Tests for ontology concept resolution."""

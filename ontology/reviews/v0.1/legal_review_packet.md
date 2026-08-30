@@ -22,7 +22,7 @@ Question: Are version-specific penalty rules, legal resources, and legal express
 
 Current decision: `accept`
 
-Affected IDs: `MD-RULE-001`, `MD-DOC-001`, `TERM-RULE-001`, `TERM-RULE-002`, `TERM-RULE-003`, `TERM-DOC-001`, `TERM-EXPR-001`
+Affected IDs: `MD-RULE-001`, `MD-DOC-001`, `TERM-RULE-001`, `TERM-RULE-002`
 
 Evidence files: `ontology/modules/normative_rule.ttl`, `ontology/modules/source_provenance.ttl`
 
@@ -39,7 +39,7 @@ Question: Does the model correctly separate regulated conduct concepts, rule spe
 
 Current decision: `accept`
 
-Affected IDs: `MD-CONDUCT-001`, `TERM-CONDUCT-001`, `TERM-CONDUCT-002`, `TERM-CONDUCT-003`, `TERM-APP-001`
+Affected IDs: `MD-CONDUCT-001`, `TERM-CONDUCT-001`, `TERM-CONDUCT-002`, `TERM-APP-001`
 
 Evidence files: `ontology/modules/occurrence_context.ttl`, `ontology/modules/normative_rule.ttl`
 
@@ -56,7 +56,7 @@ Question: Are subject kinds, legal subjects, contextual roles, and role assignme
 
 Current decision: `accept`
 
-Affected IDs: `MD-SUBJECT-001`, `TERM-SUBJECT-001`, `TERM-SUBJECT-002`, `TERM-SUBJECT-003`, `TERM-SUBJECT-004`, `TERM-SUBJECT-005`, `TERM-SUBJECT-006`
+Affected IDs: `MD-SUBJECT-001`, `TERM-SUBJECT-002`, `TERM-SUBJECT-005`, `TERM-SUBJECT-006`
 
 Evidence files: `ontology/modules/occurrence_context.ttl`, `ontology/modules/normative_rule.ttl`
 
@@ -73,7 +73,7 @@ Question: Are vehicle categories represented at the distinctions required by the
 
 Current decision: `accept`
 
-Affected IDs: `MD-VEHICLE-001`, `TERM-VEHICLE-001`, `TERM-VEHICLE-002`
+Affected IDs: `MD-VEHICLE-001`, `TERM-VEHICLE-001`
 
 Evidence files: `ontology/modules/occurrence_context.ttl`, `ontology/shapes/legal_ontology.shacl.ttl`
 
@@ -113,7 +113,7 @@ Evidence files: `ontology/modules/normative_rule.ttl`, `ontology/tests/cq_querie
 
 Acceptance criteria:
 
-- Citation grouping and exact exception evidence are preserved.
+- Citation grouping and source provenance are preserved.
 - Redirects target reviewed version-specific rules and do not automate legal priority.
 
 Reviewer rationale: Explicit exception entities preserve the Article 6 exclusion wording and grouped citations while leaving legal priority and target applicability for reviewed interpretation.
@@ -124,7 +124,7 @@ Question: Are monetary penalties, point deductions, additional sanctions, and re
 
 Current decision: `accept`
 
-Affected IDs: `MD-CONSEQUENCE-001`, `MD-CONSEQUENCE-002`, `TERM-CONSEQUENCE-001`, `TERM-MONEY-001`, `TERM-MONEY-002`, `TERM-MONEY-003`, `TERM-POINTS-001`, `TERM-ADDITIONAL-001`, `TERM-REMEDY-001`, `TERM-TARGET-001`
+Affected IDs: `MD-CONSEQUENCE-001`, `MD-CONSEQUENCE-002`, `TERM-CONSEQUENCE-001`, `TERM-MONEY-001`, `TERM-POINTS-001`, `TERM-ADDITIONAL-001`, `TERM-REMEDY-001`
 
 Evidence files: `ontology/modules/legal_consequence.ttl`, `ontology/tests/cq_queries/cq_consequence_001.rq`
 
@@ -141,7 +141,7 @@ Question: Does the model avoid treating files, attachments, or forms as normativ
 
 Current decision: `accept`
 
-Affected IDs: `MD-DOC-002`, `TERM-FILE-001`, `TERM-CHUNK-001`
+Affected IDs: `MD-DOC-002`
 
 Evidence files: `ontology/modules/source_provenance.ttl`, `ontology/tests/cq_queries/cq_source_001.rq`
 
@@ -158,7 +158,7 @@ Question: Are validity intervals and amendment, replacement, repeal, or superses
 
 Current decision: `accept`
 
-Affected IDs: `MD-TIME-001`, `MD-CHANGE-001`, `TERM-TIME-001`, `TERM-CHANGE-001`, `TERM-CHANGE-002`, `TERM-CHANGE-003`, `TERM-CHANGE-004`
+Affected IDs: `MD-TIME-001`, `MD-CHANGE-001`, `TERM-TIME-001`, `TERM-CHANGE-004`
 
 Evidence files: `ontology/modules/temporal_change.ttl`, `ontology/tests/cq_queries/cq_temporal_002_change_projection.rq`
 
@@ -169,22 +169,22 @@ Acceptance criteria:
 
 Reviewer rationale: Validity and change events require authoritative dates and explicit change evidence; missing ends remain unknown and textual similarity cannot prove succession.
 
-### ILR-010 - Evidence and supported-assertion boundary
+### ILR-010 - Source provenance boundary
 
-Question: Is every material legal assertion reviewable through exact evidence and authoritative provenance?
+Question: Is every material legal assertion traceable to an authoritative provision and source chunk?
 
 Current decision: `accept`
 
-Affected IDs: `MD-PROV-001`, `MD-PROV-002`, `TERM-EVIDENCE-001`, `TERM-ASSERTION-001`, `TERM-ISSUER-001`
+Affected IDs: `MD-PROV-001`, `MD-PROV-002`, `TERM-PROVISION-001`, `TERM-CITATION-001`
 
-Evidence files: `ontology/modules/source_provenance.ttl`, `ontology/tests/cq_queries/cq_evidence_001.rq`
+Evidence files: `ontology/modules/source_provenance.ttl`, `ontology/tests/cq_queries/cq_source_001.rq`
 
 Acceptance criteria:
 
-- Evidence for one component does not silently support unrelated components.
+- Provenance for one component does not silently support unrelated components.
 - Heading-derived scope retains both ancestor and leaf provision provenance.
 
-Reviewer rationale: Component-level provenance and exact evidence spans prevent one quotation from silently supporting unrelated legal assertions.
+Reviewer rationale: Component-level provision and source-chunk links keep unrelated legal assertions independently traceable.
 
 ### ILR-011 - V0.1 scope, competency questions, and legal limitations
 

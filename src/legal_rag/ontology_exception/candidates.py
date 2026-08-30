@@ -38,7 +38,6 @@ def build_exception_candidates(
                 for target_batch in target_batches:
                     windows.append(
                         _candidate_window(
-                            settings.candidate_version,
                             document.document_id,
                             general_batch,
                             target_batch,
@@ -52,7 +51,6 @@ def build_exception_candidates(
     ordered_windows = tuple(sorted(windows, key=lambda window: window.candidate_id))
     run_id = population_identity(
         {
-            "candidate_version": settings.candidate_version,
             "bounds": {
                 "source_chunks": settings.max_source_chunks_per_window,
                 "general_rules": settings.max_general_rules_per_window,
@@ -73,7 +71,6 @@ def build_exception_candidates(
 
 
 def _candidate_window(
-    candidate_version: str,
     source_document_id: str,
     general_records: Sequence[OntologyPopulationRecord],
     target_records: Sequence[OntologyPopulationRecord],
@@ -81,7 +78,6 @@ def _candidate_window(
 ) -> ExceptionCandidateWindow:
     """Build one stable structural exception window."""
     identity = {
-        "candidate_version": candidate_version,
         "source_document_id": source_document_id,
         "general_population_ids": tuple(record.population_id for record in general_records),
         "target_population_ids": tuple(record.population_id for record in target_records),

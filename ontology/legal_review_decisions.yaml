@@ -61,8 +61,8 @@ decisions:
     requested_changes: []
   - id: ILR-010
     decision: accept
-    rationale: Component-level provenance and exact evidence spans prevent one quotation from silently supporting unrelated legal assertions.
-    evidence_refs: [docs/ontology_construction_plan.md#lr-007, ontology/modules/source_provenance.ttl, ontology/tests/cq_queries/cq_evidence_001.rq]
+    rationale: Component-level provision and source-chunk links keep unrelated legal assertions independently traceable.
+    evidence_refs: [docs/ontology_construction_plan.md#lr-007, ontology/modules/source_provenance.ttl, ontology/tests/cq_queries/cq_source_001.rq]
     requested_changes: []
   - id: ILR-011
     decision: accept

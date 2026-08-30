@@ -29,13 +29,11 @@ lornr:PenaltyRule a owl:Class ;
     lorsp:modelingDecisionReference "MD-RULE-001", "MD-RULE-002" .
 
 lornr:RuleComponent a owl:Class ;
-    rdfs:subClassOf lorsp:SupportedAssertion ;
     rdfs:label "Rule component"@en,
         "Thành phần quy tắc"@vi ;
-    rdfs:comment "A material part of a penalty rule whose authoritative provision and direct or operand-level evidence can be evaluated independently."@en ;
-    lorsp:requirementReference "PURP-003", "SCOPE-007", "GRAN-004", "GRAN-006" ;
-    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EVIDENCE-001", "CQ-ASSEMBLY-001" ;
-    lorsp:glossaryReference "TERM-RULE-003" ;
+    rdfs:comment "A material part of a penalty rule with independent provision and source-chunk provenance."@en ;
+    lorsp:requirementReference "PURP-003", "GRAN-004", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-ASSEMBLY-001" ;
     lorsp:modelingDecisionReference "MD-RULE-002", "MD-PROV-001", "MD-PROV-002" .
 
 lornr:ConductSpecification a owl:Class ;
@@ -43,9 +41,8 @@ lornr:ConductSpecification a owl:Class ;
     rdfs:label "Conduct specification"@en,
         "Đặc tả hành vi trong quy tắc"@vi ;
     rdfs:comment "An independently evidenced rule component linking one penalty rule to a reusable regulated-conduct concept."@en ;
-    lorsp:requirementReference "PURP-002", "PURP-003", "SCOPE-002", "SCOPE-007", "GRAN-001", "GRAN-008" ;
-    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-EVIDENCE-001", "CQ-ASSEMBLY-001", "CQ-COMPARISON-001" ;
-    lorsp:glossaryReference "TERM-CONDUCT-003" ;
+    lorsp:requirementReference "PURP-002", "PURP-003", "SCOPE-002", "GRAN-001", "GRAN-008" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-SOURCE-001", "CQ-ASSEMBLY-001", "CQ-COMPARISON-001" ;
     lorsp:modelingDecisionReference "MD-RULE-002", "MD-CONDUCT-001", "MD-PROV-001" .
 
 lornr:ApplicabilityProfile a owl:Class ;
@@ -53,7 +50,7 @@ lornr:ApplicabilityProfile a owl:Class ;
     rdfs:label "Applicability profile"@en,
         "Hồ sơ áp dụng"@vi ;
     rdfs:comment "One coherent, independently evidenced combination of required subject kind, role, vehicle category, and condition expression."@en ;
-    lorsp:requirementReference "PURP-002", "PURP-003", "USE-001", "USE-002", "SCOPE-003", "SCOPE-004", "SCOPE-007", "GRAN-002", "GRAN-003", "GRAN-004" ;
+    lorsp:requirementReference "PURP-002", "PURP-003", "USE-001", "USE-002", "SCOPE-003", "SCOPE-004", "GRAN-002", "GRAN-003", "GRAN-004" ;
     lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-APPLICABILITY-001", "CQ-CONDITION-001", "CQ-NEGATIVE-001", "CQ-ASSEMBLY-001" ;
     lorsp:glossaryReference "TERM-APP-001" ;
     lorsp:modelingDecisionReference "MD-RULE-002", "MD-SUBJECT-001", "MD-VEHICLE-001", "MD-COND-001", "MD-PROV-001" .
@@ -63,8 +60,8 @@ lornr:ConditionExpression a owl:Class ;
     rdfs:label "Condition expression"@en,
         "Biểu thức điều kiện"@vi ;
     rdfs:comment "An expression preserving source applicability logic; atomic leaves carry direct evidence while logical operators connect evidenced operands."@en ;
-    lorsp:requirementReference "PURP-002", "PURP-003", "SCOPE-004", "SCOPE-007", "GRAN-004" ;
-    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-CONDITION-001", "CQ-NEGATIVE-001", "CQ-EVIDENCE-001" ;
+    lorsp:requirementReference "PURP-002", "PURP-003", "SCOPE-004", "GRAN-004" ;
+    lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-CONDITION-001", "CQ-NEGATIVE-001", "CQ-SOURCE-001" ;
     lorsp:glossaryReference "TERM-COND-002" ;
     lorsp:modelingDecisionReference "MD-COND-001", "MD-PROV-001" .
 
@@ -113,8 +110,8 @@ lornr:LegalException a owl:Class ;
     rdfs:label "Legal exception"@en,
         "Ngoại lệ pháp lý"@vi ;
     rdfs:comment "An evidenced specification that narrows a general rule and may cite excluded provisions or redirect to verified rule versions."@en ;
-    lorsp:requirementReference "PURP-002", "PURP-003", "USE-001", "USE-002", "SCOPE-004", "SCOPE-006", "SCOPE-007", "GRAN-004", "GRAN-006" ;
-    lorsp:competencyQuestionReference "CQ-EXCEPTION-001", "CQ-EVIDENCE-001", "CQ-TEMPORAL-001", "CQ-ASSEMBLY-001" ;
+    lorsp:requirementReference "PURP-002", "PURP-003", "USE-001", "USE-002", "SCOPE-004", "SCOPE-006", "GRAN-004", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-EXCEPTION-001", "CQ-SOURCE-001", "CQ-TEMPORAL-001", "CQ-ASSEMBLY-001" ;
     lorsp:glossaryReference "TERM-EXCEPTION-001" ;
     lorsp:modelingDecisionReference "MD-EXCEPTION-001", "MD-REF-001", "MD-PROV-001" .
 
@@ -125,7 +122,7 @@ lornr:hasConductSpecification a owl:ObjectProperty ;
     rdfs:comment "Links a penalty rule to an independently evidenced specification of the conduct it regulates."@en ;
     lorsp:requirementReference "PURP-002", "PURP-003", "SCOPE-002", "GRAN-001", "GRAN-008" ;
     lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-ASSEMBLY-001", "CQ-COMPARISON-001" ;
-    lorsp:glossaryReference "TERM-RULE-001", "TERM-CONDUCT-003" ;
+    lorsp:glossaryReference "TERM-RULE-001" ;
     lorsp:modelingDecisionReference "MD-RULE-002", "MD-CONDUCT-001" .
 
 lornr:usesConductConcept a owl:ObjectProperty ;
@@ -135,7 +132,7 @@ lornr:usesConductConcept a owl:ObjectProperty ;
     rdfs:comment "Connects an evidenced conduct specification to a reusable regulated-conduct concept."@en ;
     lorsp:requirementReference "PURP-002", "SCOPE-002", "GRAN-008" ;
     lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-COMPARISON-001" ;
-    lorsp:glossaryReference "TERM-CONDUCT-001", "TERM-CONDUCT-003" ;
+    lorsp:glossaryReference "TERM-CONDUCT-001" ;
     lorsp:modelingDecisionReference "MD-CONDUCT-001" .
 
 lornr:hasApplicability a owl:ObjectProperty ;

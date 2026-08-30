@@ -31,7 +31,7 @@ lortc:LegalChange a owl:Class ;
     rdfs:label "Legal change"@en,
         "Sự kiện thay đổi pháp lý"@vi ;
     rdfs:comment "An evidenced event that changes an earlier rule version and may produce a later rule version."@en ;
-    lorsp:requirementReference "PURP-001", "PURP-003", "USE-004", "SCOPE-006", "SCOPE-007", "GRAN-007" ;
+    lorsp:requirementReference "PURP-001", "PURP-003", "USE-004", "SCOPE-006", "GRAN-007" ;
     lorsp:competencyQuestionReference "CQ-TEMPORAL-001", "CQ-TEMPORAL-002" ;
     lorsp:glossaryReference "TERM-CHANGE-004" ;
     lorsp:modelingDecisionReference "MD-CHANGE-001", "MD-RULE-001" .
@@ -43,7 +43,7 @@ lortc:LegalChangeType a owl:Class ;
     rdfs:comment "A controlled classification of an evidenced legal change as amendment, replacement, repeal, or supersession."@en ;
     lorsp:requirementReference "USE-004", "SCOPE-006" ;
     lorsp:competencyQuestionReference "CQ-TEMPORAL-002" ;
-    lorsp:glossaryReference "TERM-CHANGE-001", "TERM-CHANGE-002", "TERM-CHANGE-003" ;
+    lorsp:glossaryReference "TERM-CHANGE-004" ;
     lorsp:modelingDecisionReference "MD-CHANGE-001" .
 
 lortc:legalChangeTypeScheme a skos:ConceptScheme,
@@ -55,7 +55,7 @@ lortc:legalChangeTypeScheme a skos:ConceptScheme,
         lortc:repealOrSupersession ;
     lorsp:requirementReference "USE-004", "SCOPE-006" ;
     lorsp:competencyQuestionReference "CQ-TEMPORAL-002" ;
-    lorsp:glossaryReference "TERM-CHANGE-001", "TERM-CHANGE-002", "TERM-CHANGE-003" ;
+    lorsp:glossaryReference "TERM-CHANGE-004" ;
     lorsp:modelingDecisionReference "MD-CHANGE-001" .
 
 lortc:amendment a lortc:LegalChangeType,
@@ -67,7 +67,7 @@ lortc:amendment a lortc:LegalChangeType,
     skos:definition "A legally evidenced change that modifies identified content while preserving the relevant legal identity under the adopted identity model."@en ;
     lorsp:requirementReference "USE-004", "SCOPE-006" ;
     lorsp:competencyQuestionReference "CQ-TEMPORAL-002" ;
-    lorsp:glossaryReference "TERM-CHANGE-001" ;
+    lorsp:glossaryReference "TERM-CHANGE-004" ;
     lorsp:modelingDecisionReference "MD-CHANGE-001" .
 
 lortc:replacement a lortc:LegalChangeType,
@@ -79,7 +79,7 @@ lortc:replacement a lortc:LegalChangeType,
     skos:definition "A legally evidenced change in which later content takes the place of identified earlier content."@en ;
     lorsp:requirementReference "USE-004", "SCOPE-006" ;
     lorsp:competencyQuestionReference "CQ-TEMPORAL-002" ;
-    lorsp:glossaryReference "TERM-CHANGE-002" ;
+    lorsp:glossaryReference "TERM-CHANGE-004" ;
     lorsp:modelingDecisionReference "MD-CHANGE-001" .
 
 lortc:repealOrSupersession a lortc:LegalChangeType,
@@ -91,7 +91,7 @@ lortc:repealOrSupersession a lortc:LegalChangeType,
     skos:definition "A legally evidenced change after which identified earlier content no longer governs its former scope."@en ;
     lorsp:requirementReference "USE-004", "SCOPE-006" ;
     lorsp:competencyQuestionReference "CQ-TEMPORAL-001", "CQ-TEMPORAL-002" ;
-    lorsp:glossaryReference "TERM-CHANGE-003" ;
+    lorsp:glossaryReference "TERM-CHANGE-004" ;
     lorsp:modelingDecisionReference "MD-CHANGE-001" .
 
 lortc:validDuring a owl:ObjectProperty ;
@@ -110,7 +110,7 @@ lortc:changeType a owl:ObjectProperty ;
     rdfs:comment "Classifies an evidenced legal change with a controlled legal-change type."@en ;
     lorsp:requirementReference "USE-004", "SCOPE-006" ;
     lorsp:competencyQuestionReference "CQ-TEMPORAL-002" ;
-    lorsp:glossaryReference "TERM-CHANGE-001", "TERM-CHANGE-002", "TERM-CHANGE-003", "TERM-CHANGE-004" ;
+    lorsp:glossaryReference "TERM-CHANGE-004" ;
     lorsp:modelingDecisionReference "MD-CHANGE-001" .
 
 lortc:effectiveAt a owl:ObjectProperty ;

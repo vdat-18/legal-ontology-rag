@@ -342,13 +342,14 @@ def test_population_window_uses_local_context_for_structural_variants(legal_chun
     assert all(entry.role != ChunkWindowRole.ArticleContext for entry in window)
 
 
-def test_population_binding_inventory_requires_target_only_evidence(legal_chunk: Chunk) -> None:
-    """A conduct inventory cannot cite context that the inventory stage never receives."""
+def test_population_binding_inventory_is_forwarded_without_semantic_revalidation(legal_chunk: Chunk) -> None:
+    """Typed inventory output is forwarded without a second evidence gate."""
     item, inventory, _ = _target_inventory_fixture(legal_chunk)
     inventory.conducts[0].evidence = [OntologyEvidenceReference(evidence_id="ev_context")]
 
-    with pytest.raises(ValueError, match="Unknown evidence reference"):
-        build_population_binding_items((item,), (inventory,))
+    binding = build_population_binding_items((item,), (inventory,))[0]
+
+    assert binding.target_conducts == inventory.conducts
 
 
 def test_population_binding_rejects_conduct_outside_locked_inventory(legal_chunk: Chunk) -> None:
@@ -370,19 +371,18 @@ def test_population_binding_rejects_conduct_outside_locked_inventory(legal_chunk
 
 
 @pytest.mark.parametrize(
-    ("conduct_label", "provision_path", "message"),
+    ("conduct_label", "provision_path"),
     [
-        ("Hành vi bị đổi tên", "Điều kiểm tra", "cannot rename"),
-        ("Hành vi được kiểm tra", "Điều khác", "cannot change"),
+        ("Hành vi bị đổi tên", "Điều kiểm tra"),
+        ("Hành vi được kiểm tra", "Điều khác"),
     ],
 )
-def test_population_binding_preserves_locked_conduct_identity(
+def test_population_binding_accepts_typed_rule_content(
     conduct_label: str,
     provision_path: str,
-    message: str,
     legal_chunk: Chunk,
 ) -> None:
-    """The consequence stage cannot reinterpret the Target label or locator."""
+    """The binding stage trusts typed rule semantics and checks only conduct identity."""
     item, inventory, evidence = _target_inventory_fixture(legal_chunk)
     binding_item = build_population_binding_items((item,), (inventory,))[0]
     rule = _rule_with_consequence(_money_consequence(evidence), evidence)
@@ -393,8 +393,9 @@ def test_population_binding_preserves_locked_conduct_identity(
         rules=[OntologyBoundRuleEntry(target_conduct_id="conduct_1", rule=rule)],
     )
 
-    with pytest.raises(ValueError, match=message):
-        finalize_population_binding_results((binding_item,), (result,))
+    finalized = finalize_population_binding_results((binding_item,), (result,))
+
+    assert finalized[0].rules == [rule]
 
 
 def test_population_binding_returns_existing_population_result(legal_chunk: Chunk) -> None:
@@ -412,11 +413,11 @@ def test_population_binding_returns_existing_population_result(legal_chunk: Chun
     assert finalized == (OntologyPopulationBatchResult(target_chunk_id=legal_chunk.chunk_id, rules=[rule]),)
 
 
-def test_population_record_requires_target_conduct_evidence(
+def test_population_record_accepts_context_evidence(
     legal_chunk: Chunk,
     document_metadata: DocumentMetadataRecord,
 ) -> None:
-    """Context-only conduct evidence cannot create a rule for the target chunk."""
+    """Typed context evidence is persisted without a target-only semantic gate."""
     context_chunk_id = "context"
     source, evidence = _source_reference(context_chunk_id, legal_chunk.text)
     raw = _rule_with_consequence(
@@ -437,21 +438,22 @@ def test_population_record_requires_target_conduct_evidence(
         evidence,
     )
 
-    with pytest.raises(ValueError, match="target chunk"):
-        build_population_record(
-            raw,
-            legal_chunk.chunk_id,
-            document_metadata,
-            [source, evidence_source(legal_chunk.chunk_id, legal_chunk.text)],
-            **RECORD_RUN,
-        )
+    record = build_population_record(
+        raw,
+        legal_chunk.chunk_id,
+        document_metadata,
+        [source, evidence_source(legal_chunk.chunk_id, legal_chunk.text)],
+        **RECORD_RUN,
+    )
+
+    assert {item.chunk_id for item in record.evidence} == {context_chunk_id}
 
 
-def test_population_record_rejects_remedial_measure_without_responsible_role(
+def test_population_record_preserves_incomplete_remedial_measure(
     legal_chunk: Chunk,
     document_metadata: DocumentMetadataRecord,
 ) -> None:
-    """An incomplete remedial measure fails before persisted RDF validation."""
+    """Optional remedial fields remain null instead of triggering semantic validation."""
     source, evidence = _source_reference(legal_chunk.chunk_id, legal_chunk.text)
     raw = OntologyRuleEntry(
         conduct_label_vi="Vi phạm hành chính nói chung",
@@ -482,23 +484,24 @@ def test_population_record_rejects_remedial_measure_without_responsible_role(
         evidence=[evidence],
     )
 
-    with pytest.raises(ValueError, match="requires a source-grounded responsible role"):
-        build_population_record(
-            raw,
-            legal_chunk.chunk_id,
-            document_metadata,
-            [source],
-            **RECORD_RUN,
-        )
+    record = build_population_record(
+        raw,
+        legal_chunk.chunk_id,
+        document_metadata,
+        [source],
+        **RECORD_RUN,
+    )
+
+    assert record.consequences[0].responsible_role_label_vi is None
 
 
 @pytest.mark.parametrize("kind", [OntologyConsequenceKind.AdditionalSanction, OntologyConsequenceKind.RemedialMeasure])
-def test_population_record_requires_named_non_numeric_consequence(
+def test_population_record_preserves_unnamed_non_numeric_consequence(
     kind: OntologyConsequenceKind,
     legal_chunk: Chunk,
     document_metadata: DocumentMetadataRecord,
 ) -> None:
-    """Non-numeric consequences retain the source-grounded legal effect name."""
+    """Missing optional consequence labels do not block typed persistence."""
     source, evidence = _source_reference(legal_chunk.chunk_id, legal_chunk.text)
     raw = _rule_with_consequence(
         OntologyConsequenceEntry(
@@ -518,28 +521,28 @@ def test_population_record_requires_named_non_numeric_consequence(
         evidence,
     )
 
-    with pytest.raises(ValueError, match="consequence label"):
-        build_population_record(raw, legal_chunk.chunk_id, document_metadata, [source], **RECORD_RUN)
+    record = build_population_record(raw, legal_chunk.chunk_id, document_metadata, [source], **RECORD_RUN)
+
+    assert record.consequences[0].consequence_label_vi is None
 
 
 @pytest.mark.parametrize(
-    ("kind", "minimum", "maximum", "message"),
+    ("kind", "minimum", "maximum"),
     [
-        (OntologyConsequenceKind.AdditionalSanction, 10, None, "both lower and upper"),
-        (OntologyConsequenceKind.AdditionalSanction, 0, 12, "positive and ordered"),
-        (OntologyConsequenceKind.AdditionalSanction, 12, 10, "positive and ordered"),
-        (OntologyConsequenceKind.MonetaryPenalty, 10, 12, "Only AdditionalSanction"),
+        (OntologyConsequenceKind.AdditionalSanction, 10, None),
+        (OntologyConsequenceKind.AdditionalSanction, 0, 12),
+        (OntologyConsequenceKind.AdditionalSanction, 12, 10),
+        (OntologyConsequenceKind.MonetaryPenalty, 10, 12),
     ],
 )
-def test_population_record_rejects_invalid_duration_bounds(
+def test_population_record_preserves_typed_duration_bounds(
     kind: OntologyConsequenceKind,
     minimum: int | None,
     maximum: int | None,
-    message: str,
     legal_chunk: Chunk,
     document_metadata: DocumentMetadataRecord,
 ) -> None:
-    """Duration normalization is complete, positive, ordered, and sanction-specific."""
+    """Duration values are persisted without duplicating semantic rules in code."""
     source, evidence = _source_reference(legal_chunk.chunk_id, legal_chunk.text)
     raw = _rule_with_consequence(
         OntologyConsequenceEntry(
@@ -559,24 +562,25 @@ def test_population_record_rejects_invalid_duration_bounds(
         evidence,
     )
 
-    with pytest.raises(ValueError, match=message):
-        build_population_record(raw, legal_chunk.chunk_id, document_metadata, [source], **RECORD_RUN)
+    record = build_population_record(raw, legal_chunk.chunk_id, document_metadata, [source], **RECORD_RUN)
+
+    assert record.consequences[0].minimum_duration_months == minimum
+    assert record.consequences[0].maximum_duration_months == maximum
 
 
 @pytest.mark.parametrize(
-    ("kind", "message"),
+    "kind",
     [
-        (OntologyConsequenceKind.MonetaryPenalty, "at most one MonetaryPenalty"),
-        (OntologyConsequenceKind.PointDeduction, "at most one PointDeduction"),
+        OntologyConsequenceKind.MonetaryPenalty,
+        OntologyConsequenceKind.PointDeduction,
     ],
 )
-def test_population_record_rejects_multiple_exclusive_consequences(
+def test_population_record_preserves_multiple_typed_consequences(
     kind: OntologyConsequenceKind,
-    message: str,
     legal_chunk: Chunk,
     document_metadata: DocumentMetadataRecord,
 ) -> None:
-    """Alternative numeric consequences must be emitted as separate rule variants."""
+    """Typed LLM consequences are not split or rejected by hardcoded subtype rules."""
     source, evidence = _source_reference(legal_chunk.chunk_id, legal_chunk.text)
     consequences = [
         OntologyConsequenceEntry(
@@ -609,8 +613,9 @@ def test_population_record_rejects_multiple_exclusive_consequences(
         evidence=[evidence],
     )
 
-    with pytest.raises(ValueError, match=message):
-        build_population_record(raw, legal_chunk.chunk_id, document_metadata, [source], **RECORD_RUN)
+    record = build_population_record(raw, legal_chunk.chunk_id, document_metadata, [source], **RECORD_RUN)
+
+    assert len(record.consequences) == 2
 
 
 def _rule_with_consequence(

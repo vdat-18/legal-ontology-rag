@@ -34,22 +34,19 @@ function ProposeLegalExceptionResolutions(windows: ExceptionResolutionWindowInpu
   prompt #"
     {{ _.role("user") }}
 
-    Bạn là chuyên gia ontology pháp luật. Hãy đề xuất LegalException và grouped ProvisionCitation cho các rule version
-    đã canonicalize. Candidate window được tạo exhaustive theo cấu trúc và batch; membership không chứng minh exception,
-    citation resolution hay redirect.
+    Bạn là chuyên gia ontology pháp luật. Xác định LegalException và
+    ProvisionCitation cho các rule version trong từng candidate window.
 
     Nguyên tắc bắt buộc:
-    - Chỉ tạo proposal khi source_evidence_sources trực tiếp chứng minh một ngoại lệ pháp lý làm hẹp general rule cụ thể.
-    - Không phân loại chỉ vì có token như "trừ", "ngoại trừ", phủ định, hoặc câu chữ tương tự. Phải đọc toàn ngữ cảnh.
-    - general_population_id phải thuộc general_records và là rule version thực sự bị ngoại lệ làm hẹp.
-    - Mỗi citation phải tham chiếu evidence_id chứa nguyên văn locator nguồn.
-    - target_population_ids phải thuộc target_records. Chỉ chọn rule version có provision và validity phù hợp với dẫn chiếu.
-    - Không đồng nhất citation string, cited provision và target rule. Một citation có thể resolve nhiều target rules.
-    - Không redirect theo lexical similarity, conduct label, provision path gần giống, document order hoặc change history.
-    - evidence chỉ dùng evidence_id nêu đầy đủ exception; exception_provision_path phải được source hỗ trợ.
-    - Nếu thiếu general rule, thiếu target candidate, citation chưa resolve chắc chắn hoặc source chưa đủ, trả proposals rỗng.
-    - Không đánh giá priority hoặc applicability cho occurrence cụ thể. Human reviewer quyết định cuối cùng.
-    - Trả đúng một result cho mỗi candidate_id. Trong một result không lặp cùng exception statement/general rule.
+    - Chỉ đề xuất khi toàn ngữ cảnh trực tiếp chứng minh ngoại lệ làm hẹp một
+      general rule; không quyết định bằng keyword hoặc độ giống câu chữ.
+    - General ID phải thuộc general_records. Citation chỉ dùng source evidence
+      đã cung cấp; target IDs phải thuộc target_records và phù hợp locator.
+    - Giữ citation, provision và target rule là các đối tượng khác nhau. Không
+      redirect theo similarity, thứ tự văn bản hay lịch sử thay đổi.
+    - Provision path phải được nguồn hỗ trợ. Không đánh giá priority hoặc một
+      vụ việc cụ thể. Nếu chưa đủ căn cứ, trả proposals rỗng.
+    - Trả đúng một result cho mỗi candidate_id và không lặp cùng exception/general rule.
 
     {% for window in windows %}
     === candidate_id={{ window.candidate_id }} ===

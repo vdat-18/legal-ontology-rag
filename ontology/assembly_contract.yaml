@@ -1,36 +1,11 @@
-schema_version: "0.1.0"
-artifact_id: road-traffic-ontology-rule-assembly-contract
-artifact_version: "0.1.0"
-status: pilot_internal_validation
-population_schema_version: "0.1.0"
-candidate_selection:
-  version: "0.1.0"
-  mode: structural_chunk_window
+schema_version: "0.2.0"
+candidates:
   max_chunk_span: 4
   max_records_per_window: 8
-  explanation: >-
-    Structural proximity only proposes bounded candidate windows. It does not decide that records belong to the same
-    legal rule; every merge requires a typed LLM proposal and human acceptance.
-proposal:
-  prompt_version: "0.1.0"
+llm:
   batch_size: 1
   max_output_tokens: 32768
   temperature: 0.0
   max_retries: 2
   retry_delay_seconds: 120
   max_response_bytes: 1048576
-review:
-  human_review_required: true
-  allowed_decisions: [pending, accepted, rejected]
-  require_every_proposal_reviewed_before_finalization: true
-  accepted_member_overlap: prohibited
-finalization:
-  preserve_unassembled_records: true
-  replace_accepted_members_with_assembled_record: true
-  validate_complete_graph_with_shacl: true
-semantic_boundaries:
-  - Candidate-window membership is not evidence that records form one rule.
-  - Similar conduct labels, subjects, vehicles, consequences, or nearby provisions do not prove rule identity.
-  - The LLM may propose an assembly only when exact evidence supports one coherent version-specific rule.
-  - Human acceptance owns the merge decision; pending and rejected proposals never alter canonical records.
-  - Cross-document amendment, replacement, repeal, exception redirection, and concept equivalence remain deferred.

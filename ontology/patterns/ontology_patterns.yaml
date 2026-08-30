@@ -1,6 +1,6 @@
-schema_version: "0.1.0"
+schema_version: "0.2.0"
 artifact_id: road-traffic-ontology-patterns
-artifact_version: "0.1.0"
+artifact_version: "0.2.0"
 patterns:
   - id: penalty_rule
     purpose: Represent one contextual, version-specific regulated conduct and its legal consequences.
@@ -72,21 +72,17 @@ patterns:
     positive_fixture_ids: [FIX-NO-PLATE-RULE]
     boundary_fixture_ids: [FIX-CONSEQUENCE-ABSENCE-UNKNOWN]
 
-  - id: source_and_evidence
-    purpose: Trace every material assertion to a legal provision, source chunk, and exact evidence span.
-    cq_ids: [CQ-SOURCE-001, CQ-EVIDENCE-001]
+  - id: source_provenance
+    purpose: Trace every material assertion to a legal provision and source chunk.
+    cq_ids: [CQ-SOURCE-001]
     ontology_term_iris:
       - https://w3id.org/legal-ontology-rag/ontology/source-provenance#LegalProvision
       - https://w3id.org/legal-ontology-rag/ontology/source-provenance#SourceChunk
-      - https://w3id.org/legal-ontology-rag/ontology/source-provenance#EvidenceSpan
-      - https://w3id.org/legal-ontology-rag/ontology/source-provenance#SupportedAssertion
     shape_iris:
       - https://w3id.org/legal-ontology-rag/shapes#LegalProvisionShape
       - https://w3id.org/legal-ontology-rag/shapes#SourceChunkShape
-      - https://w3id.org/legal-ontology-rag/shapes#EvidenceSpanShape
-      - https://w3id.org/legal-ontology-rag/shapes#SupportedAssertionShape
     positive_fixture_ids: [FIX-NO-PLATE-RULE]
-    boundary_fixture_ids: [FIX-RELATED-SPAN-NOT-EVIDENCE]
+    boundary_fixture_ids: [FIX-ASSERTION-MISSING-SOURCE-CHUNK]
 
   - id: temporal_rule_version
     purpose: Represent rule validity and evidenced change events without inferring succession from similarity.
@@ -105,7 +101,6 @@ patterns:
     cq_ids: [CQ-ASSEMBLY-001]
     ontology_term_iris:
       - https://w3id.org/legal-ontology-rag/ontology/normative-rule#RuleComponent
-      - https://w3id.org/legal-ontology-rag/ontology/source-provenance#SupportedAssertion
     shape_iris:
       - https://w3id.org/legal-ontology-rag/shapes#RuleComponentShape
     positive_fixture_ids: [FIX-ACCIDENT-ASSEMBLY]

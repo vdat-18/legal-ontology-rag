@@ -1,4 +1,4 @@
-"""Materialize reviewed canonical concepts and SKOS taxonomy relations."""
+"""Materialize canonical concepts and SKOS taxonomy relations."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from legal_rag.ontology_exception.models import LegalExceptionRecord
 from legal_rag.ontology_population.materializer import (
     LOROC,
     LORSP,
-    population_evidence_span_iri,
+    population_chunk_iri,
     population_scoped_concept_iri,
 )
 from legal_rag.ontology_population.models import OntologyPopulationRecord
@@ -40,7 +40,7 @@ def materialize_concept_resolution_graph(
     relations: Sequence[CanonicalConceptRelationRecord],
     instance_namespace: str,
 ) -> Graph:
-    """Build the canonical graph and replace rule-scoped concepts with reviewed identities."""
+    """Build the canonical graph and replace rule-scoped concepts with canonical identities."""
     graph = materialize_legal_exception_graph(
         corpus,
         population_records,
@@ -65,7 +65,7 @@ def materialize_concept_resolution_graph(
 
 
 def canonical_concept_iri(instance_namespace: str, concept_id: str) -> URIRef:
-    """Return one reviewed canonical concept IRI."""
+    """Return one canonical concept IRI."""
     return URIRef(f"{Namespace(instance_namespace)}concept/canonical/{concept_id}")
 
 
@@ -96,7 +96,7 @@ def _materialize_concept(
     occurrences_by_id: Mapping[str, ConceptOccurrence],
     instance_namespace: str,
 ) -> None:
-    """Materialize one canonical controlled concept with aliases and evidence."""
+    """Materialize one canonical controlled concept with aliases and source chunks."""
     concept_iri = canonical_concept_iri(instance_namespace, concept.concept_id)
     concept_class, scheme, _ = KIND_RDF[concept.kind]
     graph.add((concept_iri, RDF.type, concept_class))
@@ -106,7 +106,7 @@ def _materialize_concept(
         graph.add((concept_iri, SKOS.altLabel, Literal(label, lang="vi")))
     evidence = {item for occurrence_id in concept.occurrence_ids for item in occurrences_by_id[occurrence_id].evidence}
     for item in evidence:
-        graph.add((concept_iri, LORSP.supportedBy, population_evidence_span_iri(instance_namespace, item)))
+        graph.add((concept_iri, LORSP.sourcedFromChunk, population_chunk_iri(instance_namespace, item.chunk_id)))
 
 
 def _materialize_relation(
@@ -114,7 +114,7 @@ def _materialize_relation(
     relation: CanonicalConceptRelationRecord,
     instance_namespace: str,
 ) -> None:
-    """Materialize reviewed SKOS relations while retaining distinct decisions only in JSON."""
+    """Materialize SKOS relations while retaining distinct decisions only in JSON."""
     source = canonical_concept_iri(instance_namespace, relation.source_concept_id)
     target = canonical_concept_iri(instance_namespace, relation.target_concept_id)
     if relation.relation == "Broader":

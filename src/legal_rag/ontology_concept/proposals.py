@@ -1,4 +1,4 @@
-"""Generate typed concept-relation proposals for mandatory human review."""
+"""Generate typed concept-relation proposals."""
 
 from __future__ import annotations
 
@@ -29,6 +29,8 @@ from legal_rag.ontology_population.extraction import bind_population_evidence
 from legal_rag.ontology_population.models import population_identity
 from legal_rag.settings import Settings
 
+ONTOLOGY_CONCEPT_PROMPT_VERSION = "0.2.0"
+
 KIND_VALUES = {
     "RegulatedConduct": OntologyConceptKind.RegulatedConduct,
     "LegalSubjectRole": OntologyConceptKind.LegalSubjectRole,
@@ -38,10 +40,6 @@ KIND_VALUES = {
 
 class ConceptProposalClient(Protocol):
     """Boundary implemented by a concept-resolution language-model client."""
-
-    @property
-    def model(self) -> str:
-        """Return the model identifier recorded on proposals."""
 
     def propose_batch(self, pairs: Sequence[ConceptResolutionPairInput]) -> Sequence[ConceptResolutionPairResult]:
         """Return typed concept relation proposals for candidate pairs."""
@@ -58,12 +56,6 @@ class BamlConceptProposalClient:
             temperature=concept_settings.temperature,
             max_response_bytes=concept_settings.max_response_bytes,
         )
-        self._model = settings.llm_model
-
-    @property
-    def model(self) -> str:
-        """Return the configured model identifier."""
-        return self._model
 
     def propose_batch(self, pairs: Sequence[ConceptResolutionPairInput]) -> Sequence[ConceptResolutionPairResult]:
         """Run one bounded BAML call over concept pairs."""
@@ -81,7 +73,7 @@ def build_concept_proposal_run_id(
     return population_identity(
         {
             "candidate_run_id": candidate_run_id,
-            "prompt_version": concept_settings.prompt_version,
+            "prompt_version": ONTOLOGY_CONCEPT_PROMPT_VERSION,
             "batch_size": concept_settings.batch_size,
             "max_output_tokens": concept_settings.max_output_tokens,
             "temperature": concept_settings.temperature,
@@ -136,7 +128,7 @@ def _build_batch_proposals(
     settings: ConceptResolutionSettings,
     run_id: str,
 ) -> tuple[tuple[str, tuple[ConceptRelationProposal, ...]], ...]:
-    """Translate one typed response and enforce pair and evidence membership."""
+    """Translate one typed response and bind pair references."""
     results = client.propose_batch(inputs)
     requested_ids = [item.candidate_id for item in inputs]
     result_ids = [item.candidate_id for item in results]
@@ -156,16 +148,9 @@ def _build_batch_proposals(
         left = occurrences_by_id[pair.left_occurrence_id]
         right = occurrences_by_id[pair.right_occurrence_id]
         pair_input = inputs_by_id[candidate_id]
-        left_evidence = _bind_occurrence_evidence(raw, left, pair_input.left.evidence, side="left")
-        right_evidence = _bind_occurrence_evidence(raw, right, pair_input.right.evidence, side="right")
+        left_evidence = _bind_occurrence_evidence(raw, pair_input.left.evidence, side="left")
+        right_evidence = _bind_occurrence_evidence(raw, pair_input.right.evidence, side="right")
         relation = raw.relation.value
-        if relation == "SameConcept":
-            if raw.preferred_label_vi not in {left.label_vi, right.label_vi}:
-                msg = "SameConcept preferred label must be one supplied occurrence label"
-                raise ValueError(msg)
-        elif raw.preferred_label_vi:
-            msg = "Only SameConcept proposals may select a canonical preferred label"
-            raise ValueError(msg)
         proposal_id = population_identity(
             {
                 "run_id": run_id,
@@ -192,8 +177,6 @@ def _build_batch_proposals(
                         left_evidence=left_evidence,
                         right_evidence=right_evidence,
                         rationale_vi=raw.rationale_vi,
-                        proposed_by_model=client.model,
-                        prompt_version=settings.prompt_version,
                         run_id=run_id,
                     ),
                 ),
@@ -204,18 +187,13 @@ def _build_batch_proposals(
 
 def _bind_occurrence_evidence(
     raw: ConceptRelationProposalEntry,
-    occurrence: ConceptOccurrence,
     evidence_sources: Sequence[OntologyEvidenceSource],
     *,
     side: str,
 ) -> tuple:
-    """Bind one proposal side to exact evidence owned by that occurrence."""
+    """Bind one proposal side to supplied evidence references."""
     raw_evidence = raw.left_evidence if side == "left" else raw.right_evidence
-    evidence = bind_population_evidence(raw_evidence, evidence_sources)
-    if not evidence or not set(evidence) <= set(occurrence.evidence):
-        msg = f"Concept {side} evidence must belong to its supplied occurrence"
-        raise ValueError(msg)
-    return evidence
+    return bind_population_evidence(raw_evidence, evidence_sources)
 
 
 def _pair_input(

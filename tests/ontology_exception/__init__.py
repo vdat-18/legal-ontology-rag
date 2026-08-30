@@ -1,1 +1,1 @@
-"""Tests for reviewed legal-exception resolution."""
+"""Tests for legal-exception resolution."""

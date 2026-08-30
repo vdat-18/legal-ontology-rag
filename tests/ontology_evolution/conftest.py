@@ -16,7 +16,7 @@ def write_ontology_project(
     deprecated_terms: tuple[str, ...] = (),
     replacements: dict[str, str] | None = None,
     shapes: tuple[str, ...] = (),
-    competency_questions: dict[str, str] | None = None,
+    competency_questions: tuple[str, ...] = (),
     ontology_statements: tuple[str, ...] = (),
     shape_statements: tuple[str, ...] = (),
 ) -> None:
@@ -76,11 +76,7 @@ def write_ontology_project(
         "\n".join(shape_lines) + "\n",
         encoding="utf-8",
     )
-    cq_document = {
-        "competency_questions": [
-            {"id": cq_id, "priority": priority} for cq_id, priority in (competency_questions or {}).items()
-        ]
-    }
+    cq_document = {"competency_questions": [{"id": cq_id} for cq_id in competency_questions]}
     (requirements_directory / "competency_questions.yaml").write_text(
         yaml.safe_dump(cq_document, sort_keys=False),
         encoding="utf-8",

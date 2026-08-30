@@ -1,4 +1,4 @@
-"""Persistence for legal-change candidates, proposals, reviews, and events."""
+"""Persistence for legal-change candidates, proposals, and events."""
 
 from __future__ import annotations
 
@@ -12,19 +12,18 @@ from legal_rag.ontology_change.models import (
     CHANGE_CANDIDATE_SCHEMA_VERSION,
     CHANGE_PROGRESS_SCHEMA_VERSION,
     CHANGE_PROPOSAL_SCHEMA_VERSION,
-    CHANGE_REVIEW_SCHEMA_VERSION,
+    LEGACY_CHANGE_PROPOSAL_SCHEMA_VERSION,
+    LEGACY_LEGAL_CHANGE_EVENT_SCHEMA_VERSION,
     LEGAL_CHANGE_EVENT_SCHEMA_VERSION,
     ChangeCandidateSet,
     ChangeCandidateWindow,
     ChangeProposalProgress,
-    ChangeReview,
     LegalChangeEvent,
     LegalChangeProposal,
 )
 from legal_rag.ontology_population.models import PopulationEvidence
 
 CHANGE_TYPES = {"Amendment", "Replacement", "RepealOrSupersession"}
-REVIEW_DECISIONS = {"pending", "accepted", "rejected"}
 
 
 def write_change_candidates(path: Path, candidates: ChangeCandidateSet) -> None:
@@ -55,7 +54,7 @@ def read_change_candidates(path: Path) -> ChangeCandidateSet:
 
 
 def write_change_proposals(path: Path, proposals: Sequence[LegalChangeProposal]) -> None:
-    """Atomically replace reviewable legal-change proposals."""
+    """Atomically replace legal-change proposals."""
     write_jsonl_atomic(path, (proposal.to_dict() for proposal in proposals))
 
 
@@ -65,7 +64,10 @@ def read_change_proposals(path: Path) -> tuple[LegalChangeProposal, ...]:
     with path.open(encoding="utf-8") as source_file:
         for line in source_file:
             payload = json.loads(line)
-            if payload["schema_version"] != CHANGE_PROPOSAL_SCHEMA_VERSION:
+            if payload["schema_version"] not in {
+                LEGACY_CHANGE_PROPOSAL_SCHEMA_VERSION,
+                CHANGE_PROPOSAL_SCHEMA_VERSION,
+            }:
                 msg = f"Unsupported legal-change proposal schema: {payload['schema_version']}"
                 raise ValueError(msg)
             if payload["change_type"] not in CHANGE_TYPES:
@@ -83,8 +85,6 @@ def read_change_proposals(path: Path) -> tuple[LegalChangeProposal, ...]:
                     change_provision_path=payload["change_provision_path"],
                     evidence=_evidence(payload["evidence"]),
                     rationale_vi=payload["rationale_vi"],
-                    proposed_by_model=payload["proposed_by_model"],
-                    prompt_version=payload["prompt_version"],
                     run_id=payload["run_id"],
                 )
             )
@@ -109,55 +109,21 @@ def read_change_progress(path: Path) -> tuple[ChangeProposalProgress, ...]:
     return tuple(progress)
 
 
-def write_change_reviews(path: Path, reviews: Sequence[ChangeReview]) -> None:
-    """Atomically replace human legal-change reviews."""
-    write_jsonl_atomic(path, (review.to_dict() for review in reviews))
-
-
-def read_change_reviews(path: Path) -> tuple[ChangeReview, ...]:
-    """Read human legal-change reviews."""
-    reviews = []
-    with path.open(encoding="utf-8") as source_file:
-        for line in source_file:
-            payload = json.loads(line)
-            if payload["schema_version"] != CHANGE_REVIEW_SCHEMA_VERSION:
-                msg = f"Unsupported legal-change review schema: {payload['schema_version']}"
-                raise ValueError(msg)
-            if payload["decision"] not in REVIEW_DECISIONS:
-                msg = f"Unsupported legal-change review decision: {payload['decision']}"
-                raise ValueError(msg)
-            reviews.append(
-                ChangeReview(
-                    proposal_id=payload["proposal_id"],
-                    decision=payload["decision"],
-                    reviewer=payload["reviewer"],
-                    reviewed_on=date.fromisoformat(payload["reviewed_on"]) if payload["reviewed_on"] else None,
-                    note=payload["note"],
-                )
-            )
-    return tuple(reviews)
-
-
-def pending_change_review_template(proposals: Sequence[LegalChangeProposal]) -> tuple[ChangeReview, ...]:
-    """Return one pending human-review row for every proposal."""
-    return tuple(
-        ChangeReview(proposal_id=proposal.proposal_id, decision="pending", reviewer="", reviewed_on=None, note="")
-        for proposal in proposals
-    )
-
-
 def write_legal_change_events(path: Path, events: Sequence[LegalChangeEvent]) -> None:
-    """Atomically replace accepted canonical legal-change events."""
+    """Atomically replace canonical legal-change events."""
     write_jsonl_atomic(path, (event.to_dict() for event in events))
 
 
 def read_legal_change_events(path: Path) -> tuple[LegalChangeEvent, ...]:
-    """Read canonical accepted legal-change events."""
+    """Read canonical legal-change events."""
     events = []
     with path.open(encoding="utf-8") as source_file:
         for line in source_file:
             payload = json.loads(line)
-            if payload["schema_version"] != LEGAL_CHANGE_EVENT_SCHEMA_VERSION:
+            if payload["schema_version"] not in {
+                LEGACY_LEGAL_CHANGE_EVENT_SCHEMA_VERSION,
+                LEGAL_CHANGE_EVENT_SCHEMA_VERSION,
+            }:
                 msg = f"Unsupported legal-change event schema: {payload['schema_version']}"
                 raise ValueError(msg)
             if payload["change_type"] not in CHANGE_TYPES:
@@ -173,9 +139,6 @@ def read_legal_change_events(path: Path) -> tuple[LegalChangeEvent, ...]:
                     change_document_number=payload["change_document_number"],
                     change_provision_path=payload["change_provision_path"],
                     evidence=_evidence(payload["evidence"]),
-                    proposal_id=payload["proposal_id"],
-                    reviewer=payload["reviewer"],
-                    reviewed_on=date.fromisoformat(payload["reviewed_on"]),
                 )
             )
     return tuple(events)

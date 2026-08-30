@@ -95,14 +95,17 @@ def test_proposal_preserves_context_and_binds_both_sides_exactly(exception_corpu
     }
 
 
-@pytest.mark.parametrize("client", [_ConceptClient(paraphrase=True), _ConceptClient(invalid_label=True)])
-def test_proposal_rejects_paraphrase_or_unowned_preferred_label(
-    client: _ConceptClient,
-    exception_corpus: ChangeCorpus,
-) -> None:
-    """The model cannot invent source evidence or a canonical label."""
+def test_proposal_rejects_unknown_evidence_reference(exception_corpus: ChangeCorpus) -> None:
+    """Typed evidence IDs must still resolve to the supplied input boundary."""
     with pytest.raises(LlmTaskExhaustedError):
-        _propose(exception_corpus, client)
+        _propose(exception_corpus, _ConceptClient(paraphrase=True))
+
+
+def test_proposal_accepts_model_selected_preferred_label(exception_corpus: ChangeCorpus) -> None:
+    """Canonical wording is trusted as semantic model output."""
+    proposals = _propose(exception_corpus, _ConceptClient(invalid_label=True))
+
+    assert proposals[0].preferred_label_vi == "Nhãn không thuộc pair"
 
 
 def test_zero_proposal_results_are_valid_and_checkpointable(exception_corpus: ChangeCorpus) -> None:

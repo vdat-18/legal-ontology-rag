@@ -1,497 +1,121 @@
-schema_version: "0.1.0"
+schema_version: "0.2.0"
 artifact_id: road-traffic-ontology-glossary
-artifact_version: "0.1.0"
-status: v0.1_frozen
-source_plan: docs/ontology_construction_plan.md
-approval:
-  project_owner_modeling_recommendations: accepted
-  accepted_on: "2026-08-17"
-  term_level_legal_review: ai_assisted_internal_review_approved
-  reuse_mapping_review: approved_for_v0.1
-  project_owner_v0.1_acceptance: user-confirmed:2026-08-18:ILR-001-through-ILR-011
+artifact_version: "0.2.0"
 terms:
   - id: TERM-RULE-001
-    preferred_label_vi: Quy tắc xử phạt
-    preferred_label_en: Penalty rule
-    definition: >-
-      A contextual normative specification that connects regulated conduct with applicable subject roles, vehicle
-      categories, conditions, exceptions, consequences, source, and temporal applicability.
-    positive_example: The complete rule assembled for driving a vehicle without a required plate.
-    non_example: The phrase `4.000.000-6.000.000 đồng` alone is a consequence, not a complete rule.
-    candidate_modeling_type: Core domain entity or reified n-ary relation
+    label_vi: Quy tắc xử phạt
+    definition_vi: >-
+      Quy tắc pháp lý theo một phiên bản cụ thể, kết nối hành vi, phạm vi áp dụng,
+      điều kiện, ngoại lệ, hậu quả, nguồn và thời gian hiệu lực.
     cq_ids: [CQ-RULE-001, CQ-ASSEMBLY-001]
-    status: accepted_for_v0.1
-    candidate_synonyms: [quy định xử phạt, quy tắc chế tài]
-    review_note: "`LegalFact` is not a synonym; it is an extraction record."
+    boundary: Một mức tiền phạt riêng lẻ chỉ là hậu quả, không phải toàn bộ quy tắc.
 
   - id: TERM-RULE-002
-    preferred_label_vi: Phiên bản quy tắc
-    preferred_label_en: Penalty rule version
-    definition: >-
-      A temporally and textually identifiable expression of a penalty rule that may differ from an earlier or later
-      expression.
-    positive_example: NĐ 168 Article 13(8)(b) before and after the explicit amendment made by NĐ 238 Article 3.
-    non_example: >-
-      Two similar passages in NĐ 168 and NĐ 336 without a legal change link are not established versions of one rule.
-    candidate_modeling_type: Entity or temporal slice
+    label_vi: Phiên bản quy tắc
+    definition_vi: Biểu hiện của một quy tắc có nội dung và thời gian hiệu lực xác định.
     cq_ids: [CQ-TEMPORAL-001, CQ-TEMPORAL-002]
-    status: accepted_for_v0.1
-
-  - id: TERM-RULE-003
-    preferred_label_vi: Thành phần quy tắc
-    preferred_label_en: Rule component
-    definition: >-
-      A material, independently evidenced part of a penalty rule, such as its conduct specification, applicability
-      profile, condition, exception, or consequence.
-    positive_example: The six-point deduction component supported by its own clause and quote.
-    non_example: A display-only label with no legal meaning is not a material rule component.
-    candidate_modeling_type: Abstract conceptual superclass
-    cq_ids: [CQ-EVIDENCE-001, CQ-ASSEMBLY-001]
-    status: accepted_for_v0.1
+    boundary: Hai đoạn văn giống nhau không tự động là hai phiên bản của cùng một quy tắc.
 
   - id: TERM-CONDUCT-001
-    preferred_label_vi: Hành vi được điều chỉnh
-    preferred_label_en: Regulated conduct
-    definition: A type or description of action, omission, or legally relevant behavior addressed by a rule.
-    positive_example: "`Điều khiển xe không gắn biển số` as the conduct described by a provision."
-    non_example: A particular driver's act at 09:00 on a given date is an occurrence, not the abstract conduct description.
-    candidate_modeling_type: Domain concept, possibly SKOS-backed
+    label_vi: Hành vi được điều chỉnh
+    definition_vi: Loại hành động, không hành động hoặc cách xử sự được quy tắc pháp luật điều chỉnh.
     cq_ids: [CQ-RULE-001, CQ-COMPARISON-001]
-    status: accepted_for_v0.1
-    candidate_synonyms: [hành vi vi phạm, hành vi bị xử phạt, hành vi được quy định]
-    review_note: "`Violation` may also mean an occurrence or legal qualification and remains ambiguous."
+    boundary: Đây là loại hành vi trong quy định, không phải một lần thực hiện cụ thể.
 
   - id: TERM-CONDUCT-002
-    preferred_label_vi: Sự kiện hành vi
-    preferred_label_en: Conduct occurrence
-    definition: A concrete occurrence in which an actor performs or omits conduct in a context and at a time.
-    positive_example: A specified person drives a specified car without a plate on 2025-03-01.
-    non_example: The wording of the prohibited conduct in a decree is not itself an occurrence.
-    candidate_modeling_type: Event entity
+    label_vi: Sự kiện hành vi
+    definition_vi: Một lần hành vi xảy ra trong bối cảnh có chủ thể, phương tiện và thời điểm cụ thể.
     cq_ids: [CQ-RULE-001, CQ-TEMPORAL-001, CQ-NEGATIVE-001]
-    status: accepted_for_v0.1
-
-  - id: TERM-CONDUCT-003
-    preferred_label_vi: Đặc tả hành vi trong quy tắc
-    preferred_label_en: Conduct specification
-    definition: >-
-      The rule component asserting that a penalty rule regulates a selected conduct concept, with independent
-      provenance.
-    positive_example: The component linking the no-plate rule to its normalized conduct concept.
-    non_example: The shared conduct concept itself is not duplicated for each rule.
-    candidate_modeling_type: Reified relation component
-    cq_ids: [CQ-RULE-001, CQ-EVIDENCE-001, CQ-ASSEMBLY-001]
-    status: accepted_for_v0.1
+    boundary: Nội dung hành vi được viết trong nghị định không phải sự kiện thực tế.
 
   - id: TERM-APP-001
-    preferred_label_vi: Hồ sơ áp dụng
-    preferred_label_en: Applicability profile
-    definition: >-
-      A rule component collecting one coherent combination of required subject kind, role, vehicle category, and
-      condition expression.
-    positive_example: One profile for a natural person acting as driver of a category of vehicle.
-    non_example: A concrete person's case record is an occurrence context, not a rule applicability profile.
-    candidate_modeling_type: N-ary applicability entity
+    label_vi: Hồ sơ áp dụng
+    definition_vi: Tổ hợp nhất quán các yêu cầu về loại chủ thể, vai trò, phương tiện và điều kiện của một quy tắc.
     cq_ids: [CQ-APPLICABILITY-001, CQ-CONDITION-001, CQ-NEGATIVE-001]
-    status: accepted_for_v0.1
-
-  - id: TERM-SUBJECT-001
-    preferred_label_vi: Chủ thể pháp lý
-    preferred_label_en: Legal subject
-    definition: A natural person or organization capable of bearing the relevant legal position.
-    positive_example: A named individual or registered organization involved in a later case instance.
-    non_example: "`Người điều khiển xe` describes a role and does not identify a particular legal subject."
-    candidate_modeling_type: Upper-level domain entity
-    cq_ids: [CQ-APPLICABILITY-001]
-    status: accepted_for_v0.1
 
   - id: TERM-SUBJECT-002
-    preferred_label_vi: Vai trò chủ thể pháp lý
-    preferred_label_en: Legal subject role
-    definition: A context-dependent capacity in which a legal subject participates and to which a rule applies.
-    positive_example: Driver, vehicle owner, assigned custodian, or transported passenger.
-    non_example: Natural person and organization are subject kinds, not contextual roles.
-    candidate_modeling_type: Role entity or role class
+    label_vi: Vai trò chủ thể pháp lý
+    definition_vi: Tư cách phụ thuộc ngữ cảnh mà một chủ thể đảm nhận, như người điều khiển hoặc chủ phương tiện.
     cq_ids: [CQ-APPLICABILITY-001, CQ-POINTS-001, CQ-REMEDY-001]
-    status: accepted_for_v0.1
-    candidate_synonyms: [đối tượng áp dụng, vai trò pháp lý]
-    review_note: A role label such as driver is not interchangeable with person or organization.
-
-  - id: TERM-SUBJECT-003
-    preferred_label_vi: Cá nhân
-    preferred_label_en: Natural person
-    definition: >-
-      The controlled subject-kind concept for a human legal subject, used when a rule or consequence distinguishes
-      person-versus-organization status.
-    positive_example: "`Cá nhân` in a provision that sets a lower monetary range than for an organization."
-    non_example: "`Người điều khiển xe` cannot be reduced to natural person because it adds a contextual role."
-    candidate_modeling_type: SubjectKind concept
-    cq_ids: [CQ-APPLICABILITY-001, CQ-COMPARISON-001]
-    status: accepted_for_v0.1
-
-  - id: TERM-SUBJECT-004
-    preferred_label_vi: Tổ chức
-    preferred_label_en: Organization
-    definition: The controlled subject-kind concept for a non-natural legal subject recognized by the applicable framework.
-    positive_example: "`Chủ phương tiện là tổ chức`."
-    non_example: A government issuing body is not automatically the sanctioned organization in a penalty rule.
-    candidate_modeling_type: SubjectKind concept
-    cq_ids: [CQ-APPLICABILITY-001, CQ-TEMPORAL-002]
-    status: accepted_for_v0.1
+    boundary: Vai trò không đồng nhất với cá nhân hoặc tổ chức đảm nhận vai trò đó.
 
   - id: TERM-SUBJECT-005
-    preferred_label_vi: Loại chủ thể
-    preferred_label_en: Subject kind
-    definition: >-
-      A controlled classification of a legal subject, initially distinguishing natural person and organization without
-      treating those kinds as property values that are OWL classes.
-    positive_example: A subject classified with the `organization` concept.
-    non_example: Driver and owner are roles, not subject kinds.
-    candidate_modeling_type: Controlled concept
+    label_vi: Loại chủ thể
+    definition_vi: Phân loại pháp lý của chủ thể, như cá nhân hoặc tổ chức.
     cq_ids: [CQ-APPLICABILITY-001, CQ-COMPARISON-001]
-    status: accepted_for_v0.1
+    boundary: Người điều khiển và chủ phương tiện là vai trò, không phải loại chủ thể.
 
   - id: TERM-SUBJECT-006
-    preferred_label_vi: Sự gán vai trò
-    preferred_label_en: Role assignment
-    definition: >-
-      A contextual relation entity stating that a legal subject plays a legal role in a conduct occurrence or other
-      specified context.
-    positive_example: A person plays driver role in one occurrence and owner role in another.
-    non_example: Declaring every vehicle owner to be a driver is not a role assignment.
-    candidate_modeling_type: Role-pattern entity
+    label_vi: Sự gán vai trò
+    definition_vi: Quan hệ cho biết một chủ thể đảm nhận vai trò nào trong một sự kiện hành vi cụ thể.
     cq_ids: [CQ-RULE-001, CQ-APPLICABILITY-001, CQ-NEGATIVE-001]
-    status: accepted_for_v0.1
 
   - id: TERM-VEHICLE-001
-    preferred_label_vi: Loại phương tiện
-    preferred_label_en: Vehicle category
-    definition: A legally relevant category of vehicle used to delimit applicability or consequences.
-    positive_example: Car, motorcycle, bicycle, or other primitive vehicle when the decree distinguishes them.
-    non_example: A particular vehicle with one registration number is an individual vehicle, not a category.
-    candidate_modeling_type: Classification concept, likely taxonomy-backed
+    label_vi: Loại phương tiện
+    definition_vi: Nhóm phương tiện có ý nghĩa pháp lý làm thay đổi phạm vi áp dụng hoặc hậu quả của quy tắc.
     cq_ids: [CQ-APPLICABILITY-001, CQ-COMPARISON-001, CQ-NEGATIVE-001]
-    status: accepted_for_v0.1
-    candidate_synonyms: [loại xe, nhóm phương tiện]
-    review_note: Legal categories may overlap or be defined differently across instruments.
-
-  - id: TERM-VEHICLE-002
-    preferred_label_vi: Phương tiện cụ thể
-    preferred_label_en: Vehicle
-    definition: >-
-      A concrete vehicle participating in a conduct occurrence and classified by one or more legally evidenced vehicle
-      categories.
-    positive_example: The particular car involved in a dated occurrence.
-    non_example: The category `car` is not a concrete vehicle.
-    candidate_modeling_type: Domain entity
-    cq_ids: [CQ-RULE-001, CQ-APPLICABILITY-001]
-    status: accepted_for_v0.1
 
   - id: TERM-COND-001
-    preferred_label_vi: Điều kiện áp dụng
-    preferred_label_en: Applicability condition
-    definition: >-
-      A proposition that must hold, or must have a specified truth value, for a rule or consequence to apply.
-    positive_example: The vehicle belongs to a category legally required to have a plate.
-    non_example: >-
-      A clause that removes a subset from an otherwise applicable general rule may be an exception instead.
-    candidate_modeling_type: Proposition or reified condition
+    label_vi: Điều kiện áp dụng
+    definition_vi: Mệnh đề phải có giá trị phù hợp để một quy tắc hoặc hậu quả được áp dụng.
     cq_ids: [CQ-CONDITION-001, CQ-RULE-001]
-    status: accepted_for_v0.1
-    candidate_synonyms: [điều kiện, tình tiết áp dụng, điều kiện bổ sung]
-    review_note: Do not merge automatically with exception or aggravating/mitigating circumstances.
+    boundary: Điều kiện không tự động là ngoại lệ hoặc tình tiết tăng nặng, giảm nhẹ.
 
   - id: TERM-COND-002
-    preferred_label_vi: Biểu thức điều kiện
-    preferred_label_en: Applicability expression
-    definition: >-
-      The logical composition of applicability conditions, including conjunction, disjunction, negation, and scoped
-      references.
-    positive_example: Conditions A and B must hold, while condition C must not hold.
-    non_example: An unordered string array does not preserve whether conditions are AND, OR, or alternatives.
-    candidate_modeling_type: Expression or condition group
+    label_vi: Biểu thức điều kiện
+    definition_vi: Cấu trúc bảo toàn quan hệ AND, OR hoặc NOT giữa các điều kiện áp dụng.
     cq_ids: [CQ-CONDITION-001, CQ-NEGATIVE-001]
-    status: accepted_for_v0.1
 
   - id: TERM-EXCEPTION-001
-    preferred_label_vi: Ngoại lệ pháp lý
-    preferred_label_en: Legal exception
-    definition: >-
-      A legally grounded specification that excludes or redirects a case that would otherwise fall within a more
-      general rule.
-    positive_example: A general sign/marking violation excludes conduct governed by enumerated specific clauses.
-    non_example: >-
-      Every phrase containing `trừ` is not automatically an exception; it may delimit a term or consequence instead.
-    candidate_modeling_type: Entity or relation with explicit target
+    label_vi: Ngoại lệ pháp lý
+    definition_vi: Trường hợp có nguồn pháp lý loại trừ hoặc chuyển hướng khỏi một quy tắc chung.
     cq_ids: [CQ-EXCEPTION-001]
-    status: accepted_for_v0.1
-    candidate_synonyms: [trường hợp loại trừ, ngoại lệ áp dụng]
-    review_note: A phrase introduced by `trừ` still requires semantic review.
+    boundary: Từ "trừ" trong văn bản không đủ để tự động kết luận đó là ngoại lệ áp dụng.
 
   - id: TERM-CONSEQUENCE-001
-    preferred_label_vi: Hậu quả pháp lý
-    preferred_label_en: Legal consequence
-    definition: A legal effect imposed or required by an applicable rule within the V0.1 consequence scope.
-    positive_example: Monetary penalty, point deduction, additional sanction, or remedial measure.
-    non_example: The social or physical result of a traffic accident is not automatically a modeled legal consequence.
-    candidate_modeling_type: Abstract consequence entity
+    label_vi: Hậu quả pháp lý
+    definition_vi: Hệ quả do quy tắc quy định, như phạt tiền, trừ điểm, xử phạt bổ sung hoặc khắc phục hậu quả.
     cq_ids: [CQ-CONSEQUENCE-001]
-    status: accepted_for_v0.1
 
   - id: TERM-MONEY-001
-    preferred_label_vi: Phạt tiền
-    preferred_label_en: Monetary penalty
-    definition: A sanction requiring payment within a legally stated amount or range and currency.
-    positive_example: A penalty from 4,000,000 to 6,000,000 VND.
-    non_example: >-
-      No extracted monetary value means unknown or absent in that evidence; it does not mean a zero-value penalty.
-    candidate_modeling_type: Consequence subtype
-    cq_ids: [CQ-PENALTY-001]
-    status: accepted_for_v0.1
-    candidate_synonyms: [tiền phạt, mức phạt tiền]
-    review_note: "`Mức phạt` may refer to a range/value rather than the sanction itself."
-
-  - id: TERM-MONEY-002
-    preferred_label_vi: Khoảng tiền phạt
-    preferred_label_en: Monetary amount range
-    definition: The lower and upper monetary bounds and currency stated for a monetary penalty.
-    positive_example: Minimum 4,000,000, maximum 6,000,000, currency VND.
-    non_example: The string `4-6 triệu` without normalized bounds and source is not yet a validated range value.
-    candidate_modeling_type: Value object or qualified value
-    cq_ids: [CQ-PENALTY-001]
-    status: accepted_for_v0.1
-
-  - id: TERM-MONEY-003
-    preferred_label_vi: Loại tiền tệ
-    preferred_label_en: Currency concept
-    definition: A controlled identifier for the currency in which a monetary amount is expressed.
-    positive_example: VND associated with the selected monetary range.
-    non_example: The lexical symbol or localized display string alone is not the canonical currency identity.
-    candidate_modeling_type: Controlled concept
-    cq_ids: [CQ-PENALTY-001]
-    status: accepted_for_v0.1
+    label_vi: Phạt tiền
+    definition_vi: Hậu quả pháp lý yêu cầu nộp một số tiền hoặc một giá trị trong khoảng tiền xác định.
+    cq_ids: [CQ-PENALTY-001, CQ-CONSEQUENCE-001]
 
   - id: TERM-POINTS-001
-    preferred_label_vi: Trừ điểm giấy phép lái xe
-    preferred_label_en: Driver-license point deduction
-    definition: >-
-      A legal consequence reducing a stated number of points from the relevant driver's license under the applicable
-      rule.
-    positive_example: Deduction of six points for the selected no-plate pilot example.
-    non_example: Monetary penalty points or an informal severity score are not license-point deductions.
-    candidate_modeling_type: Consequence subtype
+    label_vi: Trừ điểm giấy phép lái xe
+    definition_vi: Hậu quả pháp lý làm giảm số điểm của giấy phép lái xe theo giá trị được quy định.
     cq_ids: [CQ-POINTS-001, CQ-CONSEQUENCE-001]
-    status: accepted_for_v0.1
-    candidate_synonyms: [trừ điểm, khấu trừ điểm giấy phép lái xe]
-    review_note: Do not confuse with scoring or ranking values.
 
   - id: TERM-ADDITIONAL-001
-    preferred_label_vi: Hình thức xử phạt bổ sung
-    preferred_label_en: Additional sanction
-    definition: >-
-      A sanction imposed in addition to the principal sanction and classified as additional under the authoritative
-      law.
-    positive_example: Confiscation of a plate when the cited provision classifies it as an additional sanction.
-    non_example: >-
-      A remedial obligation is not reclassified as an additional sanction merely because both accompany a fine.
-    candidate_modeling_type: Consequence subtype
+    label_vi: Hình thức xử phạt bổ sung
+    definition_vi: Hình thức xử phạt được nguồn pháp luật phân loại là bổ sung cho xử phạt chính.
     cq_ids: [CQ-ADDITIONAL-001, CQ-CONSEQUENCE-001]
-    status: accepted_for_v0.1
-    candidate_synonyms: [xử phạt bổ sung, hình phạt bổ sung]
-    review_note: Preserve the terminology used by the authoritative legal source.
 
   - id: TERM-REMEDY-001
-    preferred_label_vi: Biện pháp khắc phục hậu quả
-    preferred_label_en: Remedial measure
-    definition: >-
-      A measure expressly classified by the governing normative source as a remedy for consequences of an
-      administrative violation.
-    positive_example: >-
-      NĐ 168 Article 13(11)(a) requires plate compliance or restoration of the original state for the referenced
-      violations.
-    non_example: >-
-      A duty appearing only in an attached administrative form is not sufficient evidence of this legal classification.
-    candidate_modeling_type: Consequence subtype
+    label_vi: Biện pháp khắc phục hậu quả
+    definition_vi: Nghĩa vụ khôi phục hoặc sửa chữa được nguồn pháp luật phân loại là biện pháp khắc phục hậu quả.
     cq_ids: [CQ-REMEDY-001, CQ-CONSEQUENCE-001]
-    status: accepted_for_v0.1
-    candidate_synonyms: [biện pháp khắc phục, nghĩa vụ khắc phục]
-    review_note: Not every post-violation obligation is legally classified as a remedial measure.
-
-  - id: TERM-TARGET-001
-    preferred_label_vi: Đối tượng của hậu quả
-    preferred_label_en: Consequence target
-    definition: >-
-      The person, role, license, vehicle, plate, object, or state directly affected by a legal consequence.
-    positive_example: A driver's license is affected by point deduction; a plate is affected by confiscation.
-    non_example: >-
-      The subject sanctioned by the rule and the object confiscated by a sanction need not be the same entity.
-    candidate_modeling_type: Participant role or relation
-    cq_ids: [CQ-POINTS-001, CQ-ADDITIONAL-001, CQ-REMEDY-001]
-    status: accepted_for_v0.1
-
-  - id: TERM-DOC-001
-    preferred_label_vi: Văn bản pháp luật
-    preferred_label_en: Legal document
-    definition: >-
-      A legally recognized document-level work identified by attributes such as document number, title, issuer, and
-      promulgation metadata.
-    positive_example: Nghị định 168/2024/NĐ-CP as a legal document.
-    non_example: A local DOCX or PDF file is a digital carrier, not necessarily the legal document itself.
-    candidate_modeling_type: Information or legal work entity
-    cq_ids: [CQ-SOURCE-001, CQ-TEMPORAL-002]
-    status: accepted_for_v0.1
-    candidate_synonyms: [văn bản quy phạm pháp luật, văn bản nguồn]
-    review_note: A file or consolidated expression is not automatically the same document-level entity.
-
-  - id: TERM-EXPR-001
-    preferred_label_vi: Biểu hiện văn bản pháp luật
-    preferred_label_en: Legal document expression
-    definition: >-
-      A particular original, amended, or consolidated expression through which the content of a legal document is
-      available.
-    positive_example: An issued decree text and a later consolidated text representing legal content at different states.
-    non_example: Two downloaded copies of the same expression are files or manifestations, not distinct legal expressions.
-    candidate_modeling_type: Information entity
-    cq_ids: [CQ-SOURCE-001, CQ-TEMPORAL-002]
-    status: accepted_for_v0.1
-
-  - id: TERM-FILE-001
-    preferred_label_vi: Tệp nguồn
-    preferred_label_en: Source file
-    definition: >-
-      A digital carrier or manifestation, such as DOCX or PDF, from which structural units and chunks are produced.
-    positive_example: One downloaded DOCX representing a legal expression.
-    non_example: The legal document work is not identical to any single downloaded file.
-    candidate_modeling_type: PROV entity or ELI-aligned format/manifestation
-    cq_ids: [CQ-EVIDENCE-001, CQ-SOURCE-001]
-    status: accepted_for_v0.1
 
   - id: TERM-PROVISION-001
-    preferred_label_vi: Quy định cấu trúc
-    preferred_label_en: Legal provision
-    definition: A structurally addressable part of a legal expression, such as an article, clause, or point.
-    positive_example: "`Điều 6 khoản 1 điểm a`."
-    non_example: A free-text description of conduct is not a provision unless linked to its structural position.
-    candidate_modeling_type: Information entity in a part hierarchy
+    label_vi: Quy định cấu trúc
+    definition_vi: Đơn vị có thể định vị trong một biểu hiện văn bản, như điều, khoản hoặc điểm.
     cq_ids: [CQ-SOURCE-001, CQ-ASSEMBLY-001]
-    status: accepted_for_v0.1
-    candidate_synonyms: [điều khoản, quy định, đơn vị cấu trúc]
-    review_note: Article, clause, and point are structural levels, not exact synonyms.
 
   - id: TERM-CITATION-001
-    preferred_label_vi: Dẫn chiếu điều khoản
-    preferred_label_en: Provision citation
-    definition: A reference that identifies or points to one or more legal provisions.
-    positive_example: A rule consequence citing `khoản 5 điểm a`.
-    non_example: The cited provision and the citation string are related but not identical objects.
-    candidate_modeling_type: Reference entity or structured value
-    cq_ids: [CQ-SOURCE-001]
-    status: accepted_for_v0.1
-
-  - id: TERM-CHUNK-001
-    preferred_label_vi: Đoạn chia nguồn
-    preferred_label_en: Source chunk
-    definition: >-
-      A processing segment produced from a source manifestation while preserving enough identity to locate its source
-      context.
-    positive_example: A chunk ID used by an evidence entry to locate text.
-    non_example: A chunk is not assumed to be a legal provision or a complete penalty rule.
-    candidate_modeling_type: Processing artifact
-    cq_ids: [CQ-EVIDENCE-001, CQ-ASSEMBLY-001]
-    status: accepted_for_v0.1
-
-  - id: TERM-EVIDENCE-001
-    preferred_label_vi: Đoạn trích bằng chứng
-    preferred_label_en: Evidence span
-    definition: An exact contiguous quotation from a source chunk that directly supports a modeled assertion.
-    positive_example: The exact text stating a six-point deduction.
-    non_example: A paraphrase, summary, or related nearby passage is not an exact evidence span.
-    candidate_modeling_type: Information entity or selector-backed span
-    cq_ids: [CQ-EVIDENCE-001]
-    status: accepted_for_v0.1
-    candidate_synonyms: [trích dẫn bằng chứng, đoạn trích nguyên văn]
-    review_note: A citation locator is different from the quoted evidence text.
-
-  - id: TERM-ASSERTION-001
-    preferred_label_vi: Mệnh đề được hỗ trợ
-    preferred_label_en: Supported assertion
-    definition: A specific modeled claim whose provenance can be evaluated independently.
-    positive_example: >-
-      The claim that a selected rule imposes a six-point deduction, supported by a particular provision and span.
-    non_example: Treating the entire ontology record as supported because one field has evidence is insufficient.
-    candidate_modeling_type: Reified assertion or provenance-qualified relation
-    cq_ids: [CQ-EVIDENCE-001, CQ-SOURCE-001]
-    status: accepted_for_v0.1
-
-  - id: TERM-ISSUER-001
-    preferred_label_vi: Cơ quan ban hành
-    preferred_label_en: Issuing body
-    definition: The organization legally responsible for promulgating a legal document.
-    positive_example: The competent body named as issuer in document metadata.
-    non_example: An enforcement authority applying a rule is not necessarily the issuing body.
-    candidate_modeling_type: Organization role
-    cq_ids: [CQ-SOURCE-001]
-    status: accepted_for_v0.1
+    label_vi: Dẫn chiếu điều khoản
+    definition_vi: Đối tượng tham chiếu đến một hoặc nhiều quy định cấu trúc.
+    cq_ids: [CQ-SOURCE-001, CQ-EXCEPTION-001]
+    boundary: Dẫn chiếu và quy định được dẫn chiếu là hai đối tượng khác nhau.
 
   - id: TERM-TIME-001
-    preferred_label_vi: Khoảng hiệu lực
-    preferred_label_en: Validity interval
-    definition: >-
-      The interval during which a legal expression or rule version is legally applicable, subject to authoritative
-      temporal evidence.
-    positive_example: A rule version effective from 2025-01-01 until a verified end or replacement date.
-    non_example: "`valid_to = null` in an extraction record does not establish an unbounded legal interval."
-    candidate_modeling_type: Temporal entity, likely OWL-Time-aligned
+    label_vi: Khoảng hiệu lực
+    definition_vi: Khoảng thời gian đã được xác minh mà một phiên bản quy tắc có hiệu lực.
     cq_ids: [CQ-TEMPORAL-001, CQ-TEMPORAL-002]
-    status: accepted_for_v0.1
-    candidate_synonyms: [thời gian hiệu lực, giai đoạn áp dụng]
-    review_note: Promulgation date and effective date are not interchangeable.
+    boundary: Không có ngày kết thúc nghĩa là chưa biết, không tự động nghĩa là vô hạn.
 
   - id: TERM-CHANGE-004
-    preferred_label_vi: Sự kiện thay đổi pháp lý
-    preferred_label_en: Legal change
-    definition: >-
-      An evidenced event that changes the legal state or content of an earlier rule or expression and may produce a
-      later version.
-    positive_example: A documented amendment effective on a stated date linking an earlier rule to a revised rule.
-    non_example: Two similar rules published at different times are not automatically one legal change event.
-    candidate_modeling_type: Change event
+    label_vi: Thay đổi pháp lý
+    definition_vi: Sự kiện có nguồn pháp lý kết nối phiên bản quy tắc trước và phiên bản sau nếu có.
     cq_ids: [CQ-TEMPORAL-001, CQ-TEMPORAL-002]
-    status: accepted_for_v0.1
-
-  - id: TERM-CHANGE-001
-    preferred_label_vi: Sửa đổi
-    preferred_label_en: Amendment
-    definition: >-
-      A legally evidenced change that modifies specified content while preserving the relevant legal identity according
-      to the adopted identity model.
-    positive_example: A later decree explicitly amends a clause of an earlier decree.
-    non_example: Similar wording or chronological succession alone does not prove amendment.
-    candidate_modeling_type: Change event or inter-expression relation
-    cq_ids: [CQ-TEMPORAL-002]
-    status: accepted_for_v0.1
-    candidate_synonyms: [sửa đổi, sửa đổi bổ sung]
-    review_note: Amendment, replacement, repeal, and consolidation must remain distinct candidates.
-
-  - id: TERM-CHANGE-002
-    preferred_label_vi: Thay thế
-    preferred_label_en: Replacement
-    definition: >-
-      A legally evidenced change in which later content takes the place of identified earlier content.
-    positive_example: A later provision explicitly replaces an earlier clause or rule expression.
-    non_example: Adding a new condition without displacing earlier content may be amendment rather than replacement.
-    candidate_modeling_type: Change event or inter-expression relation
-    cq_ids: [CQ-TEMPORAL-002]
-    status: accepted_for_v0.1
-
-  - id: TERM-CHANGE-003
-    preferred_label_vi: Bãi bỏ hoặc làm hết hiệu lực
-    preferred_label_en: Repeal or supersession
-    definition: >-
-      A legally evidenced change after which the identified earlier provision or rule expression no longer governs its
-      former scope.
-    positive_example: An authoritative provision expressly repeals an earlier point from an effective date.
-    non_example: Publication of a newer document does not automatically supersede every older rule on a similar topic.
-    candidate_modeling_type: Change event or inter-expression relation
-    cq_ids: [CQ-TEMPORAL-001, CQ-TEMPORAL-002]
-    status: accepted_for_v0.1
+    boundary: Thứ tự thời gian hoặc độ giống văn bản không tự động chứng minh có sửa đổi, thay thế hoặc bãi bỏ.

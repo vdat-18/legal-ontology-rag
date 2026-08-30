@@ -1,41 +1,13 @@
-schema_version: "0.1.0"
-artifact_id: road-traffic-ontology-cross-document-change-resolution-contract
-artifact_version: "0.1.0"
-status: pilot_internal_validation
-population_schema_version: "0.1.0"
-candidate_selection:
-  version: "0.1.0"
-  mode: ordered_document_pair_exhaustive_windows
+schema_version: "0.2.0"
+candidates:
   max_source_chunks_per_window: 6
   max_earlier_records_per_window: 6
   max_later_records_per_window: 6
   max_total_windows: 10000
-  explanation: >-
-    The ordered corpus manifest and bounded exhaustive batching only determine which records and later-document chunks
-    reach the LLM. They do not assert rule identity, legal succession, or change type.
-proposal:
-  prompt_version: "0.1.0"
+llm:
   batch_size: 1
   max_output_tokens: 32768
   temperature: 0.0
   max_retries: 2
   retry_delay_seconds: 120
   max_response_bytes: 1048576
-review:
-  human_review_required: true
-  allowed_decisions: [pending, accepted, rejected]
-  require_every_proposal_reviewed_before_finalization: true
-  accepted_earlier_rule_overlap: prohibited
-  accepted_later_rule_overlap: prohibited
-finalization:
-  accepted_change_closes_earlier_validity: true
-  accepted_change_opens_later_validity: true
-  preserve_rejected_and_unmatched_rules: true
-  validate_complete_graph_with_shacl: true
-semantic_boundaries:
-  - Document order is candidate-generation context, not proof of amendment, replacement, repeal, or supersession.
-  - Similar conduct, applicability, consequence values, provision paths, or wording do not prove rule succession.
-  - Every proposed change requires exact evidence from an authoritative provision in the later change-source document.
-  - Repeal may omit a later rule; absence of a later candidate does not itself prove repeal.
-  - Human acceptance owns change type, effective date, and earlier/later version linkage.
-  - Transitional applicability and exception redirection remain deferred.

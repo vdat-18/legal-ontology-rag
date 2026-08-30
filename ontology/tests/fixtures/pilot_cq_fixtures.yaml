@@ -281,16 +281,16 @@ fixtures:
       provenance_complete: false
       missing_fields: [legal_provision]
 
-  - id: FIX-RELATED-SPAN-NOT-EVIDENCE
+  - id: FIX-ASSERTION-MISSING-SOURCE-CHUNK
     fixture_kind: boundary
     verification_status: conceptual_boundary
     given:
       asserted_consequence: six_point_deduction
-      quoted_span_states_point_value: false
-      quoted_span_is_only_related_context: true
+      legal_provision: NĐ 168 Article 14(8)(b)
+      source_chunk: null
     expected:
-      evidence_accepted: false
-      reason: span_does_not_directly_support_assertion
+      provenance_complete: false
+      reason: source_chunk_is_missing
 
   - id: FIX-ARTICLE13-PRE-AMENDMENT
     fixture_kind: positive

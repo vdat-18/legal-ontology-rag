@@ -1,4 +1,4 @@
-"""Generate typed cross-chunk rule-assembly proposals for human review."""
+"""Generate typed cross-chunk rule-assembly proposals."""
 
 from __future__ import annotations
 
@@ -31,13 +31,11 @@ from legal_rag.ontology_population.extraction import build_population_record
 from legal_rag.ontology_population.models import OntologyPopulationRecord, population_identity
 from legal_rag.settings import Settings
 
+ONTOLOGY_ASSEMBLY_PROMPT_VERSION = "0.2.0"
+
 
 class AssemblyProposalClient(Protocol):
     """Boundary implemented by a rule-assembly language-model client."""
-
-    @property
-    def model(self) -> str:
-        """Return the model identifier recorded on proposals."""
 
     def propose_batch(self, windows: Sequence[RuleAssemblyWindowInput]) -> Sequence[RuleAssemblyWindowResult]:
         """Return typed assembly proposals for candidate windows."""
@@ -54,12 +52,6 @@ class BamlAssemblyProposalClient:
             temperature=assembly_settings.temperature,
             max_response_bytes=assembly_settings.max_response_bytes,
         )
-        self._model = settings.llm_model
-
-    @property
-    def model(self) -> str:
-        """Return the configured model identifier."""
-        return self._model
 
     def propose_batch(self, windows: Sequence[RuleAssemblyWindowInput]) -> Sequence[RuleAssemblyWindowResult]:
         """Run one bounded BAML call over candidate windows."""
@@ -77,7 +69,7 @@ def build_assembly_proposal_run_id(
     return population_identity(
         {
             "candidate_run_id": candidate_run_id,
-            "prompt_version": assembly_settings.prompt_version,
+            "prompt_version": ONTOLOGY_ASSEMBLY_PROMPT_VERSION,
             "batch_size": assembly_settings.batch_size,
             "max_output_tokens": assembly_settings.max_output_tokens,
             "temperature": assembly_settings.temperature,
@@ -139,7 +131,7 @@ def _build_batch_proposals(
     assembly_settings: AssemblySettings,
     run_id: str,
 ) -> tuple[tuple[str, tuple[AssemblyProposal, ...]], ...]:
-    """Translate one typed model response and enforce candidate membership."""
+    """Translate one typed model response and bind candidate references."""
     results = client.propose_batch(inputs)
     requested_ids = [item.candidate_id for item in inputs]
     result_ids = [result.candidate_id for result in results]
@@ -185,10 +177,6 @@ def _build_batch_proposals(
                 ontology_semantic_sha256=ontology_semantic_sha256,
                 population_run_id=run_id,
             )
-            member_evidence = set().union(*(_record_evidence(records_by_id[member]) for member in members))
-            if not _record_evidence(assembled_record) <= member_evidence:
-                msg = "Assembled rule evidence must come from its proposed member records"
-                raise ValueError(msg)
             proposal_id = population_identity(
                 {
                     "run_id": run_id,
@@ -203,8 +191,6 @@ def _build_batch_proposals(
                     member_population_ids=members,
                     assembled_record=assembled_record,
                     rationale_vi=raw.rationale_vi,
-                    proposed_by_model=client.model,
-                    prompt_version=assembly_settings.prompt_version,
                     run_id=run_id,
                 )
             )

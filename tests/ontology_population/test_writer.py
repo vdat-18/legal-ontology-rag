@@ -92,55 +92,33 @@ def test_population_reader_preserves_legacy_records_for_migration(
             (PopulationCondition("atomic", "Atomic", "Điều kiện", (), (PopulationEvidence("chunk", "Nguồn"),)),),
             "root does not exist",
         ),
-        (
-            "atomic",
-            (
-                PopulationCondition(
-                    "atomic", "Atomic", "Điều kiện", ("child",), (PopulationEvidence("chunk", "Nguồn"),)
-                ),
-                PopulationCondition("child", "Atomic", "Con", (), (PopulationEvidence("chunk", "Nguồn"),)),
-            ),
-            "must not have operands",
-        ),
-        (
-            "not",
-            (PopulationCondition("not", "Not", "Không", (), (PopulationEvidence("chunk", "Nguồn"),)),),
-            "exactly one operand",
-        ),
-        (
-            "all",
-            (
-                PopulationCondition("all", "AllOf", "Đồng thời", ("child",), (PopulationEvidence("chunk", "Nguồn"),)),
-                PopulationCondition("child", "Atomic", "Con", (), (PopulationEvidence("chunk", "Nguồn"),)),
-            ),
-            "at least two operands",
-        ),
-        (
-            "any",
-            (PopulationCondition("any", "AnyOf", "Một trong", (), (PopulationEvidence("chunk", "Nguồn"),)),),
-            "at least two operands",
-        ),
-        ("atomic", (PopulationCondition("atomic", "Atomic", "Điều kiện", (), ()),), "requires direct evidence"),
     ],
 )
-def test_condition_tree_rejects_invalid_root_arity_and_evidence(
+def test_condition_tree_rejects_missing_root_references(
     root_id: str | None,
     conditions: tuple[PopulationCondition, ...],
     message: str,
 ) -> None:
-    """Condition trees fail before invalid structures can reach persistence or RDF."""
+    """Condition references required by materialization remain valid."""
     with pytest.raises(ValueError, match=message):
         validate_population_condition_tree(root_id, conditions)
 
 
-def test_condition_tree_rejects_duplicate_missing_cyclic_and_unreachable_nodes() -> None:
-    """Every condition ID belongs to one connected acyclic expression tree."""
+def test_condition_tree_checks_only_duplicate_and_missing_identifiers() -> None:
+    """Runtime integrity ignores semantic arity, evidence, cycles and reachability."""
     evidence = (PopulationEvidence("chunk", "Nguồn"),)
     duplicate = (
         PopulationCondition("same", "Atomic", "Một", (), evidence),
         PopulationCondition("same", "Atomic", "Hai", (), evidence),
     )
     missing = (PopulationCondition("root", "Not", "Không", ("missing",), evidence),)
+    for conditions, root_id, message in (
+        (duplicate, "same", "must be unique"),
+        (missing, "root", "operand does not exist"),
+    ):
+        with pytest.raises(ValueError, match=message):
+            validate_population_condition_tree(root_id, conditions)
+
     cyclic = (
         PopulationCondition("root", "Not", "Không A", ("child",), evidence),
         PopulationCondition("child", "Not", "Không B", ("root",), evidence),
@@ -149,15 +127,11 @@ def test_condition_tree_rejects_duplicate_missing_cyclic_and_unreachable_nodes()
         PopulationCondition("root", "Atomic", "Gốc", (), evidence),
         PopulationCondition("orphan", "Atomic", "Rời", (), evidence),
     )
+    no_direct_evidence = (PopulationCondition("root", "Atomic", "Điều kiện", (), ()),)
 
-    for conditions, message in (
-        (duplicate, "must be unique"),
-        (missing, "operand does not exist"),
-        (cyclic, "contains a cycle"),
-        (unreachable, "unreachable from root"),
-    ):
-        with pytest.raises(ValueError, match=message):
-            validate_population_condition_tree("same" if conditions is duplicate else "root", conditions)
+    validate_population_condition_tree("root", cyclic)
+    validate_population_condition_tree("root", unreachable)
+    validate_population_condition_tree("root", no_direct_evidence)
 
 
 def test_population_writer_requires_current_ontology_run_identity(
@@ -177,17 +151,17 @@ def test_population_writer_requires_current_ontology_run_identity(
             write_population_records(path, (replace(population_record, **{field: None}),))
 
 
-def test_population_reader_rejects_persisted_invalid_condition_tree(
+def test_population_reader_rejects_unknown_condition_reference(
     tmp_path: Path,
     population_record: OntologyPopulationRecord,
 ) -> None:
-    """Hand-edited or stale JSONL cannot bypass the deterministic tree validator."""
+    """Hand-edited JSONL cannot reference a condition that does not exist."""
     path = tmp_path / "population.jsonl"
     payload = population_record.to_dict()
-    payload["conditions"][0]["operand_ids"] = ["required"]
+    payload["conditions"][0]["operand_ids"] = ["unknown"]
     path.write_text(json.dumps(payload, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    with pytest.raises(ValueError, match="at least two operands"):
+    with pytest.raises(ValueError, match="operand does not exist"):
         read_population_records(path)
 
 

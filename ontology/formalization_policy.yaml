@@ -187,25 +187,6 @@ external_dependency_policy:
     prefix: skos
     mode: term_iri_reference
     owl_import: false
-  - id: REUSE-ELI-001
-    prefix: eli
-    mode: candidate_alignment_only
-    owl_import: false
-  - id: REUSE-TLKB-001
-    mode: reference_and_selective_pattern_adaptation
-    owl_import: false
-  - id: REUSE-LKIF-001
-    mode: reference_only
-    owl_import: false
-  - id: REUSE-AKN-001
-    mode: reference_only
-    owl_import: false
-  - id: REUSE-LRML-001
-    mode: reference_only
-    owl_import: false
-  - id: REUSE-ODP-001
-    mode: pattern_adaptation
-    owl_import: false
 
 validation_policy:
   owl:

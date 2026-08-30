@@ -13,19 +13,18 @@ from loguru import logger
 def _parser() -> argparse.ArgumentParser:
     """Build the concept-proposal command-line parser."""
     parser = argparse.ArgumentParser(
-        description="Generate exact-evidenced concept relation proposals for mandatory human review."
+        description="Generate and persist typed source-grounded concept relation proposals."
     )
     parser.add_argument("corpus_manifest_path", type=Path, help="Ordered multi-document corpus manifest JSON path")
     parser.add_argument("candidates_path", type=Path, help="Concept candidate-set JSON path")
     parser.add_argument("concept_contract_path", type=Path, help="Versioned concept-resolution contract YAML")
     parser.add_argument("proposals_output_path", type=Path, help="Concept proposal JSONL destination")
     parser.add_argument("progress_output_path", type=Path, help="Concept proposal progress JSONL destination")
-    parser.add_argument("reviews_output_path", type=Path, help="Human-review JSONL destination/template")
     return parser
 
 
 def main() -> None:
-    """Generate reviewable concept proposals with resumable checkpoints."""
+    """Generate typed concept proposals with resumable checkpoints."""
     from legal_rag.ontology_change.corpus import read_change_corpus_manifest
     from legal_rag.ontology_concept.config import ConceptResolutionSettings
     from legal_rag.ontology_concept.models import ConceptProposalProgress, ConceptRelationProposal
@@ -35,14 +34,11 @@ def main() -> None:
         propose_concept_relations,
     )
     from legal_rag.ontology_concept.writer import (
-        pending_concept_review_template,
         read_concept_candidates,
         read_concept_progress,
         read_concept_proposals,
-        read_concept_reviews,
         write_concept_progress,
         write_concept_proposals,
-        write_concept_reviews,
     )
     from legal_rag.ontology_proposal_resume import (
         load_compatible_proposal_resume_state,
@@ -110,21 +106,8 @@ def main() -> None:
             if item.candidate_id in processed_ids
         ),
     )
-    existing_reviews = (
-        read_concept_reviews(arguments.reviews_output_path) if arguments.reviews_output_path.exists() else ()
-    )
-    reviews_by_id = {item.proposal_id: item for item in existing_reviews}
-    if len(reviews_by_id) != len(existing_reviews):
-        msg = "Existing concept review identifiers must be unique"
-        raise ValueError(msg)
-    for review in pending_concept_review_template(proposals):
-        reviews_by_id.setdefault(review.proposal_id, review)
-    write_concept_reviews(
-        arguments.reviews_output_path,
-        tuple(reviews_by_id[item.proposal_id] for item in proposals),
-    )
     logger.info(
-        "Completed {}/{} candidate pairs and wrote {} concept proposals for human review",
+        "Completed {}/{} candidate pairs and wrote {} concept proposals",
         len(processed_ids),
         len(candidates.pairs),
         len(proposals),

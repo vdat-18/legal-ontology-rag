@@ -1,7 +1,7 @@
 schema_version: "0.1.0"
 artifact_id: road-traffic-ontology-requirements
-artifact_version: "0.1.1"
-status: v0.1_frozen
+artifact_version: "0.2.0"
+status: active
 requirement_categories:
   - id: purpose
     requirements:
@@ -12,7 +12,7 @@ requirement_categories:
           Represent enough legal context to distinguish rules that concern similar conduct but differ by subject,
           vehicle, condition, exception, source, or effective time.
       - id: PURP-003
-        statement: Make every material assertion traceable to an authoritative provision and exact evidence span.
+        statement: Make every material assertion traceable to an authoritative provision and source chunk.
 
   - id: intended_use
     requirements:
@@ -26,14 +26,10 @@ requirement_categories:
         statement: Explain why two similar cases have different consequences.
       - id: USE-004
         statement: Represent amendments and determine which version of a rule is applicable at a specified date.
-      - id: USE-005
-        statement: >-
-          Validate ontology completeness and correctness through executable CQ fixtures in a later formalization phase.
-
   - id: in_scope
     requirements:
       - id: SCOPE-001
-        statement: Legal documents, provisions, citations, chunks, quoted evidence spans, and issuing bodies.
+        statement: Legal documents, expressions, provisions, citations, source files, source chunks, and issuing bodies.
       - id: SCOPE-002
         statement: Regulated conduct and the legal rule that regulates it.
       - id: SCOPE-003
@@ -45,10 +41,6 @@ requirement_categories:
           Monetary penalties, driver-license point deductions, additional sanctions, and remedial measures.
       - id: SCOPE-006
         statement: Effective intervals, amendment, replacement, and supersession of rules or provisions.
-      - id: SCOPE-007
-        statement: >-
-          Direct provenance from a modeled rule and consequence to the provisions and evidence that support them.
-
   - id: required_granularity
     requirements:
       - id: GRAN-001
@@ -65,7 +57,7 @@ requirement_categories:
         statement: >-
           Monetary amount, point deduction, additional sanction, and remedial measure are distinct consequence kinds.
       - id: GRAN-006
-        statement: A provision citation and its exact quoted evidence are distinct provenance objects.
+        statement: A provision citation is distinguishable from the cited provision and the source chunk containing it.
       - id: GRAN-007
         statement: Temporal applicability belongs to the rule or legal expression, not to the conduct in the abstract.
       - id: GRAN-008

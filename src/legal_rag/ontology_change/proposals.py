@@ -1,4 +1,4 @@
-"""Generate typed cross-document legal-change proposals for human review."""
+"""Generate typed cross-document legal-change proposals."""
 
 from __future__ import annotations
 
@@ -24,13 +24,11 @@ from legal_rag.ontology_population.extraction import bind_population_evidence
 from legal_rag.ontology_population.models import OntologyPopulationRecord, population_identity
 from legal_rag.settings import Settings
 
+ONTOLOGY_CHANGE_PROMPT_VERSION = "0.2.0"
+
 
 class ChangeProposalClient(Protocol):
     """Boundary implemented by a legal-change language-model client."""
-
-    @property
-    def model(self) -> str:
-        """Return the model identifier recorded on proposals."""
 
     def propose_batch(
         self, windows: Sequence[CrossDocumentChangeWindowInput]
@@ -49,12 +47,6 @@ class BamlChangeProposalClient:
             temperature=change_settings.temperature,
             max_response_bytes=change_settings.max_response_bytes,
         )
-        self._model = settings.llm_model
-
-    @property
-    def model(self) -> str:
-        """Return the configured model identifier."""
-        return self._model
 
     def propose_batch(
         self, windows: Sequence[CrossDocumentChangeWindowInput]
@@ -74,7 +66,7 @@ def build_change_proposal_run_id(
     return population_identity(
         {
             "candidate_run_id": candidate_run_id,
-            "prompt_version": change_settings.prompt_version,
+            "prompt_version": ONTOLOGY_CHANGE_PROMPT_VERSION,
             "batch_size": change_settings.batch_size,
             "max_output_tokens": change_settings.max_output_tokens,
             "temperature": change_settings.temperature,
@@ -130,7 +122,7 @@ def _build_batch_proposals(
     change_settings: ChangeResolutionSettings,
     run_id: str,
 ) -> tuple[tuple[str, tuple[LegalChangeProposal, ...]], ...]:
-    """Translate one typed model response and enforce window membership."""
+    """Translate one typed model response and bind window references."""
     results = client.propose_batch(inputs)
     requested_ids = [item.candidate_id for item in inputs]
     result_ids = [result.candidate_id for result in results]
@@ -151,9 +143,6 @@ def _build_batch_proposals(
         for raw in results_by_id[candidate_id].proposals:
             _validate_members(raw.earlier_population_id, raw.later_population_id, window, used_earlier, used_later)
             evidence = bind_population_evidence(raw.evidence, evidence_sources)
-            if not evidence:
-                msg = "A legal-change proposal requires exact evidence from the later document"
-                raise ValueError(msg)
             effective_on = date.fromisoformat(raw.effective_on)
             proposal_id = population_identity(
                 {
@@ -179,8 +168,6 @@ def _build_batch_proposals(
                     change_provision_path=raw.change_provision_path,
                     evidence=evidence,
                     rationale_vi=raw.rationale_vi,
-                    proposed_by_model=client.model,
-                    prompt_version=change_settings.prompt_version,
                     run_id=run_id,
                 )
             )

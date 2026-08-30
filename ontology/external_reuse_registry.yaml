@@ -1,13 +1,8 @@
 schema_version: "0.1.0"
 artifact_id: legal-ontology-rag-external-reuse-registry
-artifact_version: "0.1.0"
-status: project_owner_approved_for_v0.1
+artifact_version: "0.2.0"
 review:
-  reviewed_on: "2026-08-18"
-  reviewer_role: ontology_engineering
   project_owner_approval: approved
-  project_owner_accepted_on: "2026-08-18"
-  project_owner_approval_evidence: user-confirmed:2026-08-18:REUSE-DCTERMS-001-through-REUSE-ODP-001
 scope:
   formal_artifacts:
     - ontology/legal_ontology.ttl
@@ -71,16 +66,16 @@ resources:
     formal_use: active_terms
     owl_import: false
     review_status: ontology_reviewed
-    compatibility: Entity, Agent, and derivation semantics fit the evidence and source-provenance boundary.
+    compatibility: Entity, Agent, and derivation semantics fit the local source-provenance boundary.
     boundaries:
-      - Exact evidence spans, provision locators, and supported assertions remain local extensions.
-      - No complete PROV-O import or activity model is required for V0.1.
+      - Legal provisions, source chunks, and modeled assertions remain local extensions.
+      - No complete PROV-O import or activity model is required.
     terms:
       - iri: http://www.w3.org/ns/prov#Agent
         local_use: Superclass for reviewed source and processing agents.
         declaration_in_owl_closure: true
       - iri: http://www.w3.org/ns/prov#Entity
-        local_use: Superclass for legal resources, expressions, files, chunks, evidence, and assertions.
+        local_use: Superclass for legal resources, expressions, files, chunks, and assertions.
         declaration_in_owl_closure: true
       - iri: http://www.w3.org/ns/prov#wasDerivedFrom
         local_use: Superproperty for explicit source derivation.
@@ -99,7 +94,7 @@ resources:
     formal_use: active_terms
     owl_import: false
     review_status: ontology_reviewed
-    compatibility: SKOS supports controlled multilingual concepts without treating vocabulary values as OWL classes.
+    compatibility: SKOS supports controlled multilingual concepts without treating values as OWL classes.
     boundaries:
       - SKOS broader relations never become OWL subclass axioms automatically.
       - Concept similarity or mapping does not establish legal-rule identity.
@@ -145,7 +140,7 @@ resources:
     formal_use: active_terms
     owl_import: false
     review_status: ontology_reviewed
-    compatibility: Generic instants and intervals fit temporal carriers while legal validity remains locally defined.
+    compatibility: Generic instants and intervals fit temporal carriers while legal validity remains local.
     boundaries:
       - OWL-Time relations do not decide legal effectiveness or applicability.
       - Missing interval ends remain unknown rather than infinite.
@@ -168,124 +163,3 @@ resources:
       - iri: http://www.w3.org/2006/time#inXSDDateTimeStamp
         local_use: Preferred timestamp representation for concrete occurrence instants.
         declaration_in_owl_closure: false
-
-  - id: REUSE-ELI-001
-    resource: European Legislation Identifier ontology
-    authority: Publications Office of the European Union
-    source_version: "1.4"
-    source_url: https://op.europa.eu/en/web/eu-vocabularies/eli
-    namespace: http://data.europa.eu/eli/ontology#
-    license: European-Commission-Reuse-Decision-2011-833-EU
-    attribution: European Union, European Legislation Identifier ontology
-    decision: align
-    policy_mode: candidate_alignment_only
-    formal_use: candidate_only
-    owl_import: false
-    review_status: ontology_reviewed
-    compatibility: Work, expression, and format distinctions are useful candidates but require Vietnamese examples.
-    boundaries:
-      - No ELI term mapping or equivalence axiom is asserted in V0.1.
-      - EU publication lifecycle semantics are not assumed for Vietnamese legal documents.
-    terms: []
-
-  - id: REUSE-TLKB-001
-    resource: Traffic Law Knowledge Base V1
-    authority: External project owner
-    source_version: "1.0.0"
-    source_url: https://drive.google.com/drive/folders/1uMA9Zu1IDwmoVdLhc_C9gvYvJta_1vcW
-    namespace: https://w3id.org/vn-traffic-law/ontology#
-    license: no-explicit-license
-    attribution: Traffic Law Knowledge Base V1 project
-    decision: reference
-    policy_mode: reference_and_selective_pattern_adaptation
-    formal_use: no_copy_reference
-    owl_import: false
-    review_status: ontology_reviewed
-    compatibility: CQ themes and patterns are useful comparisons, but term semantics and legal permission are insufficient.
-    boundaries:
-      - Do not use its namespace, copy ontology statements, or redistribute its formal artifacts.
-      - Any future adaptation requires explicit license and term-level semantic review.
-    terms: []
-
-  - id: REUSE-LKIF-001
-    resource: LKIF-Core
-    authority: LKIF-Core maintainers
-    source_version: repository revision reviewed 2026-02-23
-    source_url: https://github.com/RinkeHoekstra/lkif-core
-    namespace: null
-    license: CC-BY-4.0
-    attribution: LKIF-Core contributors
-    decision: reference
-    policy_mode: reference_only
-    formal_use: reference_only
-    owl_import: false
-    review_status: ontology_reviewed
-    compatibility: Role and norm patterns are useful comparisons but the broad legacy dependency graph is unnecessary.
-    boundaries:
-      - No LKIF term or axiom is imported, copied, or mapped in V0.1.
-      - Selective future adaptations must preserve CC BY 4.0 attribution.
-    terms: []
-
-  - id: REUSE-AKN-001
-    resource: Akoma Ntoso Version 1.0
-    authority: OASIS LegalDocumentML Technical Committee
-    source_version: OASIS Standard 2018-08-29
-    source_url: https://docs.oasis-open.org/legaldocml/akn-core/v1.0/os/
-    namespace: http://docs.oasis-open.org/legaldocml/ns/akn/3.0
-    license: OASIS-IPR-Policy
-    attribution: OASIS LegalDocumentML Technical Committee, Akoma Ntoso
-    decision: reference
-    policy_mode: reference_only
-    formal_use: reference_only
-    owl_import: false
-    review_status: ontology_reviewed
-    compatibility: XML document structure informs provision locators without defining ontology domain semantics.
-    boundaries:
-      - No Akoma Ntoso XML vocabulary is asserted as OWL terms.
-      - Processing markup remains separate from legal domain identity.
-    terms: []
-
-  - id: REUSE-LRML-001
-    resource: LegalRuleML Version 1.0
-    authority: OASIS LegalRuleML Technical Committee
-    source_version: OASIS Standard 2021-04-22
-    source_url: https://docs.oasis-open.org/legalruleml/legalruleml-core-spec/v1.0/os/
-    namespace: http://docs.oasis-open.org/legalruleml/ns/v1.0/
-    license: OASIS-IPR-Policy
-    attribution: OASIS LegalRuleML Technical Committee, LegalRuleML
-    decision: reference
-    policy_mode: reference_only
-    formal_use: reference_only
-    owl_import: false
-    review_status: ontology_reviewed
-    compatibility: Condition and exception patterns inform conceptualization without introducing rule execution semantics.
-    boundaries:
-      - No LegalRuleML serialization, defeasible reasoning, or deontic engine is included in V0.1.
-      - Source condition wording and evidence remain first-class local structures.
-    terms: []
-
-  - id: REUSE-ODP-001
-    resource: W3C n-ary relations design pattern
-    authority: World Wide Web Consortium
-    source_version: W3C Working Group Note 2006-04-12
-    source_url: https://www.w3.org/TR/2006/NOTE-swbp-n-aryRelations-20060412/
-    namespace: null
-    license: W3C-20150513
-    attribution: W3C Semantic Web Best Practices and Deployment Working Group
-    decision: adapt
-    policy_mode: pattern_adaptation
-    formal_use: pattern_adaptation
-    owl_import: false
-    review_status: ontology_reviewed
-    compatibility: Reification supplies attachment points for participants, conditions, consequences, time, and evidence.
-    boundaries:
-      - The pattern is adapted locally and creates no dependency on an external ontology namespace.
-      - Pattern use does not establish legal identity or applicability.
-    terms: []
-review_conclusion:
-  active_term_resources: [REUSE-DCTERMS-001, REUSE-PROV-001, REUSE-SKOS-001, REUSE-TIME-001]
-  candidate_alignment_resources: [REUSE-ELI-001]
-  reference_or_pattern_resources: [REUSE-TLKB-001, REUSE-LKIF-001, REUSE-AKN-001, REUSE-LRML-001, REUSE-ODP-001]
-  owl_imports_approved: []
-  external_equivalence_axioms_approved: []
-  release_recommendation: approved_for_v0.1_subject_to_remaining_release_gates

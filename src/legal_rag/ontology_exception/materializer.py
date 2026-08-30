@@ -1,4 +1,4 @@
-"""Materialize reviewed legal exceptions and grouped provision citations."""
+"""Materialize legal exceptions and grouped provision citations."""
 
 from __future__ import annotations
 
@@ -14,7 +14,6 @@ from legal_rag.ontology_population.materializer import (
     LORNR,
     LORSP,
     population_chunk_iri,
-    population_evidence_span_iri,
     population_expression_iri,
     population_provision_iri,
     population_rule_iri,
@@ -51,7 +50,7 @@ def _materialize_exception(
     records_by_id: Mapping[str, OntologyPopulationRecord],
     instance_namespace: str,
 ) -> None:
-    """Materialize one reviewed exception and its grouped citation objects."""
+    """Materialize one exception and its grouped citation objects."""
     document = documents_by_number[exception.source_document_number]
     expression = population_expression_iri(instance_namespace, document.chunks, document.metadata)
     provision = population_provision_iri(instance_namespace, expression, exception.exception_provision_path)
@@ -69,11 +68,7 @@ def _materialize_exception(
     for evidence in exception.evidence:
         chunk = chunks_by_id[evidence.chunk_id]
         chunk_iri = population_chunk_iri(instance_namespace, chunk.chunk_id)
-        span = population_evidence_span_iri(instance_namespace, evidence)
-        graph.add((span, RDF.type, LORSP.EvidenceSpan))
-        graph.add((span, LORSP.exactText, Literal(evidence.exact_text, lang="vi")))
-        graph.add((chunk_iri, LORSP.containsSpan, span))
-        graph.add((exception_iri, LORSP.supportedBy, span))
+        graph.add((exception_iri, LORSP.sourcedFromChunk, chunk_iri))
 
     for citation in exception.citations:
         _materialize_citation(
@@ -96,7 +91,7 @@ def _materialize_citation(
     records_by_id: Mapping[str, OntologyPopulationRecord],
     instance_namespace: str,
 ) -> None:
-    """Materialize one grouped locator and all reviewed provision/rule targets."""
+    """Materialize one grouped locator and its provision/rule targets."""
     citation_id = population_identity(
         {
             "exception_id": exception.exception_id,

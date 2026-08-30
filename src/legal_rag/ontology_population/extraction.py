@@ -22,6 +22,7 @@ from legal_rag.baml_client.types import (
     OntologyPopulationBindingBatchResult,
     OntologyPopulationBindingItem,
     OntologyTargetConductBatchResult,
+    OntologyTargetConductEntry,
     OntologyTargetConductInput,
 )
 from legal_rag.baml_client.types import OntologyRuleEntry as BamlRule
@@ -35,6 +36,11 @@ from legal_rag.benchmark_synthesis.llm_execution import (
     execute_llm_task,
 )
 from legal_rag.chunker.models import Chunk
+from legal_rag.ontology_population.conduct_models import (
+    TargetConduct,
+    TargetConductEvidenceReference,
+    TargetConductInventoryRecord,
+)
 from legal_rag.ontology_population.config import PopulationSettings
 from legal_rag.ontology_population.evidence import fragment_evidence_sources, resolve_evidence_references
 from legal_rag.ontology_population.models import (
@@ -47,7 +53,7 @@ from legal_rag.ontology_population.models import (
 )
 from legal_rag.settings import Settings
 
-ONTOLOGY_POPULATION_PROMPT_VERSION = "0.16.0"
+ONTOLOGY_POPULATION_PROMPT_VERSION = "0.18.0"
 
 
 def build_population_run_id(pilot_run_id: str, settings: Settings) -> str:
@@ -63,11 +69,55 @@ def build_population_run_id(pilot_run_id: str, settings: Settings) -> str:
     )
 
 
+def build_target_conduct_run_id(pilot_run_id: str, settings: Settings) -> str:
+    """Fingerprint the isolated target-conduct extraction step."""
+    return population_identity(
+        {
+            "stage": "target-conduct-inventory",
+            "pilot_run_id": pilot_run_id,
+            "prompt_version": ONTOLOGY_POPULATION_PROMPT_VERSION,
+            "llm_base_url": settings.llm_base_url,
+            "llm_model": settings.llm_model,
+            "llm_extra_request_body": dict(settings.llm_extra_request_body),
+        }
+    )
+
+
+def build_population_binding_run_id(conduct_run_id: str, settings: Settings) -> str:
+    """Fingerprint the rule-binding step and its conduct checkpoint."""
+    return population_identity(
+        {
+            "stage": "population-binding",
+            "conduct_run_id": conduct_run_id,
+            "prompt_version": ONTOLOGY_POPULATION_PROMPT_VERSION,
+            "llm_base_url": settings.llm_base_url,
+            "llm_model": settings.llm_model,
+            "llm_extra_request_body": dict(settings.llm_extra_request_body),
+        }
+    )
+
+
 class OntologyPopulationClient(Protocol):
     """Boundary implemented by an ontology-population language-model client."""
 
     def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
         """Return typed population candidates for reading windows."""
+
+
+class OntologyConductClient(Protocol):
+    """Boundary for the isolated target-conduct LLM step."""
+
+    def extract_conduct_batch(
+        self, items: Sequence[OntologyTargetConductInput]
+    ) -> Sequence[OntologyTargetConductBatchResult]:
+        """Return one typed conduct inventory per target chunk."""
+
+
+class OntologyPopulationBindingClient(Protocol):
+    """Boundary for binding persisted conducts to reading-window context."""
+
+    def bind_batch(self, items: Sequence[OntologyPopulationBindingItem]) -> Sequence[OntologyPopulationBatchResult]:
+        """Return typed population rules for locked target conducts."""
 
 
 class BamlOntologyPopulationClient:
@@ -85,20 +135,171 @@ class BamlOntologyPopulationClient:
     def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
         """Inventory target conducts before binding consequences from context."""
         target_inputs = tuple(_target_conduct_input(item) for item in items)
-        inventory_request = b.request.ExtractOntologyTargetConductBatch(
-            list(target_inputs), baml_options=self._caller.options
-        )
-        inventory_output = self._caller.execute(inventory_request)
-        inventories = b.parse.ExtractOntologyTargetConductBatch(inventory_output, baml_options=self._caller.options)
+        inventories = self.extract_conduct_batch(target_inputs)
         binding_items = build_population_binding_items(items, inventories)
-        if not any(item.target_conducts for item in binding_items):
+        return self.bind_batch(binding_items)
+
+    def extract_conduct_batch(
+        self, items: Sequence[OntologyTargetConductInput]
+    ) -> Sequence[OntologyTargetConductBatchResult]:
+        """Extract a typed target-only conduct inventory."""
+        inventory_request = b.request.ExtractOntologyTargetConductBatch(list(items), baml_options=self._caller.options)
+        inventory_output = self._caller.execute(inventory_request)
+        return b.parse.ExtractOntologyTargetConductBatch(inventory_output, baml_options=self._caller.options)
+
+    def bind_batch(self, items: Sequence[OntologyPopulationBindingItem]) -> Sequence[OntologyPopulationBatchResult]:
+        """Bind reading-window context to a persisted conduct inventory."""
+        if not any(item.target_conducts for item in items):
             return tuple(
-                OntologyPopulationBatchResult(target_chunk_id=item.target_chunk_id, rules=[]) for item in binding_items
+                OntologyPopulationBatchResult(target_chunk_id=item.target_chunk_id, rules=[]) for item in items
             )
-        binding_request = b.request.BindOntologyPopulationBatch(list(binding_items), baml_options=self._caller.options)
+        binding_request = b.request.BindOntologyPopulationBatch(list(items), baml_options=self._caller.options)
         binding_output = self._caller.execute(binding_request)
         binding_results = b.parse.BindOntologyPopulationBatch(binding_output, baml_options=self._caller.options)
-        return finalize_population_binding_results(binding_items, binding_results)
+        return finalize_population_binding_results(items, binding_results)
+
+
+class PersistedConductPopulationClient:
+    """Use a completed conduct checkpoint for the population-binding step."""
+
+    def __init__(
+        self,
+        client: OntologyPopulationBindingClient,
+        inventories: Sequence[TargetConductInventoryRecord],
+    ) -> None:
+        """Index the exact inventory records selected for this run."""
+        inventory_ids = [record.target_chunk_id for record in inventories]
+        if len(inventory_ids) != len(set(inventory_ids)):
+            msg = "Target-conduct inventory contains duplicate target chunk IDs"
+            raise ValueError(msg)
+        self._client = client
+        self._inventories = {record.target_chunk_id: record for record in inventories}
+
+    def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
+        """Bind only the persisted conducts corresponding to this batch."""
+        missing_ids = [item.target_chunk_id for item in items if item.target_chunk_id not in self._inventories]
+        if missing_ids:
+            msg = f"Target-conduct inventory is missing chunk: {missing_ids[0]}"
+            raise ValueError(msg)
+        inventories = tuple(_inventory_to_baml(self._inventories[item.target_chunk_id]) for item in items)
+        return self._client.bind_batch(build_population_binding_items(items, inventories))
+
+
+def extract_target_conducts(
+    target_chunks: Sequence[Chunk],
+    client: OntologyConductClient,
+    population_settings: PopulationSettings,
+    *,
+    run_id: str,
+    max_concurrency: int = 1,
+    on_batch_processed: Callable[[Sequence[TargetConductInventoryRecord]], None] | None = None,
+) -> tuple[TargetConductInventoryRecord, ...]:
+    """Extract target-only conduct inventories with resumable batch checkpoints."""
+    batches = [
+        target_chunks[batch_start : batch_start + population_settings.batch_size]
+        for batch_start in range(0, len(target_chunks), population_settings.batch_size)
+    ]
+    batch_results_by_index: dict[int, tuple[TargetConductInventoryRecord, ...]] = {}
+    failures: list[LlmTaskFailure] = []
+    exhausted_errors: list[LlmTaskExhaustedError] = []
+    with ThreadPoolExecutor(max_workers=max_concurrency) as executor:
+        futures = {}
+        for batch_index, batch in enumerate(batches):
+            inputs = tuple(_target_conduct_input_from_chunk(target) for target in batch)
+            task_key = _conduct_batch_task_key(inputs)
+            future = executor.submit(
+                execute_llm_task,
+                task_key,
+                partial(_extract_target_conduct_batch, client, inputs, run_id=run_id),
+                max_retries=population_settings.max_retries,
+                retry_delay_seconds=population_settings.retry_delay_seconds,
+            )
+            futures[future] = (batch_index, task_key)
+
+        for future in as_completed(futures):
+            batch_index, task_key = futures[future]
+            try:
+                batch_results = future.result()
+            except LlmTaskExhaustedError as error:
+                failures.append(LlmTaskFailure(task_key=task_key, error=str(error)))
+                exhausted_errors.append(error)
+                continue
+            batch_results_by_index[batch_index] = batch_results
+            if on_batch_processed is not None:
+                on_batch_processed(batch_results)
+    if failures:
+        if len(exhausted_errors) == 1:
+            raise exhausted_errors[0]
+        incomplete_error = IncompleteLlmTasksError.for_stage("ontology target-conduct inventory", failures)
+        raise incomplete_error
+    return tuple(record for batch_index in range(len(batches)) for record in batch_results_by_index[batch_index])
+
+
+def _extract_target_conduct_batch(
+    client: OntologyConductClient,
+    items: Sequence[OntologyTargetConductInput],
+    *,
+    run_id: str,
+) -> tuple[TargetConductInventoryRecord, ...]:
+    """Convert one typed LLM batch into persisted conduct records."""
+    results = client.extract_conduct_batch(items)
+    requested_ids = [item.target_chunk_id for item in items]
+    result_ids = [result.target_chunk_id for result in results]
+    if len(result_ids) != len(set(result_ids)) or set(result_ids) != set(requested_ids):
+        msg = "Target conduct inventory must contain exactly one result per target chunk"
+        raise ValueError(msg)
+    results_by_target = {result.target_chunk_id: result for result in results}
+    return tuple(_inventory_from_baml(results_by_target[target_id], run_id) for target_id in requested_ids)
+
+
+def _inventory_from_baml(
+    result: OntologyTargetConductBatchResult,
+    run_id: str,
+) -> TargetConductInventoryRecord:
+    """Convert generated BAML types into a versioned checkpoint record."""
+    return TargetConductInventoryRecord(
+        target_chunk_id=result.target_chunk_id,
+        conducts=tuple(
+            TargetConduct(
+                conduct_id=conduct.conduct_id,
+                conduct_label_vi=conduct.conduct_label_vi,
+                provision_path=conduct.provision_path,
+                evidence=tuple(
+                    TargetConductEvidenceReference(
+                        evidence_id=evidence.evidence_id,
+                        start_char=evidence.start_char,
+                        end_char=evidence.end_char,
+                    )
+                    for evidence in conduct.evidence
+                ),
+            )
+            for conduct in result.conducts
+        ),
+        run_id=run_id,
+    )
+
+
+def _inventory_to_baml(record: TargetConductInventoryRecord) -> OntologyTargetConductBatchResult:
+    """Restore a typed BAML inventory for the separate binding prompt."""
+    return OntologyTargetConductBatchResult(
+        target_chunk_id=record.target_chunk_id,
+        conducts=[
+            OntologyTargetConductEntry(
+                conduct_id=conduct.conduct_id,
+                conduct_label_vi=conduct.conduct_label_vi,
+                provision_path=conduct.provision_path,
+                evidence=[
+                    OntologyEvidenceReference(
+                        evidence_id=evidence.evidence_id,
+                        start_char=evidence.start_char,
+                        end_char=evidence.end_char,
+                    )
+                    for evidence in conduct.evidence
+                ],
+            )
+            for conduct in record.conducts
+        ],
+    )
 
 
 def _target_conduct_input(item: FactExtractionBatchItem) -> OntologyTargetConductInput:
@@ -111,11 +312,20 @@ def _target_conduct_input(item: FactExtractionBatchItem) -> OntologyTargetConduc
     )
 
 
+def _target_conduct_input_from_chunk(target: Chunk) -> OntologyTargetConductInput:
+    """Build the isolated LLM input directly from one selected target chunk."""
+    return OntologyTargetConductInput(
+        target_chunk_id=target.chunk_id,
+        structural_context=target.context_text,
+        evidence_sources=list(fragment_evidence_sources(target.chunk_id, target.text)),
+    )
+
+
 def build_population_binding_items(
     items: Sequence[FactExtractionBatchItem],
     inventories: Sequence[OntologyTargetConductBatchResult],
 ) -> tuple[OntologyPopulationBindingItem, ...]:
-    """Validate Target-only inventories and attach them to full reading windows."""
+    """Attach Target-only inventories to their full reading windows."""
     requested_ids = [item.target_chunk_id for item in items]
     inventory_ids = [result.target_chunk_id for result in inventories]
     if len(inventory_ids) != len(set(inventory_ids)) or set(inventory_ids) != set(requested_ids):
@@ -129,15 +339,6 @@ def build_population_binding_items(
         if len(conduct_ids) != len(set(conduct_ids)):
             msg = "Target conduct IDs must be unique within each target chunk"
             raise ValueError(msg)
-        for conduct in inventory.conducts:
-            if not conduct.evidence:
-                msg = "Every target conduct must cite Target evidence"
-                raise ValueError(msg)
-            target_sources = fragment_evidence_sources(item.target_chunk_id, _target_entry(item).text)
-            bound_evidence = resolve_evidence_references(conduct.evidence, target_sources)
-            if any(entry.chunk_id != item.target_chunk_id for entry in bound_evidence):
-                msg = "Target conduct evidence must reference its target chunk"
-                raise ValueError(msg)
         binding_items.append(
             OntologyPopulationBindingItem(
                 target_chunk_id=item.target_chunk_id,
@@ -160,7 +361,7 @@ def finalize_population_binding_results(
     items: Sequence[OntologyPopulationBindingItem],
     results: Sequence[OntologyPopulationBindingBatchResult],
 ) -> tuple[OntologyPopulationBatchResult, ...]:
-    """Reject rules that diverge from the locked Target conduct inventory."""
+    """Bind typed rules to conduct identifiers from the Target inventory."""
     requested_ids = [item.target_chunk_id for item in items]
     result_ids = [result.target_chunk_id for result in results]
     if len(result_ids) != len(set(result_ids)) or set(result_ids) != set(requested_ids):
@@ -177,17 +378,6 @@ def finalize_population_binding_results(
             conduct = conducts_by_id.get(bound.target_conduct_id)
             if conduct is None:
                 msg = "Population rule must reference a locked Target conduct"
-                raise ValueError(msg)
-            if bound.rule.conduct_label_vi != conduct.conduct_label_vi:
-                msg = "Population rule cannot rename its locked Target conduct"
-                raise ValueError(msg)
-            if bound.rule.provision_path != conduct.provision_path:
-                msg = "Population rule cannot change its locked Target provision path"
-                raise ValueError(msg)
-            inventory_evidence = {entry.evidence_id for entry in conduct.evidence}
-            rule_evidence = {entry.evidence_id for entry in bound.rule.evidence}
-            if not inventory_evidence.issubset(rule_evidence):
-                msg = "Population rule must retain its locked Target conduct evidence"
                 raise ValueError(msg)
             rules.append(bound.rule)
         finalized.append(OntologyPopulationBatchResult(target_chunk_id=target_id, rules=rules))
@@ -328,38 +518,8 @@ def build_population_record(
     ontology_semantic_sha256: str,
     population_run_id: str,
 ) -> OntologyPopulationRecord:
-    """Convert one typed model result into a stable reviewable record."""
+    """Convert one typed model result into a stable population record."""
     bound_rule_evidence = bind_population_evidence(raw.evidence, evidence_sources)
-    if not any(item.chunk_id == source_chunk_id for item in bound_rule_evidence):
-        msg = "Population rule conduct must retain evidence from its target chunk"
-        raise ValueError(msg)
-    for kind in ("MonetaryPenalty", "PointDeduction"):
-        if sum(consequence.kind.value == kind for consequence in raw.consequences) > 1:
-            msg = f"A population rule variant may contain at most one {kind}"
-            raise ValueError(msg)
-    if any(
-        consequence.kind.value == "RemedialMeasure" and consequence.responsible_role_label_vi is None
-        for consequence in raw.consequences
-    ):
-        msg = "RemedialMeasure requires a source-grounded responsible role"
-        raise ValueError(msg)
-    if any(
-        consequence.kind.value in {"AdditionalSanction", "RemedialMeasure"} and consequence.consequence_label_vi is None
-        for consequence in raw.consequences
-    ):
-        msg = "AdditionalSanction and RemedialMeasure require a source-grounded consequence label"
-        raise ValueError(msg)
-    for consequence in raw.consequences:
-        durations = (consequence.minimum_duration_months, consequence.maximum_duration_months)
-        if consequence.kind.value != "AdditionalSanction" and any(value is not None for value in durations):
-            msg = "Only AdditionalSanction may define duration month bounds"
-            raise ValueError(msg)
-        if (durations[0] is None) != (durations[1] is None):
-            msg = "Consequence duration requires both lower and upper month bounds"
-            raise ValueError(msg)
-        if durations[0] is not None and (durations[0] < 1 or durations[1] < durations[0]):
-            msg = "Consequence duration month bounds must be positive and ordered"
-            raise ValueError(msg)
     evidence = bound_rule_evidence
     conditions = tuple(
         PopulationCondition(
@@ -507,3 +667,14 @@ def _batch_task_key(items: Sequence[FactExtractionBatchItem]) -> str:
         )
     )
     return f"ontology-population:{hashlib.sha256(identity.encode('utf-8')).hexdigest()}"
+
+
+def _conduct_batch_task_key(items: Sequence[OntologyTargetConductInput]) -> str:
+    """Return a deterministic retry key for one target-conduct batch."""
+    identity = "\0".join(
+        (
+            ONTOLOGY_POPULATION_PROMPT_VERSION,
+            *(item.target_chunk_id for item in items),
+        )
+    )
+    return f"ontology-target-conduct:{hashlib.sha256(identity.encode('utf-8')).hexdigest()}"

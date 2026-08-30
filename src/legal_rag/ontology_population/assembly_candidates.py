@@ -41,9 +41,7 @@ def build_assembly_candidates(
             population_ids = tuple(record.population_id for record in selected)
             identity_members = tuple(sorted(population_ids))
             unique_windows[identity_members] = AssemblyCandidateWindow(
-                candidate_id=population_identity(
-                    {"candidate_version": settings.candidate_version, "population_ids": identity_members}
-                ),
+                candidate_id=population_identity({"population_ids": identity_members}),
                 population_ids=population_ids,
                 source_chunk_ids=tuple(record.source_chunk_id for record in selected),
                 provision_paths=tuple(record.provision_path for record in selected),
@@ -52,7 +50,6 @@ def build_assembly_candidates(
     windows = tuple(sorted(unique_windows.values(), key=lambda window: window.candidate_id))
     run_id = population_identity(
         {
-            "candidate_version": settings.candidate_version,
             "max_chunk_span": settings.max_chunk_span,
             "max_records_per_window": settings.max_records_per_window,
             "records": sorted(record.population_id for record in records),

@@ -1,20 +1,14 @@
-schema_version: "0.5.0"
+schema_version: "0.6.0"
 artifact_id: road-traffic-ontology-cq-query-manifest
-artifact_version: "0.5.0"
-status: v0.1_frozen
+artifact_version: "0.6.0"
+status: active
 queries:
   - cq_id: CQ-SOURCE-001
     file: ontology/tests/cq_queries/cq_source_001.rq
     fixture: ontology/tests/fixtures/source_provenance_valid.ttl
     execution_status: executable_source_provenance_projection
     expected_minimum_rows: 1
-    expected_columns: [assertion, provision, provisionPath, expression, resource]
-  - cq_id: CQ-EVIDENCE-001
-    file: ontology/tests/cq_queries/cq_evidence_001.rq
-    fixture: ontology/tests/fixtures/source_provenance_valid.ttl
-    execution_status: executable_source_provenance_projection
-    expected_minimum_rows: 1
-    expected_columns: [assertion, evidenceSpan, exactText, sourceChunk, sourceFile, provision]
+    expected_columns: [assertion, provision, provisionPath, sourceChunk, expression, resource]
   - cq_id: CQ-RULE-001
     file: ontology/tests/cq_queries/cq_rule_001_normative_candidate.rq
     fixture: ontology/tests/fixtures/normative_rule_valid.ttl
@@ -54,20 +48,20 @@ queries:
     fixture: ontology/tests/fixtures/normative_rule_valid.ttl
     execution_status: executable_condition_tree_projection
     expected_rows: 4
-    expected_columns: [penaltyRule, applicability, rootExpression, conditionExpression, expressionType, operand, evidenceSpan]
+    expected_columns: [penaltyRule, applicability, rootExpression, conditionExpression, expressionType, operand, sourceChunk]
     deferred_output_fields: [condition_satisfaction]
   - cq_id: CQ-EXCEPTION-001
     file: ontology/tests/cq_queries/cq_exception_001.rq
     fixture: ontology/tests/fixtures/normative_rule_valid.ttl
     execution_status: executable_exception_projection
     expected_rows: 1
-    expected_columns: [generalRule, legalException, provisionCitation, citationText, citedExcludedProvision, redirectedRule, evidenceSpan]
+    expected_columns: [generalRule, legalException, provisionCitation, citationText, citedExcludedProvision, redirectedRule, sourceChunk]
   - cq_id: CQ-ASSEMBLY-001
     file: ontology/tests/cq_queries/cq_assembly_001.rq
     fixture: ontology/tests/fixtures/normative_rule_valid.ttl
     execution_status: executable_rule_assembly_projection
     expected_rows: 10
-    expected_columns: [penaltyRule, componentRelation, ruleComponent, provision, evidenceSpan, exactText]
+    expected_columns: [penaltyRule, componentRelation, ruleComponent, provision, sourceChunk]
   - cq_id: CQ-PENALTY-001
     file: ontology/tests/cq_queries/cq_penalty_001.rq
     fixture: ontology/tests/fixtures/normative_rule_valid.ttl

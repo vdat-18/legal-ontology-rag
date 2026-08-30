@@ -8,32 +8,25 @@ from legal_rag.ontology_validation.loader import load_yaml
 from legal_rag.ontology_validation.reuse_config import ExternalReuseSettings
 
 
-def test_registry_pins_review_scope_decisions_and_human_approval(
+def test_registry_contains_only_formally_used_external_resources(
     project_root: Path,
     reuse_settings: ExternalReuseSettings,
 ) -> None:
-    """The registry records exact decisions and attributable project-owner acceptance."""
-    assert reuse_settings.artifact_version == "0.1.0"
+    """The registry excludes research-only resources from machine validation."""
+    assert reuse_settings.artifact_version == "0.2.0"
     assert reuse_settings.project_owner_approval == "approved"
     assert len(reuse_settings.formal_paths) == 7
-    assert len(reuse_settings.resources) == 10
+    assert len(reuse_settings.resources) == 4
     assert {resource.decision_id for resource in reuse_settings.resources} == {
         "REUSE-DCTERMS-001",
         "REUSE-PROV-001",
         "REUSE-SKOS-001",
         "REUSE-TIME-001",
-        "REUSE-ELI-001",
-        "REUSE-TLKB-001",
-        "REUSE-LKIF-001",
-        "REUSE-AKN-001",
-        "REUSE-LRML-001",
-        "REUSE-ODP-001",
     }
     scripts = (project_root / "pyproject.toml").read_text(encoding="utf-8")
     assert 'legal-review-ontology-reuse = "legal_rag.ontology_reuse_review_cli:main"' in scripts
     review = load_yaml(project_root / "ontology" / "external_reuse_registry.yaml")["review"]
-    assert review["project_owner_accepted_on"] == "2026-08-18"
-    assert review["project_owner_approval_evidence"].startswith("user-confirmed:2026-08-18:")
+    assert review == {"project_owner_approval": "approved"}
 
 
 def test_registry_lists_exactly_twenty_three_active_external_terms(

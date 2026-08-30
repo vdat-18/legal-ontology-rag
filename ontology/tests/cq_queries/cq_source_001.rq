@@ -1,14 +1,13 @@
 PREFIX lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#>
 
-# Source/provenance projection. RuleComponent bindings are added with the normative-rule module.
-SELECT DISTINCT ?assertion ?provision ?provisionPath ?expression ?resource
+SELECT DISTINCT ?assertion ?provision ?provisionPath ?sourceChunk ?expression ?resource
 WHERE {
-  ?assertion a lorsp:SupportedAssertion ;
-    lorsp:groundedIn ?provision .
+  ?assertion lorsp:groundedIn ?provision ;
+    lorsp:sourcedFromChunk ?sourceChunk .
   ?expression a lorsp:LegalExpression ;
     lorsp:containsProvision ?provision .
   ?resource a lorsp:LegalResource ;
     lorsp:hasExpression ?expression .
   OPTIONAL { ?provision lorsp:structuralPath ?provisionPath }
 }
-ORDER BY ?resource ?expression ?provision ?assertion
+ORDER BY ?resource ?expression ?provision ?sourceChunk ?assertion

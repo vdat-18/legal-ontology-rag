@@ -154,7 +154,7 @@ class PopulationProgressRecord:
 
 
 def population_identity(content: dict[str, object]) -> str:
-    """Return a deterministic identity for reviewed population content."""
+    """Return a deterministic identity for population content."""
     return sha256_json(content)
 
 
@@ -162,7 +162,7 @@ def validate_population_condition_tree(
     condition_root_id: str | None,
     conditions: tuple[PopulationCondition, ...],
 ) -> None:
-    """Reject condition records that do not form one fully evidenced expression tree."""
+    """Validate only condition identifiers needed for safe materialization."""
     if not conditions:
         if condition_root_id is not None:
             msg = "A condition root requires at least one condition node"
@@ -177,13 +177,10 @@ def validate_population_condition_tree(
         msg = f"Condition root does not exist: {condition_root_id}"
         raise ValueError(msg)
     for condition in conditions:
-        _validate_population_condition(condition, conditions_by_id)
-
-    visited = _reachable_population_condition_ids(condition_root_id, conditions_by_id)
-    unreachable = set(conditions_by_id) - visited
-    if unreachable:
-        msg = f"Condition nodes are unreachable from root: {', '.join(sorted(unreachable))}"
-        raise ValueError(msg)
+        unknown_operands = set(condition.operand_ids) - set(conditions_by_id)
+        if unknown_operands:
+            msg = f"Condition operand does not exist: {sorted(unknown_operands)[0]}"
+            raise ValueError(msg)
 
 
 def _index_population_conditions(
@@ -200,71 +197,13 @@ def _index_population_conditions(
     return {condition.condition_id: condition for condition in conditions}
 
 
-def _reachable_population_condition_ids(
-    condition_root_id: str,
-    conditions_by_id: dict[str, PopulationCondition],
-) -> set[str]:
-    """Return the root closure while rejecting recursive condition references."""
-    visiting: set[str] = set()
-    visited: set[str] = set()
-
-    def visit(condition_id: str) -> None:
-        if condition_id in visiting:
-            msg = f"Condition tree contains a cycle at {condition_id}"
-            raise ValueError(msg)
-        if condition_id in visited:
-            return
-        visiting.add(condition_id)
-        for operand_id in conditions_by_id[condition_id].operand_ids:
-            visit(operand_id)
-        visiting.remove(condition_id)
-        visited.add(condition_id)
-
-    visit(condition_root_id)
-    return visited
-
-
-def _validate_population_condition(
-    condition: PopulationCondition,
-    conditions_by_id: dict[str, PopulationCondition],
-) -> None:
-    """Validate one node's direct evidence, arity, and local references."""
-    if condition.kind not in {"Atomic", "AllOf", "AnyOf", "Not"}:
-        msg = f"Unsupported condition kind: {condition.kind}"
-        raise ValueError(msg)
-    if not condition.text_vi.strip():
-        msg = f"Condition text must be non-empty: {condition.condition_id}"
-        raise ValueError(msg)
-    if not condition.evidence:
-        msg = f"Every condition expression requires direct evidence: {condition.condition_id}"
-        raise ValueError(msg)
-    if len(condition.operand_ids) != len(set(condition.operand_ids)):
-        msg = f"Condition operands must be unique: {condition.condition_id}"
-        raise ValueError(msg)
-    unknown_operands = set(condition.operand_ids) - set(conditions_by_id)
-    if unknown_operands:
-        msg = f"Condition operand does not exist: {sorted(unknown_operands)[0]}"
-        raise ValueError(msg)
-
-    operand_count = len(condition.operand_ids)
-    if condition.kind == "Atomic" and operand_count != 0:
-        msg = f"Atomic condition must not have operands: {condition.condition_id}"
-        raise ValueError(msg)
-    if condition.kind == "Not" and operand_count != 1:
-        msg = f"Not condition must have exactly one operand: {condition.condition_id}"
-        raise ValueError(msg)
-    if condition.kind in {"AllOf", "AnyOf"} and operand_count < 2:
-        msg = f"{condition.kind} condition must have at least two operands: {condition.condition_id}"
-        raise ValueError(msg)
-
-
 def with_population_validity(
     record: OntologyPopulationRecord,
     *,
     valid_from: date | None,
     valid_to: date | None,
 ) -> OntologyPopulationRecord:
-    """Return a reidentified population record with reviewed validity dates."""
+    """Return a reidentified population record with updated validity dates."""
     updated = replace(record, population_id="", valid_from=valid_from, valid_to=valid_to)
     content = updated.to_dict()
     del content["schema_version"]

@@ -23,7 +23,7 @@ def test_additions_and_retained_deprecation_are_non_breaking(tmp_path: Path) -> 
         before_root,
         terms={"Rule": "class", "oldProperty": "object_property"},
         shapes=("RuleShape",),
-        competency_questions={"CQ-RULE-001": "must"},
+        competency_questions=("CQ-RULE-001",),
     )
     write_ontology_project(
         after_root,
@@ -31,7 +31,7 @@ def test_additions_and_retained_deprecation_are_non_breaking(tmp_path: Path) -> 
         deprecated_terms=("oldProperty",),
         replacements={"oldProperty": "newProperty"},
         shapes=("RuleShape", "NewShape"),
-        competency_questions={"CQ-RULE-001": "must", "CQ-NEW-001": "must"},
+        competency_questions=("CQ-RULE-001", "CQ-NEW-001"),
     )
 
     report = compare_ontology_projects(before_root, after_root, _settings(), datetime(2026, 8, 26, tzinfo=UTC))
@@ -60,13 +60,13 @@ def test_breaking_changes_fail_with_exact_subjects(tmp_path: Path) -> None:
         before_root,
         terms={"Rule": "class", "hasPenalty": "object_property"},
         shapes=("RuleShape", "PenaltyShape"),
-        competency_questions={"CQ-RULE-001": "must", "CQ-PENALTY-001": "must"},
+        competency_questions=("CQ-RULE-001", "CQ-PENALTY-001"),
     )
     write_ontology_project(
         after_root,
         terms={"Rule": "object_property"},
         shapes=("RuleShape",),
-        competency_questions={"CQ-RULE-001": "should", "CQ-PENALTY-001": "must"},
+        competency_questions=("CQ-PENALTY-001",),
     )
 
     report = compare_ontology_projects(before_root, after_root, _settings(), datetime(2026, 8, 26, tzinfo=UTC))

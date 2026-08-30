@@ -1,41 +1,14 @@
-schema_version: "0.1.0"
-artifact_id: road-traffic-ontology-concept-resolution-contract
-artifact_version: "0.1.0"
-status: pilot_internal_validation
-input:
-  population_record_schema_version: "0.1.0"
-  requires_reviewed_canonical_population: true
-candidate_selection:
-  version: "0.1.0"
+schema_version: "0.2.0"
+candidates:
   included_kinds:
     - RegulatedConduct
     - LegalSubjectRole
     - VehicleCategory
   max_total_pairs: 100000
-  exhaustive_within_kind: true
-proposal:
-  prompt_version: "0.1.0"
+llm:
   batch_size: 8
   max_output_tokens: 32768
   temperature: 0.0
   max_retries: 2
   retry_delay_seconds: 120
   max_response_bytes: 1048576
-review:
-  require_every_proposal_reviewed_before_finalization: true
-  allowed_decisions: [pending, accepted, rejected]
-output:
-  canonical_concept_schema_version: "0.1.0"
-  canonical_relation_schema_version: "0.1.0"
-  rdf_serialization: turtle
-  validated_graph_only: true
-semantic_boundaries:
-  - Candidate generation exhaustively pairs concepts of the same kind without lexical matching or semantic scoring.
-  - Subject kinds remain the existing controlled NaturalPerson and Organization concepts; they are not re-extracted.
-  - Consequence-target consolidation remains deferred because targets may denote entities, roles, objects, or states.
-  - The LLM may propose SameConcept, LeftBroaderThanRight, LeftNarrowerThanRight, Related, or Distinct.
-  - Lexical similarity, shared words, shared provision paths, and shared consequences do not establish a relation.
-  - Exact evidence from both source records is required for every proposal.
-  - Human review owns every accepted merge or taxonomy relation.
-  - SameConcept creates a canonical identity; broader, narrower, related, and distinct do not merge identities.
-  - SKOS hierarchy is not interpreted as an OWL subclass hierarchy or final legal applicability decision.

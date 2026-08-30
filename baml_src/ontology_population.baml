@@ -162,34 +162,18 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
   prompt #"
     {{ _.role("user") }}
 
-    Lập closed inventory mọi hành vi vi phạm được Target trực tiếp mô tả. Đây là
-    pha inventory, chưa gắn hậu quả pháp lý và không kết luận vụ việc thực tế.
+    Lập closed inventory mọi hành vi vi phạm được Target trực tiếp mô tả; chưa
+    gắn hậu quả và không kết luận vụ việc thực tế.
 
-    Nguồn và phạm vi
-    - Chỉ dùng Target evidence và structural context của chính item. Structural
-      context chỉ xác định ancestry; không phải evidence. Không dùng kiến thức
-      ngoài hoặc suy ra nội dung của provision được dẫn chiếu.
-    - Audit Target theo thứ tự nguồn, đến hết mọi Khoản/Điểm và mọi evidence
-      source. Chỉ trả conducts rỗng sau khi toàn bộ Target không có conduct hợp lệ.
-
-    Quyết định conduct
-    - Tạo entry cho hành động, không hành động hoặc nghĩa vụ cụ thể có thể độc
-      lập cấu thành vi phạm và được Target diễn đạt trực tiếp.
-    - Không tạo entry từ định nghĩa, thủ tục, thẩm quyền, tên hậu quả, đối tượng
-      chịu hậu quả hoặc clause chỉ nói `hành vi quy định tại <provision>`.
-    - Clause hậu quả vẫn có thể trực tiếp định nghĩa một variant nếu nó nhắc lại
-      đầy đủ conduct cùng qualifier như tái phạm hoặc gây hậu quả. Clause chỉ
-      dẫn chiếu locator mà không nhắc lại conduct vẫn là catalog.
-    - Trong mỗi Điểm/Khoản, tách các lựa chọn có thể vi phạm độc lập. Không tách
-      danh sách đối tượng, cách diễn đạt tương đương hoặc các thành phần phải kết
-      hợp mới tạo thành một hành vi.
-    - Giữ đúng phủ định, qualifier cấu thành và phạm vi ngữ pháp tiếng Việt.
-      Ngoại lệ chỉ giới hạn applicability không phải một phần của conduct label.
-    - Giữ nguyên Unicode và ký hiệu locator pháp lý; `d` và `đ` là khác nhau.
-      provision_path dùng đủ cấp có trong source theo dạng `Chương > Mục > Điều
-      > Khoản > Điểm`, không kèm tiêu đề.
-    - Evidence phải thuộc Target và trực tiếp chứa wording của conduct. Trước khi
-      trả, đối chiếu lại từng entry với source và loại mọi entry chỉ dựa vào dẫn chiếu.
+    - Chỉ dùng Target evidence; structural context chỉ hỗ trợ xác định cấu trúc.
+      Không dùng kiến thức ngoài hoặc suy ra nội dung của điều khoản được dẫn chiếu.
+    - Tách các hành vi có thể cấu thành vi phạm độc lập. Không tạo conduct từ định
+      nghĩa, thủ tục, thẩm quyền, hậu quả hoặc dẫn chiếu không nhắc lại hành vi.
+    - Không tách danh sách đối tượng hay các thành phần phải kết hợp mới thành một
+      hành vi. Giữ đúng phủ định, qualifier và phạm vi ngữ pháp tiếng Việt.
+    - provision_path giữ đủ cấp có trong nguồn theo `Chương > Mục > Điều > Khoản
+      > Điểm`, bỏ cấp không tồn tại và không thêm tiêu đề.
+    - Evidence phải thuộc Target. Chỉ trả rỗng sau khi đã đọc hết Target.
 
     {% for item in items %}
     === target_chunk_id={{ item.target_chunk_id }} ===
@@ -212,49 +196,23 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
   prompt #"
     {{ _.role("user") }}
 
-    Gắn hậu quả pháp lý và applicability vào closed target conduct inventory để
-    tạo các PenaltyRule có source support. Không kết luận vụ việc thực tế.
+    Gắn hậu quả và applicability vào closed target conduct inventory để tạo các
+    PenaltyRule có nguồn hỗ trợ. Không kết luận vụ việc thực tế.
 
-    Closed inventory
-    - Không thêm, bỏ, tách, gộp hoặc đổi label/provision_path của target_conducts.
-      Mỗi output phải trỏ đúng target_conduct_id; context không được tạo conduct mới.
-    - Nếu inventory rỗng thì trả rules rỗng. Chỉ bỏ một locked conduct khi toàn
-      reading window thực sự không cung cấp hậu quả pháp lý cho nó.
-
-    Nguồn và identity
-    - Chỉ dùng reading window của cùng item. Structural context chỉ xác định
-      ancestry, subject, role và vehicle; không phải evidence. Chỉ trả evidence_id
-      được cung cấp và không trộn các target window.
-    - Sao chép nguyên văn locked conduct label, path và Target evidence. Giữ
-      nguyên Unicode/ký hiệu locator pháp lý và không đồng nhất concept từ câu chữ.
-
-    Bind consequence
-    - Với từng conduct, tìm heading hậu quả chính còn hiệu lực, kể cả heading mở
-      ở Preceding, rồi audit mọi catalog trực tiếp hoặc dẫn chiếu trong cùng Điều.
-    - Giải mỗi dẫn chiếu thành tuple Điều/Khoản/Điểm đầy đủ. Chỉ bind khi tuple
-      khớp chính xác locked provision; cùng Khoản, vị trí gần hoặc ký hiệu tương
-      tự không đủ. Khi nhiều clause chồng lấn, dùng clause trực tiếp và cụ thể nhất.
-    - Giữ mọi consequence cộng dồn được source hỗ trợ. Catalog chỉ bổ sung hậu
-      quả cho conduct đã khóa; không tự tạo PenaltyRule. Mỗi consequence giữ
-      evidence riêng và tuân thủ các field constraints trong output schema.
-    - Hậu quả phụ thuộc điều kiện tạo variant riêng. Không trộn hậu quả thay thế,
-      và mỗi variant có tối đa một MonetaryPenalty cùng một PointDeduction.
-
-    Applicability và conditions
-    - Qualifier cấu thành vẫn thuộc locked conduct. Ngoại lệ giới hạn phạm vi áp
-      dụng nằm trong condition tree và giữ đúng AND/OR/NOT cùng source evidence.
-    - Lặp condition/exception dùng chung cho mọi conduct bị chi phối; ngoại lệ
-      cục bộ chỉ gắn đúng phần tử. Không suy ra exception chỉ từ một từ đơn lẻ.
-    - Atomic không có operand; AllOf/AnyOf có ít nhất hai; Not có đúng một. Mọi
-      condition có evidence trực tiếp, ID duy nhất, chỉ tham chiếu node cùng cây,
-      không chu trình và mọi node phải đi được từ condition_root_id.
-    - Chỉ điền subject, role, vehicle, validity và consequence values khi source
-      hoặc structural context cho phép. Giá trị thiếu giữ null, không điền 0.
-
-    Completion audit
-    - Audit lần lượt mọi target_conduct_id, primary heading, catalog reference,
-      variant, condition và evidence trước khi trả. Trả đúng một result cho mỗi
-      target_chunk_id; không tạo LegalChange, concept equivalence hay occurrence.
+    - Không thêm, bỏ, tách, gộp hay đổi label/path của target_conducts. Mỗi rule
+      phải trỏ đúng target_conduct_id; inventory rỗng thì rules rỗng.
+    - Chỉ dùng reading window của cùng item. Structural context hỗ trợ cấu trúc,
+      subject, role và vehicle nhưng không thay thế evidence.
+    - Gắn consequence khi nguồn hoặc dẫn chiếu cấu trúc xác định rõ conduct bị
+      chi phối. Không dùng vị trí gần hay câu chữ tương tự để nối dữ liệu.
+    - Giữ mọi consequence cộng dồn; tách variant khi hậu quả phụ thuộc điều kiện.
+      Mỗi consequence giữ evidence riêng và tuân thủ kiểu dữ liệu output.
+    - Applicability và ngoại lệ cục bộ nằm trong condition tree, giữ đúng
+      AND/OR/NOT. Atomic không có operand; AllOf/AnyOf có ít nhất hai; Not có một.
+      ID phải duy nhất, không chu trình và mọi node đi được từ root.
+    - Chỉ điền giá trị được nguồn hỗ trợ; dữ liệu chưa biết giữ null. Không tạo
+      LegalChange, concept equivalence hay occurrence.
+    - Trả đúng một result cho mỗi target_chunk_id sau khi kiểm tra mọi locked conduct.
 
     {% for item in items %}
     === target_chunk_id={{ item.target_chunk_id }} ===

@@ -46,7 +46,7 @@ lorsh:LegalExpressionShape a sh:NodeShape ;
         sh:class lorsp:LegalProvision ;
         sh:message "A legal expression must contain at least one structural provision."@en
     ] ;
-    lorsp:requirementReference "SCOPE-001", "SCOPE-007" ;
+    lorsp:requirementReference "SCOPE-001" ;
     lorsp:competencyQuestionReference "CQ-SOURCE-001" ;
     lorsp:modelingDecisionReference "MD-DOC-001", "MD-PROV-002" .
 
@@ -65,7 +65,7 @@ lorsh:LegalProvisionShape a sh:NodeShape ;
         sh:class lorsp:LegalExpression ;
         sh:message "A legal provision must belong to exactly one legal expression in an approved data graph."@en
     ] ;
-    lorsp:requirementReference "SCOPE-001", "SCOPE-007", "GRAN-006" ;
+    lorsp:requirementReference "SCOPE-001", "GRAN-006" ;
     lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-ASSEMBLY-001" ;
     lorsp:modelingDecisionReference "MD-DOC-001", "MD-PROV-002" .
 
@@ -96,44 +96,8 @@ lorsh:SourceChunkShape a sh:NodeShape ;
         sh:class lorsp:SourceFile ;
         sh:message "A source chunk must identify exactly one source file."@en
     ] ;
-    lorsp:requirementReference "SCOPE-001", "SCOPE-007" ;
-    lorsp:competencyQuestionReference "CQ-EVIDENCE-001" ;
-    lorsp:modelingDecisionReference "MD-PROV-001" .
-
-lorsh:EvidenceSpanShape a sh:NodeShape ;
-    sh:targetClass lorsp:EvidenceSpan ;
-    sh:property [
-        sh:path lorsp:exactText ;
-        sh:minCount 1 ;
-        sh:maxCount 1 ;
-        sh:datatype rdf:langString ;
-        sh:message "An evidence span must preserve one exact language-tagged quotation."@en
-    ], [
-        sh:path [ sh:inversePath lorsp:containsSpan ] ;
-        sh:minCount 1 ;
-        sh:maxCount 1 ;
-        sh:class lorsp:SourceChunk ;
-        sh:message "An evidence span must be located in exactly one source chunk."@en
-    ] ;
-    lorsp:requirementReference "PURP-003", "SCOPE-007", "GRAN-006" ;
-    lorsp:competencyQuestionReference "CQ-EVIDENCE-001" ;
-    lorsp:modelingDecisionReference "MD-PROV-001" .
-
-lorsh:SupportedAssertionShape a sh:NodeShape ;
-    sh:targetClass lorsp:SupportedAssertion ;
-    sh:property [
-        sh:path lorsp:groundedIn ;
-        sh:minCount 1 ;
-        sh:class lorsp:LegalProvision ;
-        sh:message "A supported assertion must be grounded in at least one legal provision."@en
-    ], [
-        sh:path lorsp:supportedBy ;
-        sh:minCount 1 ;
-        sh:class lorsp:EvidenceSpan ;
-        sh:message "A supported assertion must have at least one exact evidence span."@en
-    ] ;
-    lorsp:requirementReference "PURP-003", "SCOPE-007" ;
-    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EVIDENCE-001" ;
+    lorsp:requirementReference "PURP-003", "SCOPE-001" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001" ;
     lorsp:modelingDecisionReference "MD-PROV-001" .
 
 lorsh:RegulatedConductShape a sh:NodeShape ;
@@ -197,7 +161,7 @@ lorsh:ConceptHierarchyShape a sh:NodeShape ;
     ] ;
     sh:sparql [
         a sh:SPARQLConstraint ;
-        sh:message "A reviewed concept hierarchy must not contain a broader cycle."@en ;
+        sh:message "A canonical concept hierarchy must not contain a broader cycle."@en ;
         sh:select """
             PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
             SELECT $this
@@ -408,12 +372,12 @@ lorsh:LegalChangeShape a sh:NodeShape ;
         sh:class lorsp:LegalProvision ;
         sh:message "A legal change must be grounded in at least one authoritative provision."@en
     ], [
-        sh:path lorsp:supportedBy ;
+        sh:path lorsp:sourcedFromChunk ;
         sh:minCount 1 ;
-        sh:class lorsp:EvidenceSpan ;
-        sh:message "A legal change must have at least one exact evidence span."@en
+        sh:class lorsp:SourceChunk ;
+        sh:message "A legal change must identify at least one source chunk."@en
     ] ;
-    lorsp:requirementReference "PURP-001", "PURP-003", "USE-004", "SCOPE-006", "SCOPE-007", "GRAN-007" ;
+    lorsp:requirementReference "PURP-001", "PURP-003", "USE-004", "SCOPE-006", "GRAN-007" ;
     lorsp:competencyQuestionReference "CQ-TEMPORAL-001", "CQ-TEMPORAL-002" ;
     lorsp:modelingDecisionReference "MD-TIME-001", "MD-CHANGE-001", "MD-RULE-001" .
 
@@ -445,8 +409,13 @@ lorsh:PenaltyRuleShape a sh:NodeShape ;
         sh:minCount 1 ;
         sh:class lorsp:LegalProvision ;
         sh:message "A penalty rule must be grounded in at least one authoritative provision."@en
+    ], [
+        sh:path lorsp:sourcedFromChunk ;
+        sh:minCount 1 ;
+        sh:class lorsp:SourceChunk ;
+        sh:message "A penalty rule must identify at least one source chunk."@en
     ] ;
-    lorsp:requirementReference "PURP-001", "PURP-002", "PURP-003", "USE-001", "USE-002", "SCOPE-002", "SCOPE-003", "SCOPE-004", "SCOPE-006", "SCOPE-007", "GRAN-001", "GRAN-007" ;
+    lorsp:requirementReference "PURP-001", "PURP-002", "PURP-003", "USE-001", "USE-002", "SCOPE-002", "SCOPE-003", "SCOPE-004", "SCOPE-006", "GRAN-001", "GRAN-007" ;
     lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-SOURCE-001", "CQ-TEMPORAL-001", "CQ-ASSEMBLY-001" ;
     lorsp:modelingDecisionReference "MD-RULE-001", "MD-RULE-002", "MD-PROV-001", "MD-TIME-001" .
 
@@ -458,13 +427,13 @@ lorsh:RuleComponentShape a sh:NodeShape ;
         sh:class lorsp:LegalProvision ;
         sh:message "A material rule component must be grounded in at least one authoritative provision."@en
     ], [
-        sh:path lorsp:supportedBy ;
+        sh:path lorsp:sourcedFromChunk ;
         sh:minCount 1 ;
-        sh:class lorsp:EvidenceSpan ;
-        sh:message "A material rule component must have at least one exact evidence span."@en
+        sh:class lorsp:SourceChunk ;
+        sh:message "A material rule component must identify at least one source chunk."@en
     ] ;
-    lorsp:requirementReference "PURP-003", "SCOPE-007", "GRAN-004", "GRAN-006" ;
-    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-EVIDENCE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:requirementReference "PURP-003", "GRAN-004", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-SOURCE-001", "CQ-ASSEMBLY-001" ;
     lorsp:modelingDecisionReference "MD-RULE-002", "MD-PROV-001", "MD-PROV-002" .
 
 lorsh:ConductSpecificationShape a sh:NodeShape ;
@@ -603,8 +572,8 @@ lorsh:LegalExceptionShape a sh:NodeShape ;
             }
         """
     ] ;
-    lorsp:requirementReference "PURP-002", "PURP-003", "SCOPE-004", "SCOPE-006", "SCOPE-007", "GRAN-004", "GRAN-006" ;
-    lorsp:competencyQuestionReference "CQ-EXCEPTION-001", "CQ-EVIDENCE-001", "CQ-TEMPORAL-001", "CQ-ASSEMBLY-001" ;
+    lorsp:requirementReference "PURP-002", "PURP-003", "SCOPE-004", "SCOPE-006", "GRAN-004", "GRAN-006" ;
+    lorsp:competencyQuestionReference "CQ-EXCEPTION-001", "CQ-SOURCE-001", "CQ-TEMPORAL-001", "CQ-ASSEMBLY-001" ;
     lorsp:modelingDecisionReference "MD-EXCEPTION-001", "MD-REF-001", "MD-PROV-001" .
 
 lorsh:LegalConsequenceShape a sh:NodeShape ;
@@ -627,8 +596,8 @@ lorsh:LegalConsequenceShape a sh:NodeShape ;
         sh:message "Every affected object must be represented as a consequence target."@en
     ] ;
     sh:message "An approved legal consequence must have one source-supported V0.1 consequence subtype."@en ;
-    lorsp:requirementReference "PURP-003", "USE-002", "SCOPE-005", "SCOPE-007", "GRAN-001", "GRAN-005" ;
-    lorsp:competencyQuestionReference "CQ-CONSEQUENCE-001", "CQ-SOURCE-001", "CQ-EVIDENCE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:requirementReference "PURP-003", "USE-002", "SCOPE-005", "GRAN-001", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-CONSEQUENCE-001", "CQ-SOURCE-001", "CQ-ASSEMBLY-001" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002", "MD-PROV-001" .
 
 lorsh:MonetaryPenaltyShape a sh:NodeShape ;

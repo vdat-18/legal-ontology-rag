@@ -14,15 +14,15 @@ from loguru import logger
 def _parser() -> argparse.ArgumentParser:
     """Build the ontology-population command-line parser."""
     parser = argparse.ArgumentParser(
-        description="Extract ontology population records from chunks and write a SHACL-validated RDF graph."
+        description="Extract typed ontology population records from chunks and materialize an RDF graph."
     )
     parser.add_argument("chunks_path", type=Path, help="Final chunk JSONL path")
     parser.add_argument("screening_path", type=Path, help="Chunk-screening JSONL path")
     parser.add_argument("metadata_path", type=Path, help="Document-metadata JSONL path")
     parser.add_argument("contract_path", type=Path, help="Versioned ontology population contract YAML path")
-    parser.add_argument("records_output_path", type=Path, help="Reviewable population-record JSONL destination")
+    parser.add_argument("records_output_path", type=Path, help="Population-record JSONL destination")
     parser.add_argument("progress_output_path", type=Path, help="Population-progress JSONL destination")
-    parser.add_argument("graph_output_path", type=Path, help="Validated Turtle instance-graph destination")
+    parser.add_argument("graph_output_path", type=Path, help="Turtle instance-graph destination")
     target_group = parser.add_mutually_exclusive_group()
     target_group.add_argument("--target-limit", type=int, help="Maximum accepted chunks selected for a pilot run")
     target_group.add_argument("--target-ids-path", type=Path, help="Reviewed pilot target-selection JSON path")
@@ -32,7 +32,7 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    """Extract, persist, materialize, and validate ontology instances."""
+    """Extract, persist, and materialize ontology instances."""
     from legal_rag.io_utils import write_json_atomic
     from legal_rag.ontology_population.config import PopulationSettings
     from legal_rag.ontology_population.extraction import (
@@ -42,7 +42,6 @@ def main() -> None:
     )
     from legal_rag.ontology_population.materializer import (
         materialize_population_graph,
-        validate_population_graph,
         write_population_graph,
     )
     from legal_rag.ontology_population.models import OntologyPopulationRecord, PopulationProgressRecord
@@ -60,7 +59,6 @@ def main() -> None:
         write_population_progress,
         write_population_records,
     )
-    from legal_rag.ontology_validation.paths import OntologyPaths
     from legal_rag.settings import Settings
 
     arguments = _parser().parse_args()
@@ -183,10 +181,9 @@ def main() -> None:
         ),
     )
     graph = materialize_population_graph(chunks, metadata, records, population_settings.instance_namespace)
-    validate_population_graph(graph, OntologyPaths(project_root))
     write_population_graph(arguments.graph_output_path, graph)
     logger.info(
-        "Wrote {} population records and {} validated RDF triples to {}",
+        "Wrote {} population records and {} RDF triples to {}",
         len(records),
         len(graph),
         arguments.graph_output_path,

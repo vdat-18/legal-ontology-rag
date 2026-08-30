@@ -12,6 +12,7 @@ from legal_rag.ontology_change.candidates import build_change_candidates
 from legal_rag.ontology_change.config import ChangeResolutionSettings
 from legal_rag.ontology_change.corpus import ChangeCorpus, ChangeCorpusDocument, read_change_corpus_manifest
 from legal_rag.ontology_change.writer import read_change_candidates, write_change_candidates
+from legal_rag.ontology_validation.loader import load_yaml
 
 from .conftest import write_manifest
 
@@ -19,13 +20,17 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_change_contract_and_console_scripts_are_packaged() -> None:
-    """The checked-in contract and all operator commands expose bounded review workflow settings."""
+    """The checked-in contract and operator commands expose bounded workflow settings."""
     settings = ChangeResolutionSettings.from_path(PROJECT_ROOT / "ontology" / "change_resolution_contract.yaml")
     project = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
 
     assert settings.max_source_chunks_per_window == 6
     assert settings.max_total_windows == 10_000
-    assert settings.require_every_proposal_reviewed is True
+    assert set(load_yaml(PROJECT_ROOT / "ontology" / "change_resolution_contract.yaml")) == {
+        "schema_version",
+        "candidates",
+        "llm",
+    }
     assert project["scripts"]["legal-build-change-candidates"] == "legal_rag.ontology_change_candidates_cli:main"
     assert project["scripts"]["legal-propose-legal-changes"] == "legal_rag.ontology_change_proposals_cli:main"
     assert project["scripts"]["legal-finalize-legal-changes"] == "legal_rag.ontology_change_finalize_cli:main"

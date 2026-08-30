@@ -15,8 +15,8 @@ def test_production_contract_pins_approved_internal_freeze_inputs(
     assert release_settings.artifact_version == "0.2.0"
     assert release_settings.version_iri.endswith("/0.2.0")
     assert release_settings.archive_file == "legal-ontology-rag-0.2.0.zip"
-    assert len(release_settings.source_paths) == 52
-    assert len(release_settings.required_reuse_decisions) == 10
+    assert len(release_settings.source_paths) == 51
+    assert len(release_settings.required_reuse_decisions) == 4
     assert release_settings.external_reuse_registry_path == project_root / "ontology" / "external_reuse_registry.yaml"
     assert release_settings.legal_review_contract_path == project_root / "ontology" / "legal_review_contract.yaml"
     assert release_settings.legal_review_decisions_path == project_root / "ontology" / "legal_review_decisions.yaml"

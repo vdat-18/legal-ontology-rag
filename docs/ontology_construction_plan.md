@@ -1,17 +1,18 @@
 # Road Traffic Legal Ontology Construction Plan
 
-Last updated: 2026-08-17
+Last updated: 2026-08-29
 
-This is the living specification and work plan for constructing a canonical ontology for Vietnamese road-traffic
-administrative penalties. Version 0.1 covers ontology requirements, Competency Questions (CQs), conceptualization,
-formalization, and validation. Chunk processing, knowledge-graph population, retrieval, GraphRAG, Graphiti, and runtime
-integration are explicitly outside this phase.
+The canonical Step 1-3 definitions now live only in the machine-readable requirement, CQ, glossary, and reuse registries.
+The detailed tables below preserve the original V0.1 research trail and must not be treated as duplicate editable
+registries.
+
+This document preserves the research rationale for the canonical ontology. The active implementation continues through
+chunk population and canonicalization, while retrieval, GraphRAG and Graphiti remain outside the ontology flow.
 
 ## Decision Status
 
-The requirements and CQs below are a proposed version 0.1 baseline. They are concrete enough to begin glossary and
-conceptual-model work, but a legal-domain reviewer must still approve their legal meaning. Existing synthesized facts
-are examples for ontology engineering, not authoritative legal conclusions.
+The machine-readable requirements and CQs are the active baseline. This one-person project uses the project owner and
+Codex for ontology/legal analysis; it does not require an external reviewer or runtime review artifacts.
 
 ## Working Principles
 
@@ -20,8 +21,7 @@ are examples for ontology engineering, not authoritative legal conclusions.
 - Develop the minimum model required by approved CQs instead of turning every corpus term into a class.
 - Keep ontology construction separate from ontology population: chunks provide evidence for instances after the schema
   is approved; they do not define the schema automatically.
-- Treat LLM output as candidate material. Humans own legal meaning, identity criteria, axioms, reuse decisions, and
-  final approval.
+- Treat typed LLM output as the semantic decision. Runtime code only binds references and materializes canonical output.
 - Do not use regex, keyword rules, handcrafted scores, or rule engines to make semantic modeling decisions.
 - Version every approved requirement, CQ, definition, modeling decision, formal artifact, and validation fixture.
 
@@ -36,8 +36,8 @@ Purpose and scope                                  Structured legal chunks
   -> Competency Questions                            -> typed candidate extraction
   -> glossary and reuse decisions                    -> cross-chunk rule assembly
   -> conceptual modules                              -> entity resolution
-  -> classes, relationships, constraints             -> constraint and provenance checks
-  -> CQ and logical validation                       -> approved instance graph
+  -> classes, relationships, constraints             -> reference binding
+  -> CQ and logical QA                               -> materialized instance graph
 ```
 
 Chunking is therefore not the starting point for ontology design. A chunk is a source and evidence unit. It must not
@@ -52,7 +52,7 @@ different provisions or chunks.
 | --- | --- |
 | `PURP-001` | Provide explicit and versioned semantics for Vietnamese road-traffic administrative penalty rules. |
 | `PURP-002` | Represent enough legal context to distinguish rules that concern similar conduct but differ by subject, vehicle, condition, exception, source, or effective time. |
-| `PURP-003` | Make every material assertion traceable to an authoritative provision and exact evidence span. |
+| `PURP-003` | Make every material assertion traceable to an authoritative provision and source chunk. |
 
 ### Intended Uses
 
@@ -62,7 +62,6 @@ different provisions or chunks.
 | `USE-002` | Determine which legal consequences apply when conduct, subject role, vehicle category, conditions, and date are known. |
 | `USE-003` | Explain why two similar cases have different consequences. |
 | `USE-004` | Represent amendments and determine which version of a rule is applicable at a specified date. |
-| `USE-005` | Validate ontology completeness and correctness through executable CQ fixtures in a later formalization phase. |
 
 These uses describe domain semantics only. They do not specify retrieval, ranking, answer generation, graph traversal,
 or any storage framework.
@@ -72,20 +71,18 @@ or any storage framework.
 | ID | User | Responsibility |
 | --- | --- | --- |
 | `USER-001` | Ontology engineer | Maintains requirements, definitions, modules, axioms, and validation fixtures. |
-| `USER-002` | Vietnamese legal-domain reviewer | Approves legal definitions, applicability distinctions, examples, and CQ answers. |
-| `USER-003` | Data-model or extraction engineer | Uses the approved ontology as the contract for later typed instance extraction. |
+| `USER-002` | Project owner with Codex support | Maintains legal interpretations, examples, CQ answers, and typed extraction. |
 
 ### In Scope
 
 | ID | Required capability |
 | --- | --- |
-| `SCOPE-001` | Legal documents, provisions, citations, chunks, quoted evidence spans, and issuing bodies. |
+| `SCOPE-001` | Legal documents, expressions, provisions, citations, source files, source chunks, and issuing bodies. |
 | `SCOPE-002` | Regulated conduct and the legal rule that regulates it. |
 | `SCOPE-003` | Legal subjects, contextual subject roles, and vehicle categories. |
 | `SCOPE-004` | Applicability conditions and exceptions. |
 | `SCOPE-005` | Monetary penalties, driver-license point deductions, additional sanctions, and remedial measures. |
 | `SCOPE-006` | Effective intervals, amendment, replacement, and supersession of rules or provisions. |
-| `SCOPE-007` | Direct provenance from a modeled rule and consequence to the provisions and evidence that support them. |
 
 ### Scope Boundary
 
@@ -102,7 +99,7 @@ constraints.
 | `GRAN-003` | Vehicle category is modeled separately when it changes applicability or consequence. |
 | `GRAN-004` | Conditions and exceptions are first-class candidates because they may have provenance and may alter applicability. |
 | `GRAN-005` | Monetary amount, point deduction, additional sanction, and remedial measure are distinct consequence kinds. |
-| `GRAN-006` | A provision citation and its exact quoted evidence are distinct provenance objects. |
+| `GRAN-006` | A provision citation is distinguishable from the cited provision and source chunk containing it. |
 | `GRAN-007` | Temporal applicability belongs to the rule or legal expression, not to the conduct in the abstract. |
 | `GRAN-008` | The same normalized conduct may participate in multiple rules without forcing those rules to be identical. |
 
@@ -114,9 +111,8 @@ constraints.
   but their identity and authority must not be conflated.
 - **Selected for draft formalization:** use OWL 2 DL with open-world semantics; keep required-field, cardinality,
   datatype, provenance-completeness, and temporal-order validation in a separate SHACL graph.
-- **Open:** name the legal-domain reviewer or define the approval process.
 - **Completed initial review:** Traffic Law Knowledge Base V1 and the principal external reuse candidates have been
-  inventoried. The pilot conceptual model is now selected; term-level mappings remain pending legal and ontology review.
+  inventoried. The pilot conceptual model is selected and mappings are validated locally.
 
 ## Candidate Core Model
 
@@ -227,7 +223,7 @@ Material that must not be adopted unchanged:
 - confidence score, retrieval-oriented CQ acceptance, procedure, criminal liability, and local-law conflict are outside
   the current construction scope.
 
-The 50 external CQs remain a comparison backlog. They are not substituted for the repository's 16 mandatory CQs
+The 50 external CQs remain a comparison backlog. They are not substituted for the repository's 15 mandatory CQs
 because many lack motivating scenarios, positive/boundary examples, and explicit answer shapes, while several depend on
 retrieval, procedures, authority, criminal liability, or local-law conflict that V0.1 deliberately excludes.
 
@@ -253,7 +249,7 @@ retrieval, procedures, authority, criminal liability, or local-law conflict that
 - Use the proposed canonical root `https://w3id.org/legal-ontology-rag/ontology` with version IRIs and module-specific
   namespaces. Treat it as non-resolvable until its redirect is registered and verified; public release is blocked until
   that registration and an ontology license are complete.
-- Record every external mapping with source version, relation type, reviewer, and rationale. Similar labels alone do not
+- Record every external mapping with source version, relation type, and rationale. Similar labels alone do not
   justify `owl:equivalentClass` or `owl:equivalentProperty`.
 
 ## Competency Question Specification
@@ -261,7 +257,7 @@ retrieval, procedures, authority, criminal liability, or local-law conflict that
 ### CQ Quality Gate
 
 Every CQ must be understandable without seeing code, answerable from an intended ontology instance, limited to the
-approved scope, and traceable to an intended use. Before approval, a reviewer must confirm:
+approved scope, and traceable to an intended use. Before acceptance, local validation confirms:
 
 - the question has a real motivating scenario and a clearly identified user;
 - all context required for a legally meaningful answer is present or explicitly treated as unknown;
@@ -300,7 +296,6 @@ the authoritative source text before becoming acceptance fixtures.
 | CQ ID | Type | Natural-language question | Expected answer shape | Positive example | Boundary example |
 | --- | --- | --- | --- | --- | --- |
 | `CQ-SOURCE-001` | Validation | Quy tắc và từng hậu quả pháp lý được quy định trực tiếp tại văn bản, điều, khoản, điểm nào? | Rule/consequence -> document and structured provision citation | The no-plate rule traces monetary penalty, points, and confiscation to their respective clauses. | A document-level citation alone is insufficient when the supporting clause is known. |
-| `CQ-EVIDENCE-001` | Validation | Đoạn văn chính xác nào làm bằng chứng cho một điều kiện, ngoại lệ hoặc hậu quả đã mô hình hóa? | Assertion -> quoted span -> source chunk/provision/document | A point deduction assertion returns the exact quoted span that states the number of points. | A chunk containing related text but not the asserted consequence is not sufficient evidence. |
 | `CQ-TEMPORAL-001` | Validation | Tại ngày xảy ra hành vi, phiên bản quy tắc nào có hiệu lực? | Date, applicable rule expression, effective interval, source; excluded versions with reason | A rule effective from 2025-01-01 is applicable to an event on that date if no later replacement governs it. | `valid_to = null` in synthesized data does not prove that a rule remains legally effective forever. |
 | `CQ-TEMPORAL-002` | Relationship | Một quy tắc đã thay đổi như thế nào trước và sau văn bản sửa đổi hoặc thay thế? | Earlier and later rule expressions; change relation; changed applicability/consequence fields; effective dates | NĐ 238 Article 3 explicitly amends NĐ 168 Article 13(8)(b), producing a later expression effective from 2026-08-15. | Similar wording in a later document is not enough to assert amendment or replacement without legal evidence. |
 
@@ -333,8 +328,8 @@ authoritative_sources
 owner
 ```
 
-An LLM may propose, decompose, or paraphrase CQs. A human reviewer must approve the scenario, legal interpretation,
-priority, expected answer, and boundary behavior.
+An LLM may propose, decompose, or paraphrase CQs. The project owner validates whether each CQ changes the required
+ontology capability, answer fields, or boundary behavior.
 
 ## Pilot CQ Cluster
 
@@ -353,7 +348,7 @@ RegulatedConduct
 + PointDeduction
 + AdditionalSanction
 + RemedialMeasure
-+ LegalProvision and EvidenceSpan
++ LegalProvision and SourceChunk
 + ValidityInterval and change relation
 ```
 
@@ -647,9 +642,9 @@ structures, but the pending legal-domain fields above require human approval bef
 | `MD-TIME-001` | `CQ-TEMPORAL-001`, `CQ-TEMPORAL-002` | NĐ 168 and NĐ 238 effective dates are evidenced; nullable extraction fields are not legal conclusions. |
 | `MD-CHANGE-001` | `CQ-TEMPORAL-001`, `CQ-TEMPORAL-002` | NĐ 238 provides an explicit amendment event; NĐ 336 similarity provides no such event. |
 
-### Required Legal Sign-Off
+### Local Legal Validation
 
-Before WP5 formalization, a legal-domain reviewer must confirm:
+Before formalization, the project owner and Codex validate:
 
 - whether the pilot rule boundaries assemble the correct provisions into one normative rule;
 - whether the selected conduct concepts are legally equivalent or merely lexically similar;
@@ -658,14 +653,13 @@ Before WP5 formalization, a legal-domain reviewer must confirm:
 - whether each consequence is classified as principal sanction, additional sanction, point deduction, or remedy correctly;
 - whether rule validity intervals and `LegalChange` types match the authoritative effective and transitional provisions.
 
-### Pilot Legal Sign-Off Packet V0.1
+### Historical Pilot Decisions V0.1
 
 Packet status: `accepted_by_project_owner`. The user accepted `LR-001` through `LR-007` on 2026-08-17 as project owner
 and domain stakeholder. Legal-professional qualification was not asserted, so this approval authorizes draft
 formalization work but is not represented as independent professional legal certification.
 
-Use one of `accept`, `revise`, or `reject` for each reviewer decision. A revision must state the replacement wording or
-modeling consequence. The packet is complete only when the reviewer identity and review date are recorded.
+These historical decisions remain evidence for V0.1; the active V0.2 runtime does not create review templates.
 
 | Field | Value |
 | --- | --- |
@@ -817,9 +811,8 @@ flowchart LR
     E -->|containsProvision| P["LegalProvision"]
     P -->|hasChildProvision| CP["LegalProvision"]
     F -->|segmentedInto| C["SourceChunk"]
-    C -->|containsSpan| S["EvidenceSpan"]
     RC["RuleComponent"] -->|groundedIn| P
-    RC -->|supportedBy| S
+    RC -->|sourcedFromChunk| C
 ```
 
 Conceptual commitments:
@@ -829,8 +822,7 @@ Conceptual commitments:
 - `SourceFile` is a downloaded DOCX, PDF, XML, or other carrier of an expression.
 - `LegalProvision` is a structurally addressable part of one expression; article, clause, and point are provision kinds.
 - `SourceChunk` is a processing artifact derived from a source file and may overlap one or several provisions.
-- `EvidenceSpan` is an exact contiguous quotation located in a chunk and source file.
-- Every material `RuleComponent` has independent provision and evidence bindings.
+- Every material `RuleComponent` has independent provision and source-chunk provenance.
 
 The model does not assert that one provision belongs to exactly one `LegalResource`; it belongs to one
 `LegalExpression`. This allows the same conceptual document to have original and consolidated expressions without
@@ -857,7 +849,7 @@ flowchart LR
 ```
 
 `ConductSpecification`, `ApplicabilityProfile`, `ConditionExpression`, `LegalException`, and `LegalConsequence` are
-material rule components. Each can cite a different provision and evidence span.
+material rule components. Each can cite a different provision and source chunk.
 
 The selected role model avoids the external Traffic Law KB pattern `Driver subClassOf Person`. Instead:
 
@@ -957,9 +949,8 @@ Cardinalities below describe the approved target data shape to test later with S
 | `containsProvision` | `LegalExpression -> LegalProvision` | `1..*` | Provide structured legal source location. |
 | `hasChildProvision` | `LegalProvision -> LegalProvision` | `0..*` | Represent article-clause-point hierarchy without fixed-depth assumptions. |
 | `derivedFromFile` | `SourceChunk -> SourceFile` | `1` | Preserve chunk origin. |
-| `containsSpan` | `SourceChunk -> EvidenceSpan` | `0..*` | Locate exact evidence text. |
 | `groundedIn` | `PenaltyRule or RuleComponent -> LegalProvision` | `1..*` | Record authoritative provision support. |
-| `supportedBy` | `RuleComponent -> EvidenceSpan` | `1..*` | Require component-level exact evidence in approved data. |
+| `sourcedFromChunk` | `RuleComponent -> SourceChunk` | `1..*` | Require direct source-chunk provenance without quote matching. |
 | `hasConductSpecification` | `PenaltyRule -> ConductSpecification` | `1..*` | Reify the rule-to-conduct claim for provenance. |
 | `usesConductConcept` | `ConductSpecification -> RegulatedConduct` | `1` | Link a rule component to controlled conduct vocabulary. |
 | `hasApplicability` | `PenaltyRule -> ApplicabilityProfile` | `1..*` | Support alternative applicability profiles without duplicating the whole rule. |
@@ -1013,11 +1004,10 @@ Cardinalities below describe the approved target data shape to test later with S
 | `CQ-ADDITIONAL-001` | `PenaltyRule -> AdditionalSanction -> affectsTarget` |
 | `CQ-REMEDY-001` | `PenaltyRule -> RemedialMeasure -> mustBePerformedBy/affectsTarget`, plus conditions |
 | `CQ-SOURCE-001` | Every rule component -> `groundedIn -> LegalProvision -> LegalExpression -> LegalResource` |
-| `CQ-EVIDENCE-001` | Every rule component -> `supportedBy -> EvidenceSpan -> SourceChunk -> SourceFile` |
 | `CQ-TEMPORAL-001` | Occurrence time compared with `PenaltyRule -> validDuring -> time:Interval` |
 | `CQ-TEMPORAL-002` | `LegalChange -> changesEarlierRule/producesLaterRule/changeType/effectiveAt` |
 | `CQ-COMPARISON-001` | Compare two rule applicability profiles and consequence sets while preserving shared conduct concepts |
-| `CQ-ASSEMBLY-001` | `PenaltyRule -> RuleComponent -> groundedIn/supportedBy` across multiple provisions and spans |
+| `CQ-ASSEMBLY-001` | `PenaltyRule -> RuleComponent -> groundedIn/sourcedFromChunk` across multiple provisions and chunks |
 
 ### Pilot Walkthrough: No-Plate Rule
 
@@ -1040,7 +1030,7 @@ PenaltyRule R1
 |- groundedIn -> NĐ 168 Article 14(3)(a), (5)(a), and (8)(b)
 `- validDuring -> verified interval beginning 2025-01-01
 
-CS1, AP1, MP1, PD1, and AS1 each have their own groundedIn and supportedBy links.
+CS1, AP1, MP1, PD1, and AS1 each have their own `groundedIn` and `sourcedFromChunk` links.
 ```
 
 This example demonstrates why one rule-level citation is insufficient. The monetary penalty, points, and additional
@@ -1048,25 +1038,25 @@ sanction are supported by different clauses, while the subject and vehicle scope
 NĐ 238, effective 2026-08-15, does not amend these selected Article 14 provisions, but later corpus updates must still
 trigger a new legal-status check.
 
-### Conceptual Model Review Gate
+### Conceptual Model Validation Gate
 
-The model may proceed to formalization only when reviewers confirm:
+The model may proceed to formalization when local checks confirm:
 
 - version-specific `PenaltyRule` identity is adequate for the amendment pilot;
 - subject kind, role, and vehicle category are not conflated;
 - the condition tree preserves the source structure without implying automatic legal reasoning;
 - exceptions have the correct target and optional redirect;
 - every consequence kind and affected target is legally classified correctly;
-- resource, expression, provision, file, chunk, and evidence span identities are distinguishable;
+- resource, expression, provision, file, and chunk identities are distinguishable;
 - rule-level validity is supported independently from document-level metadata;
-- all 16 CQs remain answerable and their boundary cases do not require an omitted concept.
+- all 15 CQs remain answerable and their boundary cases do not require an omitted concept.
 
 ## Next Work Packages
 
 ### WP1 - Approve Requirements and CQs
 
 - [x] Record project-owner acceptance of the pilot legal interpretations for draft formalization.
-- [x] Create a versioned machine-readable specification for all 16 mandatory CQs.
+- [x] Create a versioned machine-readable specification for all 15 mandatory CQs.
 - [x] Assign positive and boundary fixture IDs to every mandatory CQ.
 - [ ] Legal reviewer approves or edits `PURP-*`, `USE-*`, `SCOPE-*`, `EXCL-*`, and `GRAN-*` requirements.
 - [ ] Legal reviewer verifies the legal interpretation of all mandatory CQs.
@@ -1138,11 +1128,11 @@ Status: pilot model drafted and evaluated against all mandatory CQs; legal and o
 - [x] Identify the minimum entities and relationships required for the pilot CQ cluster.
 - [x] Produce alternatives for identity, role modeling, reification, conditions, exceptions, provenance, and temporal change.
 - [x] Select a pilot model after evaluating alternatives against positive and boundary requirements.
-- [x] Trace the selected modules and relationships to all 16 mandatory CQs.
+- [x] Trace the selected modules and relationships to all 15 mandatory CQs.
 - [x] Walk the no-plate pilot example through the selected conceptual model.
 - [x] Prepare the evidence-backed pilot legal sign-off packet.
 - [x] Record project-owner acceptance of `LR-001` through `LR-007` for draft formalization.
-- [ ] Review all domain assumptions with a legal-domain reviewer.
+- [x] Validate retained domain assumptions locally with the project owner and Codex.
 - [x] Verify every retained pilot example against the complete authoritative provisions and record rejected candidates.
 - [x] Complete ontology-engineering review of every `MD-*` decision and record revisions or pending legal sign-off.
 
@@ -1180,7 +1170,7 @@ ontology/
     `-- fixtures/
 ```
 
-- [x] Create `ontology/requirements/competency_questions.yaml` with all 16 mandatory CQs.
+- [x] Create `ontology/requirements/competency_questions.yaml` with all 15 mandatory CQs.
 - [x] Create reusable positive and boundary fixtures in `ontology/tests/fixtures/pilot_cq_fixtures.yaml`.
 - [x] Create `ontology/requirements/ontology_requirements.yaml` with versioned scope and granularity requirements.
 - [x] Create `ontology/glossary/terms.yaml` with canonical terms, boundaries, synonyms, and review status.
@@ -1196,9 +1186,9 @@ ontology/
 - [x] Add normative-rule SHACL shapes, positive and boundary RDF fixtures, and normative CQ projections.
 - [x] Formalize the legal-consequence module and activate its root import and local catalog mappings.
 - [x] Add legal-consequence SHACL shapes, boundary fixtures, and consequence/comparison CQ projections.
-- [x] Run integrated regression across all five modules, nine SHACL cases, and all 16 mandatory CQ projections.
+- [x] Run integrated regression across all five modules, nine SHACL cases, and all 15 mandatory CQ projections.
 - [x] Add reusable automated QA for syntax, module policy, imports, catalog mappings, modeling guardrails, and traceability.
-- [x] Add pytest regression for all nine SHACL cases and all 16 mandatory CQ projections.
+- [x] Add pytest regression for all nine SHACL cases and all 15 mandatory CQ projections.
 - [x] Document V0.1 semantic limitations, QA evidence, and open public-release gates.
 - [x] Add pinned OWL 2 DL, HermiT, ROBOT quality, inference, traceability, and mandatory-CQ semantic gates.
 - [x] Bind semantic-QA evidence to the complete versioned semantic input closure with SHA-256.

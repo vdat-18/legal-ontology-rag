@@ -31,7 +31,6 @@ def build_change_candidates(corpus: ChangeCorpus, settings: ChangeResolutionSett
                     for later_batch in later_batches:
                         windows.append(
                             _candidate_window(
-                                settings.candidate_version,
                                 earlier_document.document_id,
                                 later_document.document_id,
                                 earlier_batch,
@@ -46,7 +45,6 @@ def build_change_candidates(corpus: ChangeCorpus, settings: ChangeResolutionSett
     ordered_windows = tuple(sorted(windows, key=lambda window: window.candidate_id))
     run_id = population_identity(
         {
-            "candidate_version": settings.candidate_version,
             "bounds": {
                 "source_chunks": settings.max_source_chunks_per_window,
                 "earlier_records": settings.max_earlier_records_per_window,
@@ -68,7 +66,6 @@ def build_change_candidates(corpus: ChangeCorpus, settings: ChangeResolutionSett
 
 
 def _candidate_window(
-    candidate_version: str,
     earlier_document_id: str,
     later_document_id: str,
     earlier_records: Sequence[OntologyPopulationRecord],
@@ -79,7 +76,6 @@ def _candidate_window(
     earlier_ids = tuple(record.population_id for record in earlier_records)
     later_ids = tuple(record.population_id for record in later_records)
     identity = {
-        "candidate_version": candidate_version,
         "earlier_document_id": earlier_document_id,
         "later_document_id": later_document_id,
         "earlier_population_ids": earlier_ids,

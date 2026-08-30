@@ -25,8 +25,8 @@ lorlc:LegalConsequence a owl:Class ;
     rdfs:label "Legal consequence"@en,
         "Hậu quả pháp lý"@vi ;
     rdfs:comment "An independently evidenced legal effect imposed or required by a penalty rule."@en ;
-    lorsp:requirementReference "PURP-003", "USE-002", "SCOPE-005", "SCOPE-007", "GRAN-001", "GRAN-005" ;
-    lorsp:competencyQuestionReference "CQ-CONSEQUENCE-001", "CQ-SOURCE-001", "CQ-EVIDENCE-001", "CQ-ASSEMBLY-001" ;
+    lorsp:requirementReference "PURP-003", "USE-002", "SCOPE-005", "GRAN-001", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-CONSEQUENCE-001", "CQ-SOURCE-001", "CQ-ASSEMBLY-001" ;
     lorsp:glossaryReference "TERM-CONSEQUENCE-001" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002", "MD-PROV-001" .
 
@@ -46,7 +46,6 @@ lorlc:MonetaryAmountRange a owl:Class ;
     rdfs:comment "A qualified value containing normalized lower and upper monetary bounds and one controlled currency."@en ;
     lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
     lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
-    lorsp:glossaryReference "TERM-MONEY-002" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
 
 lorlc:Currency a owl:Class ;
@@ -56,7 +55,6 @@ lorlc:Currency a owl:Class ;
     rdfs:comment "A controlled identifier for the currency used by a normalized monetary amount range."@en ;
     lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
     lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
-    lorsp:glossaryReference "TERM-MONEY-003" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
 
 lorlc:PointDeduction a owl:Class ;
@@ -95,7 +93,6 @@ lorlc:ConsequenceTarget a owl:Class ;
     rdfs:comment "A person, role, license, vehicle, plate, object, or state directly affected by a legal consequence."@en ;
     lorsp:requirementReference "PURP-002", "USE-002", "SCOPE-003", "SCOPE-005", "GRAN-002", "GRAN-005" ;
     lorsp:competencyQuestionReference "CQ-POINTS-001", "CQ-ADDITIONAL-001", "CQ-REMEDY-001", "CQ-CONSEQUENCE-001" ;
-    lorsp:glossaryReference "TERM-TARGET-001" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
 
 lorlc:currencyScheme a skos:ConceptScheme,
@@ -105,7 +102,6 @@ lorlc:currencyScheme a skos:ConceptScheme,
     skos:hasTopConcept lorlc:VND ;
     lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
     lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
-    lorsp:glossaryReference "TERM-MONEY-003" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
 
 lorlc:VND a lorlc:Currency,
@@ -117,7 +113,6 @@ lorlc:VND a lorlc:Currency,
         "Đồng Việt Nam"@vi ;
     lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
     lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
-    lorsp:glossaryReference "TERM-MONEY-003" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
 
 lorlc:imposesConsequence a owl:ObjectProperty ;
@@ -125,7 +120,7 @@ lorlc:imposesConsequence a owl:ObjectProperty ;
     rdfs:range lorlc:LegalConsequence ;
     rdfs:label "imposes consequence"@en ;
     rdfs:comment "Links a penalty rule to an independently evidenced legal consequence."@en ;
-    lorsp:requirementReference "PURP-003", "USE-002", "SCOPE-005", "SCOPE-007", "GRAN-001", "GRAN-005" ;
+    lorsp:requirementReference "PURP-003", "USE-002", "SCOPE-005", "GRAN-001", "GRAN-005" ;
     lorsp:competencyQuestionReference "CQ-PENALTY-001", "CQ-CONSEQUENCE-001", "CQ-POINTS-001", "CQ-ADDITIONAL-001", "CQ-REMEDY-001", "CQ-ASSEMBLY-001" ;
     lorsp:glossaryReference "TERM-RULE-001", "TERM-CONSEQUENCE-001" ;
     lorsp:modelingDecisionReference "MD-RULE-002", "MD-CONSEQUENCE-001", "MD-PROV-001" .
@@ -137,7 +132,7 @@ lorlc:hasAmountRange a owl:ObjectProperty ;
     rdfs:comment "Links a monetary penalty to its normalized qualified monetary range."@en ;
     lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
     lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
-    lorsp:glossaryReference "TERM-MONEY-001", "TERM-MONEY-002" ;
+    lorsp:glossaryReference "TERM-MONEY-001" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
 
 lorlc:minimumAmount a owl:DatatypeProperty ;
@@ -147,7 +142,6 @@ lorlc:minimumAmount a owl:DatatypeProperty ;
     rdfs:comment "Stores the normalized lower monetary bound without replacing the exact source wording."@en ;
     lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
     lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
-    lorsp:glossaryReference "TERM-MONEY-002" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-PROV-001" .
 
 lorlc:maximumAmount a owl:DatatypeProperty ;
@@ -157,7 +151,6 @@ lorlc:maximumAmount a owl:DatatypeProperty ;
     rdfs:comment "Stores the normalized upper monetary bound without replacing the exact source wording."@en ;
     lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
     lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
-    lorsp:glossaryReference "TERM-MONEY-002" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-PROV-001" .
 
 lorlc:currency a owl:ObjectProperty ;
@@ -167,7 +160,6 @@ lorlc:currency a owl:ObjectProperty ;
     rdfs:comment "Identifies the controlled currency of a normalized monetary range."@en ;
     lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
     lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
-    lorsp:glossaryReference "TERM-MONEY-002", "TERM-MONEY-003" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
 
 lorlc:pointValue a owl:DatatypeProperty ;
@@ -205,7 +197,6 @@ lorlc:affectsTarget a owl:ObjectProperty ;
     rdfs:comment "Identifies a person, role, license, vehicle, plate, object, or state directly affected by a consequence."@en ;
     lorsp:requirementReference "PURP-002", "USE-002", "SCOPE-003", "SCOPE-005", "GRAN-002", "GRAN-005" ;
     lorsp:competencyQuestionReference "CQ-CONSEQUENCE-001", "CQ-POINTS-001", "CQ-ADDITIONAL-001", "CQ-REMEDY-001" ;
-    lorsp:glossaryReference "TERM-TARGET-001" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
 
 lorlc:mustBePerformedBy a owl:ObjectProperty ;

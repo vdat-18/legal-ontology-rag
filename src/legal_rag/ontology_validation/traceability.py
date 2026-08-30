@@ -100,7 +100,7 @@ def ontology_pattern_issues(
 
     cq_items = cq_document["competency_questions"]
     known_cqs = {item["id"] for item in cq_items}
-    mandatory_cqs = {item["id"] for item in cq_items if item["priority"] == "must"}
+    mandatory_cqs = known_cqs
     fixture_ids = collect_ids(fixture_document)
     ontology_iris = {str(subject) for subject in ontology_graph.subjects() if isinstance(subject, URIRef)}
     shape_iris = {

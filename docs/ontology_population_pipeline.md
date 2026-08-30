@@ -1,690 +1,173 @@
 # Ontology Population Pipeline
 
-## Scope
+## Mục tiêu
 
-This pipeline converts reviewed legal-document chunks into a SHACL-validated RDF instance graph for ontology candidate
-V0.2. It
-runs after chunking and chunk screening, but before retrieval, GraphRAG, or Graphiti indexing.
-
-The versioned execution and semantic contract is `ontology/population_contract.yaml`. The typed LLM contract is
-`baml_src/ontology_population.baml`.
+Luồng này chuyển các chunk văn bản pháp luật đã screening thành ontology instance trước khi làm retrieval hoặc
+GraphRAG. Thiết kế tối giản chỉ giữ dữ liệu cần cho câu hỏi pháp lý và khả năng truy nguồn.
 
 ```text
-chunk JSONL + screening + document metadata
-  -> parser-derived Chương/Mục/Điều context
-  -> target plus bounded local and same-article context
-  -> typed BAML extraction
-  -> exact evidence binding
-  -> reviewable population JSONL
-  -> deterministic RDF materialization
-  -> SHACL validation
-  -> validated Turtle graph
+chunks đã screening
+  -> inventory hành vi trong target
+  -> population theo từng văn bản
+  -> assembly các phần cùng một rule
+  -> legal change giữa các văn bản
+  -> legal exception và citation
+  -> chuẩn hóa concept
+  -> RDF graph
 ```
 
-## Populated Modules
-
-The source-document pipeline creates instances for:
-
-- source/provenance: legal resource, expression, source file, chunk, provision, and exact evidence span;
-- normative rule: penalty rule, conduct specification, applicability profile, and condition-expression tree;
-- temporal validity: one reviewed validity interval per populated rule version;
-- legal consequence: monetary penalty, point deduction, additional sanction, remedial measure, targets, and roles.
-
-It intentionally does not create `ConductOccurrence` instances. Occurrences describe a concrete case supplied later as
-query or application input, not a normative statement extracted from a decree.
-
-It also does not create amendment, replacement, repeal, cross-document rule identity, or concept-equivalence links.
-Those relations require reviewed multi-document assembly. Similar wording and chronological order are insufficient.
-
-## Semantic Responsibilities
-
-The LLM decides source-grounded semantic structure:
-
-- one independently matchable regulated-conduct candidate per population record;
-- explicit subject kind, roles, and vehicle categories;
-- AND/OR/NOT condition structure;
-- consequence subtype and structured values;
-- exact supporting spans and provision path.
-
-Alternative acts that independently trigger the same consequence are separate records, with shared consequence and
-applicability repeated as needed. Lists of vehicles, objects, paraphrases, or inseparable components of one act remain
-together. Every conduct must have exact Target evidence; adjacent chunks may only complete its consequence or context.
-Provision paths use the canonical identifier-only form `Chương II > Mục 1 > Điều 6 > Khoản 5 > Điểm a`.
-
-An applicability exception is part of the condition tree, not merely text appended to the conduct label. The LLM
-represents the excluded situation or cited provision as an `Atomic` condition and negates it with `Not`, combining it
-with other qualifiers according to the source's AND/OR structure. When one provision is split into multiple atomic
-conducts, every affected record repeats the complete exception tree and exact exception evidence. The LLM decides
-whether exclusion wording is a rule-applicability exception or an intrinsic conduct/object qualifier from the meaning
-of the full provision; deterministic code does not classify it from keywords or punctuation.
-
-Before returning candidates, the LLM audits the complete Target in source order. A sanction heading in a preceding
-chunk remains mandatory when its conduct list continues into the Target. A consequence in an adjacent chunk also
-remains mandatory when it explicitly cites a Target provision, including additional sanctions and point deductions.
-The audit attaches every supported consequence to each affected atomic rule and permits an empty result only after all
-specific Target conducts have been considered. When exceptions have different local scopes within one listed point,
-the LLM separates the affected conducts so each record retains its own local exceptions plus any shared exception.
-
-Each population request contains the target chunk, bounded preceding/following chunks, and every chunk carrying the
-same parser-derived Article ancestry up to the configured article-context limit. Same-article chunks expose distant
-point-deduction and additional-sanction catalogs without asserting that they apply; the LLM must confirm an explicit
-reference to the rule's own provision. Every entry also carries `context_text` derived from full-paragraph OOXML
-structural bookmarks such as Chương, Mục, and Điều. This ancestry is kept separate from source `text`: the LLM may use
-it for applicability, context selection, and `provision_path`, but exact evidence binding never accepts a quote from
-structural context. The target remains the extraction anchor, and only Target conduct may create a rule. When one chunk
-crosses an Article boundary, `context_text` retains each ordered ancestry as a separate `VARIANT`; population falls back
-to bounded local context rather than mixing two Article scopes.
-
-Deterministic code owns:
-
-- exact-span verification against chunk text;
-- stable record hashes and instance IRIs;
-- RDF serialization and provenance edges;
-- rule-scoped candidate concepts, avoiding unsupported cross-rule merging;
-- SHACL execution and rejection of non-conformant graphs;
-- checkpoint and resume behavior.
-- condition-tree identity, arity, connectivity, cycle, reachability, and direct-evidence validation;
-- ontology-version, ontology-semantic-hash, and population-run provenance.
-
-An LLM result is a candidate population record, not a final legal-applicability decision. Independent legal review
-still owns effective dates, legal classification, rule identity, change type, and disputed interpretations.
-
-## Inputs And Outputs
-
-Inputs:
-
-| Artifact | Purpose |
-| --- | --- |
-| Chunk JSONL | Stable chunk IDs, source hashes, source text, parser-derived structural context, and adjacency |
-| Screening JSONL | Limits LLM calls to chunks already confirmed as penalty-content candidates |
-| Document metadata JSONL | Reviewed document number and fallback validity dates |
-| Population contract YAML | Versioned execution limits, namespace, scope, and semantic boundaries |
-| Target-selection JSON | Optional reviewed pilot membership; exact accepted chunk IDs without semantic scoring |
-
-Outputs:
-
-| Artifact | Purpose |
-| --- | --- |
-| Population-record JSONL | Reviewable typed intermediate data before RDF |
-| Population-progress JSONL | Completed target chunks plus the compatible input, prompt, provider, and model run identity |
-| Turtle graph | Written only after the complete instance graph conforms to SHACL |
-
-`valid_from` falls back to reviewed document metadata only when the extracted rule has no source-specific date.
-`valid_to` remains absent when unknown. If no reviewed beginning is available, SHACL rejects the graph instead of code
-inventing a date.
-
-## Real-Data Preflight
-
-Regenerate chunks from parser output after adding or changing structural-context handling:
-
-```powershell
-uv run legal-chunk `
-  data/processed/groundtruth/168_2024_ND-CP_619502.source.jsonl `
-  data/processed/groundtruth/168_2024_ND-CP_619502.chunks.jsonl
-```
-
-Structural context does not become chunk evidence and does not alter source-text chunk identity. Existing screening and
-reviewed target IDs therefore remain compatible when chunk boundaries and source text are unchanged.
-
-Run the structural preflight before configuring or spending any LLM calls:
-
-```powershell
-uv run --extra dev legal-check-ontology-population `
-  data/processed/groundtruth/168_2024_ND-CP_619502.chunks.jsonl `
-  data/processed/groundtruth/168_2024_ND-CP_619502.chunk_screening.jsonl `
-  data/processed/groundtruth/168_2024_ND-CP_619502.document_metadata.jsonl `
-  ontology/population_contract.yaml `
-  data/ontology/preflight/168_2024_ND-CP_619502.json `
-  --target-ids-path ontology/pilots/168_2024_ND-CP_penalty_rules_v0.3.json
-```
-
-The command does not call an LLM. It verifies unique chunk identity, one root document, exact screening coverage,
-persisted previous/next links, target availability, and document metadata. A target-selection file must name the same
-document, contain unique known chunk IDs, and cannot bypass a rejected screening verdict. The report fingerprints every
-input plus the complete ontology semantic closure, records the deterministic target IDs, estimates LLM batches, and
-emits a stable `pilot_run_id`. It does not
-reconsider the semantic screening verdict or make any legal classification.
-
-A missing document-level `valid_from` is a warning rather than an invented date. Population remains possible only when
-each extracted rule supplies its own source-specific validity; otherwise final SHACL validation rejects the graph.
-
-## Population Command
-
-```powershell
-uv run --extra dev legal-populate-ontology `
-  data/chunks/document.jsonl `
-  data/benchmark_synthesis/screening/document.jsonl `
-  data/benchmark_synthesis/metadata/document.jsonl `
-  ontology/population_contract.yaml `
-  data/ontology/population/document.jsonl `
-  data/ontology/progress/document.jsonl `
-  data/ontology/graphs/document.ttl `
-  --target-ids-path ontology/pilots/168_2024_ND-CP_penalty_rules_v0.3.json `
-  --max-concurrency 2 `
-  --preflight-report-path data/ontology/preflight/document.run.json
-```
-
-Required provider environment variables are `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, and `LLM_TIMEOUT_SECONDS`.
-
-Use either `--target-ids-path` for a reviewed pilot or `--target-limit` for a simple document-order smoke test; omit both
-for a full-document run. Selection uses no lexical or semantic scoring. The command runs the same preflight, loads the
-provider settings, and fingerprints the preflight inputs, prompt version, provider URL, and model into one run ID. It
-writes each successful batch before marking its target chunks complete and skips completed targets on a compatible
-rerun, including valid zero-rule results. It rejects duplicate checkpoints, state outside the current target selection,
-and progress or records produced by a different run or ontology semantic hash. Replayed chunks replace their prior
-records before persistence, so a crash
-between record and progress writes cannot leave stale candidates in the final graph.
-
-Population/progress schema V0.1 remains readable for migration and offline evaluation but has no compatible ontology/run
-identity and therefore cannot be resumed. Current schema V0.2 stores the ontology version, semantic SHA-256, and run ID.
-Start a new versioned output set when migrating legacy files or intentionally changing ontology semantics, prompt,
-provider, model, contract, input artifacts, or target selection.
-
-Population creates `PenaltyRule` candidates only for specifically described prohibited conduct or duties tied to a
-source-grounded consequence. General sanction/remedy catalogs, multi-violation principles, enforcement authority,
-license handling, records, and other procedural duties return zero rules. A `RemedialMeasure` without a source-grounded
-responsible role fails before persistence rather than reaching final graph validation.
-
-Time-limited additional sanctions retain a source-grounded consequence label, affected target, and normalized lower
-and upper duration in months. Consequence references bind to the populated rule's own provision path; a sanction for a
-referenced base provision does not replace a different sanction explicitly governing an aggravated or otherwise more
-specific provision.
-
-Conditional consequence references produce separate population variants. The base variant retains only consequences
-that apply without the additional condition; the conditional variant reuses the Target conduct evidence, records the
-extra condition in its condition tree, and retains only consequences applying under that condition. A variant may have
-at most one monetary penalty and one point deduction, while cumulative non-numeric consequences remain representable.
-For a Target beginning mid-list, the governing primary-sanction heading remains mandatory even when it occurs in a
-preceding chunk.
-
-The population CLI accepts `--max-concurrency` to run independent LLM batches concurrently. Successful batches are
-checkpointed by the calling thread, and persisted records are sorted by source chunk and stable population identity, so
-completion order cannot change the JSONL or RDF output. The default remains one worker for backward compatibility.
-
-## Failure Boundaries
-
-- A missing or paraphrased evidence span fails exact evidence binding.
-- Invalid condition IDs, roots, operands, arity, cycles, reachability, or direct evidence fail before persistence.
-- Missing semantic exceptions must be found through LLM/pilot review; deterministic validation cannot infer them from
-  words such as `trừ` without becoming a prohibited rule-based legal classifier.
-- Missing required consequence values, targets, provenance, or validity fail SHACL.
-- The Turtle output is not written when SHACL validation fails.
-- Provider failures use the configured bounded retry count and explicit timeout.
-
-No regex, keyword classifier, handcrafted semantic score, or rule engine makes ontology population decisions. Chunk
-screening only proposes which chunks reach the downstream typed LLM extraction boundary.
-
-## Tests
-
-`tests/ontology_population/` covers contract loading, structural preflight, deterministic pilot selection, typed
-extraction, exact evidence rejection, deterministic identity, all four consequence types, condition trees, JSONL round
-trips, SHACL rejection, and the complete CLI pipeline with an offline fake typed client.
-
-## Pilot Gold Evaluation
-
-Before scaling a prompt or model configuration beyond the reviewed pilot, evaluate its completed JSONL and progress
-against source-reviewed structured assertions:
-
-```powershell
-uv run --extra dev legal-evaluate-ontology-population `
-  data/ontology/population/168_2024_ND-CP_619502.pilot-v0.16.jsonl `
-  data/ontology/progress/168_2024_ND-CP_619502.pilot-v0.16.jsonl `
-  ontology/evaluation/population_gold_v0.1.yaml `
-  data/ontology/evaluation/168_2024_ND-CP_619502.pilot-v0.16.json
-```
-
-The evaluator compares only typed exact fields declared by the gold artifact. It does not use regex, fuzzy matching,
-keyword rules, embeddings, or another LLM. It verifies target completion, the exact source-reviewed record inventory
-for every chunk, distinct required legal-rule signatures, and forbidden misassemblies. One populated record cannot
-satisfy two required variants. This detects both missing and over-generated rules. The command writes the report and
-fails when any gate remains open. The V0.1 gold cases use the reviewed target IDs in
-`ontology/pilots/168_2024_ND-CP_penalty_rules_v0.3.json`.
-
-## Cross-Chunk Rule Assembly
-
-Population is intentionally chunk-local. A monetary penalty in one chunk and a point deduction in the next may belong
-to one legal rule, but proximity alone cannot decide that. The versioned `ontology/assembly_contract.yaml` adds a
-separate reviewed workflow after population:
+Runtime có sáu bước người dùng chạy. Mỗi bước chứa đúng một loại quyết định LLM; chuẩn bị candidate, kiểm tra
+ID/reference và materialization chạy nội bộ trong cùng lệnh:
 
 ```text
-population records
-  -> bounded same-document, same-scope structural windows
-  -> typed LLM assembly proposals
-  -> mandatory project-owner decisions
-  -> accepted-member replacement
-  -> complete SHACL validation
-  -> canonical population JSONL + Turtle graph
+1. extract conducts       -> LLM inventory hành vi
+2. bind population       -> LLM hoàn thiện rule
+3. assemble rules        -> LLM ghép fragment
+4. resolve changes       -> LLM xác định thay đổi
+5. resolve exceptions    -> LLM xác định ngoại lệ
+6. resolve concepts      -> LLM chuẩn hóa concept
 ```
 
-This phase only assembles rule components within one legal document. Cross-document amendment, replacement, repeal,
-exception redirection, and concept equivalence remain outside its scope.
+Một bước có thể gửi nhiều batch đồng thời, nhưng mọi request trong bước đó dùng cùng một prompt và cùng một nhiệm vụ
+semantic. Candidate, proposal và progress vẫn được ghi ra file; chạy lại lệnh dùng checkpoint tương thích thay vì gọi
+lại LLM đã hoàn tất.
 
-### 1. Build candidates offline
+Không có file review, reviewer, ngày review, vòng LLM thứ hai hoặc semantic validator trong runtime. Code không đánh giá
+nội dung pháp lý của proposal; nó chỉ parse typed output, ràng buộc ID vào input hiện tại và bảo đảm transformation có
+thể persistence/materialize xác định. SHACL, CQ và reasoner là QA tách rời, không chặn runtime.
+
+## Nguyên tắc dữ liệu
+
+- LLM quyết định ngữ nghĩa từ toàn bộ context được cung cấp; code không dùng regex, keyword hay similarity để phân loại
+  hành vi, hậu quả, thay đổi, ngoại lệ hoặc concept.
+- Candidate generation chỉ giới hạn không gian làm việc bằng cấu trúc, thứ tự văn bản và giới hạn cấu hình.
+- Canonical RDF giữ provenance tối thiểu: `groundedIn -> LegalProvision` và `sourcedFromChunk -> SourceChunk`.
+- Text nguồn trong JSON trung gian chỉ phục vụ grounding và resume của LLM; RDF không tạo `EvidenceSpan`, `exactText`,
+  `containsSpan` hoặc `supportedBy`.
+- Dữ liệu chưa biết giữ `null`; không biến thành `0`, `false`, vô hạn hay “không áp dụng”.
+- Không bước nào tự sửa TBox. Thay đổi class/property/constraint phải đi qua ontology evolution riêng.
+
+## 1. Inventory hành vi
+
+LLM chỉ đọc target chunk và lập closed inventory các hành vi độc lập được target trực tiếp mô tả. Kết quả được ghi cho
+cả target không có hành vi, vì vậy `conducts.jsonl` đồng thời là checkpoint resume của bước này.
 
 ```powershell
-uv run --extra dev legal-build-assembly-candidates `
-  data/chunks/document.jsonl `
-  data/ontology/population/document.jsonl `
-  ontology/assembly_contract.yaml `
-  data/ontology/assembly/document.candidates.json
+uv run --extra dev legal-extract-ontology-conducts `
+  <chunks.jsonl> <screening.jsonl> <document_metadata.jsonl> `
+  ontology/population_contract.yaml <conducts.jsonl> `
+  --preflight-report-path <preflight.json> --max-concurrency 2
 ```
 
-Candidate generation uses only bounded chunk position within the same document and chunk scope. It proposes model input
-windows; it never asserts that two population records are the same rule.
+Thêm `--target-ids-path <selection.json>` khi chạy pilot; dùng cùng option ở bước 2.
 
-### 2. Run the LLM proposal step
+## 2. Population binding
 
-This is the only assembly command that calls an LLM. Configure `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, and
-`LLM_TIMEOUT_SECONDS`, regenerate the BAML client after pulling prompt changes, then run:
+Population đọc target chunk cùng hai chunk trước, một chunk sau và context cùng Điều trong giới hạn cấu hình. LLM thực
+hiện đúng một tác vụ: gắn applicability, condition tree và consequences từ reading window vào inventory hành vi đã
+khóa ở bước 1.
+
+Code kiểm tra typed schema cùng ID/reference cần để persistence và materialization. Nó không áp rule về số consequence,
+condition arity, completeness, mức giá trị hay phân loại pháp lý. Bước này chưa tạo legal change, exception redirect,
+concept equivalence hoặc occurrence của một vụ việc cụ thể.
 
 ```powershell
-.venv\Scripts\baml-cli.exe generate
-
-uv run --extra dev legal-propose-rule-assemblies `
-  data/chunks/document.jsonl `
-  data/benchmark_synthesis/metadata/document.jsonl `
-  data/ontology/population/document.jsonl `
-  data/ontology/assembly/document.candidates.json `
-  ontology/assembly_contract.yaml `
-  data/ontology/assembly/document.proposals.jsonl `
-  data/ontology/assembly/document.progress.jsonl `
-  data/ontology/assembly/document.reviews.jsonl
-```
-
-The command persists each completed candidate window. Rerunning it with the same candidate, prompt, and model identity
-skips completed windows, including windows for which the model correctly returned no proposal.
-If an uncheckpointed window is replayed, the new result replaces every prior proposal and review template for that
-window, including when the replay returns no proposal.
-
-### 3. Review every proposal manually
-
-The proposal command creates pending rows in `document.reviews.jsonl`. The project owner must inspect the member records,
-assembled rule, provision path, condition tree, consequence values, validity, and every exact evidence span. Edit each
-row to either `accepted` or `rejected` and provide reviewer identity and review date:
-
-```json
-{
-  "schema_version": "0.1.0",
-  "proposal_id": "...",
-  "decision": "accepted",
-  "reviewer": "reviewer-name",
-  "reviewed_on": "2026-08-18",
-  "note": "Confirmed against the cited provisions and exact spans."
-}
-```
-
-Do not accept a proposal merely because records are adjacent or use similar labels. The LLM output remains a proposal;
-the attributable project-owner decision is the authority for canonical assembly.
-
-### 4. Finalize offline
-
-```powershell
-uv run --extra dev legal-finalize-rule-assemblies `
-  data/chunks/document.jsonl `
-  data/benchmark_synthesis/metadata/document.jsonl `
-  data/ontology/population/document.jsonl `
-  data/ontology/assembly/document.proposals.jsonl `
-  data/ontology/assembly/document.reviews.jsonl `
+uv run --extra dev legal-bind-ontology-population `
+  <chunks.jsonl> `
+  <screening.jsonl> `
+  <document_metadata.jsonl> `
   ontology/population_contract.yaml `
-  ontology/assembly_contract.yaml `
-  data/ontology/canonical/document.jsonl `
-  data/ontology/canonical/document.ttl
+  <conducts.jsonl> `
+  <population.jsonl> `
+  <progress.jsonl> `
+  <graph.ttl> `
+  --preflight-report-path <preflight.json> `
+  --max-concurrency 2
 ```
 
-Finalization rejects missing, pending, unattributed, unknown, duplicate, or overlapping accepted reviews. Rejected
-proposals preserve their original records. Accepted proposals replace exactly their reviewed member records. Neither
-canonical output is written until the complete materialized graph passes SHACL.
+CLI `legal-populate-ontology` cũ vẫn được giữ để tương thích, nhưng nó gộp cả hai prompt và không thuộc flow sáu bước
+được khuyến nghị.
 
-`tests/ontology_assembly/` covers structural bounds, typed proposal translation, exact evidence, deterministic identity,
-resume behavior, review gates, accepted/rejected outcomes, persistence, SHACL, and the complete three-command workflow
-without making a real LLM call.
+## 3. Assembly trong một văn bản
 
-## Cross-Document Legal Change Resolution
-
-Run this phase only after every document has a reviewed canonical population file. It resolves explicit amendment,
-replacement, repeal, or supersession events across rule versions. It does not use lexical similarity or document order
-as proof of legal succession.
-
-```text
-ordered corpus manifest + per-document canonical rules
-  -> exhaustive bounded cross-document windows
-  -> typed LLM legal-change proposals with exact later-document evidence
-  -> mandatory project-owner review
-  -> reviewed earlier/later validity updates
-  -> canonical LegalChange events
-  -> complete multi-document SHACL validation
-```
-
-The versioned execution and semantic boundary is `ontology/change_resolution_contract.yaml`. The typed LLM contract is
-`baml_src/ontology_change_resolution.baml`.
-
-### 1. Create the ordered corpus manifest
-
-The manifest order is reviewed candidate-generation context. It must follow the authoritative document/expression order
-chosen for the corpus, but order alone never establishes a legal change. Paths are resolved relative to the manifest:
-
-```json
-{
-  "schema_version": "0.1.0",
-  "documents": [
-    {
-      "document_id": "nd-168-original",
-      "order_index": 0,
-      "chunks_path": "nd-168/chunks.jsonl",
-      "metadata_path": "nd-168/metadata.jsonl",
-      "canonical_records_path": "nd-168/canonical_population.jsonl"
-    },
-    {
-      "document_id": "nd-238-amending",
-      "order_index": 1,
-      "chunks_path": "nd-238/chunks.jsonl",
-      "metadata_path": "nd-238/metadata.jsonl",
-      "canonical_records_path": "nd-238/canonical_population.jsonl"
-    }
-  ]
-}
-```
-
-Each document ID, order index, and document number must be unique. Every canonical record must reference metadata and a
-chunk belonging to its own manifest document.
-
-### 2. Build exhaustive bounded candidates offline
+Một rule có thể bị chia qua nhiều chunk. Candidate builder tạo các window gần nhau theo cấu trúc; LLM quyết định record
+nào cùng thuộc một rule. Finalizer chỉ ràng buộc member vào input, tránh identity/overlap làm transformation mơ hồ và
+ghi canonical output.
 
 ```powershell
-uv run --extra dev legal-build-change-candidates `
-  data/ontology/change/corpus_manifest.json `
-  ontology/change_resolution_contract.yaml `
-  data/ontology/change/candidates.json
+uv run --extra dev legal-assemble-ontology-rules `
+  <chunks.jsonl> <metadata.jsonl> <population.jsonl> `
+  ontology/population_contract.yaml ontology/assembly_contract.yaml `
+  <candidates.json> <proposals.jsonl> <progress.jsonl> `
+  <canonical_population.jsonl> <canonical_graph.ttl>
 ```
 
-The command pairs earlier and later documents according to manifest order, then partitions earlier rules, later rules,
-and later-document source chunks into bounded windows. It performs no keyword matching, semantic scoring, rule identity,
-or change classification. `max_total_windows` fails the run before an unbounded workload is produced.
+## 4. Legal change giữa các văn bản
 
-### 3. Run the LLM proposal step
-
-This is the only legal-change command that calls an LLM. Configure `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, and
-`LLM_TIMEOUT_SECONDS`, regenerate the BAML client after prompt changes, then run:
+Corpus manifest sắp xếp các văn bản theo thứ tự cần so sánh. Candidate builder tạo bounded cross-document windows mà
+không chấm điểm similarity. LLM đề xuất `Amendment`, `Replacement` hoặc `RepealOrSupersession` chỉ khi nguồn nêu trực tiếp.
+Finalizer ràng buộc rule IDs vào corpus và cập nhật validity của các rule version mà không đánh giá lại nội dung thay đổi.
 
 ```powershell
-.venv\Scripts\baml-cli.exe generate
-
-uv run --extra dev legal-propose-legal-changes `
-  data/ontology/change/corpus_manifest.json `
-  data/ontology/change/candidates.json `
-  ontology/change_resolution_contract.yaml `
-  data/ontology/change/proposals.jsonl `
-  data/ontology/change/progress.jsonl `
-  data/ontology/change/reviews.jsonl
+uv run --extra dev legal-resolve-ontology-changes `
+  <corpus_manifest.json> ontology/change_resolution_contract.yaml `
+  ontology/population_contract.yaml <candidates.json> <proposals.jsonl> <progress.jsonl> `
+  <canonical_population.jsonl> <legal_change_events.jsonl> <canonical_graph.ttl>
 ```
 
-The LLM may propose a change only when a later-document chunk directly supports its earlier target, optional later rule,
-controlled change type, effective date, authoritative provision path, and exact evidence. Similar conduct, provisions,
-consequences, publication order, or missing `valid_to` are explicitly insufficient. Completed windows, including valid
-zero-proposal results, are checkpointed and skipped on a compatible rerun.
-If an uncheckpointed window is replayed, the new result replaces every prior proposal and review template for that
-window instead of accumulating stale model output.
+## 5. Legal exception và citation
 
-### 4. Review every proposal manually
-
-Inspect both rule versions and the exact change-source quotations. Set every generated row to `accepted` or `rejected`
-and record reviewer identity, date, and notes:
-
-```json
-{
-  "schema_version": "0.1.0",
-  "proposal_id": "...",
-  "decision": "accepted",
-  "reviewer": "reviewer-name",
-  "reviewed_on": "2026-08-18",
-  "note": "Confirmed change target, type, effective date, and exact authoritative evidence."
-}
-```
-
-Human acceptance owns the legal conclusion. Do not accept based on similarity, chronology, or the model rationale alone.
-
-### 5. Finalize offline
+Candidate builder cung cấp source chunks, general rules và target rules. LLM xác định ngoại lệ, citation và redirect;
+code không nhận diện ngoại lệ bằng từ khóa. Finalizer ràng buộc general/target IDs vào corpus và gộp các fragment cùng
+một ngoại lệ mà không đánh giá lại nội dung pháp lý.
 
 ```powershell
-uv run --extra dev legal-finalize-legal-changes `
-  data/ontology/change/corpus_manifest.json `
-  data/ontology/change/proposals.jsonl `
-  data/ontology/change/reviews.jsonl `
-  ontology/population_contract.yaml `
-  ontology/change_resolution_contract.yaml `
-  data/ontology/change/canonical_population.jsonl `
-  data/ontology/change/legal_change_events.jsonl `
-  data/ontology/change/canonical_graph.ttl
+uv run --extra dev legal-resolve-ontology-exceptions `
+  <corpus_manifest.json> <canonical_population.jsonl> <legal_change_events.jsonl> `
+  ontology/exception_resolution_contract.yaml ontology/population_contract.yaml `
+  <candidates.json> <proposals.jsonl> <progress.jsonl> `
+  <legal_exceptions.jsonl> <canonical_graph.ttl>
 ```
 
-An accepted event closes the earlier rule at the reviewed effective date and, when a later rule exists, opens that later
-version at the same date. Because validity is part of population identity, affected rule versions receive new canonical
-population IDs and the `LegalChange` event links those new IDs. A reviewed repeal may omit the later rule. Rejected and
-unmatched rules remain unchanged.
+## 6. Chuẩn hóa concept
 
-Finalization rejects missing, pending, unattributed, unknown, duplicate, or overlapping accepted changes. Canonical
-population JSONL, accepted-event JSONL, and Turtle are written only after the complete multi-document graph conforms to
-SHACL. Transitional applicability and exception redirection remain deferred.
-
-`tests/ontology_change/` covers manifest boundaries, exhaustive candidate bounds, typed proposals, exact-evidence
-rejection, zero-result checkpoints, review gates, validity reidentification, amendment/repeal structures, persistence,
-temporal CQ projection, SHACL, resume behavior, and the complete workflow without a real LLM call.
-
-## Legal Exception And Provision Citation Resolution
-
-Run this phase after cross-document canonical validity has been finalized. It identifies source-evidenced exceptions to
-general rule versions, preserves grouped citation wording, resolves cited provisions through canonical target rules, and
-creates version-specific redirects.
-
-```text
-canonical multi-document rules + source chunks
-  -> exhaustive bounded source/general/target windows
-  -> typed LLM exception and grouped-citation proposals
-  -> mandatory project-owner review
-  -> merged canonical exception records
-  -> LegalException + ProvisionCitation + redirectsTo RDF
-  -> complete SHACL and CQ-EXCEPTION-001 validation
-```
-
-The versioned boundary is `ontology/exception_resolution_contract.yaml`; the typed model contract is
-`baml_src/ontology_exception_resolution.baml`. The ontology relation `lornr:hasProvisionCitation` preserves the link
-between an exception and each grouped `lorsp:ProvisionCitation`, while `lornr:citesExcludedProvision` remains the direct
-CQ projection to resolved provisions.
-
-### 1. Build candidates offline
-
-Use the same ordered corpus manifest as legal-change resolution and the flattened canonical population produced after
-reviewed validity changes:
+Population ban đầu giữ concept theo từng rule để tránh merge sai. Candidate builder liệt kê mọi cặp cùng loại trong ba
+nhóm `RegulatedConduct`, `LegalSubjectRole` và `VehicleCategory`. LLM đề xuất `SameConcept`, broader/narrower, `Related`
+hoặc `Distinct`. Finalizer dùng trực tiếp typed decision để tạo canonical concepts và SKOS relations; conflict/cycle QA
+nếu cần được chạy riêng ngoài runtime.
 
 ```powershell
-uv run --extra dev legal-build-exception-candidates `
-  data/ontology/change/corpus_manifest.json `
-  data/ontology/change/canonical_population.jsonl `
-  ontology/exception_resolution_contract.yaml `
-  data/ontology/exception/candidates.json
+uv run --extra dev legal-resolve-ontology-concepts `
+  <corpus_manifest.json> <canonical_population.jsonl> <legal_change_events.jsonl> `
+  <legal_exceptions.jsonl> ontology/population_contract.yaml ontology/concept_resolution_contract.yaml `
+  <candidates.json> <proposals.jsonl> <progress.jsonl> `
+  <canonical_concepts.jsonl> <concept_relations.jsonl> <canonical_graph.ttl>
 ```
 
-Candidate generation partitions source chunks, same-document possible general rules, and all corpus target rule versions
-into bounded exhaustive windows. It performs no regex, exception-keyword classification, lexical matching, target
-scoring, or rule selection. The configured total-window limit bounds the workload.
+## Khi có dữ liệu mới
 
-### 2. Run the LLM proposal step
+1. Chunk và screening văn bản mới.
+2. Chạy conduct inventory rồi population binding cho văn bản đó.
+3. Chạy assembly trong văn bản.
+4. Thêm văn bản vào corpus manifest và chạy lại change, exception, concept resolution.
+5. Nếu dữ liệu không biểu diễn được bằng ontology hiện tại, tạo ontology gap proposal; không tự thêm class/property từ
+   population output.
 
-This is the only exception command that calls an LLM. Configure the provider environment, regenerate BAML after prompt
-changes, and run:
+Ontology instance tăng theo dữ liệu. TBox chỉ thay đổi khi có nhu cầu mới được chứng minh bằng CQ và vượt qua ontology
+evolution checks.
+
+## Kiểm tra
 
 ```powershell
-.venv\Scripts\baml-cli.exe generate
+uv run --extra dev pytest `
+  tests/ontology `
+  tests/ontology_population `
+  tests/ontology_assembly `
+  tests/ontology_change `
+  tests/ontology_exception `
+  tests/ontology_concept
 
-uv run --extra dev legal-propose-legal-exceptions `
-  data/ontology/change/corpus_manifest.json `
-  data/ontology/change/canonical_population.jsonl `
-  data/ontology/exception/candidates.json `
-  ontology/exception_resolution_contract.yaml `
-  data/ontology/exception/proposals.jsonl `
-  data/ontology/exception/progress.jsonl `
-  data/ontology/exception/reviews.jsonl
+uv run ruff check src tests
 ```
 
-Every proposal must identify one general canonical rule, the exception provision path, exact exception evidence, and at
-least one grouped exact citation. Each citation resolves only to version-specific target population IDs supplied in the
-window. Similar wording, locator shape, conduct labels, chronology, or a token such as `trừ` are insufficient.
-
-Completed windows, including valid zero-proposal results, are checkpointed. Proposal fragments for the same exception
-may come from different target batches and are merged only after each fragment is independently accepted.
-Replaying an uncheckpointed window replaces all earlier proposals and review templates owned by that window.
-
-### 3. Review every proposal manually
-
-For each row, verify the general rule, complete exception scope, exact evidence, citation grouping, every cited target
-provision, and each redirected rule version. Then set `accepted` or `rejected` with reviewer attribution:
-
-```json
-{
-  "schema_version": "0.1.0",
-  "proposal_id": "...",
-  "decision": "accepted",
-  "reviewer": "reviewer-name",
-  "reviewed_on": "2026-08-18",
-  "note": "Confirmed general rule, exception scope, grouped locator, provisions, and target versions."
-}
-```
-
-Do not accept a partial fragment unless it is legally correct as part of the final merged exception. Human review owns
-exception classification, locator grouping, provision resolution, and redirect selection.
-
-### 4. Finalize offline
-
-```powershell
-uv run --extra dev legal-finalize-legal-exceptions `
-  data/ontology/change/corpus_manifest.json `
-  data/ontology/change/canonical_population.jsonl `
-  data/ontology/change/legal_change_events.jsonl `
-  data/ontology/exception/proposals.jsonl `
-  data/ontology/exception/reviews.jsonl `
-  ontology/population_contract.yaml `
-  ontology/exception_resolution_contract.yaml `
-  data/ontology/exception/legal_exceptions.jsonl `
-  data/ontology/exception/canonical_graph.ttl
-```
-
-Finalization merges accepted fragments with the same general rule, source provision, and exact exception evidence. It
-deduplicates target versions without collapsing different citation wordings. The RDF graph contains bidirectional
-`hasException`/`exceptionTo`, grouped `ProvisionCitation` objects, direct cited-provision projections, version-specific
-`redirectsTo`, source provision, and exact evidence.
-
-Outputs are written only after full SHACL conformance. Missing, pending, unattributed, unknown, or duplicate reviews
-block finalization. Rejected proposals produce no exception semantics.
-
-V0.1 resolves citations only through provisions belonging to canonical populated target rules. A citation whose target
-provision has not yet been populated must remain unresolved; the LLM must not invent a target path. Legal priority and
-occurrence-level exception applicability remain deferred.
-
-`tests/ontology_exception/` covers contract and command packaging, exhaustive bounds, typed source/target membership,
-exact exception and citation binding, zero-result resume, fragment merging, review gates, grouped citation RDF, SHACL,
-CQ projection, persistence, and the complete three-command workflow without a real LLM call.
-
-## Reviewed Concept Normalization And Taxonomy Resolution
-
-Run this phase after canonical rules, legal changes, and exceptions are available. Population intentionally creates one
-rule-scoped conduct, role, or vehicle concept per canonical rule. This phase is the only boundary allowed to merge those
-occurrences into reusable identities or add taxonomy relations.
-
-```text
-canonical population
-  -> extract rule-scoped conduct, role, and vehicle occurrences
-  -> exhaustive same-kind candidate pairs
-  -> typed LLM semantic proposals with exact evidence from both sides
-  -> mandatory project-owner review
-  -> accepted-equivalence components and reviewed taxonomy relations
-  -> canonical concept registry + remapped RDF
-  -> complete SHACL and CQ validation
-```
-
-The versioned boundary is `ontology/concept_resolution_contract.yaml`; the typed model contract is
-`baml_src/ontology_concept_resolution.baml`. Subject kinds are not re-extracted because `NaturalPerson` and
-`Organization` are already controlled ontology concepts. Consequence targets remain deferred because one target label
-may denote a person, role, license, vehicle, object, or state rather than one homogeneous taxonomy.
-
-### 1. Build candidates offline
-
-```powershell
-uv run --extra dev legal-build-concept-candidates `
-  data/ontology/change/canonical_population.jsonl `
-  ontology/concept_resolution_contract.yaml `
-  data/ontology/concept/candidates.json
-```
-
-Candidate generation extracts `RegulatedConduct`, `LegalSubjectRole`, and `VehicleCategory` occurrences and enumerates
-every pair within each kind. It performs no regex, keyword filtering, lexical similarity, embeddings, handcrafted score,
-or automatic semantic merge. `max_total_pairs` bounds the exhaustive workload.
-
-### 2. Run the LLM proposal step
-
-This is the only concept-resolution command that calls an LLM:
-
-```powershell
-.venv\Scripts\baml-cli.exe generate
-
-uv run --extra dev legal-propose-concept-relations `
-  data/ontology/change/corpus_manifest.json `
-  data/ontology/concept/candidates.json `
-  ontology/concept_resolution_contract.yaml `
-  data/ontology/concept/proposals.jsonl `
-  data/ontology/concept/progress.jsonl `
-  data/ontology/concept/reviews.jsonl
-```
-
-For each pair the model may propose `SameConcept`, `LeftBroaderThanRight`, `LeftNarrowerThanRight`, `Related`, or
-`Distinct`, or return no proposal when evidence is insufficient. Every proposal must copy exact evidence owned by both
-occurrences. `SameConcept` must select one supplied Vietnamese label; other relations cannot silently choose a canonical
-label. Completed zero-proposal pairs are checkpointed so retries do not repeat finished model work.
-Replaying an uncheckpointed pair replaces its earlier proposal and review template, including when the new result has no
-proposal.
-
-### 3. Review every proposal manually
-
-Review legal meaning, both exact evidence spans, direction, and preferred label. Do not accept equality from shared words,
-provision location, consequence values, or similar rule scope. Resolve every generated review row:
-
-```json
-{
-  "schema_version": "0.1.0",
-  "proposal_id": "...",
-  "decision": "accepted",
-  "reviewer": "reviewer-name",
-  "reviewed_on": "2026-08-18",
-  "note": "Confirmed legal identity and both evidence sources."
-}
-```
-
-### 4. Finalize offline
-
-```powershell
-uv run --extra dev legal-finalize-concept-resolution `
-  data/ontology/change/corpus_manifest.json `
-  data/ontology/change/canonical_population.jsonl `
-  data/ontology/change/legal_change_events.jsonl `
-  data/ontology/exception/legal_exceptions.jsonl `
-  data/ontology/concept/candidates.json `
-  data/ontology/concept/proposals.jsonl `
-  data/ontology/concept/reviews.jsonl `
-  ontology/population_contract.yaml `
-  ontology/concept_resolution_contract.yaml `
-  data/ontology/concept/canonical_concepts.jsonl `
-  data/ontology/concept/concept_relations.jsonl `
-  data/ontology/concept/canonical_graph.ttl
-```
-
-Finalization verifies that candidates still match the canonical population, requires complete attributable reviews,
-forms equivalence components only from accepted `SameConcept` proposals, and rejects conflicting labels, contradictory
-relations, self-relations after merging, or broader cycles. Rejected and zero-proposal pairs remain separate concepts.
-
-The RDF graph replaces rule-scoped concept references with canonical concept IRIs, preserves all Vietnamese aliases and
-source evidence, and emits SKOS `broader`, `narrower`, or `related` only for reviewed relations. `Distinct` remains an
-auditable JSON decision and is not converted into an OWL disjointness axiom. SKOS hierarchy does not imply
-`rdfs:subClassOf`, rule equivalence, legal priority, condition satisfaction, or occurrence-level applicability.
-
-`tests/ontology_concept/` covers exhaustive same-kind pairing, configured bounds, persistence, typed fake-model input,
-exact evidence binding, invalid labels and paraphrases, zero-result resume, mandatory review, conservative rejection,
-canonical RDF remapping, reviewed SKOS hierarchy, SHACL, and the complete three-command workflow without a real LLM.
+Semantic QA bằng ROBOT/HermiT là release check bổ sung. Publication/W3ID là tùy chọn và không thuộc core ontology flow.

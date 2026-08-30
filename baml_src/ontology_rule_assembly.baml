@@ -49,8 +49,7 @@ class RuleAssemblyProposal {
     phải cùng cấu thành một rule phiên bản cụ thể.
   "#)
   assembled_rule OntologyRuleEntry @description(#"
-    Rule hợp nhất đầy đủ, giữ exact evidence riêng cho mọi condition và
-    consequence. Không bỏ provenance chỉ vì hai record được hợp nhất.
+    Rule hợp nhất đầy đủ, giữ source evidence cho mọi condition và consequence.
   "#)
   rationale_vi string @description(#"Giải thích ngắn gọn vì sao source chứng minh đây là cùng một rule."#)
 }
@@ -68,27 +67,19 @@ function ProposeOntologyRuleAssemblies(windows: RuleAssemblyWindowInput[]) -> Ru
   prompt #"
     {{ _.role("user") }}
 
-    Bạn là chuyên gia ontology pháp luật. Nhiệm vụ là đề xuất hợp nhất các
-    population record được trích từ những chunk gần nhau trong cùng một văn
-    bản thành các PenaltyRule hoàn chỉnh. Candidate window chỉ là retrieval
-    theo vị trí; proximity không chứng minh các record là cùng rule.
+    Bạn là chuyên gia ontology pháp luật. Xác định record nào trong từng window
+    thực sự là các phần của cùng một PenaltyRule trong cùng phiên bản văn bản.
 
     Nguyên tắc bắt buộc:
-    - Chỉ đề xuất assembly khi exact evidence cho thấy các record là những
-      thành phần của cùng một rule phiên bản cụ thể.
-    - Không hợp nhất chỉ vì conduct, subject, vehicle, mức tiền hoặc câu chữ
-      tương tự. Không dùng kiến thức ngoài evidence.
-    - Mỗi member_population_ids phải lấy từ đúng window, có ít nhất hai ID
-      khác nhau. Các proposal trong một window không được chồng lấn member.
-    - assembled_rule phải giữ toàn bộ conduct, applicability, condition tree,
-      consequence, validity, provision path và exact evidence cần thiết.
-    - Không biến thiếu dữ liệu thành 0, false, vô hạn hoặc không áp dụng.
-    - Owner, driver, operator và custodian là các role khác nhau nếu source
-      không trực tiếp đồng nhất.
-    - Không tạo amendment, replacement, repeal, cross-document identity,
-      exception redirect hoặc concept equivalence.
-    - Nếu bằng chứng chưa đủ hoặc các record là các rule riêng, trả proposals
-      rỗng. Human reviewer sẽ quyết định cuối cùng; output này chỉ là proposal.
+    - Chỉ dùng dữ liệu và evidence trong window; vị trí gần hoặc câu chữ giống
+      nhau không đủ chứng minh cùng rule.
+    - Member phải là ID duy nhất trong window, có ít nhất hai ID và không chồng
+      lấn giữa các proposal.
+    - Rule hợp nhất phải bảo toàn conduct, applicability, condition tree,
+      consequences, validity, provision path và source evidence.
+    - Giữ null cho dữ liệu chưa biết; không tự suy diễn role, thay đổi pháp lý,
+      ngoại lệ, identity xuyên văn bản hay concept equivalence.
+    - Nếu nguồn chưa đủ hoặc các record là rule riêng, trả proposals rỗng.
     - Trả đúng một result cho mỗi candidate_id.
 
     {% for window in windows %}

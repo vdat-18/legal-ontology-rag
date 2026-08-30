@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
-from datetime import date
 from pathlib import Path
 
 from legal_rag.io_utils import write_json_atomic, write_jsonl_atomic
@@ -14,7 +13,9 @@ from legal_rag.ontology_concept.models import (
     CONCEPT_CANDIDATE_SCHEMA_VERSION,
     CONCEPT_PROGRESS_SCHEMA_VERSION,
     CONCEPT_PROPOSAL_SCHEMA_VERSION,
-    CONCEPT_REVIEW_SCHEMA_VERSION,
+    LEGACY_CANONICAL_CONCEPT_SCHEMA_VERSION,
+    LEGACY_CANONICAL_RELATION_SCHEMA_VERSION,
+    LEGACY_CONCEPT_PROPOSAL_SCHEMA_VERSION,
     CanonicalConceptRecord,
     CanonicalConceptRelationRecord,
     ConceptCandidatePair,
@@ -22,11 +23,9 @@ from legal_rag.ontology_concept.models import (
     ConceptOccurrence,
     ConceptProposalProgress,
     ConceptRelationProposal,
-    ConceptReview,
 )
 from legal_rag.ontology_population.models import PopulationEvidence
 
-REVIEW_DECISIONS = {"pending", "accepted", "rejected"}
 CONCEPT_RELATIONS = {"SameConcept", "LeftBroaderThanRight", "LeftNarrowerThanRight", "Related", "Distinct"}
 
 
@@ -68,13 +67,16 @@ def read_concept_candidates(path: Path) -> ConceptCandidateSet:
 
 
 def write_concept_proposals(path: Path, proposals: Sequence[ConceptRelationProposal]) -> None:
-    """Atomically replace reviewable concept proposals."""
+    """Atomically replace concept proposals."""
     write_jsonl_atomic(path, (item.to_dict() for item in proposals))
 
 
 def read_concept_proposals(path: Path) -> tuple[ConceptRelationProposal, ...]:
     """Read typed concept proposals."""
-    return tuple(_proposal(payload) for payload in _read_jsonl(path, CONCEPT_PROPOSAL_SCHEMA_VERSION))
+    return tuple(
+        _proposal(payload)
+        for payload in _read_jsonl(path, {LEGACY_CONCEPT_PROPOSAL_SCHEMA_VERSION, CONCEPT_PROPOSAL_SCHEMA_VERSION})
+    )
 
 
 def write_concept_progress(path: Path, progress: Sequence[ConceptProposalProgress]) -> None:
@@ -86,39 +88,7 @@ def read_concept_progress(path: Path) -> tuple[ConceptProposalProgress, ...]:
     """Read concept proposal checkpoints."""
     return tuple(
         ConceptProposalProgress(candidate_id=item["candidate_id"], run_id=item["run_id"])
-        for item in _read_jsonl(path, CONCEPT_PROGRESS_SCHEMA_VERSION)
-    )
-
-
-def write_concept_reviews(path: Path, reviews: Sequence[ConceptReview]) -> None:
-    """Atomically replace human concept reviews."""
-    write_jsonl_atomic(path, (item.to_dict() for item in reviews))
-
-
-def read_concept_reviews(path: Path) -> tuple[ConceptReview, ...]:
-    """Read typed human concept reviews."""
-    reviews = []
-    for item in _read_jsonl(path, CONCEPT_REVIEW_SCHEMA_VERSION):
-        if item["decision"] not in REVIEW_DECISIONS:
-            msg = f"Unsupported concept review decision: {item['decision']}"
-            raise ValueError(msg)
-        reviews.append(
-            ConceptReview(
-                proposal_id=item["proposal_id"],
-                decision=item["decision"],
-                reviewer=item["reviewer"],
-                reviewed_on=date.fromisoformat(item["reviewed_on"]) if item["reviewed_on"] else None,
-                note=item["note"],
-            )
-        )
-    return tuple(reviews)
-
-
-def pending_concept_review_template(proposals: Sequence[ConceptRelationProposal]) -> tuple[ConceptReview, ...]:
-    """Return one pending human-review row for every proposal."""
-    return tuple(
-        ConceptReview(proposal_id=item.proposal_id, decision="pending", reviewer="", reviewed_on=None, note="")
-        for item in proposals
+        for item in _read_jsonl(path, {CONCEPT_PROGRESS_SCHEMA_VERSION})
     )
 
 
@@ -136,16 +106,13 @@ def read_canonical_concepts(path: Path) -> tuple[CanonicalConceptRecord, ...]:
             preferred_label_vi=item["preferred_label_vi"],
             alternative_labels_vi=tuple(item["alternative_labels_vi"]),
             occurrence_ids=tuple(item["occurrence_ids"]),
-            accepted_proposal_ids=tuple(item["accepted_proposal_ids"]),
-            reviewers=tuple(item["reviewers"]),
-            reviewed_on=tuple(date.fromisoformat(value) for value in item["reviewed_on"]),
         )
-        for item in _read_jsonl(path, CANONICAL_CONCEPT_SCHEMA_VERSION)
+        for item in _read_jsonl(path, {LEGACY_CANONICAL_CONCEPT_SCHEMA_VERSION, CANONICAL_CONCEPT_SCHEMA_VERSION})
     )
 
 
 def write_canonical_relations(path: Path, relations: Sequence[CanonicalConceptRelationRecord]) -> None:
-    """Atomically replace reviewed canonical concept relations."""
+    """Atomically replace canonical concept relations."""
     write_jsonl_atomic(path, (item.to_dict() for item in relations))
 
 
@@ -157,11 +124,8 @@ def read_canonical_relations(path: Path) -> tuple[CanonicalConceptRelationRecord
             source_concept_id=item["source_concept_id"],
             target_concept_id=item["target_concept_id"],
             relation=item["relation"],
-            accepted_proposal_ids=tuple(item["accepted_proposal_ids"]),
-            reviewers=tuple(item["reviewers"]),
-            reviewed_on=tuple(date.fromisoformat(value) for value in item["reviewed_on"]),
         )
-        for item in _read_jsonl(path, CANONICAL_RELATION_SCHEMA_VERSION)
+        for item in _read_jsonl(path, {LEGACY_CANONICAL_RELATION_SCHEMA_VERSION, CANONICAL_RELATION_SCHEMA_VERSION})
     )
 
 
@@ -180,8 +144,6 @@ def _proposal(item: dict[str, object]) -> ConceptRelationProposal:
         left_evidence=_evidence(item["left_evidence"]),
         right_evidence=_evidence(item["right_evidence"]),
         rationale_vi=str(item["rationale_vi"]),
-        proposed_by_model=str(item["proposed_by_model"]),
-        prompt_version=str(item["prompt_version"]),
         run_id=str(item["run_id"]),
     )
 
@@ -191,13 +153,13 @@ def _evidence(items: Sequence[dict[str, str]]) -> tuple[PopulationEvidence, ...]
     return tuple(PopulationEvidence(chunk_id=item["chunk_id"], exact_text=item["exact_text"]) for item in items)
 
 
-def _read_jsonl(path: Path, schema_version: str) -> tuple[dict[str, object], ...]:
-    """Read JSONL rows with one expected schema version."""
+def _read_jsonl(path: Path, schema_versions: set[str]) -> tuple[dict[str, object], ...]:
+    """Read JSONL rows with supported schema versions."""
     rows = []
     with path.open(encoding="utf-8") as source_file:
         for line in source_file:
             item = json.loads(line)
-            if item["schema_version"] != schema_version:
+            if item["schema_version"] not in schema_versions:
                 msg = f"Unsupported concept artifact schema: {item['schema_version']}"
                 raise ValueError(msg)
             rows.append(item)

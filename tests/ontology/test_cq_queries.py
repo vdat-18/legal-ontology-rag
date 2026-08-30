@@ -21,7 +21,7 @@ def test_manifest_covers_every_mandatory_cq_and_query_file(ontology_paths: Ontol
     """Every mandatory CQ has one query and every query file is registered."""
     cases = load_query_cases(ontology_paths.project_root, ontology_paths.query_manifest)
     cq_document = load_yaml(ontology_paths.competency_questions)
-    mandatory_cqs = {item["id"] for item in cq_document["competency_questions"] if item["priority"] == "must"}
+    mandatory_cqs = {item["id"] for item in cq_document["competency_questions"]}
     represented_cqs = [case.cq_id for case in cases]
     query_files = set((ontology_paths.ontology_dir / "tests" / "cq_queries").glob("*.rq"))
 
@@ -63,3 +63,20 @@ def test_cq_registry_contains_only_stable_unique_ids(ontology_paths: OntologyPat
 
     assert len(identifiers) == len(set(identifiers))
     assert set(identifiers) <= collect_ids(document)
+
+
+def test_cq_registry_uses_minimal_schema(ontology_paths: OntologyPaths) -> None:
+    """CQs retain only identity, question, expected outputs, and requirement links."""
+    document = load_yaml(ontology_paths.competency_questions)
+
+    assert set(document) == {
+        "schema_version",
+        "artifact_id",
+        "artifact_version",
+        "language",
+        "competency_questions",
+    }
+    assert all(
+        set(item) == {"id", "question_vi", "expected_answer_fields", "requirement_ids"}
+        for item in document["competency_questions"]
+    )

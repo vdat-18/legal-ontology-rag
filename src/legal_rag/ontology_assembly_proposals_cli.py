@@ -12,7 +12,7 @@ from loguru import logger
 
 def _parser() -> argparse.ArgumentParser:
     """Build the assembly-proposal command-line parser."""
-    parser = argparse.ArgumentParser(description="Generate typed rule-assembly proposals for mandatory human review.")
+    parser = argparse.ArgumentParser(description="Generate and persist typed rule-assembly proposals.")
     parser.add_argument("chunks_path", type=Path, help="Final chunk JSONL path")
     parser.add_argument("metadata_path", type=Path, help="Document-metadata JSONL path")
     parser.add_argument("records_path", type=Path, help="Ontology population JSONL path")
@@ -20,12 +20,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("assembly_contract_path", type=Path, help="Versioned assembly contract YAML path")
     parser.add_argument("proposals_output_path", type=Path, help="Assembly-proposal JSONL destination")
     parser.add_argument("progress_output_path", type=Path, help="Assembly-proposal progress JSONL destination")
-    parser.add_argument("reviews_output_path", type=Path, help="Human-review JSONL destination/template")
     return parser
 
 
 def main() -> None:
-    """Generate reviewable proposals while checkpointing every candidate window."""
+    """Generate typed proposals while checkpointing every candidate window."""
     from legal_rag.benchmark_synthesis.writer import read_document_metadata
     from legal_rag.chunker.writer import read_chunks
     from legal_rag.ontology_population.assembly_config import AssemblySettings
@@ -36,14 +35,11 @@ def main() -> None:
         propose_assemblies,
     )
     from legal_rag.ontology_population.assembly_writer import (
-        pending_review_template,
         read_assembly_candidates,
         read_assembly_progress,
         read_assembly_proposals,
-        read_assembly_reviews,
         write_assembly_progress,
         write_assembly_proposals,
-        write_assembly_reviews,
     )
     from legal_rag.ontology_population.writer import read_population_records
     from legal_rag.ontology_proposal_resume import (
@@ -117,18 +113,8 @@ def main() -> None:
             if window.candidate_id in processed_ids
         ),
     )
-    existing_reviews = (
-        read_assembly_reviews(arguments.reviews_output_path) if arguments.reviews_output_path.exists() else ()
-    )
-    reviews_by_id = {review.proposal_id: review for review in existing_reviews}
-    for review in pending_review_template(proposals):
-        reviews_by_id.setdefault(review.proposal_id, review)
-    write_assembly_reviews(
-        arguments.reviews_output_path,
-        tuple(reviews_by_id[proposal.proposal_id] for proposal in proposals),
-    )
     logger.info(
-        "Completed {}/{} candidate windows and wrote {} proposals for human review",
+        "Completed {}/{} candidate windows and wrote {} typed proposals",
         len(processed_ids),
         len(candidates.windows),
         len(proposals),

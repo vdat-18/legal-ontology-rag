@@ -15,7 +15,6 @@ from legal_rag.baml_client.types import (
     FactExtractionBatchItem,
     OntologyConsequenceEntry,
     OntologyConsequenceKind,
-    OntologyCurrency,
     OntologyEvidenceReference,
     OntologyPopulationBatchResult,
     OntologyRuleEntry,
@@ -38,7 +37,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class _CliPopulationClient:
-    """Return one complete monetary rule without calling an external model."""
+    """Return one typed monetary rule without calling an external model."""
 
     calls = 0
     settings: Settings | None = None
@@ -71,7 +70,7 @@ class _CliPopulationClient:
                                     kind=OntologyConsequenceKind.MonetaryPenalty,
                                     minimum_amount="4000000",
                                     maximum_amount="6000000",
-                                    currency=OntologyCurrency.VND,
+                                    currency=None,
                                     point_value=None,
                                     target_label_vi=None,
                                     responsible_role_label_vi=None,
@@ -89,7 +88,7 @@ class _CliPopulationClient:
         return tuple(results)
 
 
-def test_cli_writes_reviewable_records_progress_and_validated_graph(
+def test_cli_writes_typed_records_progress_and_graph_without_runtime_shacl(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     legal_chunk: Chunk,

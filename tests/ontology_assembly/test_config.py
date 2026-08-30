@@ -8,19 +8,24 @@ from pathlib import Path
 import pytest
 
 from legal_rag.ontology_population.assembly_config import AssemblySettings
+from legal_rag.ontology_validation.loader import load_yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_assembly_contract_loads_review_and_execution_bounds() -> None:
-    """The checked-in contract exposes bounded candidates, LLM calls, and review gates."""
+def test_assembly_contract_loads_minimal_execution_bounds() -> None:
+    """The checked-in contract exposes only bounded candidates and LLM calls."""
     settings = AssemblySettings.from_path(PROJECT_ROOT / "ontology" / "assembly_contract.yaml")
 
     assert settings.max_chunk_span == 4
     assert settings.max_records_per_window == 8
     assert settings.batch_size == 1
     assert settings.max_response_bytes == 1_048_576
-    assert settings.require_every_proposal_reviewed is True
+    assert set(load_yaml(PROJECT_ROOT / "ontology" / "assembly_contract.yaml")) == {
+        "schema_version",
+        "candidates",
+        "llm",
+    }
 
 
 def test_assembly_contract_rejects_unknown_schema(tmp_path: Path) -> None:

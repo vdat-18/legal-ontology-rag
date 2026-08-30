@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Sequence
-from datetime import date
 from pathlib import Path
 
 import pytest
@@ -31,12 +30,7 @@ from legal_rag.benchmark_synthesis.writer import write_document_metadata
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
 from legal_rag.ontology_population import assembly_proposals
-from legal_rag.ontology_population.assembly_models import AssemblyReview
-from legal_rag.ontology_population.assembly_writer import (
-    read_assembly_proposals,
-    read_assembly_reviews,
-    write_assembly_reviews,
-)
+from legal_rag.ontology_population.assembly_writer import read_assembly_proposals
 from legal_rag.ontology_population.models import OntologyPopulationRecord
 from legal_rag.ontology_population.writer import read_population_records, write_population_records
 
@@ -119,21 +113,20 @@ class _EmptyAssemblyClient:
         return tuple(RuleAssemblyWindowResult(candidate_id=window.candidate_id, proposals=[]) for window in windows)
 
 
-def test_cli_runs_candidate_proposal_review_and_offline_finalization(
+def test_cli_runs_candidate_proposal_and_offline_finalization(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     assembly_chunks: tuple[Chunk, Chunk],
     assembly_records: tuple[OntologyPopulationRecord, ...],
     assembly_metadata: DocumentMetadataRecord,
 ) -> None:
-    """The operator workflow resumes LLM work and writes only reviewed canonical RDF."""
+    """The workflow resumes LLM work and deterministically materializes RDF."""
     chunks_path = tmp_path / "chunks.jsonl"
     metadata_path = tmp_path / "metadata.jsonl"
     records_path = tmp_path / "population.jsonl"
     candidates_path = tmp_path / "candidates.json"
     proposals_path = tmp_path / "proposals.jsonl"
     progress_path = tmp_path / "proposal-progress.jsonl"
-    reviews_path = tmp_path / "reviews.jsonl"
     canonical_path = tmp_path / "canonical.jsonl"
     graph_path = tmp_path / "canonical.ttl"
     write_chunks(chunks_path, assembly_chunks)
@@ -168,14 +161,12 @@ def test_cli_runs_candidate_proposal_review_and_offline_finalization(
         str(PROJECT_ROOT / "ontology" / "assembly_contract.yaml"),
         str(proposals_path),
         str(progress_path),
-        str(reviews_path),
     ]
     monkeypatch.setattr(sys, "argv", proposal_argv)
     ontology_assembly_proposals_cli.main()
     ontology_assembly_proposals_cli.main()
 
-    proposal = read_assembly_proposals(proposals_path)[0]
-    assert read_assembly_reviews(reviews_path)[0].decision == "pending"
+    assert len(read_assembly_proposals(proposals_path)) == 1
     assert _CliAssemblyClient.calls == 1
     finalize_argv = [
         "legal-finalize-rule-assemblies",
@@ -183,31 +174,10 @@ def test_cli_runs_candidate_proposal_review_and_offline_finalization(
         str(metadata_path),
         str(records_path),
         str(proposals_path),
-        str(reviews_path),
         str(PROJECT_ROOT / "ontology" / "population_contract.yaml"),
-        str(PROJECT_ROOT / "ontology" / "assembly_contract.yaml"),
         str(canonical_path),
         str(graph_path),
     ]
-    monkeypatch.setattr(sys, "argv", finalize_argv)
-    with pytest.raises(ValueError, match="Pending assembly reviews"):
-        ontology_assembly_finalize_cli.main()
-    assert not canonical_path.exists()
-    assert not graph_path.exists()
-
-    write_assembly_reviews(
-        reviews_path,
-        (
-            AssemblyReview(
-                proposal_id=proposal.proposal_id,
-                decision="accepted",
-                reviewer="legal-reviewer",
-                reviewed_on=date(2026, 8, 18),
-                note="Đã đối chiếu nguồn.",
-            ),
-        ),
-    )
-
     monkeypatch.setattr(sys, "argv", finalize_argv)
     ontology_assembly_finalize_cli.main()
 
@@ -220,4 +190,3 @@ def test_cli_runs_candidate_proposal_review_and_offline_finalization(
     ontology_assembly_proposals_cli.main()
 
     assert read_assembly_proposals(proposals_path) == ()
-    assert read_assembly_reviews(reviews_path) == ()

@@ -124,9 +124,7 @@ def _project_snapshot(project_root: Path, settings: OntologyEvolutionSettings) -
         node_shape_constraint_hashes={
             iri: _semantic_closure_sha256(shapes_graph, URIRef(iri), annotation_predicates) for iri in node_shape_iris
         },
-        mandatory_cq_ids=frozenset(
-            item["id"] for item in competency_questions["competency_questions"] if item["priority"] == "must"
-        ),
+        mandatory_cq_ids=frozenset(item["id"] for item in competency_questions["competency_questions"]),
         deprecated_iris=deprecated_iris,
         replacements=_replacement_links(graph, namespaces, settings.replacement_predicate_iri),
     )
@@ -239,7 +237,7 @@ def _breaking_issues(
         )
     if "removed_mandatory_cq" in settings.breaking_checks:
         issues.extend(
-            OntologyEvolutionIssue("removed_mandatory_cq", cq_id, "Removed or demoted a mandatory competency question.")
+            OntologyEvolutionIssue("removed_mandatory_cq", cq_id, "Removed a competency question.")
             for cq_id in removed_cqs
         )
     if settings.require_retained_declaration:

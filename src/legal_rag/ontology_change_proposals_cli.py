@@ -12,20 +12,17 @@ from loguru import logger
 
 def _parser() -> argparse.ArgumentParser:
     """Build the legal-change proposal command-line parser."""
-    parser = argparse.ArgumentParser(
-        description="Generate exact-evidenced legal-change proposals for mandatory human review."
-    )
+    parser = argparse.ArgumentParser(description="Generate and persist typed source-grounded legal-change proposals.")
     parser.add_argument("corpus_manifest_path", type=Path, help="Ordered multi-document corpus manifest JSON path")
     parser.add_argument("candidates_path", type=Path, help="Legal-change candidate-set JSON path")
     parser.add_argument("change_contract_path", type=Path, help="Versioned change-resolution contract YAML path")
     parser.add_argument("proposals_output_path", type=Path, help="Legal-change proposal JSONL destination")
     parser.add_argument("progress_output_path", type=Path, help="Legal-change proposal progress JSONL destination")
-    parser.add_argument("reviews_output_path", type=Path, help="Human-review JSONL destination/template")
     return parser
 
 
 def main() -> None:
-    """Generate reviewable legal-change proposals with resumable checkpoints."""
+    """Generate typed legal-change proposals with resumable checkpoints."""
     from legal_rag.ontology_change.config import ChangeResolutionSettings
     from legal_rag.ontology_change.corpus import read_change_corpus_manifest
     from legal_rag.ontology_change.models import ChangeProposalProgress, LegalChangeProposal
@@ -35,14 +32,11 @@ def main() -> None:
         propose_legal_changes,
     )
     from legal_rag.ontology_change.writer import (
-        pending_change_review_template,
         read_change_candidates,
         read_change_progress,
         read_change_proposals,
-        read_change_reviews,
         write_change_progress,
         write_change_proposals,
-        write_change_reviews,
     )
     from legal_rag.ontology_proposal_resume import (
         load_compatible_proposal_resume_state,
@@ -111,21 +105,8 @@ def main() -> None:
             if window.candidate_id in processed_ids
         ),
     )
-    existing_reviews = (
-        read_change_reviews(arguments.reviews_output_path) if arguments.reviews_output_path.exists() else ()
-    )
-    reviews_by_id = {review.proposal_id: review for review in existing_reviews}
-    if len(reviews_by_id) != len(existing_reviews):
-        msg = "Existing legal-change review identifiers must be unique"
-        raise ValueError(msg)
-    for review in pending_change_review_template(proposals):
-        reviews_by_id.setdefault(review.proposal_id, review)
-    write_change_reviews(
-        arguments.reviews_output_path,
-        tuple(reviews_by_id[proposal.proposal_id] for proposal in proposals),
-    )
     logger.info(
-        "Completed {}/{} candidate windows and wrote {} legal-change proposals for human review",
+        "Completed {}/{} candidate windows and wrote {} legal-change proposals",
         len(processed_ids),
         len(candidates.windows),
         len(proposals),

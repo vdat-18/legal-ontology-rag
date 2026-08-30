@@ -39,7 +39,8 @@ def test_materialized_rule_covers_all_components_and_conforms(
     assert len(tuple(graph.subjects(RDF.type, LORLC.PointDeduction))) == 1
     assert len(tuple(graph.subjects(RDF.type, LORLC.AdditionalSanction))) == 1
     assert len(tuple(graph.subjects(RDF.type, LORLC.RemedialMeasure))) == 1
-    assert len(tuple(graph.subjects(RDF.type, LORSP.EvidenceSpan))) == 5
+    assert not tuple(graph.triples((None, LORSP.supportedBy, None)))
+    assert len(tuple(graph.triples((None, LORSP.sourcedFromChunk, None)))) >= 8
     sanction = next(graph.subjects(RDF.type, LORLC.AdditionalSanction))
     assert (sanction, LORLC.minimumDurationMonths, Literal(10, datatype=XSD.integer)) in graph
     assert (sanction, LORLC.maximumDurationMonths, Literal(12, datatype=XSD.integer)) in graph
@@ -75,12 +76,12 @@ def test_materialization_is_deterministic(
     assert set(first) == set(second)
 
 
-def test_logical_condition_operator_requires_direct_evidence(
+def test_logical_condition_operator_requires_source_chunk_provenance(
     legal_chunk: Chunk,
     document_metadata: DocumentMetadataRecord,
     population_record: OntologyPopulationRecord,
 ) -> None:
-    """Every condition expression remains independently traceable to exact source evidence."""
+    """Every condition expression remains independently traceable to a source chunk."""
     logical_root = replace(population_record.conditions[0], evidence=())
     graph = materialize_population_graph(
         (legal_chunk,),
@@ -89,7 +90,7 @@ def test_logical_condition_operator_requires_direct_evidence(
         INSTANCE_NAMESPACE,
     )
 
-    with pytest.raises(ValueError, match="exact evidence span"):
+    with pytest.raises(ValueError, match="source chunk"):
         validate_population_graph(graph, OntologyPaths(PROJECT_ROOT))
 
 

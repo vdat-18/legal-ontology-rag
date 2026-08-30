@@ -42,7 +42,6 @@ loroc:LegalSubject a owl:Class ;
     rdfs:comment "A natural person or organization capable of bearing a relevant legal position."@en ;
     lorsp:requirementReference "SCOPE-003", "GRAN-002" ;
     lorsp:competencyQuestionReference "CQ-APPLICABILITY-001" ;
-    lorsp:glossaryReference "TERM-SUBJECT-001" ;
     lorsp:modelingDecisionReference "MD-SUBJECT-001" .
 
 loroc:SubjectKind a owl:Class ;
@@ -90,7 +89,6 @@ loroc:Vehicle a owl:Class ;
     rdfs:comment "A concrete vehicle participating in a conduct occurrence and classified by vehicle-category concepts."@en ;
     lorsp:requirementReference "SCOPE-003", "GRAN-003" ;
     lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-APPLICABILITY-001" ;
-    lorsp:glossaryReference "TERM-VEHICLE-002" ;
     lorsp:modelingDecisionReference "MD-VEHICLE-001" .
 
 loroc:conductScheme a skos:ConceptScheme,
@@ -139,7 +137,6 @@ loroc:naturalPerson a loroc:SubjectKind,
         "Cá nhân"@vi ;
     lorsp:requirementReference "SCOPE-003", "GRAN-002" ;
     lorsp:competencyQuestionReference "CQ-APPLICABILITY-001", "CQ-COMPARISON-001" ;
-    lorsp:glossaryReference "TERM-SUBJECT-003" ;
     lorsp:modelingDecisionReference "MD-SUBJECT-001" .
 
 loroc:organization a loroc:SubjectKind,
@@ -150,7 +147,6 @@ loroc:organization a loroc:SubjectKind,
         "Tổ chức"@vi ;
     lorsp:requirementReference "SCOPE-003", "GRAN-002" ;
     lorsp:competencyQuestionReference "CQ-APPLICABILITY-001", "CQ-COMPARISON-001" ;
-    lorsp:glossaryReference "TERM-SUBJECT-004" ;
     lorsp:modelingDecisionReference "MD-SUBJECT-001" .
 
 loroc:hasSubjectKind a owl:ObjectProperty ;
@@ -170,7 +166,7 @@ loroc:rolePlayer a owl:ObjectProperty ;
     rdfs:comment "Identifies the legal subject that bears a contextual role assignment."@en ;
     lorsp:requirementReference "SCOPE-003", "GRAN-002" ;
     lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-APPLICABILITY-001" ;
-    lorsp:glossaryReference "TERM-SUBJECT-001", "TERM-SUBJECT-006" ;
+    lorsp:glossaryReference "TERM-SUBJECT-006" ;
     lorsp:modelingDecisionReference "MD-SUBJECT-001" .
 
 loroc:playsRole a owl:ObjectProperty ;
@@ -210,7 +206,7 @@ loroc:involvesVehicle a owl:ObjectProperty ;
     rdfs:comment "Links a conduct occurrence to a concrete participating vehicle."@en ;
     lorsp:requirementReference "PURP-002", "SCOPE-003", "GRAN-003" ;
     lorsp:competencyQuestionReference "CQ-RULE-001", "CQ-NEGATIVE-001" ;
-    lorsp:glossaryReference "TERM-CONDUCT-002", "TERM-VEHICLE-002" ;
+    lorsp:glossaryReference "TERM-CONDUCT-002" ;
     lorsp:modelingDecisionReference "MD-CONDUCT-001", "MD-VEHICLE-001" .
 
 loroc:hasVehicleCategory a owl:ObjectProperty ;
@@ -220,7 +216,7 @@ loroc:hasVehicleCategory a owl:ObjectProperty ;
     rdfs:comment "Classifies a concrete vehicle with one or more legally evidenced vehicle-category concepts."@en ;
     lorsp:requirementReference "SCOPE-003", "GRAN-003", "GRAN-008" ;
     lorsp:competencyQuestionReference "CQ-APPLICABILITY-001", "CQ-COMPARISON-001", "CQ-NEGATIVE-001" ;
-    lorsp:glossaryReference "TERM-VEHICLE-001", "TERM-VEHICLE-002" ;
+    lorsp:glossaryReference "TERM-VEHICLE-001" ;
     lorsp:modelingDecisionReference "MD-VEHICLE-001" .
 
 loroc:occursAt a owl:ObjectProperty ;

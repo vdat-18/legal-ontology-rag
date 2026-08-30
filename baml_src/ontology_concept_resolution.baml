@@ -49,21 +49,19 @@ function ProposeOntologyConceptRelations(pairs: ConceptResolutionPairInput[]) ->
   prompt #"
     {{ _.role("user") }}
 
-    Bạn là chuyên gia ontology pháp luật. Hãy đánh giá quan hệ giữa hai concept occurrence cùng loại. Candidate pairs
-    được tạo exhaustive; việc hai occurrence xuất hiện trong một pair không chứng minh chúng tương đương hay liên quan.
+    Bạn là chuyên gia ontology pháp luật. Xác định quan hệ giữa hai concept
+    occurrence cùng loại trong từng candidate pair.
 
     Nguyên tắc bắt buộc:
-    - Chỉ đề xuất khi evidence của cả hai phía đủ để xác định ý nghĩa pháp lý của từng concept.
-    - Không quyết định chỉ bằng lexical overlap, keyword, cùng provision path, cùng mức phạt hoặc cùng loại rule.
-    - SameConcept chỉ dùng khi hai occurrence biểu đạt cùng một concept pháp lý có thể dùng chung canonical identity.
-    - LeftBroaderThanRight/LeftNarrowerThanRight chỉ dùng cho quan hệ phân cấp pháp lý thực sự, không dùng cho hai rule
-      có phạm vi khác nhau nhưng concept không có quan hệ taxonomy.
-    - Related giữ hai identity riêng; Distinct ghi nhận một phân biệt pháp lý quan trọng. Nếu evidence chưa đủ hoặc không
-      có quan hệ đáng ghi nhận, trả proposal=null.
-    - preferred_label_vi của SameConcept phải copy chính xác label_vi của left hoặc right. Quan hệ khác phải để rỗng.
-    - left_evidence và right_evidence chỉ dùng evidence_id đã cung cấp đúng occurrence.
-    - Không tạo owl:equivalentClass, rdfs:subClassOf, rule identity, applicability hoặc legal priority.
-    - Human reviewer quyết định cuối cùng. Trả đúng một result cho mỗi candidate_id.
+    - Chỉ dùng evidence hai phía; không quyết định bằng keyword, lexical overlap,
+      cùng locator, cùng mức phạt hay cùng loại rule.
+    - SameConcept chỉ khi có thể dùng chung identity. Broader/Narrower chỉ cho
+      taxonomy thực sự. Related và Distinct luôn giữ identity riêng.
+    - Nếu chưa đủ căn cứ hoặc không có quan hệ đáng lưu, trả proposal=null.
+    - SameConcept phải chọn nguyên một label đã cung cấp; quan hệ khác để label
+      rỗng. Evidence chỉ dùng ID của đúng occurrence.
+    - Không tạo class axiom, rule identity, applicability hay legal priority.
+      Trả đúng một result cho mỗi candidate_id.
 
     {% for pair in pairs %}
     === candidate_id={{ pair.candidate_id }} ===

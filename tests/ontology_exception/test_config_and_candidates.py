@@ -12,18 +12,23 @@ from legal_rag.ontology_change.corpus import ChangeCorpus
 from legal_rag.ontology_exception.candidates import build_exception_candidates
 from legal_rag.ontology_exception.config import ExceptionResolutionSettings
 from legal_rag.ontology_exception.writer import read_exception_candidates, write_exception_candidates
+from legal_rag.ontology_validation.loader import load_yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_exception_contract_and_console_scripts_are_packaged() -> None:
-    """The contract and all operator commands expose bounded mandatory-review settings."""
+    """The contract and operator commands expose bounded workflow settings."""
     settings = ExceptionResolutionSettings.from_path(PROJECT_ROOT / "ontology" / "exception_resolution_contract.yaml")
     project = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
 
     assert settings.max_target_rules_per_window == 64
     assert settings.max_total_windows == 10_000
-    assert settings.require_every_proposal_reviewed is True
+    assert set(load_yaml(PROJECT_ROOT / "ontology" / "exception_resolution_contract.yaml")) == {
+        "schema_version",
+        "candidates",
+        "llm",
+    }
     assert project["scripts"]["legal-build-exception-candidates"] == "legal_rag.ontology_exception_candidates_cli:main"
     assert project["scripts"]["legal-propose-legal-exceptions"] == "legal_rag.ontology_exception_proposals_cli:main"
     assert project["scripts"]["legal-finalize-legal-exceptions"] == "legal_rag.ontology_exception_finalize_cli:main"

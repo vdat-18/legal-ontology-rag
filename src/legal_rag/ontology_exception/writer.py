@@ -1,10 +1,9 @@
-"""Persistence for exception candidates, proposals, reviews, and records."""
+"""Persistence for exception candidates, proposals, and records."""
 
 from __future__ import annotations
 
 import json
 from collections.abc import Sequence
-from datetime import date
 from pathlib import Path
 
 from legal_rag.io_utils import write_json_atomic, write_jsonl_atomic
@@ -12,19 +11,17 @@ from legal_rag.ontology_exception.models import (
     EXCEPTION_CANDIDATE_SCHEMA_VERSION,
     EXCEPTION_PROGRESS_SCHEMA_VERSION,
     EXCEPTION_PROPOSAL_SCHEMA_VERSION,
-    EXCEPTION_REVIEW_SCHEMA_VERSION,
+    LEGACY_EXCEPTION_PROPOSAL_SCHEMA_VERSION,
+    LEGACY_LEGAL_EXCEPTION_RECORD_SCHEMA_VERSION,
     LEGAL_EXCEPTION_RECORD_SCHEMA_VERSION,
     ExceptionCandidateSet,
     ExceptionCandidateWindow,
     ExceptionCitationResolution,
     ExceptionProposalProgress,
-    ExceptionReview,
     LegalExceptionProposal,
     LegalExceptionRecord,
 )
 from legal_rag.ontology_population.models import PopulationEvidence
-
-REVIEW_DECISIONS = {"pending", "accepted", "rejected"}
 
 
 def write_exception_candidates(path: Path, candidates: ExceptionCandidateSet) -> None:
@@ -54,7 +51,7 @@ def read_exception_candidates(path: Path) -> ExceptionCandidateSet:
 
 
 def write_exception_proposals(path: Path, proposals: Sequence[LegalExceptionProposal]) -> None:
-    """Atomically replace reviewable exception proposals."""
+    """Atomically replace exception proposals."""
     write_jsonl_atomic(path, (proposal.to_dict() for proposal in proposals))
 
 
@@ -64,7 +61,10 @@ def read_exception_proposals(path: Path) -> tuple[LegalExceptionProposal, ...]:
     with path.open(encoding="utf-8") as source_file:
         for line in source_file:
             payload = json.loads(line)
-            if payload["schema_version"] != EXCEPTION_PROPOSAL_SCHEMA_VERSION:
+            if payload["schema_version"] not in {
+                LEGACY_EXCEPTION_PROPOSAL_SCHEMA_VERSION,
+                EXCEPTION_PROPOSAL_SCHEMA_VERSION,
+            }:
                 msg = f"Unsupported exception proposal schema: {payload['schema_version']}"
                 raise ValueError(msg)
             proposals.append(
@@ -77,8 +77,6 @@ def read_exception_proposals(path: Path) -> tuple[LegalExceptionProposal, ...]:
                     evidence=_evidence(payload["evidence"]),
                     citations=_citations(payload["citations"]),
                     rationale_vi=payload["rationale_vi"],
-                    proposed_by_model=payload["proposed_by_model"],
-                    prompt_version=payload["prompt_version"],
                     run_id=payload["run_id"],
                 )
             )
@@ -103,55 +101,21 @@ def read_exception_progress(path: Path) -> tuple[ExceptionProposalProgress, ...]
     return tuple(progress)
 
 
-def write_exception_reviews(path: Path, reviews: Sequence[ExceptionReview]) -> None:
-    """Atomically replace human exception reviews."""
-    write_jsonl_atomic(path, (review.to_dict() for review in reviews))
-
-
-def read_exception_reviews(path: Path) -> tuple[ExceptionReview, ...]:
-    """Read human exception reviews."""
-    reviews = []
-    with path.open(encoding="utf-8") as source_file:
-        for line in source_file:
-            payload = json.loads(line)
-            if payload["schema_version"] != EXCEPTION_REVIEW_SCHEMA_VERSION:
-                msg = f"Unsupported exception review schema: {payload['schema_version']}"
-                raise ValueError(msg)
-            if payload["decision"] not in REVIEW_DECISIONS:
-                msg = f"Unsupported exception review decision: {payload['decision']}"
-                raise ValueError(msg)
-            reviews.append(
-                ExceptionReview(
-                    proposal_id=payload["proposal_id"],
-                    decision=payload["decision"],
-                    reviewer=payload["reviewer"],
-                    reviewed_on=date.fromisoformat(payload["reviewed_on"]) if payload["reviewed_on"] else None,
-                    note=payload["note"],
-                )
-            )
-    return tuple(reviews)
-
-
-def pending_exception_review_template(proposals: Sequence[LegalExceptionProposal]) -> tuple[ExceptionReview, ...]:
-    """Return one pending human-review row for every proposal."""
-    return tuple(
-        ExceptionReview(proposal_id=proposal.proposal_id, decision="pending", reviewer="", reviewed_on=None, note="")
-        for proposal in proposals
-    )
-
-
 def write_legal_exception_records(path: Path, records: Sequence[LegalExceptionRecord]) -> None:
-    """Atomically replace reviewed canonical exception records."""
+    """Atomically replace canonical exception records."""
     write_jsonl_atomic(path, (record.to_dict() for record in records))
 
 
 def read_legal_exception_records(path: Path) -> tuple[LegalExceptionRecord, ...]:
-    """Read reviewed canonical exception records."""
+    """Read canonical exception records."""
     records = []
     with path.open(encoding="utf-8") as source_file:
         for line in source_file:
             payload = json.loads(line)
-            if payload["schema_version"] != LEGAL_EXCEPTION_RECORD_SCHEMA_VERSION:
+            if payload["schema_version"] not in {
+                LEGACY_LEGAL_EXCEPTION_RECORD_SCHEMA_VERSION,
+                LEGAL_EXCEPTION_RECORD_SCHEMA_VERSION,
+            }:
                 msg = f"Unsupported legal-exception record schema: {payload['schema_version']}"
                 raise ValueError(msg)
             records.append(
@@ -162,9 +126,6 @@ def read_legal_exception_records(path: Path) -> tuple[LegalExceptionRecord, ...]
                     exception_provision_path=payload["exception_provision_path"],
                     evidence=_evidence(payload["evidence"]),
                     citations=_citations(payload["citations"]),
-                    accepted_proposal_ids=tuple(payload["accepted_proposal_ids"]),
-                    reviewers=tuple(payload["reviewers"]),
-                    reviewed_on=tuple(date.fromisoformat(value) for value in payload["reviewed_on"]),
                 )
             )
     return tuple(records)

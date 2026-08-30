@@ -38,23 +38,19 @@ function ProposeCrossDocumentLegalChanges(windows: CrossDocumentChangeWindowInpu
   prompt #"
     {{ _.role("user") }}
 
-    Bạn là chuyên gia ontology pháp luật. Hãy đề xuất các LegalChange event giữa rule version của hai văn bản khác nhau.
-    Candidate window được tạo exhaustive theo thứ tự văn bản và batch có giới hạn; việc hai record xuất hiện cùng window
-    không chứng minh chúng là cùng rule hoặc có quan hệ kế thừa.
+    Bạn là chuyên gia ontology pháp luật. Xác định LegalChange giữa các rule
+    version của hai văn bản trong từng candidate window.
 
     Nguyên tắc bắt buộc:
-    - Chỉ đề xuất khi change_evidence_sources chứa phát biểu pháp lý trực tiếp về sửa đổi, thay thế, bãi bỏ hoặc làm hết
-      hiệu lực rule/provision trước, cùng bằng chứng đủ để xác định target và ngày hiệu lực.
-    - Không suy ra change từ conduct, role, vehicle, condition, consequence, provision path hoặc câu chữ tương tự.
-    - Không suy ra change chỉ từ thứ tự ban hành, ngày hiệu lực, hay việc valid_to đang null.
-    - earlier_population_id phải thuộc earlier_records. later_population_id nếu có phải thuộc later_records.
-    - Amendment/Replacement thông thường phải chỉ ra later rule. RepealOrSupersession có thể không có later rule chỉ khi
-      source trực tiếp chứng minh điều đó. Nếu candidate chưa chứa later rule cần thiết, không tự chọn record gần giống.
-    - evidence chỉ dùng evidence_id từ change_evidence_sources; không dùng knowledge ngoài source.
-    - effective_on và change_provision_path phải được source hỗ trợ. Không tự dùng metadata date làm kết luận pháp lý.
-    - Không tạo enduring rule identity, concept equivalence, exception redirect hay transitional applicability.
-    - Nếu evidence chưa đủ, trả proposals rỗng. Human reviewer quyết định cuối cùng.
-    - Trả đúng một result cho mỗi candidate_id; trong một result không dùng cùng earlier hoặc later rule cho nhiều proposal.
+    - Chỉ đề xuất khi nguồn trực tiếp nêu thay đổi, target và ngày hiệu lực; không
+      suy ra từ độ giống nhau, thứ tự văn bản, metadata hay valid_to còn trống.
+    - earlier ID phải thuộc earlier_records; later ID nếu có phải thuộc
+      later_records. Mỗi ID chỉ dùng một lần trong một result.
+    - Amendment/Replacement cần later rule; RepealOrSupersession chỉ được để
+      later null khi nguồn trực tiếp chứng minh không có phiên bản thay thế.
+    - Chỉ dùng evidence_id đã cung cấp. effective_on và provision path phải do
+      nguồn hỗ trợ; không tạo identity, exception hay concept relation khác.
+    - Nếu nguồn chưa đủ, trả proposals rỗng. Trả đúng một result cho mỗi candidate_id.
 
     {% for window in windows %}
     === candidate_id={{ window.candidate_id }} ===

@@ -1,19 +1,16 @@
-"""Typed artifacts for cross-chunk rule assembly and human review."""
+"""Typed artifacts for cross-chunk rule assembly."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
-from typing import Any, Literal
+from typing import Any
 
 from legal_rag.ontology_population.models import OntologyPopulationRecord
 
 ASSEMBLY_CANDIDATE_SCHEMA_VERSION = "0.1.0"
-ASSEMBLY_PROPOSAL_SCHEMA_VERSION = "0.1.0"
 ASSEMBLY_PROPOSAL_PROGRESS_SCHEMA_VERSION = "0.1.0"
-ASSEMBLY_REVIEW_SCHEMA_VERSION = "0.1.0"
-
-ReviewDecision = Literal["pending", "accepted", "rejected"]
+LEGACY_ASSEMBLY_PROPOSAL_SCHEMA_VERSION = "0.1.0"
+ASSEMBLY_PROPOSAL_SCHEMA_VERSION = "0.2.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,15 +50,13 @@ class AssemblyCandidateSet:
 
 @dataclass(frozen=True, slots=True)
 class AssemblyProposal:
-    """One model-proposed assembly awaiting human review."""
+    """One typed model-proposed assembly."""
 
     proposal_id: str
     candidate_id: str
     member_population_ids: tuple[str, ...]
     assembled_record: OntologyPopulationRecord
     rationale_vi: str
-    proposed_by_model: str
-    prompt_version: str
     run_id: str
 
     def to_dict(self) -> dict[str, Any]:
@@ -73,8 +68,6 @@ class AssemblyProposal:
             "member_population_ids": list(self.member_population_ids),
             "assembled_record": self.assembled_record.to_dict(),
             "rationale_vi": self.rationale_vi,
-            "proposed_by_model": self.proposed_by_model,
-            "prompt_version": self.prompt_version,
             "run_id": self.run_id,
         }
 
@@ -92,26 +85,4 @@ class AssemblyProposalProgress:
             "schema_version": ASSEMBLY_PROPOSAL_PROGRESS_SCHEMA_VERSION,
             "candidate_id": self.candidate_id,
             "run_id": self.run_id,
-        }
-
-
-@dataclass(frozen=True, slots=True)
-class AssemblyReview:
-    """One human decision over a model-proposed assembly."""
-
-    proposal_id: str
-    decision: ReviewDecision
-    reviewer: str
-    reviewed_on: date | None
-    note: str
-
-    def to_dict(self) -> dict[str, object]:
-        """Return the stable human-review schema."""
-        return {
-            "schema_version": ASSEMBLY_REVIEW_SCHEMA_VERSION,
-            "proposal_id": self.proposal_id,
-            "decision": self.decision,
-            "reviewer": self.reviewer,
-            "reviewed_on": self.reviewed_on.isoformat() if self.reviewed_on else None,
-            "note": self.note,
         }

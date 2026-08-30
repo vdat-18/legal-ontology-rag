@@ -1,13 +1,13 @@
 PREFIX lornr: <https://w3id.org/legal-ontology-rag/ontology/normative-rule#>
 PREFIX lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#>
 
-SELECT DISTINCT ?penaltyRule ?applicability ?rootExpression ?conditionExpression ?expressionType ?operand ?evidenceSpan
+SELECT DISTINCT ?penaltyRule ?applicability ?rootExpression ?conditionExpression ?expressionType ?operand ?sourceChunk
 WHERE {
   ?penaltyRule lornr:hasApplicability ?applicability .
   ?applicability lornr:hasConditionExpression ?rootExpression .
   ?rootExpression lornr:hasOperand* ?conditionExpression .
   ?conditionExpression a ?expressionType ;
-    lorsp:supportedBy ?evidenceSpan .
+    lorsp:sourcedFromChunk ?sourceChunk .
   VALUES ?expressionType { lornr:AtomicCondition lornr:AllOf lornr:AnyOf lornr:Not }
   OPTIONAL { ?conditionExpression lornr:hasOperand ?operand }
 }

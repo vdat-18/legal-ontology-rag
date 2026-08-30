@@ -333,7 +333,7 @@ def _traceability_registries(paths: OntologyPaths) -> Mapping[str, frozenset[str
 def _mandatory_cq_issues(paths: OntologyPaths, ontology_graph: Graph, shapes_graph: Graph) -> tuple[str, ...]:
     """Return mandatory CQs missing formal or executable coverage."""
     document = load_yaml(paths.competency_questions)
-    mandatory_cqs = {item["id"] for item in document["competency_questions"] if item["priority"] == "must"}
+    mandatory_cqs = {item["id"] for item in document["competency_questions"]}
     query_cases = {item.cq_id: item for item in load_query_cases(paths.project_root, paths.query_manifest)}
     issues = []
     for cq_id in sorted(mandatory_cqs):

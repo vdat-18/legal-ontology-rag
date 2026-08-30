@@ -133,7 +133,7 @@ def population_ontology_semantic_sha256(project_root: Path) -> str:
 
 
 def load_population_target_selection(path: Path) -> PopulationTargetSelection:
-    """Load one versioned reviewed population-target selection."""
+    """Load one versioned population-target selection."""
     payload = json.loads(path.read_text(encoding="utf-8"))
     if payload["schema_version"] != POPULATION_TARGET_SELECTION_SCHEMA_VERSION:
         msg = f"Unsupported population target selection schema: {payload['schema_version']}"
@@ -361,7 +361,7 @@ def _target_availability_check(
 
 
 def _metadata_check(metadata: DocumentMetadataRecord) -> PopulationPreflightCheck:
-    """Require document identity and flag a missing reviewed validity baseline."""
+    """Require document identity and flag a missing validity baseline."""
     if not metadata.document_number.strip():
         return PopulationPreflightCheck("PF-METADATA-001", "failed", "Document number is empty.")
     if metadata.valid_from is None:
@@ -373,7 +373,7 @@ def _metadata_check(metadata: DocumentMetadataRecord) -> PopulationPreflightChec
     if metadata.valid_to is not None and metadata.valid_to < metadata.valid_from:
         return PopulationPreflightCheck("PF-METADATA-001", "failed", "Document valid_to precedes valid_from.")
     return PopulationPreflightCheck(
-        "PF-METADATA-001", "passed", f"Document metadata has a reviewed baseline from {metadata.valid_from}."
+        "PF-METADATA-001", "passed", f"Document metadata has a validity baseline from {metadata.valid_from}."
     )
 
 
