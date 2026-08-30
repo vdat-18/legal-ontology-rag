@@ -142,6 +142,115 @@ def test_confirm_multi_hop_3_bundles_checkpoints_every_candidate() -> None:
     assert persisted == [("a", "b", "c")]
 
 
+class _CardinalityLimitedClient:
+    """Reject oversized batches to exercise deterministic split recovery."""
+
+    def __init__(self, maximum_batch_size: int) -> None:
+        """Store the largest batch this fake client accepts."""
+        self.maximum_batch_size = maximum_batch_size
+        self.batch_sizes: list[int] = []
+
+    def confirm_batch(
+        self,
+        triples: Sequence[tuple[tuple[LegalFact, LegalFact, LegalFact], tuple[EvidenceRelation, ...]]],
+    ) -> list[ConfirmedMultiHop3Bundle | None]:
+        """Fail oversized requests and confirm every candidate otherwise."""
+        self.batch_sizes.append(len(triples))
+        if len(triples) > self.maximum_batch_size:
+            return []
+        return [_bundle(tuple(sorted(fact.fact_id for fact in facts))) for facts, _connections in triples]
+
+
+def test_confirm_multi_hop_3_bundles_splits_exhausted_batch_and_checkpoints_sub_batches() -> None:
+    """An exhausted batch is bisected and each successful half is checkpointed separately."""
+    candidates = [("a", "b", "c"), ("d", "e", "f"), ("g", "h", "i"), ("j", "k", "l")]
+    facts = [_fact(fact_id) for candidate in candidates for fact_id in candidate]
+    client = _CardinalityLimitedClient(maximum_batch_size=2)
+    persisted: list[tuple[tuple[str, str, str], ...]] = []
+
+    bundles, failures = confirm_multi_hop_3_bundles(
+        facts,
+        (),
+        candidates,
+        client,
+        batch_size=4,
+        max_concurrency=1,
+        max_retries=0,
+        retry_delay_seconds=0,
+        on_batch_confirmed=lambda results: persisted.append(tuple(triple for triple, _bundle_result in results)),
+    )
+
+    assert client.batch_sizes == [4, 2, 2]
+    assert len(bundles) == 4
+    assert failures == ()
+    assert persisted == [tuple(candidates[:2]), tuple(candidates[2:])]
+
+
+def test_confirm_multi_hop_3_bundles_reports_only_irrecoverable_singletons() -> None:
+    """Split recovery isolates failures to individual candidates that still exhaust retries."""
+    candidates = [("a", "b", "c"), ("d", "e", "f")]
+    facts = [_fact(fact_id) for candidate in candidates for fact_id in candidate]
+    client = _CardinalityLimitedClient(maximum_batch_size=0)
+    persisted: list[tuple[tuple[str, str, str], ...]] = []
+
+    bundles, failures = confirm_multi_hop_3_bundles(
+        facts,
+        (),
+        candidates,
+        client,
+        batch_size=2,
+        max_concurrency=1,
+        max_retries=0,
+        retry_delay_seconds=0,
+        on_batch_confirmed=lambda results: persisted.append(tuple(triple for triple, _bundle_result in results)),
+    )
+
+    assert client.batch_sizes == [2, 1, 1]
+    assert bundles == ()
+    assert len(failures) == 2
+    assert all(failure.task_key.startswith("multi-hop-3-batch:") for failure in failures)
+    assert persisted == []
+
+
+class _UnavailableClient:
+    """Simulate an infrastructure failure unrelated to response cardinality."""
+
+    def __init__(self) -> None:
+        """Initialize the request counter."""
+        self.calls = 0
+
+    def confirm_batch(
+        self,
+        triples: Sequence[tuple[tuple[LegalFact, LegalFact, LegalFact], tuple[EvidenceRelation, ...]]],
+    ) -> list[ConfirmedMultiHop3Bundle | None]:
+        """Fail every request before returning a model response."""
+        self.calls += 1
+        msg = "Service unavailable"
+        raise OSError(msg)
+
+
+def test_confirm_multi_hop_3_bundles_does_not_split_infrastructure_failures() -> None:
+    """Transport failures remain one failed batch instead of multiplying requests."""
+    candidates = [("a", "b", "c"), ("d", "e", "f")]
+    facts = [_fact(fact_id) for candidate in candidates for fact_id in candidate]
+    client = _UnavailableClient()
+
+    bundles, failures = confirm_multi_hop_3_bundles(
+        facts,
+        (),
+        candidates,
+        client,
+        batch_size=2,
+        max_concurrency=1,
+        max_retries=0,
+        retry_delay_seconds=0,
+    )
+
+    assert client.calls == 1
+    assert bundles == ()
+    assert len(failures) == 1
+
+
 def test_baml_multi_hop_3_client_translates_valid_bundle(monkeypatch) -> None:
     """A valid typed BAML verdict becomes a provenance-carrying three-fact bundle."""
     settings = Settings(

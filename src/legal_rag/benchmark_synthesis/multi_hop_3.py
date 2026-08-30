@@ -12,6 +12,7 @@ from itertools import combinations
 from typing import Any, Protocol
 
 from baml_py.logging import set_log_level
+from loguru import logger
 
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import (
@@ -231,6 +232,10 @@ class MultiHop3Client(Protocol):
         """Return one confirmed bundle or None per candidate, in input order."""
 
 
+class _BatchCardinalityError(ValueError):
+    """Raised when one model batch does not map one result to every candidate."""
+
+
 class BamlMultiHop3Client:
     """Typed BAML client for confirming three-fact evidence bundles."""
 
@@ -274,7 +279,7 @@ class BamlMultiHop3Client:
         result_ids = [result.candidate_id for result in results]
         if len(result_ids) != len(set(result_ids)) or set(result_ids) != set(requested_ids):
             msg = "Multi-hop-3 batch response must contain exactly one result for every candidate"
-            raise ValueError(msg)
+            raise _BatchCardinalityError(msg)
         results_by_id = {result.candidate_id: result.bundle for result in results}
         return [
             _build_bundle(results_by_id[item.candidate_id], facts, self._model, self._run_id)
@@ -344,8 +349,59 @@ def _confirm_batch(
     bundles = client.confirm_batch(inputs)
     if len(bundles) != len(triples):
         msg = f"Multi-hop-3 batch returned {len(bundles)} results for {len(triples)} candidates"
-        raise ValueError(msg)
+        raise _BatchCardinalityError(msg)
     return tuple(zip(triples, bundles, strict=True))
+
+
+def _confirm_batch_with_fallback(
+    client: MultiHop3Client,
+    facts_by_id: Mapping[str, LegalFact],
+    relations_by_pair: Mapping[tuple[str, str], EvidenceRelation],
+    triples: Sequence[tuple[str, str, str]],
+    *,
+    max_retries: int,
+    retry_delay_seconds: float,
+) -> tuple[
+    tuple[tuple[tuple[tuple[str, str, str], ConfirmedMultiHop3Bundle | None], ...], ...],
+    tuple[LlmTaskFailure, ...],
+]:
+    """Split an exhausted batch until successful sub-batches or failed singletons remain."""
+    task_key = _batch_task_key(triples)
+    try:
+        batch_results = execute_llm_task(
+            task_key,
+            partial(_confirm_batch, client, facts_by_id, relations_by_pair, triples),
+            max_retries=max_retries,
+            retry_delay_seconds=retry_delay_seconds,
+        )
+    except LlmTaskExhaustedError as error:
+        if len(triples) == 1 or not isinstance(error.__cause__, _BatchCardinalityError):
+            return (), (LlmTaskFailure(task_key=task_key, error=str(error)),)
+        midpoint = len(triples) // 2
+        logger.warning(
+            "Splitting exhausted multi-hop-3 batch of {} candidates into {} and {}",
+            len(triples),
+            midpoint,
+            len(triples) - midpoint,
+        )
+        left_results, left_failures = _confirm_batch_with_fallback(
+            client,
+            facts_by_id,
+            relations_by_pair,
+            triples[:midpoint],
+            max_retries=max_retries,
+            retry_delay_seconds=retry_delay_seconds,
+        )
+        right_results, right_failures = _confirm_batch_with_fallback(
+            client,
+            facts_by_id,
+            relations_by_pair,
+            triples[midpoint:],
+            max_retries=max_retries,
+            retry_delay_seconds=retry_delay_seconds,
+        )
+        return (*left_results, *right_results), (*left_failures, *right_failures)
+    return (batch_results,), ()
 
 
 def confirm_multi_hop_3_bundles(
@@ -373,22 +429,21 @@ def confirm_multi_hop_3_bundles(
     with ThreadPoolExecutor(max_workers=max_concurrency) as executor:
         futures = {
             executor.submit(
-                execute_llm_task,
-                _batch_task_key(batch),
-                partial(_confirm_batch, client, facts_by_id, relations_by_pair, batch),
+                _confirm_batch_with_fallback,
+                client,
+                facts_by_id,
+                relations_by_pair,
+                batch,
                 max_retries=max_retries,
                 retry_delay_seconds=retry_delay_seconds,
-            ): batch
+            )
             for batch in batches
         }
         for future in as_completed(futures):
-            batch = futures[future]
-            try:
-                batch_results = future.result()
-            except LlmTaskExhaustedError as error:
-                failures.append(LlmTaskFailure(task_key=_batch_task_key(batch), error=str(error)))
-                continue
-            bundles.extend(bundle for _triple, bundle in batch_results if bundle is not None)
-            if on_batch_confirmed is not None:
-                on_batch_confirmed(batch_results)
+            batch_result_groups, batch_failures = future.result()
+            failures.extend(batch_failures)
+            for batch_results in batch_result_groups:
+                bundles.extend(bundle for _triple, bundle in batch_results if bundle is not None)
+                if on_batch_confirmed is not None:
+                    on_batch_confirmed(batch_results)
     return tuple(bundles), tuple(failures)
