@@ -24,6 +24,7 @@ from legal_rag.baml_client.types import (
     OntologySubjectKind,
     OntologyTargetConductBatchResult,
     OntologyTargetConductEntry,
+    OntologyTargetConductInput,
 )
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
 from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError, LlmTaskExhaustedError
@@ -36,6 +37,7 @@ from legal_rag.ontology_population.extraction import (
     build_population_record,
     build_population_run_id,
     extract_population_from_document,
+    extract_target_conducts,
     finalize_population_binding_results,
 )
 from legal_rag.ontology_population.models import OntologyPopulationRecord
@@ -49,6 +51,32 @@ EXTRACTION_RUN = {
     "population_run_id": POPULATION_RUN_ID,
 }
 RECORD_RUN = {"ontology_version": "0.2.0", **EXTRACTION_RUN}
+
+
+def test_target_conduct_extraction_uses_configured_batch_size(legal_chunk: Chunk) -> None:
+    """Step 1 groups target chunks using its dedicated contract limit."""
+    targets = tuple(replace(legal_chunk, chunk_id=f"target-{index}", chunk_index=index) for index in range(6))
+    batch_sizes = []
+
+    class _ConductClient:
+        def extract_conduct_batch(
+            self, items: Sequence[OntologyTargetConductInput]
+        ) -> Sequence[OntologyTargetConductBatchResult]:
+            batch_sizes.append(len(items))
+            return tuple(
+                OntologyTargetConductBatchResult(target_chunk_id=item.target_chunk_id, conducts=[]) for item in items
+            )
+
+    settings = replace(
+        PopulationSettings.from_path(PROJECT_ROOT / "ontology" / "population_contract.yaml"),
+        max_retries=0,
+        retry_delay_seconds=0,
+    )
+
+    records = extract_target_conducts(targets, _ConductClient(), settings, run_id="conduct-run")
+
+    assert batch_sizes == [5, 1]
+    assert [record.target_chunk_id for record in records] == [chunk.chunk_id for chunk in targets]
 
 
 def test_population_run_identity_tracks_semantic_provider_configuration() -> None:

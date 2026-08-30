@@ -196,8 +196,8 @@ def extract_target_conducts(
 ) -> tuple[TargetConductInventoryRecord, ...]:
     """Extract target-only conduct inventories with resumable batch checkpoints."""
     batches = [
-        target_chunks[batch_start : batch_start + population_settings.batch_size]
-        for batch_start in range(0, len(target_chunks), population_settings.batch_size)
+        target_chunks[batch_start : batch_start + population_settings.conduct_batch_size]
+        for batch_start in range(0, len(target_chunks), population_settings.conduct_batch_size)
     ]
     batch_results_by_index: dict[int, tuple[TargetConductInventoryRecord, ...]] = {}
     failures: list[LlmTaskFailure] = []

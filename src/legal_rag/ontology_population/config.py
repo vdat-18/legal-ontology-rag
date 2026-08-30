@@ -16,6 +16,7 @@ class PopulationSettings:
 
     ontology_version: str
     instance_namespace: str
+    conduct_batch_size: int
     batch_size: int
     max_preceding_chunks: int
     max_following_chunks: int
@@ -38,6 +39,7 @@ class PopulationSettings:
         return cls(
             ontology_version=document["ontology_version"],
             instance_namespace=document["instance_namespace"].rstrip("/") + "/",
+            conduct_batch_size=llm["conduct_batch_size"],
             batch_size=llm["batch_size"],
             max_preceding_chunks=reading_window["max_preceding_chunks"],
             max_following_chunks=reading_window["max_following_chunks"],

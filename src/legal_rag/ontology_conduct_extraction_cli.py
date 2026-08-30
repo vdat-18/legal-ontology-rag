@@ -80,10 +80,11 @@ def main() -> None:
         write_target_conduct_inventories(arguments.inventories_output_path, ordered_records())
 
     logger.info(
-        "Loaded {} selected chunks; {} already inventoried, {} remaining; max concurrency {}",
+        "Loaded {} selected chunks; {} already inventoried, {} remaining; batch size {}; max concurrency {}",
         len(prepared.targets),
         len(prepared.targets) - len(remaining),
         len(remaining),
+        prepared.settings.conduct_batch_size,
         arguments.max_concurrency,
     )
     if remaining:

@@ -6,6 +6,7 @@ reading_window:
   max_following_chunks: 1
   max_article_context_chunks: 32
 llm:
+  conduct_batch_size: 5
   batch_size: 1
   max_output_tokens: 32768
   temperature: 0.0
