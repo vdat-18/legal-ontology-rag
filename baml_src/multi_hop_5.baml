@@ -65,6 +65,14 @@ function ConfirmMultiHop5BundleBatch(items: MultiHop5BundleBatchItem[]) -> Multi
     8. Phân biệt suy luận pháp lý với mô tả quy trình: thứ tự tiếp nhận,
        kiểm tra, thông báo, lập biên bản, lưu, cập nhật hoặc trả kết quả
        không tạo thành hop nếu mỗi thao tác chỉ là một nghĩa vụ độc lập.
+    9. Tách kết luận pháp lý khỏi cách thực hiện thủ tục. Thành phần hồ sơ,
+       mẫu đơn, nơi nộp, cách nhận kết quả hoặc thời hạn giải quyết chỉ được
+       tính là một hop khi chính nó làm thay đổi điều kiện được chấp thuận,
+       bị từ chối hoặc hậu quả áp dụng trong tình huống cụ thể.
+    10. Với chuỗi thu hồi giấy phép, tự dừng sau bốn facts và xác định kết
+       luận đã có. Nếu fact thứ năm chỉ nói cách xin cấp lại sau khi đã chấp
+       hành, bridge đang mô tả vòng đời giấy phép chứ không phải suy luận
+       năm bước; trả is_valid=false.
 
     Luôn trả is_valid=false khi:
     - Năm facts chỉ cùng chủ đề, cùng hậu quả hoặc ghép thành câu hỏi tổng
@@ -87,6 +95,16 @@ function ConfirmMultiHop5BundleBatch(items: MultiHop5BundleBatchItem[]) -> Multi
     - Candidate mô tả đầy đủ vòng đời xử lý như tiếp nhận hồ sơ, kiểm tra,
       ban hành, thông báo, giao trả, lưu trữ hay cập nhật dữ liệu nhưng không
       đi đến một kết luận pháp lý duy nhất cần suy ra qua đủ năm facts.
+    - Candidate ghép chuỗi thu hồi, nộp lại, thời gian không được cấp lại và
+      thủ tục xin cấp lại chỉ để kể trọn vòng đời giấy phép. Hồ sơ hoặc mẫu
+      đơn xin cấp lại không trở thành hop chỉ vì được thực hiện sau thời hạn.
+    - Fact mới chỉ bổ sung mẫu đơn, thành phần hồ sơ, giấy tờ chứng minh,
+      thời gian xử lý, nơi nộp hoặc cách nhận kết quả cho một kết luận mà
+      bốn facts nguồn đã xác lập. Chỉ ngoại lệ khi statement trực tiếp cho
+      thấy chi tiết đó quyết định đủ/không đủ điều kiện hoặc chấp thuận/từ chối.
+    - Fact mới chỉ nêu tên cơ quan cấp một giấy phép liên quan, trong khi
+      bốn facts nguồn đã đủ xác định chủ thể bị xử lý, căn cứ, nghĩa vụ và
+      hậu quả. Việc thêm một cơ quan để kể đủ các bước không tạo hop thứ năm.
     - Các facts chỉ là checklist nghĩa vụ thủ tục cùng áp dụng trong một quy
       trình; thực hiện một nghĩa vụ không xác lập tiền đề pháp lý cho nghĩa
       vụ kế tiếp, dù tất cả có thể xuất hiện trong cùng một tình huống.

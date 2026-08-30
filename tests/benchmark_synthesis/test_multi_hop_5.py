@@ -113,6 +113,11 @@ def test_multi_hop_5_prompt_requires_five_fact_ablation_and_subject_identity() -
     assert "nhánh đạt và không đạt" in prompt
     assert "kết luận pháp lý duy nhất cần suy ra" in prompt
     assert "cùng một tình huống" in prompt
+    assert "Thành phần hồ sơ" in prompt
+    assert "cách xin cấp lại" in prompt
+    assert "thu hồi, nộp lại, thời gian không được cấp lại" in prompt
+    assert "Fact mới chỉ bổ sung mẫu đơn" in prompt
+    assert "Fact mới chỉ nêu tên cơ quan cấp" in prompt
     assert "chỉ là gợi ý để kiểm tra facts" in prompt
     assert "Chỉ dùng tiếng Việt" in prompt
 
