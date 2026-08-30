@@ -3,7 +3,7 @@
   "embedding_profile": "bge_m3",
   "embedding": {
     "batch_size": 100,
-    "max_concurrency": 10,
+    "max_concurrency": 30,
     "max_retries": 2,
     "retry_delay_seconds": 120,
     "max_response_bytes": 16777216
@@ -23,7 +23,7 @@
   "stages": {
     "chunk_screening": {
       "batch_size": 10,
-      "max_concurrency": 20,
+      "max_concurrency": 30,
       "max_output_tokens": 16384,
       "temperature": 0.0,
       "reasoning_effort": "high"
@@ -35,7 +35,7 @@
     },
     "fact_extraction": {
       "batch_size": 1,
-      "max_concurrency": 20,
+      "max_concurrency": 30,
       "max_preceding_chunks": 3,
       "max_following_chunks": 1,
       "max_output_tokens": 32768,
@@ -44,7 +44,7 @@
     },
     "evidence_relation": {
       "batch_size": 10,
-      "max_concurrency": 20,
+      "max_concurrency": 30,
       "retrieval": {
         "retrieval_pool_size": 30,
         "max_candidates_per_fact": 10,
@@ -62,7 +62,7 @@
     "multi_hop_3": {
       "candidate_limit": 3000,
       "batch_size": 10,
-      "max_concurrency": 20,
+      "max_concurrency": 30,
       "max_output_tokens": 8192,
       "temperature": 0.0,
       "reasoning_effort": "high"
@@ -70,7 +70,7 @@
     "multi_hop_4": {
       "candidate_limit": 3000,
       "batch_size": 10,
-      "max_concurrency": 20,
+      "max_concurrency": 30,
       "max_output_tokens": 8192,
       "temperature": 0.0,
       "reasoning_effort": "high"
@@ -78,7 +78,7 @@
     "multi_hop_5": {
       "candidate_limit": 3000,
       "batch_size": 10,
-      "max_concurrency": 20,
+      "max_concurrency": 30,
       "max_output_tokens": 8192,
       "temperature": 0.0,
       "reasoning_effort": "high"

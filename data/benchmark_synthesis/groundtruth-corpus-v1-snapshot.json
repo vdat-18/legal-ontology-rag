@@ -1,0 +1,50 @@
+{
+  "snapshot_id": "5169067cfabb36785877bbd21970fcc50c4f1ba30f6dec9ca2b1987cab228337",
+  "archive": {
+    "name": "road_traffic_legal_documents.zip",
+    "sha256": "94c417c1a751eff6dcc785f9d29e140ae328b4e7296da3e4817cf0e58055369b",
+    "size_bytes": 63620496
+  },
+  "selection": {
+    "name": "groundtruth_corpus_v1.json",
+    "sha256": "7225bf3082ca7557434cc43c0d228334d2d25e64fdb6037560b85bd54c8ff805",
+    "size_bytes": 5907
+  },
+  "selected_documents": [
+    "105_2026_TT-BCA_m_713073.docx",
+    "118_2021_ND-CP_477969.docx",
+    "12_2025_TT-BCA_645271.docx",
+    "13_2025_TT-BCA_m_645302.docx",
+    "14_2025_TT-BXD_m_664151.docx",
+    "151_2024_ND-CP_m_619564.docx",
+    "158_2024_ND-CP_636875.docx",
+    "160_2024_ND-CP_m_624017.docx",
+    "161_2024_ND-CP_623658.docx",
+    "165_2024_ND-CP_623287.docx",
+    "168_2024_ND-CP_619502.docx",
+    "17_2026_TT-BXD_704696.docx",
+    "184_2025_ND-CP_664032.docx",
+    "189_2025_ND-CP_664429.docx",
+    "218_2026_ND-CP_711730.docx",
+    "220_2026_ND-CP_701156.docx",
+    "236_2026_ND-CP_712588.docx",
+    "238_2026_ND-CP_712521.docx",
+    "241_2026_ND-CP_712584.docx",
+    "336_2025_ND-CP_670893.docx",
+    "35_2024_QH15_588811.docx",
+    "36_2024_QH15_444251.docx",
+    "38_2024_TT-BGTVT_m_622477.docx",
+    "39_2024_TT-BGTVT_m_633952.docx",
+    "47_2024_TT-BGTVT_m_623286.docx",
+    "51_2024_TT-BGTVT_m_633562.docx",
+    "51_2025_TT-BCA_m_663452.docx",
+    "53_2024_TT-BGTVT_m_624420.docx",
+    "65_2024_TT-BCA_m_632409.docx",
+    "67_2023_ND-CP_m_578283.docx",
+    "68_2025_ND-CP_648513.docx",
+    "73_2024_TT-BCA_633438.docx",
+    "79_2024_TT-BCA_634265.docx",
+    "90_VBHN-VPQH_699548.docx",
+    "9303_QD-BCA_m_637615.docx"
+  ]
+}

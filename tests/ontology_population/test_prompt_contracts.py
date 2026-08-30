@@ -25,7 +25,7 @@ PROMPT_CASES = (
         (
             "Mục đích bước 4/6",
             "trực tiếp xác định target, loại thay đổi và ngày hiệu lực",
-            "không suy ra từ similarity",
+            "Không suy ra từ similarity",
             "Thiếu evidence thì không đề xuất",
         ),
     ),
