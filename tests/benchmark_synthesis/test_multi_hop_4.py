@@ -96,6 +96,12 @@ def test_multi_hop_4_prompt_requires_four_fact_ablation_and_subject_identity() -
     assert "ít nhất ba bước nối" in prompt
     assert "danh tính và vai trò pháp lý" in prompt
     assert "nhánh điều kiện loại trừ nhau" in prompt
+    assert "bridge về bản chất không đổi" in prompt
+    assert "bản giấy/điện tử" in prompt
+    assert "loại phương tiện hoặc vai trò" in prompt
+    assert "văn bản hay bối cảnh khác" in prompt
+    assert "không phải tiền đề cần thiết cho bước kế tiếp" in prompt
+    assert "chỉ là gợi ý để kiểm tra facts" in prompt
     assert "Chỉ dùng tiếng Việt" in prompt
 
 

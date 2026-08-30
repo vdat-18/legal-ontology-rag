@@ -45,6 +45,8 @@ function ConfirmMultiHop5BundleBatch(items: MultiHop5BundleBatchItem[]) -> Multi
     - Có ít nhất bốn bước nối có phụ thuộc nội dung trong toàn bundle.
     - Bỏ bất kỳ một fact nào cũng khiến câu trả lời không còn đầy đủ hoặc
       không thể đi đến cùng kết luận.
+    - Đóng góp cụ thể của fact mới xuất hiện rõ trong bridge cuối. Nếu bỏ
+      fact mới mà bridge về bản chất không đổi, trả is_valid=false.
 
     Trước khi kết luận, tự kiểm tra:
     1. Viết thầm một tình huống và một câu hỏi cụ thể trước khi ghép facts.
@@ -55,6 +57,8 @@ function ConfirmMultiHop5BundleBatch(items: MultiHop5BundleBatchItem[]) -> Multi
        qua các nhãn chung như cơ quan, lực lượng hoặc người có thẩm quyền.
     5. Kiểm tra fact thứ năm nối vào chuỗi lập luận, không biến bundle thành
        hai nhóm câu hỏi độc lập được ghép chung.
+    6. Kiểm tra bridge cuối thể hiện rõ đóng góp của từng fact, đặc biệt là
+       fact mới, thay vì chỉ mô tả chủ đề chung của bundle.
 
     Luôn trả is_valid=false khi:
     - Năm facts chỉ cùng chủ đề, cùng hậu quả hoặc ghép thành câu hỏi tổng
@@ -62,7 +66,15 @@ function ConfirmMultiHop5BundleBatch(items: MultiHop5BundleBatchItem[]) -> Multi
     - Bốn facts đã đủ và fact thứ năm chỉ diễn giải, lặp lại, cung cấp ví dụ,
       trạng thái nền hoặc tính hợp pháp chung.
     - Các facts thuộc những nhánh điều kiện loại trừ nhau hoặc không thể
-      đồng thời đúng trong một tình huống.
+      đồng thời đúng trong một tình huống, như bản giấy/điện tử, được phép/
+      bị cấm hoặc có mặt/vắng mặt.
+    - Một fact chỉ áp dụng cho nhóm chủ thể, loại phương tiện hoặc vai trò
+      hẹp hơn nhưng tình huống không có statement nào xác lập đúng phạm vi đó.
+    - Một định nghĩa, khoảng thời gian, ngoại lệ hoặc phạm vi từ văn bản hay
+      bối cảnh này bị chuyển sang văn bản hay bối cảnh khác mà không có
+      statement trực tiếp xác lập phạm vi dùng chung.
+    - Các facts chỉ ghép thành một quy trình hoặc vòng đời rộng; output của
+      mỗi bước không phải tiền đề cần thiết cho bước kế tiếp.
     - Một bước nối cần tự tạo tiền đề, hệ quả, quan hệ chủ thể hoặc phạm vi
       mà statements không trực tiếp hỗ trợ.
     - Nội dung chủ yếu là so sánh quy định theo thời gian; trường hợp đó
@@ -74,6 +86,8 @@ function ConfirmMultiHop5BundleBatch(items: MultiHop5BundleBatchItem[]) -> Multi
     Không chép lại toàn bộ statements. Khi invalid, bridge=null.
 
     Trả đúng một kết quả cho mỗi input và giữ nguyên candidate_id.
+    Không coi source_bridge hoặc connection là bằng chứng về phạm vi, điều
+    kiện áp dụng hay danh tính chủ thể; chúng chỉ là gợi ý để kiểm tra facts.
 
     {{ _.role("user") }}
 
