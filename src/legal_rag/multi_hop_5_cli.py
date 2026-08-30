@@ -35,6 +35,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--candidate-cache", type=Path, required=True, help="Fingerprint-validated candidate cache")
     parser.add_argument("--prepare-candidates-only", action="store_true", help="Prepare candidates without LLM calls")
     parser.add_argument(
+        "--migrate-source-bundles",
+        action="store_true",
+        help="Rebuild candidates and retain completed state unaffected by changed multi-hop-4 sources",
+    )
+    parser.add_argument(
         "--allow-incomplete-bundles",
         action="store_true",
         help="Sample scenarios even when some candidate batches failed after retries",
@@ -56,6 +61,7 @@ def _validate_resume_state(
     candidate_ids: frozenset[str],
     run_id: str,
     reconfirm_ids: frozenset[str],
+    migration_invalidated_ids: frozenset[str] | None = None,
 ) -> tuple[dict[str, ConfirmedMultiHop5Bundle], dict[str, MultiHop5ProgressRecord]]:
     """Validate persisted state and invalidate only explicitly selected candidates."""
     from legal_rag.benchmark_synthesis.multi_hop_5 import MULTI_HOP_5_PROMPT_VERSION, multi_hop_5_candidate_id
@@ -68,6 +74,12 @@ def _validate_resume_state(
     if len(progress_by_id) != len(existing_progress):
         msg = "Existing multi-hop-5 progress contains duplicate candidate IDs"
         raise ValueError(msg)
+    bundles_by_id, progress_by_id = _prune_migrated_state(
+        bundles_by_id,
+        progress_by_id,
+        candidate_ids,
+        migration_invalidated_ids,
+    )
     if not progress_by_id.keys() <= candidate_ids:
         msg = "Multi-hop-5 progress contains candidates outside the current candidate set"
         raise ValueError(msg)
@@ -84,17 +96,19 @@ def _validate_resume_state(
     if len(bundle_candidate_ids) != len(set(bundle_candidate_ids)):
         msg = "Existing multi-hop-5 bundles contain multiple results for one candidate"
         raise ValueError(msg)
+    bundle_candidate_ids = [multi_hop_5_candidate_id(bundle.fact_ids) for bundle in bundles_by_id.values()]
     if not set(bundle_candidate_ids) <= candidate_ids:
         msg = "Multi-hop-5 bundles contain candidates outside the current candidate set"
         raise ValueError(msg)
-    _validate_bundle_provenance(existing_bundles, bundle_candidate_ids, progress_by_id, run_id)
+    _validate_bundle_provenance(tuple(bundles_by_id.values()), bundle_candidate_ids, progress_by_id, run_id)
 
     if reconfirm_ids:
         unknown_ids = reconfirm_ids - candidate_ids
         if unknown_ids:
             msg = f"Unknown multi-hop-5 candidates requested for reconfirmation: {sorted(unknown_ids)}"
             raise ValueError(msg)
-        if candidate_ids - reconfirm_ids - progress_by_id.keys():
+        allowed_missing_ids = reconfirm_ids | (migration_invalidated_ids or frozenset())
+        if candidate_ids - allowed_missing_ids - progress_by_id.keys():
             msg = "Selective multi-hop-5 confirmation requires prior progress for every unselected candidate"
             raise ValueError(msg)
         progress_by_id = {
@@ -106,6 +120,31 @@ def _validate_resume_state(
             if multi_hop_5_candidate_id(bundle.fact_ids) not in reconfirm_ids
         }
     return bundles_by_id, progress_by_id
+
+
+def _prune_migrated_state(
+    bundles_by_id: dict[str, ConfirmedMultiHop5Bundle],
+    progress_by_id: dict[str, MultiHop5ProgressRecord],
+    candidate_ids: frozenset[str],
+    invalidated_ids: frozenset[str] | None,
+) -> tuple[dict[str, ConfirmedMultiHop5Bundle], dict[str, MultiHop5ProgressRecord]]:
+    """Discard obsolete and changed results while retaining unaffected completed candidates."""
+    if invalidated_ids is None:
+        return bundles_by_id, progress_by_id
+    from legal_rag.benchmark_synthesis.multi_hop_5 import multi_hop_5_candidate_id
+
+    retained_progress = {
+        candidate_id: record
+        for candidate_id, record in progress_by_id.items()
+        if candidate_id in candidate_ids and candidate_id not in invalidated_ids
+    }
+    retained_bundles = {
+        bundle_id: bundle
+        for bundle_id, bundle in bundles_by_id.items()
+        if (candidate_id := multi_hop_5_candidate_id(bundle.fact_ids)) in candidate_ids
+        and candidate_id not in invalidated_ids
+    }
+    return retained_bundles, retained_progress
 
 
 def _validate_bundle_provenance(
@@ -135,12 +174,15 @@ def _load_or_create_candidates(
     source_bundles: Sequence[ConfirmedMultiHop4Bundle],
     relations: Sequence[EvidenceRelation],
     synthesis_settings: SynthesisSettings,
-) -> tuple[str, tuple[MultiHop5Candidate, ...]]:
+    *,
+    migrate_source_bundles: bool,
+) -> tuple[str, tuple[MultiHop5Candidate, ...], frozenset[str] | None]:
     """Load a compatible cache or create five-fact candidates."""
     from legal_rag.benchmark_synthesis.multi_hop_5 import (
         MultiHop5CandidateSet,
         build_multi_hop_5_candidate_run_id,
         find_multi_hop_5_candidates,
+        multi_hop_5_candidate_id,
     )
     from legal_rag.benchmark_synthesis.writer import (
         read_multi_hop_5_candidate_set,
@@ -151,18 +193,42 @@ def _load_or_create_candidates(
     run_id = build_multi_hop_5_candidate_run_id(source_bundles, relations, candidate_limit)
     if candidate_cache.exists():
         candidate_set = read_multi_hop_5_candidate_set(candidate_cache)
-        if candidate_set.run_id != run_id:
+        if candidate_set.run_id == run_id:
+            logger.info(
+                "Loaded {} cached multi-hop-5 candidates from {}", len(candidate_set.candidates), candidate_cache
+            )
+            return run_id, candidate_set.candidates, None
+        if not migrate_source_bundles:
             msg = "Existing multi-hop-5 candidates belong to a different source bundle or relation run"
             raise ValueError(msg)
-        logger.info("Loaded {} cached multi-hop-5 candidates from {}", len(candidate_set.candidates), candidate_cache)
-        return run_id, candidate_set.candidates
+        candidates = find_multi_hop_5_candidates(source_bundles, relations, limit=candidate_limit)
+        previous_by_id = {
+            multi_hop_5_candidate_id(candidate.fact_ids): candidate for candidate in candidate_set.candidates
+        }
+        current_by_id = {multi_hop_5_candidate_id(candidate.fact_ids): candidate for candidate in candidates}
+        invalidated_ids = frozenset(
+            candidate_id
+            for candidate_id, candidate in current_by_id.items()
+            if previous_by_id.get(candidate_id) != candidate
+        )
+        write_multi_hop_5_candidate_set(
+            candidate_cache,
+            MultiHop5CandidateSet(run_id=run_id, candidates=candidates),
+        )
+        logger.info(
+            "Migrated multi-hop-5 candidates: retained={}, invalidated={}, removed={}",
+            len(candidates) - len(invalidated_ids),
+            len(invalidated_ids),
+            len(previous_by_id.keys() - current_by_id.keys()),
+        )
+        return run_id, candidates, invalidated_ids
     candidates = find_multi_hop_5_candidates(source_bundles, relations, limit=candidate_limit)
     write_multi_hop_5_candidate_set(
         candidate_cache,
         MultiHop5CandidateSet(run_id=run_id, candidates=candidates),
     )
     logger.info("Selected {} multi-hop-5 candidates, wrote {}", len(candidates), candidate_cache)
-    return run_id, candidates
+    return run_id, candidates, None
 
 
 def _require_completed_confirmation(failures: Sequence[LlmTaskFailure], *, allow_incomplete: bool) -> None:
@@ -220,11 +286,12 @@ def main() -> None:
     relations = read_evidence_relations(arguments.relations_path)
     multi_hop_3_bundles = read_multi_hop_3_bundles(arguments.multi_hop_3_bundles_path)
     source_bundles = read_multi_hop_4_bundles(arguments.source_bundles_path)
-    candidate_run_id, candidates = _load_or_create_candidates(
+    candidate_run_id, candidates, migration_invalidated_ids = _load_or_create_candidates(
         arguments.candidate_cache,
         source_bundles,
         relations,
         synthesis_settings,
+        migrate_source_bundles=arguments.migrate_source_bundles,
     )
     if arguments.prepare_candidates_only:
         return
@@ -253,9 +320,16 @@ def main() -> None:
         candidate_ids,
         run_id,
         reconfirm_ids,
+        migration_invalidated_ids,
     )
     if reconfirm_ids:
         logger.info("Selectively invalidated {} multi-hop-5 candidate(s)", len(reconfirm_ids))
+    if migration_invalidated_ids is not None:
+        logger.info(
+            "Migrated multi-hop-5 state: retained_progress={}, remaining={}",
+            len(progress_by_id),
+            len(candidate_ids - progress_by_id.keys()),
+        )
     remaining = tuple(
         candidate for candidate in candidates if multi_hop_5_candidate_id(candidate.fact_ids) not in progress_by_id
     )
@@ -295,7 +369,7 @@ def main() -> None:
         )
         logger.debug("Checkpointed {} multi-hop-5 candidate(s)", len(batch_results))
 
-    if reconfirm_ids:
+    if reconfirm_ids or migration_invalidated_ids is not None:
         _write_state(
             arguments.bundles_output_path,
             arguments.progress_output_path,

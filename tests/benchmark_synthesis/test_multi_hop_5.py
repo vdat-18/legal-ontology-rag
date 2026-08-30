@@ -263,7 +263,13 @@ def test_candidate_cache_rejects_changed_upstream_graph(tmp_path: Path) -> None:
     settings = SynthesisSettings.from_path(_CONFIG_PATH)
     relations = (_relation("a", "b"), _relation("b", "c"), _relation("c", "d"), _relation("d", "e"))
 
-    _load_or_create_candidates(candidate_path, [_source_bundle()], relations, settings)
+    _load_or_create_candidates(
+        candidate_path,
+        [_source_bundle()],
+        relations,
+        settings,
+        migrate_source_bundles=False,
+    )
 
     with pytest.raises(ValueError, match="different source bundle or relation run"):
         _load_or_create_candidates(
@@ -271,7 +277,36 @@ def test_candidate_cache_rejects_changed_upstream_graph(tmp_path: Path) -> None:
             [_source_bundle()],
             (*relations, _relation("a", "f")),
             settings,
+            migrate_source_bundles=False,
         )
+
+
+def test_candidate_migration_rebuilds_cache_and_invalidates_changed_sources(tmp_path: Path) -> None:
+    """A changed four-fact source invalidates only its rebuilt five-fact candidate."""
+    candidate_path = tmp_path / "candidates.json"
+    settings = SynthesisSettings.from_path(_CONFIG_PATH)
+    relations = (_relation("a", "b"), _relation("b", "c"), _relation("c", "d"), _relation("d", "e"))
+    _load_or_create_candidates(
+        candidate_path,
+        [_source_bundle()],
+        relations,
+        settings,
+        migrate_source_bundles=False,
+    )
+    changed_source = _source_bundle("source-changed")
+
+    run_id, candidates, invalidated_ids = _load_or_create_candidates(
+        candidate_path,
+        [changed_source],
+        relations,
+        settings,
+        migrate_source_bundles=True,
+    )
+
+    candidate_id = multi_hop_5_candidate_id(("a", "b", "c", "d", "e"))
+    assert read_multi_hop_5_candidate_set(candidate_path) == MultiHop5CandidateSet(run_id, candidates)
+    assert candidates == (MultiHop5Candidate(("a", "b", "c", "d", "e"), changed_source.bundle_id),)
+    assert invalidated_ids == frozenset({candidate_id})
 
 
 def test_selective_resume_invalidates_only_requested_candidate() -> None:
@@ -301,6 +336,52 @@ def test_selective_resume_invalidates_only_requested_candidate() -> None:
 
     assert bundles_by_id == {retained.bundle_id: retained}
     assert set(progress_by_id) == {retained_id}
+
+
+def test_resume_migration_prunes_changed_and_obsolete_candidates() -> None:
+    """Migration and reconfirmation retain only unaffected completed candidates."""
+    selected = _confirmed_bundle()
+    retained = ConfirmedMultiHop5Bundle(
+        bundle_id="bundle-retained",
+        fact_ids=("f", "g", "h", "i", "j"),
+        bridge="Retained",
+        confirmed_by_model="provider/model",
+        run_id="bundle-run",
+    )
+    obsolete = ConfirmedMultiHop5Bundle(
+        bundle_id="bundle-obsolete",
+        fact_ids=("k", "l", "m", "n", "o"),
+        bridge="Obsolete",
+        confirmed_by_model="provider/model",
+        run_id="bundle-run",
+    )
+    reconfirmed = ConfirmedMultiHop5Bundle(
+        bundle_id="bundle-reconfirmed",
+        fact_ids=("p", "q", "r", "s", "t"),
+        bridge="Reconfirmed",
+        confirmed_by_model="provider/model",
+        run_id="bundle-run",
+    )
+    selected_id = multi_hop_5_candidate_id(selected.fact_ids)
+    retained_id = multi_hop_5_candidate_id(retained.fact_ids)
+    obsolete_id = multi_hop_5_candidate_id(obsolete.fact_ids)
+    reconfirmed_id = multi_hop_5_candidate_id(reconfirmed.fact_ids)
+    progress = tuple(
+        MultiHop5ProgressRecord(candidate_id, "bundle-run", confirmed_by_model="provider/model")
+        for candidate_id in (selected_id, retained_id, obsolete_id, reconfirmed_id)
+    )
+
+    bundles_by_id, progress_by_id = _validate_resume_state(
+        (selected, retained, obsolete, reconfirmed),
+        progress,
+        frozenset({selected_id, retained_id, reconfirmed_id}),
+        "current-run",
+        frozenset({reconfirmed_id}),
+        frozenset({selected_id}),
+    )
+
+    assert bundles_by_id == {retained.bundle_id: retained}
+    assert progress_by_id == {retained_id: progress[1]}
 
 
 def test_resume_rejects_stale_progress() -> None:
