@@ -76,6 +76,10 @@ function ConfirmMultiHop4BundleBatch(items: MultiHop4BundleBatchItem[]) -> Multi
       statement trực tiếp xác lập phạm vi dùng chung.
     - Các facts chỉ ghép thành một quy trình hoặc vòng đời rộng; output của
       mỗi bước không phải tiền đề cần thiết cho bước kế tiếp.
+    - Các facts chỉ là checklist nghĩa vụ, hồ sơ, thời hạn hoặc thao tác
+      hành chính. Thứ tự thực hiện hoặc cùng thuộc một thủ tục không phải
+      quan hệ multi-hop nếu kết quả pháp lý của bước trước không quyết định
+      khả năng áp dụng bước sau.
     - Các facts nêu những hậu quả pháp lý song song của cùng một hành vi,
       như mức phạt cá nhân, trách nhiệm của tổ chức và bồi thường dân sự.
       Cùng chủ thể hoặc cùng sự kiện không biến các nhánh này thành multi-hop.
@@ -84,9 +88,10 @@ function ConfirmMultiHop4BundleBatch(items: MultiHop4BundleBatchItem[]) -> Multi
     - Nội dung chủ yếu là so sánh quy định theo thời gian; trường hợp đó
       thuộc temporal, không phải multi-hop-4.
 
-    Khi valid, bridge là một câu tiếng Việt ngắn nêu đúng vấn đề pháp lý
-    thống nhất và thể hiện chuỗi phụ thuộc bốn facts. Chỉ dùng tiếng Việt;
-    không chèn từ thuộc ngôn ngữ khác, nhãn Fact, ID hoặc vị trí input.
+    Khi valid, bridge là một câu trần thuật tiếng Việt ngắn nêu đúng vấn
+    đề pháp lý thống nhất và thể hiện chuỗi phụ thuộc bốn facts. Bridge
+    không được là câu hỏi, không kết thúc bằng dấu hỏi, không chèn từ thuộc
+    ngôn ngữ khác, nhãn Fact, ID hoặc vị trí input. Chỉ dùng tiếng Việt.
     Không chép lại toàn bộ statements. Khi invalid, bridge=null.
 
     Trả đúng một kết quả cho mỗi input và giữ nguyên candidate_id.

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 
 
@@ -23,6 +23,15 @@ def load_reconfirm_candidate_ids(
         msg = "Reconfirm candidate IDs must be non-empty strings"
         raise ValueError(msg)
     return frozenset(candidate_ids)
+
+
+def include_accepted_candidate_ids(
+    requested_ids: frozenset[str],
+    accepted_fact_ids: Iterable[Sequence[str]],
+    candidate_id: Callable[[Sequence[str]], str],
+) -> frozenset[str]:
+    """Add the candidate identity of every currently accepted bundle."""
+    return requested_ids | frozenset(candidate_id(fact_ids) for fact_ids in accepted_fact_ids)
 
 
 def validate_selective_confirmation(

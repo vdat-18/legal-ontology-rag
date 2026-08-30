@@ -105,6 +105,9 @@ def test_multi_hop_4_prompt_requires_four_fact_ablation_and_subject_identity() -
     assert "hậu quả pháp lý song song" in prompt
     assert "mức phạt cá nhân, trách nhiệm của tổ chức" in prompt
     assert "không biến các nhánh này thành multi-hop" in prompt
+    assert "checklist nghĩa vụ, hồ sơ, thời hạn" in prompt
+    assert "không được là câu hỏi" in prompt
+    assert "không kết thúc bằng dấu hỏi" in prompt
     assert "chỉ là gợi ý để kiểm tra facts" in prompt
     assert "Chỉ dùng tiếng Việt" in prompt
 

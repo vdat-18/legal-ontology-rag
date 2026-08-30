@@ -79,10 +79,14 @@ function ConfirmMultiHop3BundleBatch(items: MultiHop3BundleBatchItem[]) -> Multi
       chức danh giao quyền, người nhận quyền và thẩm quyền được chuyển.
     - Nội dung chủ yếu là so sánh quy định theo thời gian; trường hợp đó
       thuộc temporal, không phải multi-hop-3.
+    - Các facts chỉ tạo thành checklist thủ tục hoặc chuỗi thao tác theo
+      thứ tự thời gian. Việc bước này thường diễn ra trước bước khác không
+      đủ; kết quả pháp lý của bước trước phải là điều kiện cần của bước sau.
 
-    Khi valid, bridge là một câu tiếng Việt ngắn nêu đúng một vấn đề pháp
-    lý thống nhất và thể hiện chuỗi phụ thuộc. Chỉ dùng tiếng Việt; không
-    chèn từ hoặc liên từ thuộc ngôn ngữ khác. Không chép lại toàn bộ
+    Khi valid, bridge là một câu trần thuật tiếng Việt ngắn nêu đúng một
+    vấn đề pháp lý thống nhất và thể hiện chuỗi phụ thuộc. Bridge không
+    được là câu hỏi, không kết thúc bằng dấu hỏi, không dùng từ hoặc liên
+    từ thuộc ngôn ngữ khác. Chỉ dùng tiếng Việt. Không chép lại toàn bộ
     statements, không ghi ID/Điều khoản thay cho nội dung. Khi invalid,
     bridge=null.
 

@@ -42,6 +42,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--reconfirm-candidate-ids", type=Path, help="JSON string array of candidate IDs to confirm again"
     )
+    parser.add_argument(
+        "--reconfirm-accepted",
+        action="store_true",
+        help="Confirm every currently accepted multi-hop-4 bundle again",
+    )
     parser.add_argument("--personas", type=Path, required=True, help="Persona config JSON path")
     parser.add_argument("--scenario-distribution", type=Path, required=True, help="Scenario distribution JSON path")
     parser.add_argument("--total-samples", type=int, required=True, help="Target scenario count")
@@ -183,7 +188,10 @@ def main() -> None:
 
     from legal_rag.benchmark_synthesis.config import SynthesisSettings
     from legal_rag.benchmark_synthesis.evidence_graph import sample_bundles
-    from legal_rag.benchmark_synthesis.multi_hop_3_selection import load_reconfirm_candidate_ids
+    from legal_rag.benchmark_synthesis.multi_hop_3_selection import (
+        include_accepted_candidate_ids,
+        load_reconfirm_candidate_ids,
+    )
     from legal_rag.benchmark_synthesis.multi_hop_4 import (
         MULTI_HOP_4_PROMPT_VERSION,
         BamlMultiHop4Client,
@@ -239,6 +247,12 @@ def main() -> None:
     )
     existing_bundles = (
         read_multi_hop_4_bundles(arguments.bundles_output_path) if arguments.bundles_output_path.exists() else ()
+    )
+    accepted_fact_ids = (bundle.fact_ids for bundle in existing_bundles) if arguments.reconfirm_accepted else ()
+    reconfirm_ids = include_accepted_candidate_ids(
+        reconfirm_ids,
+        accepted_fact_ids,
+        multi_hop_4_candidate_id,
     )
     existing_progress = (
         read_multi_hop_4_progress(arguments.progress_output_path) if arguments.progress_output_path.exists() else ()

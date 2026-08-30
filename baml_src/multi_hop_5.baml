@@ -81,14 +81,18 @@ function ConfirmMultiHop5BundleBatch(items: MultiHop5BundleBatchItem[]) -> Multi
     - Các facts chỉ là checklist nghĩa vụ thủ tục cùng áp dụng trong một quy
       trình; thực hiện một nghĩa vụ không xác lập tiền đề pháp lý cho nghĩa
       vụ kế tiếp, dù tất cả có thể xuất hiện trong cùng một tình huống.
+    - Bridge chỉ có thể bao quát đủ facts bằng cách liệt kê nhiều hồ sơ,
+      thời hạn, nghĩa vụ, điều kiện hoặc hậu quả nối bằng các liên từ; đó là
+      câu hỏi tổng hợp rộng, không phải một chuỗi suy luận năm bước.
     - Một bước nối cần tự tạo tiền đề, hệ quả, quan hệ chủ thể hoặc phạm vi
       mà statements không trực tiếp hỗ trợ.
     - Nội dung chủ yếu là so sánh quy định theo thời gian; trường hợp đó
       thuộc temporal, không phải multi-hop-5.
 
-    Khi valid, bridge là một câu tiếng Việt ngắn nêu đúng vấn đề pháp lý
-    thống nhất và thể hiện chuỗi phụ thuộc năm facts. Chỉ dùng tiếng Việt;
-    không chèn từ thuộc ngôn ngữ khác, nhãn Fact, ID hoặc vị trí input.
+    Khi valid, bridge là một câu trần thuật tiếng Việt ngắn nêu đúng vấn
+    đề pháp lý thống nhất và thể hiện chuỗi phụ thuộc năm facts. Bridge
+    không được là câu hỏi, không kết thúc bằng dấu hỏi, không chèn từ thuộc
+    ngôn ngữ khác, nhãn Fact, ID hoặc vị trí input. Chỉ dùng tiếng Việt.
     Không chép lại toàn bộ statements. Khi invalid, bridge=null.
 
     Trả đúng một kết quả cho mỗi input và giữ nguyên candidate_id.

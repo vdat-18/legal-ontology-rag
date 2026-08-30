@@ -19,6 +19,7 @@ from legal_rag.benchmark_synthesis.multi_hop_3 import (
     find_multi_hop_3_candidates,
     multi_hop_3_candidate_id,
 )
+from legal_rag.benchmark_synthesis.multi_hop_3_selection import include_accepted_candidate_ids
 from legal_rag.benchmark_synthesis.writer import (
     read_multi_hop_3_bundles,
     read_multi_hop_3_candidate_set,
@@ -43,7 +44,9 @@ def test_multi_hop_3_prompt_requires_one_concrete_compositional_case() -> None:
     assert "chỉ xác nhận trạng thái nền hoặc tính hợp pháp chung" in prompt
     assert "giữ đúng danh tính và vai trò pháp lý của chủ thể" in prompt
     assert "statements phải trực tiếp xác lập đúng" in prompt
-    assert "Chỉ dùng tiếng Việt" in prompt
+    assert "checklist thủ tục" in prompt
+    assert "được là câu hỏi" in prompt
+    assert "không kết thúc bằng dấu hỏi" in prompt
 
 
 _CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
@@ -216,6 +219,20 @@ def test_selective_resume_invalidates_only_requested_candidate() -> None:
 
     assert set(bundles_by_id) == {"bundle-2"}
     assert set(progress_by_id) == {retained_id}
+
+
+def test_include_accepted_candidate_ids_preserves_explicit_selection() -> None:
+    """Accepted-bundle audit is combined with explicitly selected candidates."""
+    explicit_id = multi_hop_3_candidate_id(("a", "b", "c"))
+    accepted_id = multi_hop_3_candidate_id(("d", "e", "f"))
+
+    selected_ids = include_accepted_candidate_ids(
+        frozenset({explicit_id}),
+        (("d", "e", "f"),),
+        multi_hop_3_candidate_id,
+    )
+
+    assert selected_ids == frozenset({explicit_id, accepted_id})
 
 
 def test_resume_rejects_progress_from_a_stale_run() -> None:

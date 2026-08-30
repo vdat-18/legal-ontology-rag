@@ -41,6 +41,11 @@ def _parser() -> argparse.ArgumentParser:
         "--reconfirm-candidate-ids", type=Path, help="JSON string array of candidate IDs to confirm again"
     )
     parser.add_argument(
+        "--reconfirm-accepted",
+        action="store_true",
+        help="Confirm every currently accepted multi-hop-3 bundle again",
+    )
+    parser.add_argument(
         "--migrate-relation-pair-ids",
         action="append",
         default=[],
@@ -251,7 +256,10 @@ def main() -> None:
         confirm_multi_hop_3_bundles,
         multi_hop_3_candidate_id,
     )
-    from legal_rag.benchmark_synthesis.multi_hop_3_selection import load_reconfirm_candidate_ids
+    from legal_rag.benchmark_synthesis.multi_hop_3_selection import (
+        include_accepted_candidate_ids,
+        load_reconfirm_candidate_ids,
+    )
     from legal_rag.benchmark_synthesis.scenario_sampling import (
         ScenarioSamplingConfig,
         load_personas,
@@ -303,6 +311,13 @@ def main() -> None:
     existing_bundles = (
         read_multi_hop_3_bundles(arguments.bundles_output_path) if arguments.bundles_output_path.exists() else ()
     )
+    accepted_fact_ids = (bundle.fact_ids for bundle in existing_bundles) if arguments.reconfirm_accepted else ()
+    reconfirm_ids = include_accepted_candidate_ids(
+        reconfirm_ids,
+        accepted_fact_ids,
+        multi_hop_3_candidate_id,
+    )
+    _validate_requested_operations(reconfirm_ids, changed_relation_pairs)
     existing_progress = (
         read_multi_hop_3_progress(arguments.progress_output_path) if arguments.progress_output_path.exists() else ()
     )
