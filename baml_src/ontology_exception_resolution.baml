@@ -1,19 +1,16 @@
 class ExceptionCitationProposalEntry {
-  citation OntologyEvidenceReference @description(#"Source reference for the citation wording, not a normalized locator."#)
+  citation OntologyEvidenceReference @description(#"Evidence chứa citation wording, không phải locator chuẩn hóa."#)
   target_population_ids string[] @description(#"
-    One or more version-specific rule IDs from target_records whose grounded provisions resolve this grouped citation.
+    Một hoặc nhiều rule-version ID trong target_records mà citation trỏ tới.
   "#)
 }
 
 class LegalExceptionProposalEntry {
-  general_population_id string @description(#"Exactly one rule ID from general_records."#)
-  exception_provision_path string @description(#"Fullest structural path of the provision stating the exception."#)
-  evidence OntologyEvidenceReference[] @description(#"Source references that directly state the complete exception."#)
-  citations ExceptionCitationProposalEntry[] @description(#"
-    Grouped provision citations resolved to target rule versions. Return no proposal when citation targets cannot be
-    supported from the supplied target records.
-  "#)
-  rationale_vi string @description(#"Giải thích ngắn gọn vì sao source chứng minh exception và từng target."#)
+  general_population_id string @description(#"Một rule ID trong general_records."#)
+  exception_provision_path string @description(#"Đường dẫn đầy đủ nhất của quy định ngoại lệ."#)
+  evidence OntologyEvidenceReference[] @description(#"Evidence trực tiếp nêu đầy đủ ngoại lệ."#)
+  citations ExceptionCitationProposalEntry[] @description(#"Citation đã resolve tới target rule versions."#)
+  rationale_vi string @description(#"Lý do ngắn gọn cho ngoại lệ và từng target."#)
 }
 
 class ExceptionResolutionWindowInput {
@@ -32,22 +29,30 @@ class ExceptionResolutionWindowResult {
 function ProposeLegalExceptionResolutions(windows: ExceptionResolutionWindowInput[]) -> ExceptionResolutionWindowResult[] {
   client OpenAICompatibleProvider
   prompt #"
+    {{ _.role("system") }}
+
+    Bối cảnh: xây dựng ontology có bằng chứng nguồn cho quy định xử lý vi phạm
+    giao thông đường bộ tại Việt Nam; không áp dụng luật vào vụ việc.
+
+    Mục đích bước 5/6: nối general rule với ngoại lệ và citation để ontology giữ
+    đúng phạm vi áp dụng mà không biến citation thành rule identity.
+
+    Nhiệm vụ: xác định LegalException và ProvisionCitation cho rule versions trong
+    từng candidate window.
+
+    - Chỉ đề xuất khi toàn ngữ cảnh trực tiếp chứng minh ngoại lệ làm hẹp general
+      rule; không quyết định bằng keyword hoặc similarity.
+    - General ID thuộc general_records. Citation chỉ dùng source evidence đã cấp;
+      target IDs thuộc target_records và phù hợp locator.
+    - Giữ citation, provision và target rule là các đối tượng riêng; không redirect
+      theo similarity, thứ tự văn bản hoặc lịch sử thay đổi.
+    - Provision path phải có source support. Không đánh giá priority hay vụ việc cụ
+      thể; thiếu căn cứ thì không đề xuất.
+    - Trả đúng một result cho mỗi candidate_id; không lặp exception/general rule.
+
     {{ _.role("user") }}
 
-    Bạn là chuyên gia ontology pháp luật. Xác định LegalException và
-    ProvisionCitation cho các rule version trong từng candidate window.
-
-    Nguyên tắc bắt buộc:
-    - Chỉ đề xuất khi toàn ngữ cảnh trực tiếp chứng minh ngoại lệ làm hẹp một
-      general rule; không quyết định bằng keyword hoặc độ giống câu chữ.
-    - General ID phải thuộc general_records. Citation chỉ dùng source evidence
-      đã cung cấp; target IDs phải thuộc target_records và phù hợp locator.
-    - Giữ citation, provision và target rule là các đối tượng khác nhau. Không
-      redirect theo similarity, thứ tự văn bản hay lịch sử thay đổi.
-    - Provision path phải được nguồn hỗ trợ. Không đánh giá priority hoặc một
-      vụ việc cụ thể. Nếu chưa đủ căn cứ, trả proposals rỗng.
-    - Trả đúng một result cho mỗi candidate_id và không lặp cùng exception/general rule.
-
+    Các candidate window cần đánh giá:
     {% for window in windows %}
     === candidate_id={{ window.candidate_id }} ===
     source_document={{ window.source_document_number }}

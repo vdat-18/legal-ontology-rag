@@ -31,7 +31,7 @@ from legal_rag.ontology_population.extraction import build_population_record
 from legal_rag.ontology_population.models import OntologyPopulationRecord, population_identity
 from legal_rag.settings import Settings
 
-ONTOLOGY_ASSEMBLY_PROMPT_VERSION = "0.2.0"
+ONTOLOGY_ASSEMBLY_PROMPT_VERSION = "0.3.0"
 
 
 class AssemblyProposalClient(Protocol):

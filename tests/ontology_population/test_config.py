@@ -43,10 +43,12 @@ def test_population_prompt_preserves_core_semantic_boundaries() -> None:
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
     compact_prompt = " ".join(prompt.split())
 
-    assert "Không dùng kiến thức ngoài" in prompt
-    assert "Không thêm, bỏ, tách, gộp" in prompt
-    assert "condition tree" in prompt
+    assert "Không dùng kiến thức ngoài" in compact_prompt
+    assert "Giữ nguyên target conducts" in compact_prompt
+    assert "cây AND/OR/NOT" in compact_prompt
     assert "Không tạo LegalChange" in compact_prompt
+    assert "Mục đích bước 1/6" in compact_prompt
+    assert "Mục đích bước 2/6" in compact_prompt
 
 
 def test_population_prompt_preserves_vietnamese_legal_structure() -> None:
@@ -54,13 +56,16 @@ def test_population_prompt_preserves_vietnamese_legal_structure() -> None:
     prompt = PROMPT_PATH.read_text(encoding="utf-8")
     compact_prompt = " ".join(prompt.split())
 
-    assert "closed inventory" in prompt
+    assert "danh mục đóng" in compact_prompt
     assert "Chương > Mục > Điều > Khoản > Điểm" in compact_prompt
-    assert "Giữ đúng phủ định" in prompt
+    assert "Giữ nguyên phủ định" in compact_prompt
     assert "Không dùng kiến thức ngoài" in compact_prompt
+    assert "Bối cảnh: xây dựng ontology" in compact_prompt
+    assert '{{ _.role("system") }}' in prompt
+    assert '{{ _.role("user") }}' in prompt
     assert "function ExtractOntologyTargetConductBatch" in prompt
     assert "function BindOntologyPopulationBatch" in prompt
-    assert len(prompt) < 12000
+    assert len(prompt) < 10000
 
 
 def test_population_console_script_is_published() -> None:

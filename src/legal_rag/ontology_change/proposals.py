@@ -24,7 +24,7 @@ from legal_rag.ontology_population.extraction import bind_population_evidence
 from legal_rag.ontology_population.models import OntologyPopulationRecord, population_identity
 from legal_rag.settings import Settings
 
-ONTOLOGY_CHANGE_PROMPT_VERSION = "0.2.0"
+ONTOLOGY_CHANGE_PROMPT_VERSION = "0.3.0"
 
 
 class ChangeProposalClient(Protocol):

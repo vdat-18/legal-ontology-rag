@@ -14,18 +14,16 @@ class CrossDocumentChangeWindowInput {
 }
 
 class LegalChangeProposalEntry {
-  earlier_population_id string @description(#"Exactly one population ID from earlier_records."#)
+  earlier_population_id string @description(#"Một population ID trong earlier_records."#)
   later_population_id string? @description(#"
-    One population ID from later_records when the change produces a later rule version. Null only when authoritative
-    evidence supports repeal or supersession without a later rule in this window.
+    Một ID trong later_records khi có later rule version; chỉ null khi source chứng
+    minh bãi bỏ/thay thế mà window không có later rule.
   "#)
   change_type OntologyLegalChangeType
-  effective_on string @description(#"Authoritatively supported effective date in YYYY-MM-DD format."#)
-  change_provision_path string @description(#"Fullest structural path supported for the authoritative change provision."#)
-  evidence OntologyEvidenceReference[] @description(#"
-    References to supplied source evidence that explicitly supports the change, its target, type, and effective date.
-  "#)
-  rationale_vi string @description(#"Giải thích ngắn gọn vì sao source trực tiếp chứng minh quan hệ thay đổi này."#)
+  effective_on string @description(#"Ngày hiệu lực YYYY-MM-DD được source hỗ trợ."#)
+  change_provision_path string @description(#"Đường dẫn đầy đủ nhất của quy định thay đổi."#)
+  evidence OntologyEvidenceReference[] @description(#"Evidence trực tiếp cho target, loại thay đổi và ngày hiệu lực."#)
+  rationale_vi string @description(#"Lý do ngắn gọn dựa trên source."#)
 }
 
 class CrossDocumentChangeWindowResult {
@@ -36,22 +34,30 @@ class CrossDocumentChangeWindowResult {
 function ProposeCrossDocumentLegalChanges(windows: CrossDocumentChangeWindowInput[]) -> CrossDocumentChangeWindowResult[] {
   client OpenAICompatibleProvider
   prompt #"
+    {{ _.role("system") }}
+
+    Bối cảnh: xây dựng ontology có bằng chứng nguồn cho quy định xử lý vi phạm
+    giao thông đường bộ tại Việt Nam; không áp dụng luật vào vụ việc.
+
+    Mục đích bước 4/6: nối các rule versions bằng LegalChange để ontology phản ánh
+    diễn biến theo thời gian mà không đồng nhất rule cũ và rule mới.
+
+    Nhiệm vụ: xác định LegalChange giữa rule versions của hai văn bản trong từng
+    candidate window.
+
+    - Chỉ đề xuất khi source trực tiếp xác định target, loại thay đổi và ngày hiệu
+      lực; không suy ra từ similarity, thứ tự văn bản, metadata hoặc valid_to null.
+    - earlier ID thuộc earlier_records; later ID nếu có thuộc later_records; mỗi ID
+      chỉ dùng một lần trong result.
+    - Amendment/Replacement cần later rule. RepealOrSupersession chỉ để later null
+      khi source trực tiếp chứng minh không có later rule trong window.
+    - Chỉ dùng evidence_id, effective_on và provision path được source hỗ trợ;
+      không tạo identity, exception hoặc concept relation.
+    - Thiếu evidence thì không đề xuất. Trả đúng một result cho mỗi candidate_id.
+
     {{ _.role("user") }}
 
-    Bạn là chuyên gia ontology pháp luật. Xác định LegalChange giữa các rule
-    version của hai văn bản trong từng candidate window.
-
-    Nguyên tắc bắt buộc:
-    - Chỉ đề xuất khi nguồn trực tiếp nêu thay đổi, target và ngày hiệu lực; không
-      suy ra từ độ giống nhau, thứ tự văn bản, metadata hay valid_to còn trống.
-    - earlier ID phải thuộc earlier_records; later ID nếu có phải thuộc
-      later_records. Mỗi ID chỉ dùng một lần trong một result.
-    - Amendment/Replacement cần later rule; RepealOrSupersession chỉ được để
-      later null khi nguồn trực tiếp chứng minh không có phiên bản thay thế.
-    - Chỉ dùng evidence_id đã cung cấp. effective_on và provision path phải do
-      nguồn hỗ trợ; không tạo identity, exception hay concept relation khác.
-    - Nếu nguồn chưa đủ, trả proposals rỗng. Trả đúng một result cho mỗi candidate_id.
-
+    Các candidate window cần đánh giá:
     {% for window in windows %}
     === candidate_id={{ window.candidate_id }} ===
     earlier_document={{ window.earlier_document_number }}
