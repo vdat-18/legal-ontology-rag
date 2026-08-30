@@ -52,7 +52,7 @@ function ConfirmMultiHop4BundleBatch(items: MultiHop4BundleBatchItem[]) -> Multi
     1. Viết thầm một tình huống và một câu hỏi cụ thể trước khi ghép facts.
     2. Nêu đóng góp riêng của từng fact và bước phụ thuộc mà nó tạo ra.
     3. Lần lượt bỏ từng fact; nếu chỉ mất một nhánh liệt kê hoặc chi tiết
-       không ảnh hưởng kết luận, trả is_valid=false.
+       thủ tục mà kết luận pháp lý cuối vẫn giữ nguyên, trả is_valid=false.
     4. Kiểm tra danh tính và vai trò pháp lý của chủ thể không bị đánh tráo
        qua các nhãn chung như cơ quan, lực lượng hoặc người có thẩm quyền.
     5. Kiểm tra bridge cuối thể hiện rõ đóng góp của từng fact, đặc biệt là
@@ -60,6 +60,9 @@ function ConfirmMultiHop4BundleBatch(items: MultiHop4BundleBatchItem[]) -> Multi
     6. Sắp xếp thầm thành chuỗi A -> B -> C -> D, trong đó kết quả pháp lý
        của mỗi bước là tiền đề cần thiết để áp dụng bước sau. Nếu chỉ có thể
        nối các kết quả bằng "và", "đồng thời" hoặc "cần xác định", trả false.
+    7. Phân biệt suy luận pháp lý với mô tả thao tác: dừng, kiểm tra, tiếp
+       nhận, chuyển, thông báo, lập biên bản, lưu, cập nhật hoặc giao trả
+       không tạo thành hop nếu chỉ là các nghĩa vụ độc lập theo trình tự.
 
     Luôn trả is_valid=false khi:
     - Bốn facts chỉ cùng chủ đề, cùng hậu quả hoặc ghép thành câu hỏi tổng
@@ -69,6 +72,9 @@ function ConfirmMultiHop4BundleBatch(items: MultiHop4BundleBatchItem[]) -> Multi
     - Các facts thuộc những nhánh điều kiện loại trừ nhau hoặc không thể
       đồng thời đúng trong một tình huống, như bản giấy/điện tử, được phép/
       bị cấm hoặc có mặt/vắng mặt.
+    - Candidate cần ghép nhánh chấp thuận với từ chối, đạt với không đạt,
+      hoặc thực hiện với không thực hiện để dùng đủ facts; một tình huống
+      cụ thể chỉ cần một nhánh kết quả.
     - Một fact chỉ áp dụng cho nhóm chủ thể, loại phương tiện hoặc vai trò
       hẹp hơn nhưng tình huống không có statement nào xác lập đúng phạm vi đó.
     - Một định nghĩa, khoảng thời gian, ngoại lệ hoặc phạm vi từ văn bản hay
@@ -76,6 +82,9 @@ function ConfirmMultiHop4BundleBatch(items: MultiHop4BundleBatchItem[]) -> Multi
       statement trực tiếp xác lập phạm vi dùng chung.
     - Các facts chỉ ghép thành một quy trình hoặc vòng đời rộng; output của
       mỗi bước không phải tiền đề cần thiết cho bước kế tiếp.
+    - Candidate chỉ mô tả đầy đủ vòng đời nghiệp vụ như phát hiện, tiếp nhận,
+      xác định, chuyển hồ sơ, ban hành, thông báo, lưu trữ hay cập nhật dữ
+      liệu mà không suy ra một kết luận pháp lý duy nhất qua đủ bốn facts.
     - Các facts chỉ là checklist nghĩa vụ, hồ sơ, thời hạn hoặc thao tác
       hành chính. Thứ tự thực hiện hoặc cùng thuộc một thủ tục không phải
       quan hệ multi-hop nếu kết quả pháp lý của bước trước không quyết định
@@ -92,6 +101,7 @@ function ConfirmMultiHop4BundleBatch(items: MultiHop4BundleBatchItem[]) -> Multi
     đề pháp lý thống nhất và thể hiện chuỗi phụ thuộc bốn facts. Bridge
     không được là câu hỏi, không kết thúc bằng dấu hỏi, không chèn từ thuộc
     ngôn ngữ khác, nhãn Fact, ID hoặc vị trí input. Chỉ dùng tiếng Việt.
+    Tự kiểm tra bridge không chứa từ hoặc ký tự thuộc hệ chữ nước ngoài.
     Không chép lại toàn bộ statements. Khi invalid, bridge=null.
 
     Trả đúng một kết quả cho mỗi input và giữ nguyên candidate_id.

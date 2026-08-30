@@ -108,6 +108,10 @@ def test_multi_hop_4_prompt_requires_four_fact_ablation_and_subject_identity() -
     assert "checklist nghĩa vụ, hồ sơ, thời hạn" in prompt
     assert "không được là câu hỏi" in prompt
     assert "không kết thúc bằng dấu hỏi" in prompt
+    assert "Phân biệt suy luận pháp lý với mô tả thao tác" in prompt
+    assert "nhánh chấp thuận với từ chối" in prompt
+    assert "kết luận pháp lý duy nhất" in prompt
+    assert "hệ chữ nước ngoài" in prompt
     assert "chỉ là gợi ý để kiểm tra facts" in prompt
     assert "Chỉ dùng tiếng Việt" in prompt
 
