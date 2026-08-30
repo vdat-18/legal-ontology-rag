@@ -20,6 +20,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("concept_contract_path", type=Path, help="Versioned concept-resolution contract YAML")
     parser.add_argument("proposals_output_path", type=Path, help="Concept proposal JSONL destination")
     parser.add_argument("progress_output_path", type=Path, help="Concept proposal progress JSONL destination")
+    parser.add_argument("--max-concurrency", type=int, default=1, help="Maximum concurrent concept proposal batches")
     return parser
 
 
@@ -94,6 +95,7 @@ def main() -> None:
             client,
             concept_settings,
             run_id=run_id,
+            max_concurrency=arguments.max_concurrency,
             on_batch_processed=persist_batch,
         )
     proposals = tuple(proposals_by_id.values())

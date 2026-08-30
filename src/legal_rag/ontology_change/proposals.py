@@ -14,7 +14,6 @@ from legal_rag.baml_client.types import (
     CrossDocumentChangeWindowResult,
 )
 from legal_rag.baml_transport import BamlCaller
-from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
 from legal_rag.ontology_change.config import ChangeResolutionSettings
 from legal_rag.ontology_change.corpus import ChangeCorpus, ChangeCorpusDocument
 from legal_rag.ontology_change.models import ChangeCandidateWindow, LegalChangeProposal
@@ -22,6 +21,7 @@ from legal_rag.ontology_population.assembly_proposals import summarize_populatio
 from legal_rag.ontology_population.evidence import fragment_evidence_sources
 from legal_rag.ontology_population.extraction import bind_population_evidence
 from legal_rag.ontology_population.models import OntologyPopulationRecord, population_identity
+from legal_rag.ontology_proposal_execution import execute_proposal_batches
 from legal_rag.settings import Settings
 
 ONTOLOGY_CHANGE_PROMPT_VERSION = "0.3.0"
@@ -84,34 +84,44 @@ def propose_legal_changes(
     change_settings: ChangeResolutionSettings,
     *,
     run_id: str,
+    max_concurrency: int = 1,
     on_batch_processed: Callable[[Sequence[tuple[str, tuple[LegalChangeProposal, ...]]]], None] | None = None,
 ) -> tuple[LegalChangeProposal, ...]:
-    """Generate exact-evidenced legal-change proposals in resumable batches."""
+    """Generate exact-evidenced legal-change proposals in concurrent batches."""
     documents_by_id = {document.document_id: document for document in corpus.documents}
     records_by_id = {record.population_id: record for document in corpus.documents for record in document.records}
-    proposals = []
+    tasks = []
     for batch_start in range(0, len(windows), change_settings.batch_size):
         batch = windows[batch_start : batch_start + change_settings.batch_size]
         inputs = tuple(_window_input(window, documents_by_id, records_by_id) for window in batch)
-        batch_results = execute_llm_task(
-            _batch_task_key(inputs, run_id),
-            partial(
-                _build_batch_proposals,
-                client,
-                inputs,
-                batch,
-                documents_by_id,
-                change_settings,
-                run_id,
-            ),
-            max_retries=change_settings.max_retries,
-            retry_delay_seconds=change_settings.retry_delay_seconds,
+        tasks.append(
+            (
+                _batch_task_key(inputs, run_id),
+                partial(
+                    _build_batch_proposals,
+                    client,
+                    inputs,
+                    batch,
+                    documents_by_id,
+                    change_settings,
+                    run_id,
+                ),
+            )
         )
-        for _, candidate_proposals in batch_results:
-            proposals.extend(candidate_proposals)
-        if on_batch_processed is not None:
-            on_batch_processed(batch_results)
-    return tuple(proposals)
+    batch_results = execute_proposal_batches(
+        tasks,
+        stage="ontology legal-change resolution",
+        max_concurrency=max_concurrency,
+        max_retries=change_settings.max_retries,
+        retry_delay_seconds=change_settings.retry_delay_seconds,
+        on_batch_processed=on_batch_processed,
+    )
+    return tuple(
+        proposal
+        for batch_result in batch_results
+        for _, candidate_proposals in batch_result
+        for proposal in candidate_proposals
+    )
 
 
 def _build_batch_proposals(

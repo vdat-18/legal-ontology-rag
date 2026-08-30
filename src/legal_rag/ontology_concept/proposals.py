@@ -17,7 +17,6 @@ from legal_rag.baml_client.types import (
     OntologyEvidenceSource,
 )
 from legal_rag.baml_transport import BamlCaller
-from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
 from legal_rag.ontology_concept.config import ConceptResolutionSettings
 from legal_rag.ontology_concept.models import (
     ConceptCandidatePair,
@@ -27,6 +26,7 @@ from legal_rag.ontology_concept.models import (
 from legal_rag.ontology_population.evidence import population_evidence_sources
 from legal_rag.ontology_population.extraction import bind_population_evidence
 from legal_rag.ontology_population.models import population_identity
+from legal_rag.ontology_proposal_execution import execute_proposal_batches
 from legal_rag.settings import Settings
 
 ONTOLOGY_CONCEPT_PROMPT_VERSION = "0.3.0"
@@ -91,33 +91,43 @@ def propose_concept_relations(
     settings: ConceptResolutionSettings,
     *,
     run_id: str,
+    max_concurrency: int = 1,
     on_batch_processed: Callable[[Sequence[tuple[str, tuple[ConceptRelationProposal, ...]]]], None] | None = None,
 ) -> tuple[ConceptRelationProposal, ...]:
-    """Generate exact-evidenced concept proposals in resumable batches."""
+    """Generate exact-evidenced concept proposals in concurrent batches."""
     occurrences_by_id = {item.occurrence_id: item for item in occurrences}
-    proposals = []
+    tasks = []
     for start in range(0, len(pairs), settings.batch_size):
         batch = pairs[start : start + settings.batch_size]
         inputs = tuple(_pair_input(pair, occurrences_by_id) for pair in batch)
-        batch_results = execute_llm_task(
-            _batch_task_key(inputs, run_id),
-            partial(
-                _build_batch_proposals,
-                client,
-                inputs,
-                batch,
-                occurrences_by_id,
-                settings,
-                run_id,
-            ),
-            max_retries=settings.max_retries,
-            retry_delay_seconds=settings.retry_delay_seconds,
+        tasks.append(
+            (
+                _batch_task_key(inputs, run_id),
+                partial(
+                    _build_batch_proposals,
+                    client,
+                    inputs,
+                    batch,
+                    occurrences_by_id,
+                    settings,
+                    run_id,
+                ),
+            )
         )
-        for _, candidate_proposals in batch_results:
-            proposals.extend(candidate_proposals)
-        if on_batch_processed is not None:
-            on_batch_processed(batch_results)
-    return tuple(proposals)
+    batch_results = execute_proposal_batches(
+        tasks,
+        stage="ontology concept resolution",
+        max_concurrency=max_concurrency,
+        max_retries=settings.max_retries,
+        retry_delay_seconds=settings.retry_delay_seconds,
+        on_batch_processed=on_batch_processed,
+    )
+    return tuple(
+        proposal
+        for batch_result in batch_results
+        for _, candidate_proposals in batch_result
+        for proposal in candidate_proposals
+    )
 
 
 def _build_batch_proposals(

@@ -157,24 +157,24 @@ uv run --extra dev legal-assemble-ontology-rules `
   <chunks.jsonl> <metadata.jsonl> <population.jsonl> `
   ontology/population_contract.yaml ontology/assembly_contract.yaml `
   <assembly-candidates.json> <assembly-proposals.jsonl> <assembly-progress.jsonl> `
-  <canonical-population.jsonl> <canonical.ttl>
+  <canonical-population.jsonl> <canonical.ttl> --max-concurrency 2
 
 uv run --extra dev legal-resolve-ontology-changes `
   <corpus-manifest.json> ontology/change_resolution_contract.yaml ontology/population_contract.yaml `
   <change-candidates.json> <change-proposals.jsonl> <change-progress.jsonl> `
-  <canonical-population.jsonl> <change-events.jsonl> <canonical.ttl>
+  <canonical-population.jsonl> <change-events.jsonl> <canonical.ttl> --max-concurrency 2
 
 uv run --extra dev legal-resolve-ontology-exceptions `
   <corpus-manifest.json> <canonical-population.jsonl> <change-events.jsonl> `
   ontology/exception_resolution_contract.yaml ontology/population_contract.yaml `
   <exception-candidates.json> <exception-proposals.jsonl> <exception-progress.jsonl> `
-  <legal-exceptions.jsonl> <canonical.ttl>
+  <legal-exceptions.jsonl> <canonical.ttl> --max-concurrency 2
 
 uv run --extra dev legal-resolve-ontology-concepts `
   <corpus-manifest.json> <canonical-population.jsonl> <change-events.jsonl> <legal-exceptions.jsonl> `
   ontology/population_contract.yaml ontology/concept_resolution_contract.yaml `
   <concept-candidates.json> <concept-proposals.jsonl> <concept-progress.jsonl> `
-  <canonical-concepts.jsonl> <concept-relations.jsonl> <canonical.ttl>
+  <canonical-concepts.jsonl> <concept-relations.jsonl> <canonical.ttl> --max-concurrency 2
 ```
 
 Omit pilot-selection options for the full document. Re-running a step resumes from compatible conduct/proposal progress

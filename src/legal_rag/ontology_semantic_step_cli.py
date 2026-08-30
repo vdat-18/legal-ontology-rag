@@ -11,7 +11,7 @@ from pathlib import Path
 from loguru import logger
 
 
-def _run_modules(commands: Sequence[tuple[str, Sequence[Path]]]) -> None:
+def _run_modules(commands: Sequence[tuple[str, Sequence[str | Path]]]) -> None:
     """Run deterministic preparation, one proposal stage, and finalization."""
     for module, arguments in commands:
         logger.info("Running ontology step component {}", module)
@@ -36,6 +36,7 @@ def _assembly_parser() -> argparse.ArgumentParser:
     parser.add_argument("progress_output_path", type=Path)
     parser.add_argument("canonical_records_output_path", type=Path)
     parser.add_argument("graph_output_path", type=Path)
+    parser.add_argument("--max-concurrency", type=int, default=1)
     return parser
 
 
@@ -63,6 +64,8 @@ def assemble_main() -> None:
                     arguments.assembly_contract_path,
                     arguments.proposals_output_path,
                     arguments.progress_output_path,
+                    "--max-concurrency",
+                    str(arguments.max_concurrency),
                 ),
             ),
             (
@@ -95,6 +98,7 @@ def _change_parser() -> argparse.ArgumentParser:
     parser.add_argument("canonical_records_output_path", type=Path)
     parser.add_argument("change_events_output_path", type=Path)
     parser.add_argument("graph_output_path", type=Path)
+    parser.add_argument("--max-concurrency", type=int, default=1)
     return parser
 
 
@@ -119,6 +123,8 @@ def changes_main() -> None:
                     arguments.change_contract_path,
                     arguments.proposals_output_path,
                     arguments.progress_output_path,
+                    "--max-concurrency",
+                    str(arguments.max_concurrency),
                 ),
             ),
             (
@@ -151,6 +157,7 @@ def _exception_parser() -> argparse.ArgumentParser:
     parser.add_argument("progress_output_path", type=Path)
     parser.add_argument("exception_records_output_path", type=Path)
     parser.add_argument("graph_output_path", type=Path)
+    parser.add_argument("--max-concurrency", type=int, default=1)
     return parser
 
 
@@ -177,6 +184,8 @@ def exceptions_main() -> None:
                     arguments.exception_contract_path,
                     arguments.proposals_output_path,
                     arguments.progress_output_path,
+                    "--max-concurrency",
+                    str(arguments.max_concurrency),
                 ),
             ),
             (
@@ -212,6 +221,7 @@ def _concept_parser() -> argparse.ArgumentParser:
     parser.add_argument("concepts_output_path", type=Path)
     parser.add_argument("relations_output_path", type=Path)
     parser.add_argument("graph_output_path", type=Path)
+    parser.add_argument("--max-concurrency", type=int, default=1)
     return parser
 
 
@@ -236,6 +246,8 @@ def concepts_main() -> None:
                     arguments.concept_contract_path,
                     arguments.proposals_output_path,
                     arguments.progress_output_path,
+                    "--max-concurrency",
+                    str(arguments.max_concurrency),
                 ),
             ),
             (

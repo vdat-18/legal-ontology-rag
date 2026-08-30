@@ -131,6 +131,8 @@ def test_cli_runs_candidate_proposal_and_offline_change_finalization(
         str(PROJECT_ROOT / "ontology" / "change_resolution_contract.yaml"),
         str(proposals_path),
         str(progress_path),
+        "--max-concurrency",
+        "2",
     ]
     monkeypatch.setattr(sys, "argv", proposal_argv)
     ontology_change_proposals_cli.main()

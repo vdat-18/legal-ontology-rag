@@ -69,10 +69,13 @@ def test_integrated_step_runs_one_proposal_component(
 
     monkeypatch.setattr(ontology_semantic_step_cli.subprocess, "run", record_command)
     arguments = [str(tmp_path / f"artifact-{index}") for index in range(argument_count)]
-    monkeypatch.setattr(sys, "argv", ["ontology-step", *arguments])
+    monkeypatch.setattr(sys, "argv", ["ontology-step", *arguments, "--max-concurrency", "3"])
 
     main()
 
     assert [command[2] for command in commands] == list(expected_modules)
     assert sum("_proposals_cli" in command[2] for command in commands) == 1
     assert all(command[:2] == [sys.executable, "-m"] for command in commands)
+    proposal_command = next(command for command in commands if "_proposals_cli" in command[2])
+    assert proposal_command[-2:] == ["--max-concurrency", "3"]
+    assert all("--max-concurrency" not in command for command in commands if command is not proposal_command)

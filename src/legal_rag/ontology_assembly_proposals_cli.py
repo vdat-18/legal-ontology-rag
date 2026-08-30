@@ -20,6 +20,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("assembly_contract_path", type=Path, help="Versioned assembly contract YAML path")
     parser.add_argument("proposals_output_path", type=Path, help="Assembly-proposal JSONL destination")
     parser.add_argument("progress_output_path", type=Path, help="Assembly-proposal progress JSONL destination")
+    parser.add_argument("--max-concurrency", type=int, default=1, help="Maximum concurrent assembly proposal batches")
     return parser
 
 
@@ -100,6 +101,7 @@ def main() -> None:
             client,
             assembly_settings,
             run_id=run_id,
+            max_concurrency=arguments.max_concurrency,
             on_batch_processed=persist_batch,
         )
 

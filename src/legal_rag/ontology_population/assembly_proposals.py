@@ -22,13 +22,13 @@ from legal_rag.baml_client.types import (
 )
 from legal_rag.baml_transport import BamlCaller
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
-from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
 from legal_rag.chunker.models import Chunk
 from legal_rag.ontology_population.assembly_config import AssemblySettings
 from legal_rag.ontology_population.assembly_models import AssemblyCandidateWindow, AssemblyProposal
 from legal_rag.ontology_population.evidence import evidence_source
 from legal_rag.ontology_population.extraction import build_population_record
 from legal_rag.ontology_population.models import OntologyPopulationRecord, population_identity
+from legal_rag.ontology_proposal_execution import execute_proposal_batches
 from legal_rag.settings import Settings
 
 ONTOLOGY_ASSEMBLY_PROMPT_VERSION = "0.3.0"
@@ -89,36 +89,46 @@ def propose_assemblies(
     assembly_settings: AssemblySettings,
     *,
     run_id: str,
+    max_concurrency: int = 1,
     on_batch_processed: Callable[[Sequence[tuple[str, tuple[AssemblyProposal, ...]]]], None] | None = None,
 ) -> tuple[AssemblyProposal, ...]:
-    """Generate source-grounded proposals in bounded resumable batches."""
+    """Generate source-grounded proposals in bounded concurrent batches."""
     records_by_id = {record.population_id: record for record in records}
     chunks_by_id = {chunk.chunk_id: chunk for chunk in chunks}
-    proposals = []
+    tasks = []
     for batch_start in range(0, len(windows), assembly_settings.batch_size):
         batch = windows[batch_start : batch_start + assembly_settings.batch_size]
         inputs = tuple(_window_input(window, records_by_id) for window in batch)
-        batch_results = execute_llm_task(
-            _batch_task_key(inputs, run_id),
-            partial(
-                _build_batch_proposals,
-                client,
-                inputs,
-                batch,
-                records_by_id,
-                chunks_by_id,
-                metadata,
-                assembly_settings,
-                run_id,
-            ),
-            max_retries=assembly_settings.max_retries,
-            retry_delay_seconds=assembly_settings.retry_delay_seconds,
+        tasks.append(
+            (
+                _batch_task_key(inputs, run_id),
+                partial(
+                    _build_batch_proposals,
+                    client,
+                    inputs,
+                    batch,
+                    records_by_id,
+                    chunks_by_id,
+                    metadata,
+                    assembly_settings,
+                    run_id,
+                ),
+            )
         )
-        for _, candidate_proposals in batch_results:
-            proposals.extend(candidate_proposals)
-        if on_batch_processed is not None:
-            on_batch_processed(batch_results)
-    return tuple(proposals)
+    batch_results = execute_proposal_batches(
+        tasks,
+        stage="ontology rule assembly",
+        max_concurrency=max_concurrency,
+        max_retries=assembly_settings.max_retries,
+        retry_delay_seconds=assembly_settings.retry_delay_seconds,
+        on_batch_processed=on_batch_processed,
+    )
+    return tuple(
+        proposal
+        for batch_result in batch_results
+        for _, candidate_proposals in batch_result
+        for proposal in candidate_proposals
+    )
 
 
 def _build_batch_proposals(

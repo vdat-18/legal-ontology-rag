@@ -141,6 +141,8 @@ def test_cli_runs_candidate_proposal_and_offline_exception_finalization(
         str(PROJECT_ROOT / "ontology" / "exception_resolution_contract.yaml"),
         str(proposals_path),
         str(progress_path),
+        "--max-concurrency",
+        "2",
     ]
     monkeypatch.setattr(sys, "argv", proposal_argv)
     ontology_exception_proposals_cli.main()
