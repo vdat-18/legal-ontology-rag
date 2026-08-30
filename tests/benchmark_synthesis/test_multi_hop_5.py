@@ -103,6 +103,10 @@ def test_multi_hop_5_prompt_requires_five_fact_ablation_and_subject_identity() -
     assert "loại phương tiện hoặc vai trò" in prompt
     assert "văn bản hay bối cảnh khác" in prompt
     assert "không phải tiền đề cần thiết cho bước kế tiếp" in prompt
+    assert "chuỗi A -> B -> C -> D -> E" in prompt
+    assert "checklist nghĩa vụ thủ tục" in prompt
+    assert "không xác lập tiền đề pháp lý" in prompt
+    assert "cùng một tình huống" in prompt
     assert "chỉ là gợi ý để kiểm tra facts" in prompt
     assert "Chỉ dùng tiếng Việt" in prompt
 
