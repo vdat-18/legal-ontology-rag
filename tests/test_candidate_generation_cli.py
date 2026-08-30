@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -15,12 +16,24 @@ from legal_rag.baml_client.types import (
 from legal_rag.baml_client.types import ClaimReference as BamlClaimReference
 from legal_rag.baml_client.types import GeneratedSingleTurnCandidate as BamlGeneratedCandidate
 from legal_rag.benchmark_synthesis import candidate_generation, writer
+from legal_rag.benchmark_synthesis.candidate_generation import (
+    CANDIDATE_GENERATION_PROMPT_VERSION,
+    LEGACY_CANDIDATE_GENERATION_PROMPT_VERSION,
+    LEGACY_CANDIDATE_SCHEMA_VERSION,
+)
+from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
-from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
-from legal_rag.benchmark_synthesis.stage_cache import stage_cache_path
+from legal_rag.benchmark_synthesis.scenario_sampling import Scenario, load_persona_descriptions
+from legal_rag.benchmark_synthesis.stage_cache import (
+    build_candidate_generation_fingerprint,
+    stage_cache_path,
+    write_stage_cache_fingerprint,
+)
 from legal_rag.benchmark_synthesis.writer import (
     read_candidate_progress,
     read_candidates,
+    write_candidate_progress,
+    write_candidates,
     write_legal_facts,
     write_scenarios,
 )
@@ -206,3 +219,49 @@ def test_candidate_generation_cli_rebuilds_candidates_from_progress_after_output
     candidate_generation_cli.main()
 
     assert len(read_candidates(candidates_path)) == 1
+
+
+def test_candidate_generation_cli_selectively_regenerates_legacy_prompt_task(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A prompt update replaces only explicitly selected completed tasks."""
+    facts_path = tmp_path / "legal_facts.jsonl"
+    scenarios_path = tmp_path / "scenarios.jsonl"
+    candidates_path = tmp_path / "single_turn.jsonl"
+    progress_path = tmp_path / "single_turn.progress.jsonl"
+    write_legal_facts(facts_path, [_fact()])
+    write_scenarios(scenarios_path, [_scenario()])
+    _configure_cli(monkeypatch, facts_path, scenarios_path, candidates_path, candidates_per_scenario=1)
+    candidate_generation_cli.main()
+
+    progress = read_candidate_progress(progress_path)
+    legacy_draft = replace(progress[0].draft, prompt_version=LEGACY_CANDIDATE_GENERATION_PROMPT_VERSION)
+    legacy_progress = replace(progress[0], draft=legacy_draft)
+    write_candidate_progress(progress_path, (legacy_progress,))
+    write_candidates(candidates_path, (legacy_draft,))
+    synthesis_settings = SynthesisSettings.from_path(_REPO_CONFIG_DIR / "synthesis_v1.json")
+    write_stage_cache_fingerprint(
+        stage_cache_path(candidates_path),
+        build_candidate_generation_fingerprint(
+            (_fact(),),
+            (_scenario(),),
+            load_persona_descriptions(_REPO_CONFIG_DIR / "personas.json"),
+            synthesis_settings,
+            candidates_per_scenario=1,
+            llm_base_url="http://localhost:20128/v1",
+            llm_model="provider/test-model",
+            prompt_version=LEGACY_CANDIDATE_GENERATION_PROMPT_VERSION,
+            candidate_schema_version=LEGACY_CANDIDATE_SCHEMA_VERSION,
+        ),
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [*sys.argv, "--regenerate-task-id", "scenario-1:0"],
+    )
+
+    candidate_generation_cli.main()
+
+    regenerated = read_candidates(candidates_path)
+    assert len(regenerated) == 1
+    assert regenerated[0].prompt_version == CANDIDATE_GENERATION_PROMPT_VERSION

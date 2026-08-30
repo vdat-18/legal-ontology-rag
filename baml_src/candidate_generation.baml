@@ -58,7 +58,9 @@ function GenerateSingleTurnCandidateBatch(
       không ghép facts chỉ để làm câu hỏi phức tạp.
 
     Scenario contract:
-    - answerable: facts trả lời trọn câu hỏi.
+    - answerable: facts trả lời trọn câu hỏi. Chỉ hỏi kết luận áp dụng
+      khi facts chứa đủ mọi điều kiện cần thiết; một ngưỡng hoặc một
+      điều kiện riêng lẻ không đủ để khẳng định thủ tục được áp dụng.
     - partially_answerable: câu hỏi thiếu đúng một thông tin ảnh hưởng
       việc áp dụng mà facts không xác định; đáp án tách phần có căn
       cứ và phần chưa thể kết luận, không tự điền thông tin thiếu.
@@ -71,7 +73,10 @@ function GenerateSingleTurnCandidateBatch(
     - Viết như người hỏi thật theo persona, không lộ đáp án, không dùng
       thuật ngữ nội bộ. specific nêu tình huống; abstract hỏi quy tắc
       tự nhiên, không sao chép statement.
-    - length: short 5-10 từ; medium 10-20 từ; long trên 20 từ nhưng gọn.
+    - length tính theo các từ ngăn cách bằng khoảng trắng: short 5-10
+      từ; medium 10-20 từ; long trên 20 từ nhưng gọn. Đếm lại và viết
+      lại query nếu nằm ngoài khoảng. Short có giới hạn cứng tối đa 10
+      từ, kể cả khi phải bỏ bớt từ lịch sự hoặc chi tiết phụ.
     - style: standard=hỏi trực tiếp, đủ dấu và có dấu hỏi;
       conversational=hội thoại;
       polite=lịch sự; formal=trang trọng, trung tính; no_diacritics=hoàn toàn
@@ -89,10 +94,14 @@ function GenerateSingleTurnCandidateBatch(
       Với reasoning_hops>1,
       claims phải bao phủ mọi fact. Không tạo claim cho phần chưa thể kết
       luận của partially_answerable.
+    - Nếu statement có cụm thiếu đơn vị hoặc câu chưa hoàn chỉnh, không
+      suy đoán phần bị thiếu và không lặp nguyên cụm lỗi; chỉ dùng phần
+      mệnh đề hoàn chỉnh vẫn được fact hỗ trợ.
 
-    Tự kiểm tra query, reference_answer, reasoning, required_claims, answerability
-    và reasoning_hops nhất quán. Trả đúng một kết quả cho mỗi task,
-    giữ nguyên task_id và thứ tự.
+    Tự kiểm tra query, số từ, reference_answer, reasoning, required_claims,
+    answerability và reasoning_hops nhất quán. Với answerable, đáp án
+    không được phải nói thiếu điều kiện để kết luận. Trả đúng một kết quả
+    cho mỗi task, giữ nguyên task_id và thứ tự.
 
     {{ _.role("user") }}
 

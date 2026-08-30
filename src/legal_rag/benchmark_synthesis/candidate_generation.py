@@ -22,8 +22,10 @@ from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
-CANDIDATE_SCHEMA_VERSION = "6.0.0"
-CANDIDATE_GENERATION_PROMPT_VERSION = "8.0.0"
+CANDIDATE_SCHEMA_VERSION = "6.1.0"
+LEGACY_CANDIDATE_SCHEMA_VERSION = "6.0.0"
+CANDIDATE_GENERATION_PROMPT_VERSION = "8.0.2"
+LEGACY_CANDIDATE_GENERATION_PROMPT_VERSION = "8.0.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,6 +77,7 @@ class CandidateDraft:
     generator_model: str
     bundle_kind: str = "single_hop"
     bridge: str | None = None
+    prompt_version: str = CANDIDATE_GENERATION_PROMPT_VERSION
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable candidate-draft record."""
@@ -98,6 +101,7 @@ class CandidateDraft:
             "reasoning_hops": self.reasoning_hops,
             "source_fact_ids": list(self.source_fact_ids),
             "generator_model": self.generator_model,
+            "prompt_version": self.prompt_version,
         }
 
 

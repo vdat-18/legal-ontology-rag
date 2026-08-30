@@ -25,6 +25,17 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--candidates-per-scenario", type=int, required=True, help="Number of generation attempts per scenario"
     )
+    parser.add_argument(
+        "--regenerate-task-id",
+        action="append",
+        default=[],
+        help="Existing scenario_id:attempt_index task to regenerate; repeat as needed",
+    )
+    parser.add_argument(
+        "--regenerate-task-ids",
+        type=Path,
+        help="JSON string array of existing task IDs to regenerate",
+    )
     parser.add_argument("--synthesis-config", type=Path, required=True, help="Versioned synthesis config JSON path")
     return parser
 
@@ -33,19 +44,32 @@ def main() -> None:
     """Generate candidates for every scenario, trusting LLM output with no gating checks."""
     from dotenv import find_dotenv, load_dotenv
 
-    from legal_rag.benchmark_synthesis.candidate_generation import BamlCandidateGenerationClient
+    from legal_rag.benchmark_synthesis.candidate_generation import (
+        CANDIDATE_GENERATION_PROMPT_VERSION,
+        CANDIDATE_SCHEMA_VERSION,
+        LEGACY_CANDIDATE_GENERATION_PROMPT_VERSION,
+        LEGACY_CANDIDATE_SCHEMA_VERSION,
+        BamlCandidateGenerationClient,
+    )
     from legal_rag.benchmark_synthesis.candidate_pipeline import (
         CandidatePipelineContext,
         generate_candidates,
     )
     from legal_rag.benchmark_synthesis.candidate_record import CandidateProgressRecord
+    from legal_rag.benchmark_synthesis.candidate_selection import (
+        load_regenerate_task_ids,
+        validate_selective_generation,
+    )
     from legal_rag.benchmark_synthesis.config import SynthesisSettings
     from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError
     from legal_rag.benchmark_synthesis.scenario_sampling import load_persona_descriptions
     from legal_rag.benchmark_synthesis.stage_cache import (
+        build_candidate_generation_artifact_fingerprint,
         build_candidate_generation_fingerprint,
         initialize_stage_cache,
+        read_stage_cache_fingerprint,
         stage_cache_path,
+        write_stage_cache_fingerprint,
     )
     from legal_rag.benchmark_synthesis.writer import (
         read_candidate_progress,
@@ -69,10 +93,46 @@ def main() -> None:
     scenarios = read_scenarios(arguments.scenarios_path)
 
     persona_descriptions = load_persona_descriptions(arguments.personas)
-    initialize_stage_cache(
-        stage_cache_path(arguments.candidates_output_path),
-        (arguments.candidates_output_path, progress_output_path),
-        build_candidate_generation_fingerprint(
+    fingerprint_path = stage_cache_path(arguments.candidates_output_path)
+    execution_fingerprint = build_candidate_generation_fingerprint(
+        facts,
+        scenarios,
+        persona_descriptions,
+        synthesis_settings,
+        candidates_per_scenario=arguments.candidates_per_scenario,
+        llm_base_url=settings.llm_base_url,
+        llm_model=settings.llm_model,
+    )
+
+    existing_progress = read_candidate_progress(progress_output_path) if progress_output_path.exists() else ()
+    progress_by_task_id = {record.task_id: record for record in existing_progress}
+    task_order = [
+        f"{scenario.scenario_id}:{attempt_index}"
+        for scenario in scenarios
+        for attempt_index in range(arguments.candidates_per_scenario)
+    ]
+    regenerate_ids = load_regenerate_task_ids(
+        arguments.regenerate_task_id,
+        arguments.regenerate_task_ids,
+    )
+    if regenerate_ids:
+        existing_fingerprint = read_stage_cache_fingerprint(fingerprint_path)
+        artifact_fingerprint = build_candidate_generation_artifact_fingerprint(
+            facts,
+            scenarios,
+            persona_descriptions,
+            synthesis_settings,
+            tuple(record.draft for record in existing_progress),
+            candidates_per_scenario=arguments.candidates_per_scenario,
+            llm_base_url=settings.llm_base_url,
+            llm_model=settings.llm_model,
+        )
+        prior_schema_version = (
+            LEGACY_CANDIDATE_SCHEMA_VERSION
+            if existing_fingerprint.prompt_version == LEGACY_CANDIDATE_GENERATION_PROMPT_VERSION
+            else CANDIDATE_SCHEMA_VERSION
+        )
+        prior_execution_fingerprint = build_candidate_generation_fingerprint(
             facts,
             scenarios,
             persona_descriptions,
@@ -80,8 +140,33 @@ def main() -> None:
             candidates_per_scenario=arguments.candidates_per_scenario,
             llm_base_url=settings.llm_base_url,
             llm_model=settings.llm_model,
-        ),
-    )
+            prompt_version=existing_fingerprint.prompt_version,
+            candidate_schema_version=prior_schema_version,
+        )
+        if existing_fingerprint not in {prior_execution_fingerprint, artifact_fingerprint}:
+            msg = "Existing candidate_generation artifacts belong to a different synthesis run"
+            raise ValueError(msg)
+        validate_selective_generation(
+            frozenset(task_order),
+            frozenset(progress_by_task_id),
+            regenerate_ids,
+        )
+        invalidated_ids = {
+            task_id
+            for task_id in regenerate_ids
+            if (record := progress_by_task_id.get(task_id)) is None
+            or record.draft.prompt_version != CANDIDATE_GENERATION_PROMPT_VERSION
+        }
+        progress_by_task_id = {
+            task_id: record for task_id, record in progress_by_task_id.items() if task_id not in invalidated_ids
+        }
+        logger.info("Selectively invalidated {} candidate-generation task(s)", len(invalidated_ids))
+    else:
+        initialize_stage_cache(
+            fingerprint_path,
+            (arguments.candidates_output_path, progress_output_path),
+            execution_fingerprint,
+        )
 
     generation_client = BamlCandidateGenerationClient(settings, synthesis_settings)
     context = CandidatePipelineContext(
@@ -92,14 +177,6 @@ def main() -> None:
         llm_max_retries=synthesis_settings.llm_max_retries,
         llm_retry_delay_seconds=synthesis_settings.llm_retry_delay_seconds,
     )
-
-    existing_progress = read_candidate_progress(progress_output_path) if progress_output_path.exists() else ()
-    progress_by_task_id = {record.task_id: record for record in existing_progress}
-    task_order = [
-        f"{scenario.scenario_id}:{attempt_index}"
-        for scenario in scenarios
-        for attempt_index in range(arguments.candidates_per_scenario)
-    ]
 
     progress_lock = threading.Lock()
 
@@ -119,6 +196,20 @@ def main() -> None:
                 arguments.candidates_output_path,
                 tuple(item.draft for item in ordered_progress if item.completed),
             )
+            if regenerate_ids:
+                write_stage_cache_fingerprint(
+                    fingerprint_path,
+                    build_candidate_generation_artifact_fingerprint(
+                        facts,
+                        scenarios,
+                        persona_descriptions,
+                        synthesis_settings,
+                        tuple(item.draft for item in ordered_progress if item.completed),
+                        candidates_per_scenario=arguments.candidates_per_scenario,
+                        llm_base_url=settings.llm_base_url,
+                        llm_model=settings.llm_model,
+                    ),
+                )
 
     failures = generate_candidates(
         scenarios,
@@ -136,6 +227,20 @@ def main() -> None:
         if task_id in progress_by_task_id and progress_by_task_id[task_id].completed
     )
     write_candidates(arguments.candidates_output_path, drafts)
+    if regenerate_ids:
+        write_stage_cache_fingerprint(
+            fingerprint_path,
+            build_candidate_generation_artifact_fingerprint(
+                facts,
+                scenarios,
+                persona_descriptions,
+                synthesis_settings,
+                drafts,
+                candidates_per_scenario=arguments.candidates_per_scenario,
+                llm_base_url=settings.llm_base_url,
+                llm_model=settings.llm_model,
+            ),
+        )
     if failures:
         incomplete_error = IncompleteLlmTasksError.for_stage("candidate generation", failures)
         raise incomplete_error

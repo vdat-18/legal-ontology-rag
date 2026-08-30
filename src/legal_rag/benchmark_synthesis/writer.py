@@ -9,12 +9,15 @@ from pathlib import Path
 
 from legal_rag.benchmark_synthesis.candidate_generation import (
     CANDIDATE_SCHEMA_VERSION,
+    LEGACY_CANDIDATE_GENERATION_PROMPT_VERSION,
+    LEGACY_CANDIDATE_SCHEMA_VERSION,
     CandidateDraft,
     ClaimEvidence,
     RequiredClaim,
 )
 from legal_rag.benchmark_synthesis.candidate_record import (
     CANDIDATE_PROGRESS_SCHEMA_VERSION,
+    LEGACY_CANDIDATE_PROGRESS_SCHEMA_VERSION,
     CandidateProgressRecord,
 )
 from legal_rag.benchmark_synthesis.chunk_screening import (
@@ -556,7 +559,10 @@ def read_candidate_progress(input_path: Path) -> tuple[CandidateProgressRecord, 
     with input_path.open(encoding="utf-8") as source_file:
         for line in source_file:
             payload = json.loads(line)
-            if payload["schema_version"] != CANDIDATE_PROGRESS_SCHEMA_VERSION:
+            if payload["schema_version"] not in {
+                CANDIDATE_PROGRESS_SCHEMA_VERSION,
+                LEGACY_CANDIDATE_PROGRESS_SCHEMA_VERSION,
+            }:
                 msg = f"Unsupported candidate-progress schema: {payload['schema_version']}"
                 raise ValueError(msg)
             records.append(
@@ -577,7 +583,7 @@ def read_candidates(input_path: Path) -> tuple[CandidateDraft, ...]:
     with input_path.open(encoding="utf-8") as source_file:
         for line in source_file:
             payload = json.loads(line)
-            if payload["schema_version"] != CANDIDATE_SCHEMA_VERSION:
+            if payload["schema_version"] not in {CANDIDATE_SCHEMA_VERSION, LEGACY_CANDIDATE_SCHEMA_VERSION}:
                 msg = f"Unsupported candidate schema: {payload['schema_version']}"
                 raise ValueError(msg)
             drafts.append(_parse_candidate_draft(payload))
@@ -611,6 +617,7 @@ def _parse_candidate_draft(payload: dict[str, object]) -> CandidateDraft:
         reasoning_hops=payload["reasoning_hops"],
         source_fact_ids=tuple(payload["source_fact_ids"]),
         generator_model=payload["generator_model"],
+        prompt_version=payload.get("prompt_version", LEGACY_CANDIDATE_GENERATION_PROMPT_VERSION),
     )
 
 

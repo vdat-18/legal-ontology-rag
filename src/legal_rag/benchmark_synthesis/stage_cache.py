@@ -11,6 +11,7 @@ from typing import Any, Literal
 from legal_rag.benchmark_synthesis.candidate_generation import (
     CANDIDATE_GENERATION_PROMPT_VERSION,
     CANDIDATE_SCHEMA_VERSION,
+    CandidateDraft,
 )
 from legal_rag.benchmark_synthesis.chunk_screening import (
     CHUNK_SCREENING_PROMPT_VERSION,
@@ -248,25 +249,84 @@ def build_candidate_generation_fingerprint(
     candidates_per_scenario: int,
     llm_base_url: str,
     llm_model: str,
+    prompt_version: str = CANDIDATE_GENERATION_PROMPT_VERSION,
+    candidate_schema_version: str = CANDIDATE_SCHEMA_VERSION,
 ) -> StageCacheFingerprint:
     """Fingerprint every input that can change generated candidates."""
+    identity = _candidate_generation_identity(
+        facts,
+        scenarios,
+        persona_descriptions,
+        settings,
+        candidates_per_scenario=candidates_per_scenario,
+        llm_base_url=llm_base_url,
+        llm_model=llm_model,
+        candidate_schema_version=candidate_schema_version,
+    )
+    return _build_fingerprint(
+        stage="candidate_generation",
+        prompt_version=prompt_version,
+        model=llm_model,
+        identity=identity,
+    )
+
+
+def build_candidate_generation_artifact_fingerprint(
+    facts: Sequence[LegalFact],
+    scenarios: Sequence[Scenario],
+    persona_descriptions: Mapping[str, str],
+    settings: SynthesisSettings,
+    drafts: Sequence[CandidateDraft],
+    *,
+    candidates_per_scenario: int,
+    llm_base_url: str,
+    llm_model: str,
+) -> StageCacheFingerprint:
+    """Fingerprint a selectively merged or incomplete candidate artifact."""
+    prompt_versions = {draft.prompt_version for draft in drafts}
+    models = {draft.generator_model for draft in drafts}
+    identity = _candidate_generation_identity(
+        facts,
+        scenarios,
+        persona_descriptions,
+        settings,
+        candidates_per_scenario=candidates_per_scenario,
+        llm_base_url=llm_base_url,
+        llm_model=llm_model,
+    )
+    identity["drafts"] = [draft.to_dict() for draft in drafts]
+    return _build_fingerprint(
+        stage="candidate_generation",
+        prompt_version=next(iter(prompt_versions)) if len(prompt_versions) == 1 else "mixed",
+        model=next(iter(models)) if len(models) == 1 else "mixed",
+        identity=identity,
+    )
+
+
+def _candidate_generation_identity(
+    facts: Sequence[LegalFact],
+    scenarios: Sequence[Scenario],
+    persona_descriptions: Mapping[str, str],
+    settings: SynthesisSettings,
+    *,
+    candidates_per_scenario: int,
+    llm_base_url: str,
+    llm_model: str,
+    candidate_schema_version: str = CANDIDATE_SCHEMA_VERSION,
+) -> dict[str, Any]:
+    """Return prompt-facing candidate inputs without execution parallelism."""
     facts_by_id = {fact.fact_id: fact for fact in facts}
     referenced_fact_ids = sorted({fact_id for scenario in scenarios for fact_id in scenario.fact_ids})
     referenced_personas = sorted({scenario.persona for scenario in scenarios})
-    return _build_fingerprint(
-        stage="candidate_generation",
-        prompt_version=CANDIDATE_GENERATION_PROMPT_VERSION,
-        model=llm_model,
-        identity={
-            "candidate_schema": CANDIDATE_SCHEMA_VERSION,
-            "candidates_per_scenario": candidates_per_scenario,
-            "facts": [facts_by_id[fact_id].to_dict() for fact_id in referenced_fact_ids],
-            "llm": {"base_url": llm_base_url, "model": llm_model},
-            "personas": {persona: persona_descriptions[persona] for persona in referenced_personas},
-            "scenarios": [scenario.to_dict() for scenario in scenarios],
-            "settings": {"generation": asdict(settings.candidate_generation)},
-        },
-    )
+    return {
+        "candidate_schema": candidate_schema_version,
+        "candidates_per_scenario": candidates_per_scenario,
+        "facts": [facts_by_id[fact_id].to_dict() for fact_id in referenced_fact_ids],
+        "llm": {"base_url": llm_base_url, "model": llm_model},
+        "personas": {persona: persona_descriptions[persona] for persona in referenced_personas},
+        "scenarios": [scenario.to_dict() for scenario in scenarios],
+        "settings": {"generation": asdict(settings.candidate_generation)},
+    }
 
 
 def initialize_stage_cache(
