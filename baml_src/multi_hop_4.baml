@@ -57,6 +57,9 @@ function ConfirmMultiHop4BundleBatch(items: MultiHop4BundleBatchItem[]) -> Multi
        qua các nhãn chung như cơ quan, lực lượng hoặc người có thẩm quyền.
     5. Kiểm tra bridge cuối thể hiện rõ đóng góp của từng fact, đặc biệt là
        fact mới, thay vì chỉ mô tả chủ đề chung của bundle.
+    6. Sắp xếp thầm thành chuỗi A -> B -> C -> D, trong đó kết quả pháp lý
+       của mỗi bước là tiền đề cần thiết để áp dụng bước sau. Nếu chỉ có thể
+       nối các kết quả bằng "và", "đồng thời" hoặc "cần xác định", trả false.
 
     Luôn trả is_valid=false khi:
     - Bốn facts chỉ cùng chủ đề, cùng hậu quả hoặc ghép thành câu hỏi tổng
@@ -73,6 +76,9 @@ function ConfirmMultiHop4BundleBatch(items: MultiHop4BundleBatchItem[]) -> Multi
       statement trực tiếp xác lập phạm vi dùng chung.
     - Các facts chỉ ghép thành một quy trình hoặc vòng đời rộng; output của
       mỗi bước không phải tiền đề cần thiết cho bước kế tiếp.
+    - Các facts nêu những hậu quả pháp lý song song của cùng một hành vi,
+      như mức phạt cá nhân, trách nhiệm của tổ chức và bồi thường dân sự.
+      Cùng chủ thể hoặc cùng sự kiện không biến các nhánh này thành multi-hop.
     - Một bước nối cần tự tạo tiền đề, hệ quả, quan hệ chủ thể hoặc phạm vi
       mà statements không trực tiếp hỗ trợ.
     - Nội dung chủ yếu là so sánh quy định theo thời gian; trường hợp đó
