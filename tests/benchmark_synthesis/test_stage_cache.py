@@ -163,7 +163,7 @@ def test_screening_fingerprint_changes_with_reasoning_effort() -> None:
     )
     changed = build_chunk_screening_fingerprint(
         (_chunk(),),
-        replace(settings, chunk_screening=replace(settings.chunk_screening, reasoning_effort="high")),
+        replace(settings, chunk_screening=replace(settings.chunk_screening, reasoning_effort="medium")),
         llm_base_url="https://llm.test/v1",
         llm_model="provider/model-a",
     )
@@ -282,6 +282,37 @@ def test_candidate_fingerprint_changes_with_persona_or_model() -> None:
 
     assert original.run_id != changed_persona.run_id
     assert original.run_id != changed_model.run_id
+
+
+def test_candidate_fingerprint_ignores_execution_parallelism() -> None:
+    """Batch size and concurrency can change without invalidating completed candidates."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+    changed_execution = replace(
+        settings,
+        candidate_generation_batch_size=settings.candidate_generation_batch_size + 1,
+        candidate_generation_max_concurrency=settings.candidate_generation_max_concurrency + 1,
+    )
+
+    original = build_candidate_generation_fingerprint(
+        (_fact(),),
+        (_scenario(),),
+        {"tai_xe_ca_nhan": "Tài xế cá nhân"},
+        settings,
+        candidates_per_scenario=1,
+        llm_base_url="https://llm.test/v1",
+        llm_model="provider/model-a",
+    )
+    changed = build_candidate_generation_fingerprint(
+        (_fact(),),
+        (_scenario(),),
+        {"tai_xe_ca_nhan": "Tài xế cá nhân"},
+        changed_execution,
+        candidates_per_scenario=1,
+        llm_base_url="https://llm.test/v1",
+        llm_model="provider/model-a",
+    )
+
+    assert original == changed
 
 
 def test_initialize_stage_cache_writes_and_validates_a_sidecar(tmp_path: Path) -> None:

@@ -264,10 +264,7 @@ def build_candidate_generation_fingerprint(
             "llm": {"base_url": llm_base_url, "model": llm_model},
             "personas": {persona: persona_descriptions[persona] for persona in referenced_personas},
             "scenarios": [scenario.to_dict() for scenario in scenarios],
-            "settings": {
-                "batch_size": settings.candidate_generation_batch_size,
-                "generation": asdict(settings.candidate_generation),
-            },
+            "settings": {"generation": asdict(settings.candidate_generation)},
         },
     )
 
