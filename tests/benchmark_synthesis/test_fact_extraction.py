@@ -44,6 +44,30 @@ def test_fact_extraction_prompt_prioritizes_ground_truth_precision() -> None:
     assert "Dẫn chiếu phụ thuộc là thành phần bắt buộc" in prompt
     assert "bỏ fact thay vì suy đoán hoặc xóa locator" in prompt
     assert "Khi chính Target chứa một locator cần thiết" in prompt
+    assert "Không cần Target đồng thời nêu mức phạt" in prompt
+    assert "Loại nhiệm vụ quản lý, tổ chức thực hiện" in prompt
+    assert "Loại giáo dục tại xã, trường giáo dưỡng" in prompt
+    assert "Loại danh sách thẩm quyền pha trộn nhiều lĩnh vực" in prompt
+    assert "Không trả facts=[] chỉ vì Target không nêu chế tài" in prompt
+    assert "lập ánh xạ locator -> chunk_id" in prompt
+    assert "không cho\n      phép bỏ các quy tắc hợp lệ khác" in prompt
+    assert "toàn bộ trường hợp trong danh sách" in prompt
+    assert "Không xuất định nghĩa, bảng thuật ngữ" in prompt
+    assert "không viết vòng tròn" in prompt
+    assert "giữ nguyên mã đầy đủ gồm tiền tố, số và hậu tố" in prompt
+    assert "quy tắc chung của pháp luật xử phạt vi phạm hành chính" in prompt
+    assert "hạn chế hoặc\n      từ chối cấp gắn trực tiếp với tước quyền" in prompt
+    assert "Mỗi điểm chữ cái hoặc trường hợp" in prompt
+    assert "lập bảng kiểm nội bộ theo đúng thứ tự Target" in prompt
+    assert "so sánh từng cặp fact" in prompt
+    assert "Chọn tiêu đề gần nhất nằm trước" in prompt
+    assert "Mọi căn cứ thu hồi đăng ký, giấy phép, phù hiệu" in prompt
+    assert "Mỗi mệnh đề hiệu lực hoặc chuyển tiếp" in prompt
+    assert 'Cấu trúc giới hạn như "chỉ A, không B"' in prompt
+    assert "statement của câu đó bắt buộc nêu mã biển" in prompt
+    assert 'Dòng chú thích dạng "Hình ... - Biển số X"' in prompt
+    assert "tuyệt đối không xuất câu tác nghiệp không có mã" in prompt
+    assert "đối chiếu ngược từng câu tác nghiệp về biển/làn" in prompt
     assert "Khi phân vân giữa giữ và bỏ, giữ quy tắc" not in prompt
 
 

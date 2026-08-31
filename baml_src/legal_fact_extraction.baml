@@ -59,6 +59,36 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     hoặc thực hiện một bước xử lý vi phạm. Không trích nghĩa vụ quản lý hay
     thủ tục cấp, đổi, cấp lại thông thường chỉ vì có thể bị vi phạm.
 
+    Cổng domain có ưu tiên cao:
+    - Giữ quy tắc chung của pháp luật xử phạt vi phạm hành chính khi nó trực
+      tiếp xác định chủ thể chịu trách nhiệm, mức phạt áp dụng, tái phạm,
+      vi phạm nhiều lần, tình tiết tăng giảm, thời hiệu hoặc cách thi hành
+      quyết định; các quy tắc nền này vẫn áp dụng cho xử lý vi phạm giao
+      thông đường bộ dù Target không lặp lại tên lĩnh vực giao thông.
+    - Giữ quy tắc trực tiếp quyết định người tham gia giao thông, người điều
+      khiển, chủ xe hoặc phương tiện được phép, phải, không được hay chỉ được
+      làm gì. Không cần Target đồng thời nêu mức phạt. Ví dụ thuộc domain gồm
+      loại xe được phép lái theo giấy phép, phạm vi hoạt động của xe đăng ký
+      tạm thời, nghĩa vụ đăng kiểm, điều kiện trực tiếp của xe kinh doanh,
+      hiệu lực biển báo, vạch kẻ đường và quy tắc làn đường.
+      Giữ cả nghĩa vụ trực tiếp về xuất trình hoặc mang theo giấy tờ và vị trí
+      gắn, dán dấu hiệu bắt buộc trên phương tiện.
+    - Thủ tục cấp, cấp lại thông thường nằm ngoài domain, nhưng hạn chế hoặc
+      từ chối cấp gắn trực tiếp với tước quyền, thu hồi, thời hạn sau xử phạt
+      hay việc không chấp hành quyết định là một bước xử lý vi phạm và phải
+      được giữ.
+    - Loại nhiệm vụ quản lý, tổ chức thực hiện, hướng dẫn, kiểm tra, đôn đốc,
+      phối hợp, báo cáo khó khăn hoặc ban hành quy định trong tương lai nếu
+      Target không tự nêu một hành vi, điều kiện, thẩm quyền vụ việc hay bước
+      xử lý vi phạm cụ thể.
+    - Loại giáo dục tại xã, trường giáo dưỡng, cơ sở giáo dục bắt buộc, cai
+      nghiện và biện pháp hành chính đặc biệt. Quy định chung về tạm giữ hoặc
+      áp giải người chỉ được giữ khi chính Target nêu căn cứ trực tiếp là một
+      vụ vi phạm giao thông đường bộ.
+    - Loại danh sách thẩm quyền pha trộn nhiều lĩnh vực khi phần đường bộ hoặc
+      Cảnh sát giao thông chỉ là một mục trong danh sách và Source text không
+      xác lập riêng thẩm quyền áp dụng cho vi phạm giao thông đường bộ.
+
     Thứ tự ưu tiên bắt buộc: (1) chính xác và có căn cứ trực tiếp; (2) giữ
     đủ chủ thể, phạm vi, điều kiện và ngoại lệ; (3) viết nguyên tử, độc lập;
     (4) bao phủ nội dung còn lại. Đây là ground truth nên ưu tiên precision
@@ -150,6 +180,30 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
       có thể áp dụng độc lập phải được xét riêng; không xem vế sau là chi
       tiết phụ chỉ vì nó dùng chung chủ thể với vế trước. Chỉ xuất khi
       chủ thể, hành động, phạm vi và điều kiện đều đủ rõ từ input.
+      Việc loại một câu ngoài domain hoặc câu triển khai chung không cho
+      phép bỏ các quy tắc hợp lệ khác trong cùng Target.
+    - Inventory phải xét riêng toàn bộ trường hợp trong danh sách, gồm căn
+      cứ thu hồi, điều kiện từ chối hoặc chưa được thực hiện, nghĩa vụ xuất
+      trình giấy tờ, và mốc hiệu lực hoặc chuyển tiếp trực tiếp làm thay đổi
+      việc áp dụng quy tắc thuộc domain. Không tóm tắt nhiều trường hợp bằng
+      một câu chung và không dừng sau khi đã tìm thấy một vài fact hợp lệ.
+      Mỗi điểm chữ cái hoặc trường hợp có căn cứ áp dụng độc lập phải thành
+      một fact riêng khi đủ rõ; không để câu dẫn hoặc các fact ở đầu danh sách
+      thay thế các mục còn lại.
+      Mọi căn cứ thu hồi đăng ký, giấy phép, phù hiệu hoặc dấu hiệu quản lý
+      phương tiện là hậu quả/bước xử lý thuộc domain. Với mục chứa nhiều căn
+      cứ ngăn bằng dấu chấm phẩy, phải xét và bảo toàn từng căn cứ độc lập.
+    - Mỗi mệnh đề hiệu lực hoặc chuyển tiếp có ngày bắt đầu/kết thúc rõ và
+      trực tiếp thay đổi nội dung, phương pháp, điều kiện hoặc kết quả xử lý
+      thuộc domain phải thành fact riêng. Không được nhập nó vào mệnh đề hiệu
+      lực khác và không bỏ chỉ vì Target đã có một quy tắc áp dụng từ ngày
+      khác. Giữ nguyên ngày và phạm vi nội dung được source liệt kê.
+    - Trước khi trả output, lập bảng kiểm nội bộ theo đúng thứ tự Target cho
+      từng khoản, điểm, câu và vế: hoặc ánh xạ tới fact tương ứng, hoặc xác
+      định rõ lý do loại theo cổng domain/evidence/phạm vi. Nếu còn đơn vị
+      nội dung thuộc domain chưa được ánh xạ thì output chưa hoàn tất.
+      Đặc biệt không bỏ mệnh đề cấm, không thực hiện, chưa giải quyết, thu hồi
+      hoặc mệnh đề hiệu lực chỉ vì cùng Target đã có một fact khẳng định khác.
     - Inventory phải bao phủ cả mệnh đề hoàn chỉnh ở đầu hoặc cuối
       Target, kể cả Target kết thúc ngay sau dấu chấm phẩy. Với từng cụm
       động từ quy phạm như phải, không được, chưa giải quyết, thực hiện,
@@ -162,6 +216,10 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
       thực hiện ..." chứa ít nhất hai nghĩa pháp lý: hạn chế trước điều
       kiện và cách xử lý sau khi điều kiện được đáp ứng. Xét riêng cả hai,
       nhưng chỉ xuất vế nào có đủ căn cứ để tự đứng độc lập.
+    - Cấu trúc giới hạn như "chỉ A, không B" phải giữ đồng thời cả A và B
+      trong cùng fact. Không thay quy tắc cấp/không cấp này bằng nội dung ghi
+      chú, điều kiện nền hoặc một diễn giải về việc được phép tham gia giao
+      thông; các nội dung đó là fact khác nếu tự chúng đủ điều kiện.
     - Dẫn chiếu phụ thuộc là thành phần bắt buộc nếu nó quyết định phạm vi
       hoặc điều kiện áp dụng. Nếu không thể xác lập an toàn số Điều/khoản
       hay nội dung được dẫn thì bỏ fact, không giữ một phiên bản rộng hơn.
@@ -177,6 +235,17 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
     - Giữ chính xác ý nghĩa, con số, khoảng, đơn vị, điều kiện và
       ngoại lệ. Không thêm kiến thức, suy đoán hoặc diễn giải rộng hơn
       source text; không tạo fact nếu chưa đủ căn cứ.
+    - Không xuất định nghĩa, bảng thuật ngữ hoặc phép liệt kê khái niệm chỉ
+      mô tả một đối tượng là gì. Chỉ xuất khi chính nội dung đó đồng thời
+      xác lập quy tắc áp dụng, nghĩa vụ, điều kiện, thẩm quyền, thủ tục hoặc
+      hậu quả trực tiếp thuộc domain.
+    - Statement phải diễn đạt trực tiếp chủ thể, quy tắc và phạm vi; không
+      lặp lại cùng cụm từ, không viết vòng tròn kiểu chỉ yêu cầu "thực hiện
+      đúng quy định", và không dùng kết luận chung thay cho nội dung pháp lý
+      cụ thể đã có trong Source text.
+      Sau khi viết xong, so sánh từng cặp fact: nếu một fact chỉ diễn đạt lại
+      cùng quy tắc ở mức chung hơn, giữ fact đầy đủ và xóa fact chung; không
+      xuất đồng thời bản tóm tắt và bản chi tiết của cùng một quy tắc.
     - Statement phải tự đứng độc lập: không để các tham chiếu phụ thuộc
       ngữ cảnh như "Điều này", "khoản này", "nội dung nêu trên" hoặc
       "hành vi nêu trên". Chỉ ghi số Điều, khoản khi đúng định danh đó
@@ -215,12 +284,14 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
       hoạt động hoặc phương thức cụ thể, đặt nó trong phần hành vi nhưng
       vẫn giữ phạm vi chủ thể cấp Điều; không biến riêng cụm đó thành
       chủ thể thay thế.
-    - Không bỏ sót quy định giao thẩm quyền hoặc quy định chi tiết nằm
-      trọn trong Target khi nó nêu rõ chủ thể và nội dung được giao.
     - Xét riêng từng câu hoàn chỉnh, mục danh sách, hàng bảng và kết
       luận áp dụng trong ví dụ chính thức nằm trong Target. facts=[] hợp
       lệ khi không có nội dung nào vừa thuộc domain, vừa đủ rõ và đủ căn
       cứ để tạo statement độc lập sau khi đọc toàn bộ window.
+      Không trả facts=[] chỉ vì Target không nêu chế tài nếu Target đã có
+      điều cấm, nghĩa vụ, giới hạn hoặc điều kiện trực tiếp quyết định hành
+      vi giao thông có hợp pháp hay không. Trước khi trả facts=[], đối chiếu
+      lần lượt từng câu và mục trong Target với cổng domain ở đầu prompt.
     - evidence luôn chứa Target nhưng không mặc định chỉ chứa Target.
       Thêm mọi chunk có Source text đã dùng để tạo statement. Phần chỉ
       được khôi phục từ Structural context không cần evidence và Structural
@@ -239,6 +310,11 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
       Source text. Chỉ thấy con số riêng lẻ hoặc locator ở chunk ngoài
       evidence đều không đạt. Không chọn một preceding chunk khác thay
       cho chunk thực sự chứa locator.
+      Ngay trước khi trả output, lập ánh xạ locator -> chunk_id cho từng
+      statement. Nếu bất kỳ "Điều N", "khoản N" hoặc "điểm X" nào không
+      ánh xạ được tới Source text của một chunk đã chọn làm evidence thì
+      phải bổ sung đúng chunk đó; nếu chunk không có trong window, chỉ bỏ
+      locator khi nó không giới hạn nghĩa, nếu không phải xóa fact.
     - Không được xử lý tham chiếu phụ thuộc bằng cách chỉ xóa dẫn chiếu
       nhưng giữ câu còn lại. Nếu dẫn chiếu xác định trường hợp áp dụng,
       phải giữ định danh có evidence, thay bằng đầy đủ nội dung được
@@ -247,6 +323,20 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
       nhóm phương tiện hoặc phạm vi cấu trúc cụ thể, statement phải gọi
       rõ đúng phạm vi đó. Nếu cùng câu nguồn có thể lặp dưới mục khác,
       câu thiếu tên phạm vi là không hợp lệ và phải bị xóa.
+      Khi phạm vi được định danh bằng mã trong tiêu đề hoặc Source text,
+      giữ nguyên mã đầy đủ gồm tiền tố, số và hậu tố; không rút gọn chỉ còn
+      phần số. Chọn tiêu đề gần nhất nằm trước và trực tiếp chi phối câu tác
+      nghiệp; không lấy tiêu đề của mục bắt đầu sau câu đó hoặc bỏ hẳn phạm
+      vi chỉ vì câu tác nghiệp không lặp lại mã.
+      Nếu từ tiêu đề biển báo/hình đến câu tác nghiệp chưa xuất hiện tiêu đề
+      mới, statement của câu đó bắt buộc nêu mã biển từ tiêu đề. Câu thiếu mã
+      là chưa hoàn thành, dù hành động chuyển làn hoặc tuân thủ đã tự có chủ
+      ngữ và động từ.
+      Dòng chú thích dạng "Hình ... - Biển số X" hoặc tên hình ghép nhiều
+      biển cũng xác lập phạm vi cho các câu ngay sau nó, không chỉ dòng tiêu
+      đề Điều/Mục. Khi câu nằm sau hình của một biến thể cụ thể như X-a/X-b,
+      phải nêu ít nhất mã nhóm X và, khi biến thể trực tiếp chi phối câu, nêu
+      đầy đủ mã biến thể; tuyệt đối không xuất câu tác nghiệp không có mã.
     - Trả đúng một kết quả cho mỗi input, giữ nguyên target_chunk_id;
       facts=[] là hợp lệ.
 
@@ -285,6 +375,10 @@ function ExtractLegalFactBatch(items: FactExtractionBatchItem[]) -> FactExtracti
       statement phải nêu đúng tên phạm vi đó. Ví dụ, câu nằm trong mục
       của biển R.xxx phải viết "Đối với ... biển R.xxx, khi..."; câu chỉ
       còn "Khi..." là thiếu phạm vi và phải bị xóa.
+      Dòng chú thích hình ngay trước câu được xem là tên mục chi phối. Trước
+      khi trả output, đối chiếu ngược từng câu tác nghiệp về biển/làn với dòng
+      "Hình ... - Biển số ..." gần nhất; nếu statement không chứa mã biển
+      tương ứng thì phải sửa hoặc xóa, không được giữ câu không có phạm vi.
 
     {{ _.role("user") }}
 
