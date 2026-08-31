@@ -160,6 +160,12 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     đều penalty=false. Không giữ chúng chỉ vì đây là một dạng "xử lý vi phạm
     hành chính" hoặc vì Target có trình tự pháp lý cụ thể.
 
+    Quy định về tạm giữ hoặc áp giải người chỉ được giữ khi chính Target nêu
+    căn cứ trực tiếp thuộc một vụ vi phạm giao thông đường bộ. Đặt false nếu
+    Target chỉ nêu quy tắc chung về tạm giữ, áp giải; danh sách thẩm quyền pha
+    trộn nhiều lĩnh vực; hoặc việc đưa vào trường giáo dưỡng, cơ sở giáo dục,
+    cơ sở cai nghiện mà không tự nêu căn cứ vi phạm giao thông đường bộ.
+
     Mục lục, tiêu đề, lời dẫn, căn cứ ban hành, danh mục hoặc tên biểu mẫu và
     thông tin hành chính tự chúng không đủ. Luôn đặt false cho mẫu quyết định,
     biên bản, thông báo, phiếu, sổ theo dõi hoặc giấy phép chưa được lập; phần

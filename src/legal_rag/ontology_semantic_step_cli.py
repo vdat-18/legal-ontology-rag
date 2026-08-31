@@ -10,6 +10,8 @@ from pathlib import Path
 
 from loguru import logger
 
+from legal_rag.ontology_proposal_execution import DEFAULT_ONTOLOGY_MAX_CONCURRENCY
+
 
 def _run_modules(commands: Sequence[tuple[str, Sequence[str | Path]]]) -> None:
     """Run deterministic preparation, one proposal stage, and finalization."""
@@ -36,7 +38,7 @@ def _assembly_parser() -> argparse.ArgumentParser:
     parser.add_argument("progress_output_path", type=Path)
     parser.add_argument("canonical_records_output_path", type=Path)
     parser.add_argument("graph_output_path", type=Path)
-    parser.add_argument("--max-concurrency", type=int, default=1)
+    parser.add_argument("--max-concurrency", type=int, default=DEFAULT_ONTOLOGY_MAX_CONCURRENCY)
     return parser
 
 
@@ -98,7 +100,7 @@ def _change_parser() -> argparse.ArgumentParser:
     parser.add_argument("canonical_records_output_path", type=Path)
     parser.add_argument("change_events_output_path", type=Path)
     parser.add_argument("graph_output_path", type=Path)
-    parser.add_argument("--max-concurrency", type=int, default=1)
+    parser.add_argument("--max-concurrency", type=int, default=DEFAULT_ONTOLOGY_MAX_CONCURRENCY)
     return parser
 
 
@@ -157,7 +159,7 @@ def _exception_parser() -> argparse.ArgumentParser:
     parser.add_argument("progress_output_path", type=Path)
     parser.add_argument("exception_records_output_path", type=Path)
     parser.add_argument("graph_output_path", type=Path)
-    parser.add_argument("--max-concurrency", type=int, default=1)
+    parser.add_argument("--max-concurrency", type=int, default=DEFAULT_ONTOLOGY_MAX_CONCURRENCY)
     return parser
 
 
@@ -221,7 +223,7 @@ def _concept_parser() -> argparse.ArgumentParser:
     parser.add_argument("concepts_output_path", type=Path)
     parser.add_argument("relations_output_path", type=Path)
     parser.add_argument("graph_output_path", type=Path)
-    parser.add_argument("--max-concurrency", type=int, default=1)
+    parser.add_argument("--max-concurrency", type=int, default=DEFAULT_ONTOLOGY_MAX_CONCURRENCY)
     return parser
 
 

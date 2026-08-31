@@ -49,6 +49,8 @@ thể persistence/materialize xác định. SHACL, CQ và reasoner là QA tách 
 
 ## 1. Inventory hành vi
 
+Sáu bước LLM mặc định chạy tối đa 30 batch đồng thời; `--max-concurrency` chỉ cần truyền khi muốn đổi giới hạn này.
+
 LLM chỉ đọc target chunk và lập closed inventory các hành vi độc lập được target trực tiếp mô tả. Kết quả được ghi cho
 cả target không có hành vi, vì vậy `conducts.jsonl` đồng thời là checkpoint resume của bước này.
 
@@ -56,7 +58,7 @@ cả target không có hành vi, vì vậy `conducts.jsonl` đồng thời là c
 uv run --extra dev legal-extract-ontology-conducts `
   <chunks.jsonl> <screening.jsonl> <document_metadata.jsonl> `
   ontology/population_contract.yaml <conducts.jsonl> `
-  --preflight-report-path <preflight.json> --max-concurrency 2
+  --preflight-report-path <preflight.json> --max-concurrency 30
 ```
 
 Thêm `--target-ids-path <selection.json>` khi chạy pilot; dùng cùng option ở bước 2.
@@ -82,7 +84,7 @@ uv run --extra dev legal-bind-ontology-population `
   <progress.jsonl> `
   <graph.ttl> `
   --preflight-report-path <preflight.json> `
-  --max-concurrency 2
+  --max-concurrency 30
 ```
 
 CLI `legal-populate-ontology` cũ vẫn được giữ để tương thích, nhưng nó gộp cả hai prompt và không thuộc flow sáu bước
@@ -99,7 +101,7 @@ uv run --extra dev legal-assemble-ontology-rules `
   <chunks.jsonl> <metadata.jsonl> <population.jsonl> `
   ontology/population_contract.yaml ontology/assembly_contract.yaml `
   <candidates.json> <proposals.jsonl> <progress.jsonl> `
-  <canonical_population.jsonl> <canonical_graph.ttl> --max-concurrency 2
+  <canonical_population.jsonl> <canonical_graph.ttl> --max-concurrency 30
 ```
 
 ## 4. Legal change giữa các văn bản
@@ -112,7 +114,7 @@ Finalizer ràng buộc rule IDs vào corpus và cập nhật validity của các
 uv run --extra dev legal-resolve-ontology-changes `
   <corpus_manifest.json> ontology/change_resolution_contract.yaml `
   ontology/population_contract.yaml <candidates.json> <proposals.jsonl> <progress.jsonl> `
-  <canonical_population.jsonl> <legal_change_events.jsonl> <canonical_graph.ttl> --max-concurrency 2
+  <canonical_population.jsonl> <legal_change_events.jsonl> <canonical_graph.ttl> --max-concurrency 30
 ```
 
 ## 5. Legal exception và citation
@@ -126,7 +128,7 @@ uv run --extra dev legal-resolve-ontology-exceptions `
   <corpus_manifest.json> <canonical_population.jsonl> <legal_change_events.jsonl> `
   ontology/exception_resolution_contract.yaml ontology/population_contract.yaml `
   <candidates.json> <proposals.jsonl> <progress.jsonl> `
-  <legal_exceptions.jsonl> <canonical_graph.ttl> --max-concurrency 2
+  <legal_exceptions.jsonl> <canonical_graph.ttl> --max-concurrency 30
 ```
 
 ## 6. Chuẩn hóa concept
@@ -141,7 +143,7 @@ uv run --extra dev legal-resolve-ontology-concepts `
   <corpus_manifest.json> <canonical_population.jsonl> <legal_change_events.jsonl> `
   <legal_exceptions.jsonl> ontology/population_contract.yaml ontology/concept_resolution_contract.yaml `
   <candidates.json> <proposals.jsonl> <progress.jsonl> `
-  <canonical_concepts.jsonl> <concept_relations.jsonl> <canonical_graph.ttl> --max-concurrency 2
+  <canonical_concepts.jsonl> <concept_relations.jsonl> <canonical_graph.ttl> --max-concurrency 30
 ```
 
 ## Khi có dữ liệu mới

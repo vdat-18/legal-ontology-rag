@@ -9,6 +9,8 @@ from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 from loguru import logger
 
+from legal_rag.ontology_proposal_execution import DEFAULT_ONTOLOGY_MAX_CONCURRENCY
+
 
 def _parser() -> argparse.ArgumentParser:
     """Build the legal-change proposal command-line parser."""
@@ -18,7 +20,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("change_contract_path", type=Path, help="Versioned change-resolution contract YAML path")
     parser.add_argument("proposals_output_path", type=Path, help="Legal-change proposal JSONL destination")
     parser.add_argument("progress_output_path", type=Path, help="Legal-change proposal progress JSONL destination")
-    parser.add_argument("--max-concurrency", type=int, default=1, help="Maximum concurrent legal-change batches")
+    parser.add_argument(
+        "--max-concurrency",
+        type=int,
+        default=DEFAULT_ONTOLOGY_MAX_CONCURRENCY,
+        help="Maximum concurrent legal-change batches",
+    )
     return parser
 
 

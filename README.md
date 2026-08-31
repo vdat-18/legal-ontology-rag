@@ -141,40 +141,41 @@ uv run --extra dev legal-check-ontology-population `
 This offline preflight fingerprints inputs, validates structural consistency, and records the selected pilot targets.
 
 The recommended runtime has six user-facing steps. Each command performs exactly one semantic LLM task and wraps its
-deterministic candidate preparation, checkpoint persistence, and finalization:
+deterministic candidate preparation, checkpoint persistence, and finalization. All six steps default to at most 30
+concurrent LLM batches; pass `--max-concurrency` only when a different limit is required:
 
 ```powershell
 uv run --extra dev legal-extract-ontology-conducts `
   <chunks.jsonl> <screening.jsonl> <metadata.jsonl> ontology/population_contract.yaml `
-  <conducts.jsonl> --target-ids-path <selection.json> --max-concurrency 2
+  <conducts.jsonl> --target-ids-path <selection.json> --max-concurrency 30
 
 uv run --extra dev legal-bind-ontology-population `
   <chunks.jsonl> <screening.jsonl> <metadata.jsonl> ontology/population_contract.yaml `
   <conducts.jsonl> <population.jsonl> <population-progress.jsonl> <population.ttl> `
-  --target-ids-path <selection.json> --max-concurrency 2
+  --target-ids-path <selection.json> --max-concurrency 30
 
 uv run --extra dev legal-assemble-ontology-rules `
   <chunks.jsonl> <metadata.jsonl> <population.jsonl> `
   ontology/population_contract.yaml ontology/assembly_contract.yaml `
   <assembly-candidates.json> <assembly-proposals.jsonl> <assembly-progress.jsonl> `
-  <canonical-population.jsonl> <canonical.ttl> --max-concurrency 2
+  <canonical-population.jsonl> <canonical.ttl> --max-concurrency 30
 
 uv run --extra dev legal-resolve-ontology-changes `
   <corpus-manifest.json> ontology/change_resolution_contract.yaml ontology/population_contract.yaml `
   <change-candidates.json> <change-proposals.jsonl> <change-progress.jsonl> `
-  <canonical-population.jsonl> <change-events.jsonl> <canonical.ttl> --max-concurrency 2
+  <canonical-population.jsonl> <change-events.jsonl> <canonical.ttl> --max-concurrency 30
 
 uv run --extra dev legal-resolve-ontology-exceptions `
   <corpus-manifest.json> <canonical-population.jsonl> <change-events.jsonl> `
   ontology/exception_resolution_contract.yaml ontology/population_contract.yaml `
   <exception-candidates.json> <exception-proposals.jsonl> <exception-progress.jsonl> `
-  <legal-exceptions.jsonl> <canonical.ttl> --max-concurrency 2
+  <legal-exceptions.jsonl> <canonical.ttl> --max-concurrency 30
 
 uv run --extra dev legal-resolve-ontology-concepts `
   <corpus-manifest.json> <canonical-population.jsonl> <change-events.jsonl> <legal-exceptions.jsonl> `
   ontology/population_contract.yaml ontology/concept_resolution_contract.yaml `
   <concept-candidates.json> <concept-proposals.jsonl> <concept-progress.jsonl> `
-  <canonical-concepts.jsonl> <concept-relations.jsonl> <canonical.ttl> --max-concurrency 2
+  <canonical-concepts.jsonl> <concept-relations.jsonl> <canonical.ttl> --max-concurrency 30
 ```
 
 Omit pilot-selection options for the full document. Re-running a step resumes from compatible conduct/proposal progress

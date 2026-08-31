@@ -15,6 +15,8 @@ from legal_rag.benchmark_synthesis.llm_execution import (
 
 _T = TypeVar("_T")
 
+DEFAULT_ONTOLOGY_MAX_CONCURRENCY = 30
+
 
 def execute_proposal_batches(
     tasks: Sequence[tuple[str, Callable[[], _T]]],

@@ -10,6 +10,8 @@ from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 from loguru import logger
 
+from legal_rag.ontology_proposal_execution import DEFAULT_ONTOLOGY_MAX_CONCURRENCY
+
 
 def _parser() -> argparse.ArgumentParser:
     """Build the ontology-population command-line parser."""
@@ -26,7 +28,12 @@ def _parser() -> argparse.ArgumentParser:
     target_group = parser.add_mutually_exclusive_group()
     target_group.add_argument("--target-limit", type=int, help="Maximum accepted chunks selected for a pilot run")
     target_group.add_argument("--target-ids-path", type=Path, help="Reviewed pilot target-selection JSON path")
-    parser.add_argument("--max-concurrency", type=int, default=1, help="Maximum concurrent ontology-population batches")
+    parser.add_argument(
+        "--max-concurrency",
+        type=int,
+        default=DEFAULT_ONTOLOGY_MAX_CONCURRENCY,
+        help="Maximum concurrent ontology-population batches",
+    )
     parser.add_argument("--preflight-report-path", type=Path, help="Optional machine-readable readiness report")
     return parser
 

@@ -1,0 +1,7 @@
+{
+  "model": "gpt-5.6-terra",
+  "prompt_version": "5.16.0",
+  "run_id": "73236c94de660aca144ac4775780c69119a92d1debbca7ef0b70f13cd1fb9d3b",
+  "schema_version": "1.0.0",
+  "stage": "chunk_screening"
+}
