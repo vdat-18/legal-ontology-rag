@@ -40,6 +40,8 @@ function ConfirmMultiHop4BundleBatch(items: MultiHop4BundleBatchItem[]) -> Multi
     Đặt is_valid=true chỉ khi:
     - Cả bốn facts đồng thời áp dụng cho cùng chủ thể, phương tiện, sự kiện,
       thời gian và phạm vi pháp lý cụ thể.
+    - Bốn facts thuộc cùng một nhánh điều kiện và cùng một chuỗi nhân quả;
+      không phải các căn cứ độc lập chỉ tình cờ dẫn đến cùng một quyết định.
     - Fact mới tạo thêm một bước phụ thuộc nội dung cần thiết từ bundle ba
       facts nguồn; không chỉ thêm ví dụ, định nghĩa nền hoặc nhánh độc lập.
     - Có ít nhất ba bước nối có phụ thuộc nội dung trong toàn bundle.
@@ -63,6 +65,12 @@ function ConfirmMultiHop4BundleBatch(items: MultiHop4BundleBatchItem[]) -> Multi
     7. Phân biệt suy luận pháp lý với mô tả thao tác: dừng, kiểm tra, tiếp
        nhận, chuyển, thông báo, lập biên bản, lưu, cập nhật hoặc giao trả
        không tạo thành hop nếu chỉ là các nghĩa vụ độc lập theo trình tự.
+    8. Dựng đúng dòng thời gian. Điều kiện làm phát sinh trách nhiệm phải
+       tồn tại trước hành vi được xét; không dùng chính hậu quả xử phạt của
+       hành vi hiện tại để chứng minh điều kiện đó đã tồn tại từ trước.
+    9. Kiểm tra từng fact thuộc quan hệ phụ thuộc hay chỉ là một căn cứ thay
+       thế. Hai lý do độc lập cùng dẫn đến thu hồi, xử phạt hoặc tịch thu
+       không tạo thành hai hop của cùng một tình huống.
 
     Luôn trả is_valid=false khi:
     - Bốn facts chỉ cùng chủ đề, cùng hậu quả hoặc ghép thành câu hỏi tổng
@@ -72,6 +80,15 @@ function ConfirmMultiHop4BundleBatch(items: MultiHop4BundleBatchItem[]) -> Multi
     - Các facts thuộc những nhánh điều kiện loại trừ nhau hoặc không thể
       đồng thời đúng trong một tình huống, như bản giấy/điện tử, được phép/
       bị cấm hoặc có mặt/vắng mặt.
+    - Các facts mô tả các căn cứ thay thế cho cùng một hậu quả, như hai lý
+      do thu hồi giấy phép độc lập. Bridge chọn một căn cứ sẽ làm fact còn
+      lại dư; bridge chứa cả hai chỉ trở thành câu hỏi liệt kê.
+    - Candidate đánh tráo điều kiện có trước với hậu quả có sau, như dùng
+      hình thức tước giấy phép phát sinh từ hành vi hiện tại để suy ra rằng
+      giấy phép đã bị tước khi một chủ thể khác giao phương tiện.
+    - Candidate ghép các cách xử lý tài sản ở những nhánh khác nhau, như
+      trả lại cho chủ thể hợp pháp với xử lý tài sản bị tịch thu hoặc tài
+      sản bảo đảm, khi statements không trực tiếp xác lập chúng cùng áp dụng.
     - Candidate cần ghép nhánh chấp thuận với từ chối, đạt với không đạt,
       hoặc thực hiện với không thực hiện để dùng đủ facts; một tình huống
       cụ thể chỉ cần một nhánh kết quả.
@@ -100,7 +117,9 @@ function ConfirmMultiHop4BundleBatch(items: MultiHop4BundleBatchItem[]) -> Multi
     Khi valid, bridge là một câu trần thuật tiếng Việt ngắn nêu đúng vấn
     đề pháp lý thống nhất và thể hiện chuỗi phụ thuộc bốn facts. Bridge
     không được là câu hỏi, không kết thúc bằng dấu hỏi, không chèn từ thuộc
-    ngôn ngữ khác, nhãn Fact, ID hoặc vị trí input. Chỉ dùng tiếng Việt.
+    ngôn ngữ khác, nhãn Fact, ID hoặc vị trí input. Chỉ dùng tiếng Việt,
+    gồm cả từ và từ nối; nếu không thể diễn đạt hoàn toàn bằng tiếng Việt,
+    trả false.
     Tự kiểm tra bridge không chứa từ hoặc ký tự thuộc hệ chữ nước ngoài.
     Không chép lại toàn bộ statements. Khi invalid, bridge=null.
 

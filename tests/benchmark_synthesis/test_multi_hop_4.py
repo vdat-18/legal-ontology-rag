@@ -114,6 +114,11 @@ def test_multi_hop_4_prompt_requires_four_fact_ablation_and_subject_identity() -
     assert "hệ chữ nước ngoài" in prompt
     assert "chỉ là gợi ý để kiểm tra facts" in prompt
     assert "Chỉ dùng tiếng Việt" in prompt
+    assert "các căn cứ độc lập" in prompt
+    assert "Dựng đúng dòng thời gian" in prompt
+    assert "điều kiện có trước với hậu quả có sau" in prompt
+    assert "trả lại cho chủ thể hợp pháp" in prompt
+    assert "nếu không thể diễn đạt hoàn toàn bằng tiếng Việt" in prompt
 
 
 def test_find_multi_hop_4_candidates_extends_confirmed_sources_round_robin() -> None:
