@@ -67,8 +67,23 @@ function ConfirmBundleScopeBatch(items: BundleScopeBatchItem[]) -> BundleScopeBa
 
     Với bundle nhiều facts, chỉ trả true khi một câu hỏi thống nhất trong domain
     thực sự cần toàn bộ facts. Một fact ngoài scope không được cứu chỉ vì fact
-    khác thuộc scope. Trả đúng một kết quả cho mỗi input, giữ nguyên bundle_id
-    và thứ tự.
+    khác thuộc scope. Không chấp nhận nhiều facts chỉ cung cấp các nhánh kết
+    luận độc lập hoặc có thể bỏ một fact mà vẫn trả lời trọn trọng tâm.
+    Tự dựng lại quan hệ từ statements; nếu bridge gán một hành vi, điểm/khoản,
+    mức phạt hoặc quan hệ không có trong facts hay mâu thuẫn với facts thì trả
+    false. Không chấp nhận bundle chỉ vì có thể hỏi thêm một phân loại chung,
+    một nghĩa vụ nền hoặc nhiều tiểu câu độc lập để buộc dùng đủ facts.
+
+    Với temporal, chỉ trả true khi statements hoặc metadata hiệu lực chứng minh
+    được quan hệ áp dụng theo thời gian. valid_from muộn hơn không tự chứng minh
+    fact cũ có valid_to=null đã bị thay thế, bãi bỏ hoặc ngừng áp dụng. Hai quy
+    định khác nhau nhưng không có quan hệ thay đổi rõ ràng không tạo thành một
+    temporal bundle hợp lệ.
+    Việc bổ sung hoặc bãi bỏ một cụm từ chỉ chứng minh thay đổi đúng phạm vi câu
+    chữ đó; không tự chứng minh toàn bộ chế tài, thẩm quyền hoặc biện pháp đã
+    phát sinh hay chấm dứt.
+
+    Trả đúng một kết quả cho mỗi input, giữ nguyên bundle_id và thứ tự.
 
     {{ _.role("user") }}
 

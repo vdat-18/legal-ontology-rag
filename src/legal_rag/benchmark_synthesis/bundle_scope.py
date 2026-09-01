@@ -30,7 +30,7 @@ from legal_rag.parser.hashing import sha256_json
 from legal_rag.settings import Settings
 
 BUNDLE_SCOPE_SCHEMA_VERSION = "1.0.0"
-BUNDLE_SCOPE_PROMPT_VERSION = "1.0.0"
+BUNDLE_SCOPE_PROMPT_VERSION = "1.2.0"
 
 
 @dataclass(frozen=True, slots=True)

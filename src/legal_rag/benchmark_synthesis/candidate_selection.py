@@ -71,17 +71,36 @@ def validate_scenario_replacement(
     replace_scenario_ids: frozenset[str],
 ) -> frozenset[str]:
     """Validate an explicit same-size scenario replacement and return new scenario IDs."""
+    prior_by_id = {scenario.scenario_id: scenario for scenario in prior_scenarios}
     prior_ids = frozenset(scenario.scenario_id for scenario in prior_scenarios)
     current_ids = frozenset(scenario.scenario_id for scenario in current_scenarios)
     if len(prior_ids) != len(prior_scenarios) or len(current_ids) != len(current_scenarios):
         msg = "Scenario replacement requires unique scenario IDs"
         raise ValueError(msg)
+    unknown_ids = replace_scenario_ids - prior_ids
+    if unknown_ids:
+        msg = f"Unknown scenarios requested for replacement: {sorted(unknown_ids)}"
+        raise ValueError(msg)
+    rejected_keys = {_scenario_evidence_key(prior_by_id[scenario_id]) for scenario_id in replace_scenario_ids}
+    expected_removed_ids = frozenset(
+        scenario.scenario_id
+        for scenario in prior_scenarios
+        if _scenario_evidence_key(scenario) in rejected_keys
+    )
     removed_ids = prior_ids - current_ids
     added_ids = current_ids - prior_ids
-    if removed_ids != replace_scenario_ids:
-        msg = f"Scenario replacement removed unexpected IDs: expected {sorted(replace_scenario_ids)}, got {sorted(removed_ids)}"
+    if removed_ids != expected_removed_ids:
+        msg = (
+            "Scenario replacement removed unexpected IDs: "
+            f"expected {sorted(expected_removed_ids)}, got {sorted(removed_ids)}"
+        )
         raise ValueError(msg)
     if len(added_ids) != len(removed_ids) or len(current_scenarios) != len(prior_scenarios):
         msg = "Scenario replacement must preserve the total scenario count"
         raise ValueError(msg)
     return added_ids
+
+
+def _scenario_evidence_key(scenario: Scenario) -> tuple[str, tuple[str, ...], str | None]:
+    """Identify scenarios backed by the same evidence bundle."""
+    return scenario.bundle_kind, scenario.fact_ids, scenario.bridge

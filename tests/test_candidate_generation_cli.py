@@ -21,6 +21,7 @@ from legal_rag.benchmark_synthesis.candidate_generation import (
     LEGACY_CANDIDATE_GENERATION_PROMPT_VERSION,
     LEGACY_CANDIDATE_SCHEMA_VERSION,
 )
+from legal_rag.benchmark_synthesis.candidate_selection import validate_scenario_replacement
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario, load_persona_descriptions
@@ -276,7 +277,7 @@ def test_candidate_generation_cli_migrates_only_replaced_scenarios(
     candidates_path = tmp_path / "single_turn.jsonl"
     write_legal_facts(facts_path, [_fact()])
     first = _scenario()
-    retained = replace(_scenario(), scenario_id="scenario-2", query_style="formal")
+    retained = replace(_scenario(), scenario_id="scenario-2", query_style="formal", bridge="different bundle")
     replacement = replace(_scenario(), scenario_id="scenario-3", query_style="polite")
     write_scenarios(scenarios_path, (first, retained))
     _configure_cli(monkeypatch, facts_path, scenarios_path, candidates_path, candidates_per_scenario=1)
@@ -308,3 +309,20 @@ def test_candidate_generation_cli_migrates_only_replaced_scenarios(
     assert [draft.scenario_id for draft in drafts] == [retained.scenario_id, replacement.scenario_id]
     assert drafts[0].sample_id == retained_sample_id
     assert generated_task_ids == [f"{replacement.scenario_id}:0"]
+
+
+def test_scenario_replacement_expands_requested_id_to_shared_evidence() -> None:
+    """Candidate migration matches Step 4 replacement expansion for a rejected bundle."""
+    first = _scenario()
+    shared = replace(first, scenario_id="scenario-2", query_style="formal")
+    retained = replace(first, scenario_id="scenario-3", bridge="different bundle")
+    new_first = replace(first, scenario_id="scenario-4", query_style="polite")
+    new_second = replace(first, scenario_id="scenario-5", query_style="conversational")
+
+    added_ids = validate_scenario_replacement(
+        (first, shared, retained),
+        (retained, new_first, new_second),
+        frozenset({first.scenario_id}),
+    )
+
+    assert added_ids == frozenset({new_first.scenario_id, new_second.scenario_id})
