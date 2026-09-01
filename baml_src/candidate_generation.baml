@@ -148,17 +148,52 @@ function GenerateSingleTurnCandidateBatch(
       từ; medium 10-20 từ; long trên 20 từ nhưng gọn. Đếm lại và viết
       lại query nếu nằm ngoài khoảng. Short có giới hạn cứng tối đa 10
       từ, kể cả khi phải bỏ bớt từ lịch sự hoặc chi tiết phụ. Với short,
-      chủ động viết 5-8 từ để còn biên an toàn; tuyệt đối không trả query
+      chủ động viết 7-9 từ để còn biên an toàn; tuyệt đối không trả query
       11 từ rồi gắn nhãn short.
+      Không nối các từ bằng dấu gạch để lách giới hạn; cụm từ ghép phải viết
+      tự nhiên. Không hy sinh ngữ pháp, chủ thể hoặc quan hệ pháp lý chỉ để
+      rút ngắn query.
     - style: standard=hỏi trực tiếp, đủ dấu và có dấu hỏi;
-      conversational=hội thoại;
-      polite=lịch sự; formal=trang trọng, trung tính, không dùng từ viết tắt
-      kiểu tin nhắn; no_diacritics=hoàn toàn
+      conversational=là câu hội thoại tự nhiên, có cấu trúc đầy đủ, không phải
+      chuỗi từ khóa hoặc danh sách rút gọn;
+      polite=lịch sự; formal=trang trọng, trung tính, là câu đầy đủ và không
+      dùng từ viết tắt kiểu tin nhắn; no_diacritics=hoàn toàn
       không dấu; misspelled=có vài lỗi gõ hoặc viết tắt tự nhiên;
       keyword_style=chỉ từ khóa cốt lõi, không thành câu, không dấu hỏi.
+      Với formal, dùng một câu hỏi trung tính có đầy đủ cấu trúc, chẳng hạn
+      "có được ... không", "bị xử phạt bao nhiêu" hoặc "được xử lý như thế
+      nào"; không dùng câu cụt kết thúc bằng một từ như "phạt?" hoặc "sao?".
+      Câu formal hỏi quyền phải có đủ cặp "có được ... không"; câu hỏi chế tài
+      phải nêu rõ cần biết mức phạt hoặc hình thức xử lý, không chỉ hỏi "phạt?".
+      Mẫu cấu trúc đúng: "[chủ thể] có được [hành vi] không?" hoặc "[hành vi]
+      bị phạt bao nhiêu?". Có thể thu hẹp vào một đối tượng được fact hỗ trợ để
+      giữ short, nhưng không được bỏ từ tạo nên cấu trúc câu hỏi.
+      Với conversational, có thể gần khẩu ngữ nhưng vẫn là một câu hỏi liền
+      mạch; không ghép nhiều mảnh thông tin bằng dấu phẩy hoặc dấu chấm phẩy
+      thay cho ngữ pháp, không kết thúc bằng câu cụt "sao?", và vẫn phải viết
+      đầy đủ tên đối tượng thay vì viết tắt.
     - Với no_diacritics, mọi ký tự trong query đều không dấu, kể cả chữ đ/Đ
       trong từ viết tắt. Với keyword_style, không dùng đại từ chỉ xuất thiếu
-      ngữ cảnh như "này", "đó", "trên".
+      ngữ cảnh như "này", "đó", "trên" và tuyệt đối không có dấu hỏi. Chuỗi
+      keyword phải giữ chủ thể hoặc đối tượng, hành vi và kết luận pháp lý cần
+      tìm; không chỉ nêu chủ đề rộng khiến nhiều câu trả lời khác nhau đều hợp.
+      Dùng đúng thuật ngữ pháp lý chính trong fact, như "gửi thông tin", không
+      thay bằng từ rộng hoặc khẩu ngữ như "gửi tin".
+      Cấu trúc keyword nên là "[chủ thể] [hành vi/nghĩa vụ] [đối tượng/kênh]";
+      bỏ từ mô tả chủ đề trước khi bỏ chủ thể thực hiện nghĩa vụ.
+      keyword_style không dùng cụm nghi vấn như "ra sao", "thế nào", "ai" hoặc
+      "bao nhiêu"; chỉ giữ các từ nội dung mô tả đúng kết luận cần tìm.
+      Ngoài keyword_style và misspelled, không viết điện tín, không dùng ký hiệu
+      rút gọn như QĐ, GT, K1, Đ13 hoặc chuỗi phân cách bằng dấu phẩy thay cho câu.
+    - Query phải diễn đạt chính xác quan hệ pháp lý được trả lời. Ví dụ, khi
+      answer kết luận một tình tiết "là tình tiết tăng nặng", query cũng phải
+      hỏi nguyên quan hệ "là tình tiết tăng nặng không", không rút thành cụm
+      mơ hồ như "có tăng nặng".
+    - Với multi-hop, query phải chứa một dấu hiệu ngôn ngữ rõ cho từng fact cần
+      nối, không chỉ hỏi fact đầu và fact cuối rồi để answer tự thêm các yếu tố
+      ở giữa. Các giới hạn khác nhau như thời hạn giấy phép, thời gian cư trú
+      và hành vi tiếp tục sử dụng giấy phép phải hiện diện riêng nếu chúng dựa
+      trên các facts khác nhau.
 
     Output contract:
     - query tuân thủ scenario.
@@ -171,6 +206,9 @@ function GenerateSingleTurnCandidateBatch(
       toàn bộ chế tài, thẩm quyền hoặc biện pháp đã phát sinh hay chấm dứt.
     - reasoning giải thích ngắn cách facts dẫn tới đáp án; không bịa
       citation hoặc nói "dữ liệu được cung cấp".
+      Không suy ra rằng không có chế tài, ngoại lệ, thẩm quyền hoặc quy định
+      khác chỉ vì facts được cấp không đề cập; chỉ nói facts hiện tại không đủ
+      để kết luận phần đó khi answerability yêu cầu.
     - required_claims có ít nhất một phần tử, liệt kê các ý bắt buộc
       trong reference_answer, không lặp nội dung và trỏ đúng fact_id.
       Với reasoning_hops>1,
@@ -186,6 +224,9 @@ function GenerateSingleTurnCandidateBatch(
       Điều kiện dẫn chiếu như "theo quy định tại Điều ..." cũng là một phần của
       phạm vi áp dụng; phải giữ nguyên trong query, answer và claim khi kết luận
       phụ thuộc vào nó, không rút thành mô tả chung rộng hơn.
+      Với điều kiện so sánh như "ngắn hơn", "cao hơn" hoặc "khác nhau", query
+      phải nêu rõ hai đại lượng được so sánh; không để một vế so sánh ngầm rồi
+      tự bổ sung vế đó trong reference_answer.
     - Nếu statement có cụm thiếu đơn vị hoặc câu chưa hoàn chỉnh, không
       suy đoán phần bị thiếu và không lặp nguyên cụm lỗi; chỉ dùng phần
       mệnh đề hoàn chỉnh vẫn được fact hỗ trợ.
@@ -198,8 +239,37 @@ function GenerateSingleTurnCandidateBatch(
        Không tự đổi "giấy phép" chung thành giấy phép lái xe hoặc một loại
        giấy phép cụ thể khi facts không nêu loại đó.
     2. Đếm lại số từ theo query_length và viết lại cho tới khi đúng khoảng.
+       Đây là hard constraint: nếu short không thuộc 5-10, medium không thuộc
+       10-20 hoặc long không trên 20 từ thì chưa được trả kết quả. Kiểm tra lại
+       sau mọi lần sửa query và không dùng dấu gạch để giảm giả tạo số từ.
+       11 từ là sai với short; 21 từ là sai với medium. Nếu đang ở đúng hai
+       trường hợp này, bắt buộc bỏ ít nhất một từ rồi đếm lại trước khi trả.
+       Với short, ưu tiên câu tự nhiên 7-9 từ; chỉ rút tiếp khi vượt 10 từ.
+       Nếu short vẫn có 11 từ ở lần kiểm tra cuối, không được trả kết quả dù
+       mọi phần khác đã đúng.
+       Khi cần bỏ một từ ở short, ưu tiên bỏ từ đệm hoặc phạm vi đã thể hiện
+       bằng thuật ngữ chuyên biệt; không bỏ chủ thể, hành vi hay quan hệ pháp lý.
+       Khi medium có 21 từ, bỏ từ lặp hoặc phạm vi domain đã được một cụm khác
+       thể hiện; không giữ đồng thời hai cách gọi cùng một phạm vi chỉ để câu dài.
     3. Kiểm tra query_style trên toàn bộ query, đặc biệt no_diacritics và
-       keyword_style.
+       keyword_style; keyword_style có dấu hỏi là không hợp lệ.
+       Với conversational và formal, đọc lại query như một câu hoàn chỉnh;
+       nếu chỉ là danh sách từ khóa, câu cụt hoặc chứa viết tắt khó hiểu thì
+       phải viết lại mà vẫn giữ đúng giới hạn length.
+       Với mọi style, thử trả lời query mà chưa nhìn reference_answer; nếu query
+       còn cho phép một intent khác thì bổ sung chủ thể, hành vi hoặc quan hệ
+       pháp lý còn thiếu.
+       Với keyword_style về một nghĩa vụ, chủ thể thực hiện nghĩa vụ không được
+       thiếu; chuỗi chỉ nêu điều kiện và hành động nhưng không cho biết ai phải
+       làm vẫn chưa đạt.
+       Với mọi keyword_style, nếu còn từ nghi vấn thì viết lại thành chuỗi danh
+       từ và động từ pháp lý cốt lõi trước khi kiểm tra độ dài.
+       Đọc nguyên query lần cuối: nếu có cấu trúc "có tăng nặng", "bị phạt?",
+       "được ... không?" thiếu từ "có", "gửi tin", hoặc chuỗi mệnh đề ngăn bằng
+       dấu chấm phẩy thì phải viết lại theo đúng quy tắc trên.
+       Không chấp nhận biến thể chỉ bỏ một từ trong quan hệ pháp lý: phải viết
+       đủ "là tình tiết tăng nặng không". Không chấp nhận formal dạng "được ...
+       không"; phải viết đủ "có được ... không".
     4. Kiểm tra reference_answer, reasoning, required_claims, answerability
        và reasoning_hops nhất quán, không vượt facts. Với answerable, đáp án
        không được nói thiếu điều kiện để kết luận hoặc chỉ loại trừ một khả
