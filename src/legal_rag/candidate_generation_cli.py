@@ -36,6 +36,17 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         help="JSON string array of existing task IDs to regenerate",
     )
+    parser.add_argument(
+        "--replace-scenario-id",
+        action="append",
+        default=[],
+        help="Scenario ID removed by selective scenario replacement; repeat as needed",
+    )
+    parser.add_argument(
+        "--replace-scenario-ids",
+        type=Path,
+        help="JSON string array of scenario IDs removed from the prior scenario set",
+    )
     parser.add_argument("--synthesis-config", type=Path, required=True, help="Versioned synthesis config JSON path")
     return parser
 
@@ -58,10 +69,13 @@ def main() -> None:
     from legal_rag.benchmark_synthesis.candidate_record import CandidateProgressRecord
     from legal_rag.benchmark_synthesis.candidate_selection import (
         load_regenerate_task_ids,
+        prior_scenarios_from_progress,
+        validate_scenario_replacement,
         validate_selective_generation,
     )
     from legal_rag.benchmark_synthesis.config import SynthesisSettings
     from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError
+    from legal_rag.benchmark_synthesis.scenario_replacement import load_replace_scenario_ids
     from legal_rag.benchmark_synthesis.scenario_sampling import load_persona_descriptions
     from legal_rag.benchmark_synthesis.stage_cache import (
         build_candidate_generation_artifact_fingerprint,
@@ -115,11 +129,39 @@ def main() -> None:
         arguments.regenerate_task_id,
         arguments.regenerate_task_ids,
     )
-    if regenerate_ids:
+    replace_scenario_ids = load_replace_scenario_ids(
+        arguments.replace_scenario_id,
+        arguments.replace_scenario_ids,
+    )
+    selective_mode = bool(regenerate_ids or replace_scenario_ids)
+    if selective_mode:
         existing_fingerprint = read_stage_cache_fingerprint(fingerprint_path)
+        prior_scenarios = scenarios
+        added_task_ids: frozenset[str] = frozenset()
+        if replace_scenario_ids:
+            prior_scenarios = prior_scenarios_from_progress(existing_progress)
+            added_scenario_ids = validate_scenario_replacement(
+                prior_scenarios,
+                scenarios,
+                replace_scenario_ids,
+            )
+            current_task_ids = frozenset(task_order)
+            progress_by_task_id = {
+                task_id: record for task_id, record in progress_by_task_id.items() if task_id in current_task_ids
+            }
+            added_task_ids = frozenset(
+                f"{scenario_id}:{attempt_index}"
+                for scenario_id in added_scenario_ids
+                for attempt_index in range(arguments.candidates_per_scenario)
+            )
+            logger.info(
+                "Migrating candidate generation from {} removed scenario(s) to {} replacement scenario(s)",
+                len(replace_scenario_ids),
+                len(added_scenario_ids),
+            )
         artifact_fingerprint = build_candidate_generation_artifact_fingerprint(
             facts,
-            scenarios,
+            prior_scenarios,
             persona_descriptions,
             synthesis_settings,
             tuple(record.draft for record in existing_progress),
@@ -134,7 +176,7 @@ def main() -> None:
         )
         prior_execution_fingerprint = build_candidate_generation_fingerprint(
             facts,
-            scenarios,
+            prior_scenarios,
             persona_descriptions,
             synthesis_settings,
             candidates_per_scenario=arguments.candidates_per_scenario,
@@ -149,7 +191,7 @@ def main() -> None:
         validate_selective_generation(
             frozenset(task_order),
             frozenset(progress_by_task_id),
-            regenerate_ids,
+            regenerate_ids | added_task_ids,
         )
         invalidated_ids = {
             task_id
@@ -196,7 +238,7 @@ def main() -> None:
                 arguments.candidates_output_path,
                 tuple(item.draft for item in ordered_progress if item.completed),
             )
-            if regenerate_ids:
+            if selective_mode:
                 write_stage_cache_fingerprint(
                     fingerprint_path,
                     build_candidate_generation_artifact_fingerprint(
@@ -227,7 +269,7 @@ def main() -> None:
         if task_id in progress_by_task_id and progress_by_task_id[task_id].completed
     )
     write_candidates(arguments.candidates_output_path, drafts)
-    if regenerate_ids:
+    if selective_mode:
         write_stage_cache_fingerprint(
             fingerprint_path,
             build_candidate_generation_artifact_fingerprint(

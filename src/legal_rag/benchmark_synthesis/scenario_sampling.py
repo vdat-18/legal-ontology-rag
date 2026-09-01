@@ -84,6 +84,15 @@ class Scenario:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class ScenarioReplacementResult:
+    """A repaired scenario set and the evidence bundles removed from sampling."""
+
+    scenarios: tuple[Scenario, ...]
+    replaced_scenario_ids: frozenset[str]
+    excluded_bundle_ids: frozenset[str]
+
+
 def load_personas(config_path: Path) -> PersonaCatalog:
     """Load the versioned persona configuration."""
     config = json.loads(config_path.read_text(encoding="utf-8"))
@@ -121,17 +130,82 @@ def sample_scenarios(
     total_samples: int,
 ) -> tuple[Scenario, ...]:
     """Sample diverse scenarios with weighted bundle-kind and surface-axis coverage."""
-    if not bundles or total_samples <= 0:
-        return ()
+    return _sample_scenarios(
+        bundles,
+        facts_by_id,
+        config,
+        total_samples=total_samples,
+        retained_scenarios=(),
+    )
 
-    used_persona_bundle_pairs: set[tuple[str, str]] = set()
-    usage_counts: dict[str, Counter[str]] = {
-        "persona": Counter(),
-        "query_style": Counter(),
-        "query_length": Counter(),
-        "query_form": Counter(),
-        "answerability": Counter(),
+
+def replace_scenarios(
+    bundles: Sequence[EvidenceBundle],
+    facts_by_id: Mapping[str, LegalFact],
+    config: ScenarioSamplingConfig,
+    existing_scenarios: Sequence[Scenario],
+    replace_scenario_ids: frozenset[str],
+    *,
+    total_samples: int,
+) -> ScenarioReplacementResult:
+    """Replace explicitly rejected scenarios while preserving every unaffected scenario."""
+    existing_by_id = {scenario.scenario_id: scenario for scenario in existing_scenarios}
+    if len(existing_by_id) != len(existing_scenarios):
+        msg = "Existing scenarios contain duplicate scenario IDs"
+        raise ValueError(msg)
+    unknown_ids = replace_scenario_ids - existing_by_id.keys()
+    if unknown_ids:
+        msg = f"Unknown scenarios requested for replacement: {sorted(unknown_ids)}"
+        raise ValueError(msg)
+
+    bundles_by_key = _bundles_by_scenario_key(bundles)
+    scenario_bundle_ids = {
+        scenario.scenario_id: _scenario_bundle_id(scenario, bundles_by_key) for scenario in existing_scenarios
     }
+    excluded_bundle_ids = frozenset(scenario_bundle_ids[scenario_id] for scenario_id in replace_scenario_ids)
+    expanded_replacement_ids = frozenset(
+        scenario_id for scenario_id, bundle_id in scenario_bundle_ids.items() if bundle_id in excluded_bundle_ids
+    )
+    retained_scenarios = tuple(
+        scenario for scenario in existing_scenarios if scenario.scenario_id not in expanded_replacement_ids
+    )
+    retained_bundle_ids = frozenset(scenario_bundle_ids[scenario.scenario_id] for scenario in retained_scenarios)
+    eligible_bundles = tuple(bundle for bundle in bundles if bundle.bundle_id in retained_bundle_ids)
+    if not eligible_bundles:
+        msg = "Scenario replacement requires at least one retained evidence bundle"
+        raise ValueError(msg)
+    scenarios = _sample_scenarios(
+        eligible_bundles,
+        facts_by_id,
+        config,
+        total_samples=total_samples,
+        retained_scenarios=retained_scenarios,
+    )
+    if len(scenarios) != total_samples:
+        msg = f"Scenario replacement produced {len(scenarios)} of {total_samples} requested scenarios"
+        raise ValueError(msg)
+    return ScenarioReplacementResult(
+        scenarios=scenarios,
+        replaced_scenario_ids=expanded_replacement_ids,
+        excluded_bundle_ids=excluded_bundle_ids,
+    )
+
+
+def _sample_scenarios(
+    bundles: Sequence[EvidenceBundle],
+    facts_by_id: Mapping[str, LegalFact],
+    config: ScenarioSamplingConfig,
+    *,
+    total_samples: int,
+    retained_scenarios: Sequence[Scenario],
+) -> tuple[Scenario, ...]:
+    """Sample scenarios from current usage counts, retaining approved records unchanged."""
+    if not bundles or total_samples <= 0:
+        return tuple(retained_scenarios[:total_samples])
+    if len(retained_scenarios) > total_samples:
+        msg = "Retained scenario count exceeds requested total"
+        raise ValueError(msg)
+
     bundles_by_kind: dict[BundleKind, dict[int, list[tuple[EvidenceBundle, tuple[LegalFact, ...]]]]] = {}
     for bundle in bundles:
         facts = tuple(facts_by_id[fact_id] for fact_id in bundle.fact_ids)
@@ -147,13 +221,19 @@ def sample_scenarios(
     if not weighted_kinds:
         return ()
 
-    scenarios: list[Scenario] = []
-    kind_usage: Counter[BundleKind] = Counter()
-    hop_usage: Counter[tuple[BundleKind, int]] = Counter()
-    bundle_offsets: Counter[tuple[BundleKind, int]] = Counter()
-    bundle_attempts: Counter[str] = Counter()
     kind_order = {kind: index for index, (kind, _weight) in enumerate(weighted_kinds)}
     weights = dict(weighted_kinds)
+
+    bundles_by_key = _bundles_by_scenario_key(bundles)
+    scenarios = list(retained_scenarios)
+    (
+        used_persona_bundle_pairs,
+        usage_counts,
+        kind_usage,
+        hop_usage,
+        bundle_offsets,
+        bundle_attempts,
+    ) = _initial_sampling_state(retained_scenarios, bundles_by_key)
 
     while len(scenarios) < total_samples:
         bundle_kind = min(
@@ -170,8 +250,12 @@ def sample_scenarios(
         )
         hop_bundles = bundles_by_hops[reasoning_hops]
         offset_key = (bundle_kind, reasoning_hops)
-        bundle, facts = hop_bundles[bundle_offsets[offset_key] % len(hop_bundles)]
-        bundle_offsets[offset_key] += 1
+        unused_bundle_count = sum(bundle_attempts[bundle.bundle_id] == 0 for bundle, _facts in hop_bundles)
+        while True:
+            bundle, facts = hop_bundles[bundle_offsets[offset_key] % len(hop_bundles)]
+            bundle_offsets[offset_key] += 1
+            if unused_bundle_count == 0 or bundle_attempts[bundle.bundle_id] == 0:
+                break
         attempt_index = bundle_attempts[bundle.bundle_id]
         bundle_attempts[bundle.bundle_id] += 1
 
@@ -225,6 +309,78 @@ def sample_scenarios(
             )
         )
     return tuple(scenarios)
+
+
+def _initial_sampling_state(
+    retained_scenarios: Sequence[Scenario],
+    bundles_by_key: Mapping[tuple[BundleKind, tuple[str, ...], str | None], EvidenceBundle],
+) -> tuple[
+    set[tuple[str, str]],
+    dict[str, Counter[str]],
+    Counter[BundleKind],
+    Counter[tuple[BundleKind, int]],
+    Counter[tuple[BundleKind, int]],
+    Counter[str],
+]:
+    """Build sampler usage counts from scenarios that must remain unchanged."""
+    used_persona_bundle_pairs: set[tuple[str, str]] = set()
+    usage_counts: dict[str, Counter[str]] = {
+        "persona": Counter(),
+        "query_style": Counter(),
+        "query_length": Counter(),
+        "query_form": Counter(),
+        "answerability": Counter(),
+    }
+    kind_usage: Counter[BundleKind] = Counter()
+    hop_usage: Counter[tuple[BundleKind, int]] = Counter()
+    bundle_attempts: Counter[str] = Counter()
+    for scenario in retained_scenarios:
+        bundle_id = _scenario_bundle_id(scenario, bundles_by_key)
+        offset_key = (scenario.bundle_kind, scenario.reasoning_hops)
+        used_persona_bundle_pairs.add((scenario.persona, bundle_id))
+        kind_usage[scenario.bundle_kind] += 1
+        hop_usage[offset_key] += 1
+        bundle_attempts[bundle_id] += 1
+        usage_counts["persona"][scenario.persona] += 1
+        usage_counts["query_style"][scenario.query_style] += 1
+        usage_counts["query_length"][scenario.query_length] += 1
+        usage_counts["query_form"][scenario.query_form] += 1
+        usage_counts["answerability"][scenario.answerability] += 1
+    return (
+        used_persona_bundle_pairs,
+        usage_counts,
+        kind_usage,
+        hop_usage,
+        Counter(hop_usage),
+        bundle_attempts,
+    )
+
+
+def _bundles_by_scenario_key(
+    bundles: Sequence[EvidenceBundle],
+) -> dict[tuple[BundleKind, tuple[str, ...], str | None], EvidenceBundle]:
+    """Index bundles by the fields persisted on a scenario."""
+    bundles_by_key: dict[tuple[BundleKind, tuple[str, ...], str | None], EvidenceBundle] = {}
+    for bundle in bundles:
+        key = (bundle.kind, bundle.fact_ids, bundle.bridge)
+        if key in bundles_by_key:
+            msg = f"Evidence bundles are ambiguous for scenario key: {key}"
+            raise ValueError(msg)
+        bundles_by_key[key] = bundle
+    return bundles_by_key
+
+
+def _scenario_bundle_id(
+    scenario: Scenario,
+    bundles_by_key: Mapping[tuple[BundleKind, tuple[str, ...], str | None], EvidenceBundle],
+) -> str:
+    """Resolve the evidence bundle backing one persisted scenario."""
+    key = (scenario.bundle_kind, scenario.fact_ids, scenario.bridge)
+    bundle = bundles_by_key.get(key)
+    if bundle is None:
+        msg = f"Scenario {scenario.scenario_id} does not match an eligible evidence bundle"
+        raise ValueError(msg)
+    return bundle.bundle_id
 
 
 def _pick_persona(

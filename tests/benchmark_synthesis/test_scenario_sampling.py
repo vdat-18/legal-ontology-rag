@@ -14,6 +14,7 @@ from legal_rag.benchmark_synthesis.scenario_sampling import (
     load_persona_descriptions,
     load_personas,
     load_scenario_distribution,
+    replace_scenarios,
     sample_scenarios,
 )
 
@@ -265,6 +266,53 @@ def test_sample_scenarios_scenario_id_changes_with_evidence() -> None:
     )
 
     assert first[0].scenario_id != second[0].scenario_id
+
+
+def test_replace_scenarios_preserves_unaffected_records_and_reuses_reviewed_bundle() -> None:
+    """Selective replacement fills rejected slots only from retained reviewed evidence."""
+    facts_by_id = {fact_id: _fact(fact_id) for fact_id in ("a", "b", "c")}
+    bundles = [
+        _bundle("bundle-a", ("a",)),
+        _bundle("bundle-b", ("b",)),
+        _bundle("bundle-c", ("c",)),
+    ]
+    existing = _sample_scenarios(bundles[:2], facts_by_id, _config(), total_samples=2)
+
+    result = replace_scenarios(
+        bundles,
+        facts_by_id,
+        _config(),
+        existing,
+        frozenset({existing[0].scenario_id}),
+        total_samples=2,
+    )
+
+    assert result.scenarios[0] == existing[1]
+    assert result.replaced_scenario_ids == frozenset({existing[0].scenario_id})
+    assert result.excluded_bundle_ids == frozenset({"bundle-a"})
+    assert result.scenarios[1].fact_ids == ("b",)
+    assert result.scenarios[1].scenario_id != existing[1].scenario_id
+
+
+def test_replace_scenarios_expands_selection_to_every_scenario_using_rejected_bundle() -> None:
+    """One rejected bundle cannot survive through another scenario using the same evidence."""
+    facts_by_id = {fact_id: _fact(fact_id) for fact_id in ("a", "b")}
+    bundles = [_bundle("bundle-a", ("a",)), _bundle("bundle-b", ("b",))]
+    rejected = _sample_scenarios([bundles[0]], facts_by_id, _config(), total_samples=2)
+    retained = _sample_scenarios([bundles[1]], facts_by_id, _config(), total_samples=1)
+    existing = (*rejected, *retained)
+
+    result = replace_scenarios(
+        bundles,
+        facts_by_id,
+        _config(),
+        existing,
+        frozenset({rejected[0].scenario_id}),
+        total_samples=3,
+    )
+
+    assert result.replaced_scenario_ids == frozenset(scenario.scenario_id for scenario in rejected)
+    assert all(scenario.fact_ids == ("b",) for scenario in result.scenarios)
 
 
 def test_scenario_to_dict_serializes_stable_output_schema() -> None:

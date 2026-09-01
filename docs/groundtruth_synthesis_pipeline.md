@@ -392,6 +392,12 @@ data/benchmark_synthesis/scenarios.jsonl
 `scenarios.jsonl` chứa `fact_ids`, `bridge` và `gold_chunk_ids`, chưa chứa câu
 hỏi hay đáp án hoàn chỉnh.
 
+Khi review thủ công xác định một số scenario dùng evidence ngoài scope,
+`--replace-scenario-id` hoặc `--replace-scenario-ids` loại toàn bộ scenario
+dùng chung các bundle đó, giữ nguyên các scenario còn lại và bù đúng số lượng
+từ những bundle đã có scenario được giữ lại. Cơ chế này không tự quyết định
+semantic bằng rule; danh sách scenario cần thay là input explicit từ review.
+
 ## 6. Sinh candidate
 
 ### Input
@@ -452,6 +458,12 @@ Candidate progress được checkpoint một lần cho mỗi LLM batch. Sidecar
 `single_turn.run.json` fingerprint facts, scenarios, mô tả persona, số
 attempt, candidate config, prompt, endpoint và model; progress của run khác
 không được resume.
+
+Sau selective scenario replacement, truyền cùng danh sách cũ qua
+`--replace-scenario-id` hoặc `--replace-scenario-ids`. Candidate generation
+kiểm tra tập scenario cũ từ progress, bỏ đúng checkpoint của scenario đã thay,
+giữ checkpoint còn lại và chỉ gọi LLM cho scenario mới. Có thể kết hợp với
+`--regenerate-task-id` hoặc `--regenerate-task-ids` trong cùng một lần chạy.
 
 ## 7. Export ground truth để evaluate
 

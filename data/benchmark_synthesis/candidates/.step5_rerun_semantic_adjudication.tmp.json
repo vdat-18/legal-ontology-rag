@@ -1,0 +1,2566 @@
+{
+  "reviewed": 268,
+  "findings": [
+    {
+      "scenario_id": "1e14373ef5c3f2ccfdb4d6a7220f2445e9b423a08d6ccf1dad938c344da983d6",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Câu hỏi và các facts chỉ nói về thủ tục hành chính khi thu hồi Giấy phép vận tải đường bộ quốc tế GMS, không xác định việc thu hồi là xử lý một vi phạm giao thông đường bộ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "8c69d4d88c090ac09af17e898e262a466ab88d32f97c5ad5023d457b2b12b3c3",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "7c7691456f2603d9b9e794f242c9d7fe62fdded37b5201f8c4a53f7029c8d7d8",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Answer và required_claim rút gọn làm mất các điều kiện pháp lý của trường hợp chưa giải quyết: phải là chủ phương tiện/tổ chức/cá nhân liên quan không đến trụ sở Công an nơi phát hiện vi phạm, hoặc chưa nhận được thông báo kết quả từ Công an cấp xã hoặc cấp huyện đã nhận kết quả thu thập. Cách diễn đạt chung “không đến giải quyết” và “cơ quan Công an đã nhận kết quả” làm rộng điều kiện so với fact."
+        }
+      ]
+    },
+    {
+      "scenario_id": "18da62599643a3e9d0ffca3df262a76b386c73ee5356166136963246e9d71295",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "ca97ad87b4e858009d734593311f3234549fc715ab0bf2cd9868fedf9f9bda80",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Nội dung chỉ về quản lý phù hiệu khi chuyển nhượng hoặc cho thuê xe kinh doanh vận tải, không đặt trong việc xác định hoặc xử lý vi phạm giao thông đường bộ."
+        },
+        {
+          "code": "temporal",
+          "reason": "Cả hai facts đều có valid_to=null và không có fact hay metadata chứng minh quy định năm 2026 thay thế, loại trừ quy định năm 2025. Vì vậy không thể kết luận tùy thời điểm chỉ một trong hai quy định được áp dụng cho vụ việc."
+        }
+      ]
+    },
+    {
+      "scenario_id": "bc05efa345d6851ee85b2a628f4b9b8b2da61e86dae8139b26a3b03f306a427a",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Câu hỏi hỏi nghĩa vụ và việc tiếp tục kinh doanh vận tải sau khi bị thu hồi phù hiệu, nhưng không xác định việc thu hồi phù hiệu trong vụ xử lý vi phạm giao thông đường bộ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "7ff03d47bee8d1164561a6e522350cede88dd5123dd52f3542997f5ab697fc16",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "1cb99ad5f65f6fee16e7c6fde61f5087ac447d1c8488d0f48d9f2b9a2c665306",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Facts chỉ điều chỉnh tang vật, phương tiện bị tịch thu đã đăng ký biện pháp bảo đảm thế chấp; query chỉ nêu xe đã thế chấp, không xác định điều kiện đăng ký."
+        },
+        {
+          "code": "grounding",
+          "reason": "Reference áp dụng toàn bộ quyền và nghĩa vụ cho trường hợp 'đã thế chấp' mà không giữ điều kiện pháp lý 'đã đăng ký biện pháp bảo đảm thế chấp' có trong cả ba facts."
+        },
+        {
+          "code": "claims",
+          "reason": "Các required_claims đều trình bày quyền, nghĩa vụ của bên nhận thế chấp mà bỏ điều kiện tài sản đã đăng ký biện pháp bảo đảm thế chấp."
+        }
+      ]
+    },
+    {
+      "scenario_id": "489da4acf1babb616be79cac67076f8dad8b8514146a8b11560455d1d757cd76",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact có ngưỡng dưới 70% có valid_to=null. Việc fact khác có hiệu lực từ 10/8/2026 và quy định ngưỡng dưới 50% không tự chứng minh quy định cũ bị thay thế hoặc không còn đồng thời áp dụng. Reference suy ra mức 60% chỉ dẫn đến thu hồi theo mốc cũ nhưng không thuộc ngưỡng áp dụng theo mốc mới là suy luận thay thế không được facts/metadata chứng minh."
+        }
+      ]
+    },
+    {
+      "scenario_id": "e238a439dc62ca9c1c08768602ae2c25a70f9be075108c0ccbd741bc096141b4",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Reference khái quát tín hiệu xanh hình mũi tên trên làn riêng cho phép đi theo làn chỉ dẫn, trong khi fact chỉ quy định điều này đối với bộ đèn tín hiệu hai màu điều khiển giao thông trên từng làn đường riêng. Query không xác định điều kiện bộ đèn hai màu."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim thứ nhất đã bỏ điều kiện 'bộ đèn tín hiệu hai màu điều khiển giao thông trên từng làn đường riêng', làm mở rộng phạm vi quy tắc so với fact."
+        }
+      ]
+    },
+    {
+      "scenario_id": "28fe658d876cc436caf11db0a64e13be55103a4b426bfb182252feb817129f8f",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Query là yêu cầu về quy tắc thông báo giấy phép tạm giữ nói chung. Fact đủ để trả lời đầy đủ bằng quy tắc có điều kiện; không có căn cứ coi đây là một vụ việc cụ thể cần thiếu dữ kiện về việc người vi phạm đến nhận hoặc lý do chính đáng. Việc gán partially_answerable và kết luận thiếu thông tin đã áp đặt một tình huống cụ thể không có trong query."
+        }
+      ]
+    },
+    {
+      "scenario_id": "a247757d365b0f639e449834f17067a7acce0ac8d5c153b4efe3d8cb86f89bf9",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Danh sách chức danh theo fact có hiệu lực từ 01/01/2025 có valid_to=null. Fact có hiệu lực từ 01/3/2026 chỉ cung cấp một danh sách khác, không chứng minh danh sách cũ bị bãi bỏ, thay thế, hoặc việc thời điểm quyết định sẽ quyết định duy nhất giữa hai danh sách. Reference đã suy ra quan hệ thay thế và áp dụng theo thời điểm mà facts/metadata không chứng minh."
+        }
+      ]
+    },
+    {
+      "scenario_id": "a8cd7dfbee377d6b5d844fcf0609971bd4a27d9b1c66f4106995bee5af1c15eb",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Query không nêu thời điểm hoạt động, trong khi quy định duy nhất được cấp chỉ có hiệu lực từ 10/08/2026; không đủ căn cứ để trả lời tuyệt đối cho mọi thời điểm."
+        },
+        {
+          "code": "temporal",
+          "reason": "Reference answer kết luận \"Không\" không kèm giới hạn áp dụng từ 10/08/2026, làm mất điều kiện hiệu lực thời gian của fact."
+        }
+      ]
+    },
+    {
+      "scenario_id": "2d351c5547cb95beb37ac31aaa7665dcf95a341cbb40632e772fc5640faab01f",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Reference answer và required claim nêu nguyên tắc mức phạt cá nhân là mức trung bình của khung và cơ chế giảm trừ một tình tiết tăng nặng với một tình tiết giảm nhẹ, nhưng không fact nào trong sample hỗ trợ các nội dung này. Fact được dẫn chỉ quy định ngưỡng tiền phạt để nộp nhiều lần."
+        },
+        {
+          "code": "claims",
+          "reason": "Claim về miễn phần tiền phạt còn lại làm mất giới hạn rằng hình thức xử phạt bổ sung và biện pháp khắc phục hậu quả phải là những nội dung được ghi trong quyết định xử phạt; đồng thời diễn đạt xác nhận chung chung thay cho các chủ thể xác nhận được fact quy định."
+        }
+      ]
+    },
+    {
+      "scenario_id": "11cc2006f2db42a16f01a5e1407403adaad46ff8ef124c4b48640162e312852a",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "e6f9690593e613f3eaff49dad4ca37cc4e3a90c22bed3028a8bde16cea6ba53f",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "a18e9d6b2fbc8b928fe9d3d2bf8850c4a68cc3e577d81084a11ff4471db30e30",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact về thời hạn 45/90 ngày có valid_to=null. Việc fact năm 2026 có hiệu lực từ 10/08/2026 và quy định thời hạn 30 ngày không chứng minh quy định cũ bị thay thế hoặc rằng chỉ cần biết ngày ký quyết định là có thể lựa chọn duy nhất một thời hạn."
+        }
+      ]
+    },
+    {
+      "scenario_id": "c93a4a4e7dd14e252bfbe5936b9bec0bd3962bd8c6b25e22a0b54d93f02cb2c3",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Fact mới chỉ khẳng định thẩm quyền phạt cảnh cáo của các chức danh được nêu, không xác định đó là danh sách đóng hoặc phủ định thẩm quyền của Thủy đội trưởng. Vì vậy không đủ căn cứ cho kết luận Thủy đội trưởng không còn quyền."
+        },
+        {
+          "code": "temporal",
+          "reason": "Fact cũ vẫn có valid_to=null. Sự xuất hiện của fact mới từ 15/08/2026 mà không nêu Thủy đội trưởng không chứng minh quy định cũ đã bị thay thế hoặc chức danh này mất thẩm quyền."
+        }
+      ]
+    },
+    {
+      "scenario_id": "8e4ff71438f45cbdc76d1942244c20fa40f807cae967da964c7dd8ffcd67db68",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact năm 2026 trực tiếp xác định Sở Xây dựng từ 10/8/2026, nhưng reasoning kết luận cơ quan này “thay cho” Sở Giao thông vận tải và quy định cũ chỉ là quy định trước đó. Fact về Sở Giao thông vận tải vẫn có valid_to=null; facts/metadata không chứng minh việc bị thay thế hoặc hết hiệu lực."
+        }
+      ]
+    },
+    {
+      "scenario_id": "f717633b7096b1bcb22d048dd6dbc97b52d80ca082873e2e33039d9848abfd13",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "2f7b5b98728ba62ed2b091314d647e9cae30ec2fc9b327f1e65dd3fc7aedd7c1",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Reference và claim thứ nhất khái quát rằng mọi vụ việc có nhiều hành vi thuộc nhiều lĩnh vực đều xác định thẩm quyền đối với hành vi thuộc Chủ tịch UBND theo điểm c khoản 4 Điều 52. Fact chỉ quy định điều này khi trong vụ việc còn có hành vi không thuộc thẩm quyền xử phạt của Chủ tịch UBND; điều kiện trọng yếu này đã bị làm mất."
+        }
+      ]
+    },
+    {
+      "scenario_id": "07792e6a99f253a18fe48fc854c395e230723a03c9821b6636992d4361c34f22",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Query chỉ hỏi chung về biên bản giám định xe, không xác định đây là việc xác định hoặc xử lý vi phạm giao thông đường bộ. Fact cũng là quy tắc chung về xử lý vi phạm hành chính, không giới hạn cho lĩnh vực giao thông đường bộ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "24bfd12584f33ce3038121acbcfa2d299e397b39c35e13c7ee2a50b09631ded6",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "15722b8c48e90aba22e5038cdf09269703d7bbabb2b3d8f46e244befa0469f8e",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "2eb4795324011c547ba803a1996067ac3c5283356856f13fa1054c3ffd991760",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Query và answer chỉ xác định nghĩa vụ bố trí hỗ trợ, hướng dẫn giao thông cho xe tay lái bên phải; không hỏi việc xác định hành vi vi phạm hoặc xử lý vi phạm giao thông đường bộ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "5fbaa53bf90975bc160eea4e9eb2d8b7b128aa397663f8b352eb6e891f46b72f",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Facts chỉ cho biết thời điểm bắt đầu hiệu lực của hai văn bản, không có dữ liệu về việc Nghị định 118/2021/NĐ-CP bị thay thế, hết hiệu lực hoặc quy tắc chọn văn bản áp dụng. Vì vậy, kết luận không thể xác định quy định áp dụng chỉ vì thiếu thời điểm xử lý và điều kiện khoản 3 Điều 13 không được facts chứng minh."
+        },
+        {
+          "code": "multi_hop",
+          "reason": "Câu hỏi về việc phải làm khi có căn cứ ban hành quyết định xử phạt mới đã được fact của Nghị định 68/2025/NĐ-CP trả lời trực tiếp là phải lập biên bản xác minh. Fact của Nghị định 118/2021/NĐ-CP chỉ được đưa vào để so sánh một nhánh lịch sử không được query yêu cầu."
+        }
+      ]
+    },
+    {
+      "scenario_id": "e7eb038d113d33db587806bbfc2a7b9042e6c90127fb5902f5b7d36631781788",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Answer coi việc sử dụng người mà biết rõ đang mất khả năng nhận thức hoặc điều khiển hành vi là tình tiết tăng nặng, nhưng fact chỉ quy định khi người đó bị tâm thần hoặc bệnh khác làm mất các khả năng này. Điều kiện về nguyên nhân mất năng lực đã bị lược bỏ. Ngoài ra, quy tắc áp dụng mức tối đa còn giới hạn đối với một hành vi vi phạm hành chính cụ thể có nhiều tình tiết, nhưng answer không giữ điều kiện này."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim về sử dụng người mất khả năng nhận thức/điều khiển hành vi không nêu điều kiện người đó bị tâm thần hoặc bệnh khác; required claim về áp dụng mức tối đa cũng bỏ điều kiện quy tắc này áp dụng đối với một hành vi vi phạm hành chính cụ thể có nhiều tình tiết tăng nặng, giảm nhẹ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "99d6e6196d255de913c79718cd3210d06ad1767fdb67def242fdb985e2b2100f",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Mức phạt 16 triệu đồng chỉ đạt điều kiện về mức phạt nếu người bị phạt là cá nhân; nếu là tổ chức thì ngưỡng theo fact là từ 150 triệu đồng. Query không nêu chủ thể bị phạt, nên không đủ dữ kiện để kết luận việc nộp nhiều lần có đạt ngưỡng cho vụ việc cụ thể, nhưng sample lại gắn answerable."
+        }
+      ]
+    },
+    {
+      "scenario_id": "657c6ddea6efe6c4ce93570b01a56be286049e67fa51ab27e65e4ced1552f660",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Kết luận phải thông báo hai lần đã bỏ các điều kiện của fact: tang vật/phương tiện phải bị tạm giữ theo điểm a hoặc b khoản 1 Điều 125, và có điều kiện người vi phạm, chủ sở hữu, người quản lý hoặc người sử dụng hợp pháp không đến nhận mà không có lý do chính đáng. Kết luận xử lý sau thông báo thứ hai cũng bỏ điều kiện loại tạm giữ này. Phần chuyển vụ hàng cấm còn không giữ điều kiện người đang giải quyết thuộc ngành, lĩnh vực được liệt kê trong fact."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claims về thông báo hai lần và xử lý sau thông báo lần hai không bao quát điều kiện tạm giữ theo điểm a hoặc b khoản 1 Điều 125; claim thông báo còn bỏ điều kiện không đến nhận mà không có lý do chính đáng. Claim về chuyển vụ việc cũng lược bỏ giới hạn ngành, lĩnh vực được fact quy định."
+        }
+      ]
+    },
+    {
+      "scenario_id": "9c883dffd213d3d32a7b87611306fb299ba30a5548807e20447af529c3b30db7",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Quy tắc chọn mức tối đa của khung thời hạn tước dài nhất chỉ áp dụng khi cá nhân, tổ chức vi phạm hành chính nhiều lần và bị xử phạt về từng hành vi. Answer rút điều kiện này thành bị xử phạt về nhiều hành vi có từ hai hành vi cùng bị tước, nên làm mất các điều kiện pháp lý của fact."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim về chọn mức tối đa của khung dài nhất cũng bỏ hai điều kiện “vi phạm hành chính nhiều lần” và “bị xử phạt về từng hành vi” có trong fact."
+        },
+        {
+          "code": "multi_hop",
+          "reason": "Hai facts về trường hợp thời hạn còn lại của giấy chứng nhận ngắn hơn thời hạn tước đều dẫn đến cùng một kết luận mà reference nêu. Chỉ cần một trong hai facts để hỗ trợ kết luận này, nên chuỗi 5 hop không cần toàn bộ facts cho kết luận được hỏi."
+        }
+      ]
+    },
+    {
+      "scenario_id": "e0330ea6ea0ccafef867c1d4ba0e23be7d924691bc04980c631daf7f9c209995",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "28a5abe819b17c41615a03fafc3e95df0d178233b7a77a180ed7d9b2d81e822d",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "f62827c033320c36cec03774d6ab6f1c50e9eef8a8b982a0368b1b4ff25bb95a",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "90e447137df9da345e9bd8264084acd210dcdb29a7b39145fa9fc5b18d6eb525",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Hai facts đều có valid_to=null. Fact từ 01/03/2026 cho phép trong hoạt động đường bộ không nêu là ngoại lệ, sửa đổi hoặc thay thế quy tắc cấm chung từ 2025. Vì vậy, kết luận cấm trước 01/03/2026 nhưng được phép từ ngày này đã suy ra quan hệ ưu tiên/thay thế giữa hai quy định mâu thuẫn mà facts không chứng minh."
+        }
+      ]
+    },
+    {
+      "scenario_id": "f39a0eebfa009297ebfb2bd3d5957b83a7fd444018e32c931d1b84d6166fb75d",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "61c8a3af9ce27454ee3701e1afefdf9b5fd88771718ad0a0bf6b91257ead6f26",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Query và các facts chỉ đề cập vận chuyển hàng hóa nguy hiểm và giấy phép vận chuyển; không có dữ kiện xác định đây là hoạt động hoặc vi phạm giao thông đường bộ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "70ab94aef2755ef30441df522069c8cbb8cd8ea469c7c257ed8defc549c00783",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Câu hỏi trọng tâm là có phải thông báo ngay cho cơ quan cấp hay không. Kết luận này được quyết định trực tiếp bởi fact về trường hợp tước quyền có thời hạn ghi trong quyết định; fact về nghĩa vụ gửi quyết định trong 02 ngày làm việc là nghĩa vụ độc lập, không cần thiết cho kết luận được hỏi."
+        }
+      ]
+    },
+    {
+      "scenario_id": "d8382298168adc149c19c099f30917216f4c1f7a80b9176348919e08a895fcd6",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "f42892e92d9eab7b7a9277a063daac19a72f5ef14cd4afa9e64fb20141273353",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "41cff769614369c947d402cbc43536898c9acd399c53c19729f5b692763a1ad3",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Nghĩa vụ của lực lượng đang làm nhiệm vụ bảo đảm trật tự, an toàn giao thông khi phát hiện xe hết niên hạn được trả lời trực tiếp bằng fact về lập biên bản, xử lý và thông báo bằng văn bản. Fact về cơ quan đăng ký xe gửi danh sách cho Công an là nghĩa vụ độc lập, không cần cho kết luận về việc lực lượng phát hiện xe phải làm gì."
+        }
+      ]
+    },
+    {
+      "scenario_id": "876e1c9c883c3c1a2af2cc7e294626a550933c7f194ff068419023b5859514fa",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "861445a46e918b6c83a8b6f56b5a1c3dd5d876d47b1b4e6976c5ffe36297c16d",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Fact chỉ xác định mức phạt từ 150.000.000 đồng là một điều kiện về mức phạt để được nộp nhiều lần. Reference answer lại diễn đạt tổ chức đạt ngưỡng này có thể được quyết định cho nộp nhiều lần, làm ngưỡng tiền phạt thành điều kiện đủ trong khi các điều kiện khác không có trong facts."
+        },
+        {
+          "code": "multi_hop",
+          "reason": "Không có dữ kiện về khung phạt hoặc mức phạt cụ thể để nối tình tiết tăng nặng và nguyên tắc phạt tổ chức gấp đôi cá nhân với ngưỡng 150.000.000 đồng. Các fact này vì vậy không tạo thành chuỗi suy luận cần thiết cho kết luận về nộp nhiều lần và miễn phần tiền phạt còn lại."
+        }
+      ]
+    },
+    {
+      "scenario_id": "f4abe982a2b1c1f848fc47bcf0c025b7d132d08263091d39e06cd35f71fc7dcb",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Cả reference và required claim nêu thẩm quyền từ 01/07/2025 nhưng bỏ giới hạn trong fact rằng việc thực hiện thẩm quyền này chỉ kéo dài cho đến khi có quy định hoặc nghị định thay thế có hiệu lực."
+        },
+        {
+          "code": "claims",
+          "reason": "Claim về chuyển kết quả không giữ điều kiện chủ phương tiện, tổ chức hoặc cá nhân liên quan không cư trú/đóng trụ sở tại địa bàn cấp huyện nơi phát hiện; claim về thẩm quyền cấp xã cũng thiếu điều kiện chấm dứt hiệu lực nêu trong fact."
+        }
+      ]
+    },
+    {
+      "scenario_id": "a652a09142536f663192abd37874e10b3c8dc9cd8b67dbe61e270159fc0fa99a",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Required claim về nghĩa vụ thông báo bằng văn bản cho phía Trung Quốc được nêu như một nghĩa vụ độc lập, nhưng fact chỉ quy định nghĩa vụ này khi thu hồi Giấy phép vận tải đường bộ quốc tế giữa Việt Nam và Trung Quốc."
+        }
+      ]
+    },
+    {
+      "scenario_id": "aed331b817fd85acb35ed2d3f2bfbbe6fd3577562db5ff6ac78945e449d53c57",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Hai facts trả lời hai nội dung độc lập của câu hỏi: điều kiện và thời hạn báo cáo để quyết định tạm giữ, cùng mốc tính thời hạn tạm giữ. Fact về mốc tính thời hạn không là bước suy luận cần thiết để kết luận nghĩa vụ báo cáo 24 giờ, nên không phải chuỗi multi-hop hai bước."
+        }
+      ]
+    },
+    {
+      "scenario_id": "8fb09ae2f30666bd529509fe9fc17e678015b03c8523a59808dbfc145ffa7d7b",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Ngoài thời điểm vi phạm, query không xác định chủ thể là doanh nghiệp kinh doanh dịch vụ lữ hành quốc tế của Việt Nam, trong khi đây là điều kiện phạm vi của cả hai facts."
+        },
+        {
+          "code": "grounding",
+          "reason": "Reference áp dụng hậu quả đình chỉ và từ chối chấp thuận cho doanh nghiệp trong query mà không duy trì điều kiện pháp lý rằng đó phải là doanh nghiệp kinh doanh dịch vụ lữ hành quốc tế của Việt Nam."
+        },
+        {
+          "code": "claims",
+          "reason": "Các required claims về căn cứ kê khai gian dối và vi phạm nội dung văn bản chấp thuận bỏ điều kiện chủ thể là doanh nghiệp kinh doanh dịch vụ lữ hành quốc tế của Việt Nam đã có văn bản chấp thuận."
+        }
+      ]
+    },
+    {
+      "scenario_id": "133292416f79524866e3ae5d51bcbdadbd613522bdf8bd0b994445f72472b9a0",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Claim về áp dụng mức tối đa của khung thời hạn tước dài nhất bỏ điều kiện trong fact rằng cá nhân, tổ chức phải bị xử phạt về từng hành vi vi phạm."
+        }
+      ]
+    },
+    {
+      "scenario_id": "f4316c1b9aac56107e52529e1435cc3bc9b452f721a790aa80c788d71b4aff09",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact cũ chỉ có valid_from 01/01/2022 và valid_to là null. Fact mới có hiệu lực từ 02/05/2025 không chứng minh quy định cũ hết hiệu lực hoặc chỉ còn áp dụng trước ngày này, trong khi reference trình bày nó là quy định có hiệu lực trước 02/05/2025 để đối chiếu thay đổi."
+        },
+        {
+          "code": "claims",
+          "reason": "Reference còn kết luận về chủ thể và cách thức ban hành quyết định hủy bỏ toàn bộ — người đã ban hành quyết định tự mình hoặc theo yêu cầu của chủ thể tại khoản 3 Điều 18 — nhưng required claims không bao quát kết luận này."
+        }
+      ]
+    },
+    {
+      "scenario_id": "7458ee04b51a2f0122a81434eaf622b559c54758e3572bf88874cf5c1d5055e9",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Query đã nêu xe mô tô, hành vi vượt xe không đúng quy định và gây tai nạn giao thông; fact xác định trực tiếp đúng khung phạt cho tình huống này. Không có tình tiết cần thiết nào bị thiếu để xếp là partially_answerable."
+        }
+      ]
+    },
+    {
+      "scenario_id": "bf00fcc47e38062ab7c2a216cbbec52c6b379f56fcd24a4c9a284504ba87fab5",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Required claim thứ nhất khái quát hậu quả pháp lý cho mọi trường hợp nộp lại giấy phép muộn, nhưng fact chỉ áp dụng khi chủ thể là đơn vị kinh doanh vận tải. Claim đã làm mất điều kiện chủ thể pháp lý này."
+        }
+      ]
+    },
+    {
+      "scenario_id": "d8be59633b7dccdd26cfc88ef5be2f8289aa5220d2873f949acd1a70e4e12232",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "0d4cb65769593b80ef8ae8a59162f9e1604896dd1422f7f1d4e313bfa9678393",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "685b22106776c763d7e1ed549f26083a927c3ba45a8a3bb245aafab59b831453",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "c3100add80a8a37324e9eb1873829360dcc7ad0976bd66ad9502ada7fe55ae75",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Query chỉ nêu “chủ ô tô” mà không xác định là cá nhân hay tổ chức. Fact quy định hai khung phạt khác nhau cho hai chủ thể, trong khi reference chỉ trả lời theo trường hợp cá nhân và bỏ sót trường hợp tổ chức."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim bỏ điều kiện xe thuộc loại có quy định phải kiểm định. Fact chỉ áp dụng khung phạt này đối với xe thuộc diện phải kiểm định."
+        }
+      ]
+    },
+    {
+      "scenario_id": "95eeed076b7fd463629483ba8746f451913aa4291f970ef2b2c8fcf150c334d1",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "4c35765b95922fa7ffe4cc1b0df8fa53b8f521d7d30f339dc31b731aea94465b",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "620fcd4ac38ccdc97497c3b2c57a920b550a68c1f2ded5b8d83575022add6773",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Cả hai facts đều dẫn đến cùng kết luận trọng tâm là vẫn phải ra quyết định tước khi thời hạn còn lại ngắn hơn thời hạn bị tước. Không có thời điểm vụ việc không làm thiếu dữ kiện để trả lời câu hỏi này; việc cần xác định văn bản cụ thể không làm câu hỏi chỉ còn partially_answerable."
+        }
+      ]
+    },
+    {
+      "scenario_id": "3e064414e80e86b5dd0d535abb0c971c9595f41c79831a05b5f06d0b72405257",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Query không nêu thời điểm, trong khi quy định từ 02/5/2025 có phạm vi và cách chuyển hồ sơ khác quy định trước đó. Không thể xác định quy định nào điều chỉnh đầy đủ vụ việc cụ thể, nên không thể gắn answerable."
+        },
+        {
+          "code": "grounding",
+          "reason": "Fact mới quy định chuyển biên bản làm việc trong trường hợp vụ việc phải kiểm định, hoặc chuyển các biên bản, tài liệu ghi nhận vi phạm được phát hiện trong hoạt động thanh tra, kiểm tra, quản lý hoặc tố tụng. Reference dùng “đồng thời” để biến các nhóm tài liệu theo quan hệ lựa chọn thành nghĩa vụ phải chuyển cùng lúc trong mọi vụ việc cần kiểm định."
+        }
+      ]
+    },
+    {
+      "scenario_id": "a2d86db7895db961751d1ae6cf20c92ff50828eea9aedf90993f9d3d218a9273",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Kết luận được hỏi là vượt bên nào. Với tình tiết xe trước không rẽ trái và không phải xe chuyên dùng đang làm việc không thể vượt trái, quy tắc vượt bên trái cùng các ngoại lệ đã đủ để kết luận. Hai facts về nghĩa vụ phát tín hiệu của xe xin vượt và xe phía trước không cần thiết cho chính kết luận này."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim “Khi vượt xe, phải vượt bên trái” đã bỏ các ngoại lệ trong fact: được vượt bên phải khi xe trước có tín hiệu hoặc đang rẽ trái, hoặc xe chuyên dùng đang làm việc không thể vượt bên trái."
+        }
+      ]
+    },
+    {
+      "scenario_id": "dfdd606cf18006e53ecad2297376d1e75c1166c01f9d5db9f1503405dbe431e5",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Câu hỏi hỏi quy tắc chung về các trường hợp xe máy bị tịch thu, không phải yêu cầu kết luận cho một vụ việc đã xác định. Fact đã nêu các điều kiện pháp lý cần thiết và reference cũng trình bày các điều kiện đó đầy đủ, nên không thiếu tình tiết vụ việc để phải gắn partially_answerable."
+        }
+      ]
+    },
+    {
+      "scenario_id": "102f853d74c922b2bf4b687f8c12b26b1b3477584613db0ba25be32488fe20da",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "fdaff81ff811c61010077c3b303debbd55500def4e9574dcba559d392620eab7",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Kết luận rằng phải căn cứ thời điểm lập biên bản để chọn một trong hai cách giao giả định quy định có hiệu lực từ 02/05/2025 đã thay thế hoặc làm quy định từ 2022 không còn áp dụng. Cả hai fact đều có valid_to=null và không có thông tin về quan hệ thay thế, bãi bỏ hoặc phạm vi ưu tiên áp dụng."
+        }
+      ]
+    },
+    {
+      "scenario_id": "bbdaa4062cfd3c457fc1e6d137d2bed225ffb8497bb4da018d13e709ed6bec8d",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "4767efebe07f8261574f00692bcf4aeb8f3bb2edd959e2a45c962868692da6b3",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "883cf5e0f3c1023294f93800f0b4a2a769150df4a29f460982b8f7b8db242f25",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Reference cho rằng chỉ cần biết thời điểm áp dụng là có thể chọn giữa hai giới hạn tịch thu, nhưng facts không chứng minh quy định có hiệu lực từ 15/08/2026 thay thế, bãi bỏ hoặc loại trừ quy định có hiệu lực từ 01/07/2025; cả hai đều có valid_to=null."
+        },
+        {
+          "code": "claims",
+          "reason": "Claim về quy định từ 01/07/2025 đã rút gọn làm mất các giới hạn định lượng trong fact: giá trị tịch thu không vượt quá 02 lần mức phạt tiền đến 30% mức tiền phạt tối đa của lĩnh vực tương ứng. Diễn đạt chung là 'ngưỡng gắn với mức phạt tiền tối đa' không bảo toàn đầy đủ điều kiện pháp lý."
+        }
+      ]
+    },
+    {
+      "scenario_id": "0b0b47d81e36bb94198098903de97d578d388d0a56801723b1dcf64fea4f0379",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "94b97af1560dd93f0cb21786815e4cedf4b146bebb2ca4789df7ffa5a02b9223",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "08316493f2a8bd500ed889a83d3745c0a6a09cece70338fd1b7aaca78931afbc",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "00ff90223baa98e26c2aeb7b7a00b8521520ced71628665ef76bf6802a3ebb73",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Câu hỏi chỉ nêu trường hợp giấy phép còn hạn ngắn hơn thời hạn tước; fact đã trả lời đầy đủ nguyên tắc áp dụng trong trường hợp này. Câu hỏi không yêu cầu xác định một thời hạn tước cụ thể theo một hành vi xác định, nên không có căn cứ xếp là partially_answerable."
+        }
+      ]
+    },
+    {
+      "scenario_id": "27bf78b61245badff578693c6edfb2faaef52d08f6c85a6549a7eea634591801",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Reference coi việc quyết định thuộc Phần thứ hai và thuộc trường hợp tại khoản 1 Điều 12 là các điều kiện đồng thời để hủy bỏ toàn bộ. Nhưng fact về Phần thứ hai chỉ giới hạn việc hủy bỏ hoặc ban hành quyết định mới theo khoản 1 Điều 13, còn fact về nghĩa vụ hủy bỏ toàn bộ chỉ dẫn chiếu khoản 1 Điều 12; facts không xác lập quan hệ nối hai căn cứ này."
+        }
+      ]
+    },
+    {
+      "scenario_id": "6b165d9ea1806df7727dc1e37d5f0984a4be546449469a93085f4f9e9cba2734",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Câu hỏi cần xác định hiệu lực, ý nghĩa biển báo trong năm 2024, trong khi fact duy nhất chỉ có hiệu lực từ 01/01/2025. Không có quy tắc pháp lý áp dụng cho mốc thời gian được hỏi, nên không thể coi đây là trường hợp chỉ partially_answerable."
+        }
+      ]
+    },
+    {
+      "scenario_id": "e13d431d0956e8f19a848f1b86828a40a05c48c8cf326128fb50a9d7c46f68cb",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Kết luận áp dụng ngay mức tối đa 03 tháng chỉ dựa vào việc có từ hai hành vi bị tước cùng loại giấy tờ. Fact còn đòi hỏi cá nhân hoặc tổ chức vi phạm hành chính nhiều lần và bị xử phạt về từng hành vi; query và reference không xác lập đầy đủ các điều kiện này."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim về quy tắc nhiều hành vi bỏ các điều kiện \"vi phạm hành chính nhiều lần\" và \"bị xử phạt về từng hành vi vi phạm\" có trong fact, làm mất điều kiện áp dụng của quy tắc tính mức tước tối đa."
+        }
+      ]
+    },
+    {
+      "scenario_id": "89e85c76da365642dd840fd7daccebe3220ac12a0e14ecca786920d7011c2a93",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "alignment",
+          "reason": "Query hỏi trực tiếp xe ô tô hai trục vượt 16 tấn có vi phạm hay không. Answer chỉ nêu ngưỡng và chuyển sang việc không đủ căn cứ xác định cách xử lý/chế tài, nên không trả lời kết luận trọng tâm của câu hỏi theo giới hạn đã nêu."
+        }
+      ]
+    },
+    {
+      "scenario_id": "d4db004b92998d71c491646b82dcfa3cf9f1eee282abeb4f2f72b27be8cc29e3",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Query chỉ yêu cầu trình bày, so sánh quy định năm 2021 và năm 2025. Hai facts đã đủ để nêu quy tắc 02 năm của năm 2021, quy tắc tính đến thời điểm chấm dứt hiệu lực của quyết định gốc năm 2025 và các ngoại lệ; không cần tình tiết của một vụ việc cụ thể."
+        }
+      ]
+    },
+    {
+      "scenario_id": "0eba5309ff95f1edf7e72460dfef1230ca8305370634868804c39162b715c443",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "87bb46a08b8a03f0f6588534da6683200942f7dd5a7d38cccce0c4b45bf052fc",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "fe5fcaf42dc1ffb3662deac9c0952475c810bff0a1c55113980ee5c6705e534e",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "ab3176c68970ac62be5a83e1b0ee96a8bb3ba197b5f1ceaf858ca077f797c790",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Facts chỉ cho biết thời điểm bắt đầu hiệu lực của từng quy định và đều không có valid_to. Không có fact hoặc metadata chứng minh Nghị định 68/2025 thay thế, làm hết hiệu lực hoặc là quy định duy nhất được chọn thay cho Nghị định 118/2021 sau ngày 02/05/2025. Vì vậy, kết luận rằng chỉ thiếu thời điểm xử phạt là có thể chọn được một quy định áp dụng suy ra quan hệ hiệu lực/thay thế chưa được chứng minh."
+        }
+      ]
+    },
+    {
+      "scenario_id": "1f2ade801a3e8d3cc14b1c26a774485794207ebac95bfd59d5a2cb510164423a",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "9916382bc17202a78065aba683963915a1353af3a0297f20a35535bc3a6c8d2d",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "96d99481948d6392e5bc5b69421c907a5b19dfb17edb942906a39102a2ca04eb",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Hai fact đều có valid_to=null; facts không chứng minh quy định có hiệu lực từ 01/03/2026 thay thế hoặc làm chấm dứt thẩm quyền tước chứng chỉ hành nghề theo quy định có hiệu lực từ 01/07/2025. Vì vậy không thể kết luận đây là thay đổi về thẩm quyền pháp lý từ ngày 01/03/2026."
+        },
+        {
+          "code": "grounding",
+          "reason": "Fact về quy định từ 01/03/2026 chỉ khẳng định thẩm quyền tước giấy phép có thời hạn hoặc đình chỉ hoạt động có thời hạn; không khẳng định quy định đó không nêu, hoặc loại trừ, thẩm quyền tước chứng chỉ hành nghề."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claims chỉ bao quát hai thẩm quyền khẳng định, không bao quát kết luận về việc quy định mới không nêu quyền tước chứng chỉ hành nghề hay về sự thay đổi thẩm quyền."
+        }
+      ]
+    },
+    {
+      "scenario_id": "e5045b78d9f4f8aa9cd889747506b8536cfa77404e3c0cee182cebeede2cd2ac",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Fact về các hành trình mà xe bánh xích được cấp giấy phép lưu hành không cần thiết cho kết luận được hỏi, vì query đã xác định xe đã được cấp giấy phép. Căn cứ thu hồi và thời hạn 03 ngày chỉ cần hai fact còn lại."
+        }
+      ]
+    },
+    {
+      "scenario_id": "2a054c3789c9840edc6ddb46102e7271560121357d41918e98ec5f8141d576a1",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "e44ac6fdf680e663af97f3aec41150efbc03cf43d8b533405e1c8b2b63fc3df9",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "bf1f7ab2f92bd51bc016a51996004a522ffd12d5ac5c20d4f3ec5a733f67a380",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Fact năm 2025 chỉ quy định thu hồi giấy chứng nhận kiểm định trong các nhóm giấy tờ có điều kiện như giấy tờ, tài liệu giả dùng để được cấp lại hoặc giấy chứng nhận, tem kiểm định không do cơ quan có thẩm quyền cấp. Answer khẳng định chung giấy chứng nhận kiểm định thuộc giấy tờ bị thu hồi, làm mất các điều kiện này."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim về việc giấy chứng nhận kiểm định từng thuộc nhóm giấy tờ bị thu hồi không giữ các điều kiện giới hạn của fact năm 2025."
+        }
+      ]
+    },
+    {
+      "scenario_id": "f0bc8335f182c7a57e61a1376375d6ea525aa4a0c6c1b9c4d783397b9b2f9477",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Query đã nêu đầy đủ tình huống không dừng trước biển R.122; fact trực tiếp xác lập nghĩa vụ dừng đối với mọi loại xe nêu trong query. Mẫu là answerable, không phải partially_answerable."
+        }
+      ]
+    },
+    {
+      "scenario_id": "2dcf364c36bb23ce6ac017cceee6780081d82ddb90d7a8faf4cb8f43a546d382",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact về mức 2.500.000 đồng có valid_to=null, còn fact năm 2026 chỉ nêu mức 22.500.000 đồng có hiệu lực từ 15/8/2026, không nói thay thế hoặc bãi bỏ mức cũ. Vì vậy facts không đủ chứng minh việc chọn riêng mức 22.500.000 đồng làm mức tối đa cho thời điểm sau 15/8/2026."
+        }
+      ]
+    },
+    {
+      "scenario_id": "90a38a567a215015882af70db6bc7fd7a7b848c00b9ff1ba0344baf9d38971c0",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "c3ad3d58c4040e7dd2ac99fe13c7c028f744f9c2181bd133b96d1a9778738f0d",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact cũ có valid_to=null; fact mới chỉ quy định nghĩa vụ phải lập từ 02/5/2025 mà không xác nhận quy định cũ đã bị thay thế hoặc hết hiệu lực. Answer khẳng định sự chuyển đổi từ “có thể” sang “phải” và rằng trước đó chỉ có thể lập, là suy luận thay thế không được facts/metadata chứng minh."
+        }
+      ]
+    },
+    {
+      "scenario_id": "b160fc597f2d3cecf35ac1b1132dff62ee883b357a65a4239006fd8298029ac3",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Fact về giảm trừ tình tiết chỉ áp dụng khi xác định thời hạn tước đối với một hành vi vi phạm hành chính. Query không xác định hai tình tiết tăng nặng và một tình tiết giảm nhẹ thuộc chính hành vi có khung tước dài nhất trong vụ có nhiều hành vi."
+        },
+        {
+          "code": "grounding",
+          "reason": "Answer áp dụng kết quả còn một tình tiết tăng nặng cho khung tước dài nhất, nhưng facts không thiết lập quan hệ giữa các tình tiết của vụ việc nhiều hành vi và hành vi được chọn theo khung dài nhất."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim về giảm trừ tình tiết bỏ điều kiện “đối với một hành vi vi phạm hành chính” của fact."
+        }
+      ]
+    },
+    {
+      "scenario_id": "02d66322f02449f989e4f0dfd40bf2f87b67ec2cc84abd434ae767d510b1acd3",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Hai facts đều có valid_to=null và không có fact nào xác lập Nghị định 238/2026/NĐ-CP thay thế, loại trừ hoặc là căn cứ ưu tiên so với Nghị định 168/2024/NĐ-CP. Vì vậy không thể suy ra rằng chỉ cần biết ngày quyết định xử phạt là sẽ xác định được duy nhất văn bản áp dụng."
+        }
+      ]
+    },
+    {
+      "scenario_id": "832af3791c9d718b190d8951deb2c62aea291d3886a87f3db856babc20b0c62d",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Câu hỏi trọng tâm là lái xe có phải yêu cầu ký Giấy vận tải hay không; fact về nghĩa vụ yêu cầu ký đã đủ để trả lời. Fact về các nội dung bắt buộc khác của Giấy vận tải là yêu cầu độc lập, không cần thiết cho kết luận này."
+        }
+      ]
+    },
+    {
+      "scenario_id": "c0f47b58d9fab3314e4ac88d08048604e0ac924e6fc71464c5b08a68d7be8281",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact cũ có valid_to=null, còn fact mới chỉ xác nhận một thẩm quyền từ 01/03/2026. Không có dữ kiện chứng minh quy định cũ bị thay thế hoặc không còn áp dụng từ mốc này, nên không đủ căn cứ chia thẩm quyền thành hai giai đoạn trước và sau 01/03/2026."
+        }
+      ]
+    },
+    {
+      "scenario_id": "bddce8bf7c32884f6f9da3d8f87fc7da9e898ea570f6e204fc303f5bf4bbd5ef",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Query và answer chỉ hỏi thủ tục không cấp lại Giấy phép vận tải đường bộ quốc tế ASEAN sau quyết định thu hồi; không xác định đây là việc xác định hoặc xử lý một vi phạm giao thông đường bộ. Nội dung thuộc thủ tục quản lý giấy phép vận tải, ngoài domain được giới hạn."
+        }
+      ]
+    },
+    {
+      "scenario_id": "ab10310f89f89c9e9fdcf729649063cbbdfa57b08d55b4bfcb07ec25e00f9713",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "b99d9b3a39048655911dd71821027d9639f5a6193b1701a1049c480f07e43922",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "3b1b4c6a352875b2d0981a2a0edd52a6bc3d49169b7c64ba31781a04dd797e1b",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact 2025 có valid_to=null, trong khi fact 2026 chỉ xác định vị trí được lắp kể từ 01/7/2026 mà không xác nhận sửa đổi, thay thế hoặc bãi bỏ yêu cầu phải lắp ở thanh chống đổ. Vì vậy không đủ dữ kiện để kết luận xe chỉ lắp ở thùng xe và cột sau là hợp lệ từ thời điểm này khi hai quy tắc đang mâu thuẫn."
+        }
+      ]
+    },
+    {
+      "scenario_id": "6942ed0a33463a148646da78b2baa077a49157dceba4fc0e802895629dc3deb2",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "704694ef6241164a10b2e7fcaf54f163ca922041037812a8e131fee9b225320b",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Fact duy nhất đã xác định trực tiếp đúng nhóm xe, hành vi chạy quá tốc độ từ 05 đến dưới 10 km/h và đầy đủ khung phạt 800.000–1.000.000 đồng. Do đó query là answerable, không phải partially_answerable."
+        }
+      ]
+    },
+    {
+      "scenario_id": "55f09964d95e3b957aa6eae4388fe509438be6efee2d983193d6a5ae8a52e5d5",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "7b4e145cf3d25a35b6a92bdbf2c5fde094129eae3ce1534d83336b2f15b5f2b6",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Bốn facts là các quy tắc độc lập cho các tình huống khác nhau: một chủ thể nhiều hành vi, nhiều chủ thể nhiều hành vi, nội dung quyết định chung và nguyên tắc phạt tổ chức đối với cùng hành vi. Chúng không tạo thành chuỗi suy luận mà mọi fact đều cần thiết để đi đến một kết luận duy nhất cho query."
+        }
+      ]
+    },
+    {
+      "scenario_id": "b7b623b333d5d074db78c9818ea3f09593e96fb1fe868be4a0195edc587288a0",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "53b7511d121e826c6b4545f13b0b1b6aa19f421b7bd06bd543f35885f0c81534",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Fact chỉ áp dụng cho biển quảng cáo thuộc trường hợp quy định tại khoản 1 Điều 18, nhưng facts không cho biết biển quảng cáo ven đường trong query có thuộc trường hợp này hay không."
+        },
+        {
+          "code": "grounding",
+          "reason": "Reference answer và required claim khái quát nghĩa vụ cho việc xây dựng, lắp đặt mọi biển quảng cáo, làm mất điều kiện phạm vi áp dụng “quy định tại khoản 1 Điều 18” của fact."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim không giữ điều kiện pháp lý giới hạn đối tượng biển quảng cáo theo khoản 1 Điều 18."
+        }
+      ]
+    },
+    {
+      "scenario_id": "9981bf4b43fa7befd8c5f86e8b872e541374dc6d3c32d43ddab8e458e12beff0",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "5d569994e3722ff2775b02bda103ddb2f8bda3eb7de3af75ac1f4ed73890d6ac",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Bridge khẳng định quy định từ 01/7/2025 áp dụng “thay cho” mức 1.500.000 đồng trước đó, nhưng fact cũ có valid_to=null và không có fact hoặc metadata nào chứng minh quy định cũ bị thay thế, bị bãi bỏ hoặc hết hiệu lực."
+        }
+      ]
+    },
+    {
+      "scenario_id": "5e501771bb39ffce52f4bee2984a52485d7484028d5aa25397ddd77772ca6726",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "ebc0b1d418f38b54ef9a7e90b9072e834fffeee6d9332519e7e7124b582e5198",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Bridge mô tả thẩm quyền đã “chuyển từ” toàn bộ Điều 3 sang khoản 3 Điều 3. Tuy nhiên, fact có hiệu lực từ 01/3/2026 vẫn có valid_to=null, và facts không chứng minh quy định này bị thay thế, thu hẹp hoặc hết hiệu lực."
+        }
+      ]
+    },
+    {
+      "scenario_id": "fe8069d1ef9d15ea3275e581da2d648dbfa72176d4ec7d4585acde703a1811f9",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Kết luận trọng tâm về việc xử phạt cùng lần và không trừ điểm trong thời gian bị tước được xác định trực tiếp từ facts d1403972 và 924adcc. Fact về việc GPLX quốc tế thuộc diện có thể bị tước và fact giới hạn thời gian tước theo thời gian cư trú không cần thiết cho kết luận được hỏi; đặc biệt giới hạn thời gian cư trú là nhánh bổ sung không liên quan đến việc trừ điểm trong thời gian bị tước."
+        }
+      ]
+    },
+    {
+      "scenario_id": "71377a535dfd2a6fc0ef8bc1def4be9b4ed4f76689450afc5e64fca510b2ef7f",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "4d64f304760eba52bc7c66155ccd4781db6d964b391f120298c4b46dfd594758",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "aaf3a08fb8d73d05ea7d4ebb26fdfef175577f29c78fe643fb6071d9ff0acbe4",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "74662e25e1b57462aad620d5cd69975a1a8f07bd206eec40266f77d39be37404",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Câu hỏi chỉ nêu chung “vi phạm Điều 6” mà không xác định điểm, khoản bị vi phạm. Fact chỉ áp dụng mức phạt này đối với một danh mục điểm, khoản cụ thể của Điều 6, nên không đủ dữ kiện để xác định mức phạt có áp dụng cho trường hợp hỏi hay không; không thể xếp là answerable."
+        }
+      ]
+    },
+    {
+      "scenario_id": "64c1a3deb1a07abc37cf13ed67cf007281bf9ae5d591cff668d326c771587ab3",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "930df95d5b0be72818de22b6af4ae8c8f2721cb1f4c072512f6265869cda5c9e",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "b3831388032f36d94435a5cb387c57cf2192dbdfe48c93ce0008ac6d6b509e9c",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Query chỉ hỏi điều kiện được kéo và cách nối xe trong tình huống kỹ thuật; không nhằm xác định hay xử lý hành vi vi phạm giao thông đường bộ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "a0f7650a59c8efbdb4f43a425ff04f89998dc6a886fcc620b666650a613455a7",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "c4ef81237f60c51b5bda598689aac4d1d10da83eb38ce3db3f63e24c5958ee73",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact có hiệu lực từ 01/03/2026 chỉ khẳng định thẩm quyền của Trưởng Công an cấp xã và Trưởng đồn Công an, không chứng minh quy định từ 01/01/2025 đã bị thay thế hay Trưởng trạm Công an cửa khẩu, khu chế xuất không còn thẩm quyền. Cả fact cũ đều có valid_to=null."
+        }
+      ]
+    },
+    {
+      "scenario_id": "89e372cdf28d8a37e3089b82e1c3dddf0fa8df7631cc49e10cee0ece86456175",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Hai fact trực tiếp trả lời hai vế độc lập của query: một fact về hành vi bị cấm và một fact về mức tiền phạt đối với cá nhân. Không có chuỗi suy luận trong đó cần dùng cả hai fact để suy ra cùng một kết luận."
+        }
+      ]
+    },
+    {
+      "scenario_id": "1074ef02020ae84dd78c445757e8e805dafae87fc02ff5e68ea05173547dc71c",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact từ 10/08/2026 quy định trách nhiệm của Sở Xây dựng nhưng không chứng minh quy định về Sở Giao thông vận tải đã bị bãi bỏ, thay thế hoặc chỉ áp dụng trước mốc đó; fact cũ có valid_to=null. Answer và reasoning suy ra việc chuyển giao độc quyền không được metadata/facts chứng minh."
+        }
+      ]
+    },
+    {
+      "scenario_id": "25fdfd59f8bc2193579b1c21e9632f912ad4430fd41ac2a59074c083ba357262",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Ngưỡng để tổ chức được nộp phạt nhiều lần được fact về mức từ 150.000.000 đồng trả lời trực tiếp; cách xác định mức phạt cụ thể và thẩm quyền quyết định nộp nhiều lần không cần thiết để suy ra ngưỡng này. Các điều kiện miễn phần còn lại cũng là điều kiện độc lập, không tạo thành chuỗi suy luận 5 bước cho kết luận được hỏi."
+        }
+      ]
+    },
+    {
+      "scenario_id": "95a9fdb9aae15ac1463421a1adbf653847afeafd1c1d9d666d57f00e34703eba",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Kết luận rằng cần biết thời điểm để chọn giữa xử lý ngay và chờ quá hạn hẹn ngầm coi hai cơ chế là các quy định thay thế hoặc loại trừ nhau. Cả hai facts đều có valid_to=null; facts không chứng minh quy định từ 01/3/2026 bãi bỏ cơ chế xử lý khi quá hạn hẹn, vốn có thể là hậu quả phát sinh ở giai đoạn sau của cùng vụ việc."
+        }
+      ]
+    },
+    {
+      "scenario_id": "112034bbe36cbe0b22fc2c48d77f61814747d01f2f05be45c902b32624edf72c",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Reference answer suy ra phải chọn phạm vi thẩm quyền theo từng mốc thời gian như thể quy định từ 01/3/2026 đã thay thế quy định cũ. Fact cũ có valid_to=null và facts không xác lập quan hệ thay thế, bãi bỏ hoặc hết hiệu lực giữa hai quy định."
+        }
+      ]
+    },
+    {
+      "scenario_id": "27f492131ffb16aad3df7e6af95c6af8ae39c29a7b252c212e0beecf1fece9fd",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Quy tắc áp dụng mức tối đa của khung thời hạn tước chỉ áp dụng khi cá nhân, tổ chức vi phạm hành chính nhiều lần và bị xử phạt về từng hành vi. Reference answer chỉ nêu chung nhiều hành vi bị xử phạt từng hành vi, làm mất điều kiện “vi phạm hành chính nhiều lần”."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim về gộp thời hạn tước cũng bỏ sót điều kiện chủ thể vi phạm hành chính nhiều lần, nên đã khái quát quy tắc rộng hơn fact."
+        },
+        {
+          "code": "answerability",
+          "reason": "Để áp dụng quy tắc gộp thời hạn tước cho vụ việc nêu trong query, không chỉ thiếu thời hạn còn lại của giấy phép mà còn thiếu dữ kiện liệu các hành vi có thuộc trường hợp vi phạm hành chính nhiều lần và bị xử phạt về từng hành vi hay không."
+        }
+      ]
+    },
+    {
+      "scenario_id": "bb1a35db643f6a5fb28c6432db0170acc88dd4626a18345d0f6260f8a93785ff",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Reference answer nêu thêm kết luận thủ tục rằng quyết định xử phạt phải ghi rõ thời điểm bắt đầu hiệu lực của hình thức tước, nhưng required_claim tương ứng chỉ nêu thời điểm hiệu lực mà không bao quát nghĩa vụ phải ghi rõ trong quyết định."
+        }
+      ]
+    },
+    {
+      "scenario_id": "d040f948466ba661ac8a1a6c4d0fbd2bb36b5ab82e8d100f480d001b94e912ac",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Query hỏi thẩm quyền chung của Trưởng Công an cấp xã, và fact đã đủ xác định phạm vi thẩm quyền cùng điều kiện chức năng, nhiệm vụ liên quan hoạt động đường bộ. Query không đưa ra một hành vi cụ thể cần phân loại theo Điều 15, nên không có căn cứ xếp là chỉ partially_answerable."
+        }
+      ]
+    },
+    {
+      "scenario_id": "b6618a4f652b4d7b1150b5bbac2a7704a23d23611cc537c430ff7de819940aa8",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "84cb35023c59992019121a7cf92a6520f529fef321d2983a225b9abdbaf0fd00",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Claim về Thủy đội trưởng đã lược bỏ phạm vi chủ thể “Trong Công an nhân dân” được nêu rõ trong fact, làm khái quát hóa thẩm quyền vượt khỏi điều kiện của chứng cứ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "09bdc10e50cb425b4b8e9f7ca5cdcab1d6d332fc922c1fc0648c6b3ddecb0b59",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Required claim chỉ nêu nghĩa vụ xác minh khi cần thiết mà bỏ điều kiện thủ tục “khi xem xét ra quyết định xử phạt vi phạm hành chính” trong fact."
+        }
+      ]
+    },
+    {
+      "scenario_id": "cd75f58b579e6d1fe3c227f5a1b7ea36188fa884cf9efbcab0d086dd05efec30",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Reasoning kết luận quy định từ 02/5/2025 “không còn” dùng điều kiện có nhiều tình tiết. Hai fact đều có valid_to=null và không cung cấp căn cứ về việc quy định năm 2025 thay thế hoặc làm quy định năm 2022 hết áp dụng."
+        }
+      ]
+    },
+    {
+      "scenario_id": "4a4ca5822adfb4f3ecd80793a6066a35bef6131bd9999d98c55e96fd5b1ded56",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "93d1ce1a272d04fec31198ca9a5e476be5c9aaffc4da29a805f26bd8790e8b58",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Query yêu cầu xác định thời hạn tước. Fact về việc người có thẩm quyền vẫn phải ra quyết định tước không cần thiết để suy ra thời hạn tước bằng thời hạn còn lại, nhưng lại được dùng để bổ sung một kết luận ngoài trọng tâm câu hỏi."
+        }
+      ]
+    },
+    {
+      "scenario_id": "fc6e6b31767afad5480878e52014f7d3a58749c0552739a4e8ade0b7fe0d672e",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "dc02b8feffdcb375644bbe7f70e305295390f3190730063ba8e982b69d7a6994",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Kết luận chính về việc hành vi thuộc khoản 12 Điều 12 có bị buộc khôi phục tình trạng ban đầu đã được fact 83f53bd... trả lời trực tiếp. Fact 377d703... chỉ phân loại đây là biện pháp khắc phục hậu quả, không cần thiết để trả lời câu hỏi được hỏi."
+        }
+      ]
+    },
+    {
+      "scenario_id": "0833e434711e88ba365d6976ad96f0723820f2f35bfa80074b279a524120fd4e",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact về Sở Giao thông vận tải có valid_to=null; việc fact mới có hiệu lực từ 10/8/2026 không tự chứng minh quy định cũ bị thay thế, hết hiệu lực hoặc chỉ áp dụng trước ngày này."
+        },
+        {
+          "code": "grounding",
+          "reason": "Reference phân định việc áp dụng độc quyền theo mốc trước/từ 10/8/2026 giữa hai cơ quan và hình thức gửi, nhưng facts không cung cấp quan hệ thay thế hay quy tắc ưu tiên áp dụng giữa hai văn bản."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim về quy định cũ chỉ nêu nội dung Sở Giao thông vận tải gửi văn bản mà không giữ điều kiện thời gian “trước ngày 10/8/2026” và quan hệ thay thế mà reference sử dụng."
+        }
+      ]
+    },
+    {
+      "scenario_id": "67ed27278d1b356abc7d724ca04caf25eaf029ea6f64fc1962aecce740c239ea",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "43e6b79496f46c73a3d668bb56abab83416c79e7e0402dace9793d4a84d482a4",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Required claim về việc chi trả toàn bộ chi phí khái quát cho mọi tổ chức, cá nhân lưu hành xe, trong khi fact chỉ đặt nghĩa vụ này trong trường hợp cho phép xe quá khổ/quá tải/xe bánh xích lưu hành và đối với các chi phí khảo sát, thiết kế, gia cường theo quy định."
+        }
+      ]
+    },
+    {
+      "scenario_id": "e48f2c0417911049a188c0af2f661dfabe351cd3de17b64627bcc2029a29e32f",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Query và reference hỏi nghĩa vụ quản lý phù hiệu khi chuyển nhượng, cho thuê hoặc ngừng kinh doanh vận tải, không phải việc xác định hay xử lý một vi phạm giao thông đường bộ."
+        },
+        {
+          "code": "temporal",
+          "reason": "Cả fact năm 2025 và fact có hiệu lực từ 10/8/2026 đều có valid_to=null. Facts không chứng minh quy định năm 2026 thay thế, làm hết hiệu lực, hoặc quyết định việc áp dụng quy định năm 2025 theo thời điểm vụ việc."
+        },
+        {
+          "code": "grounding",
+          "reason": "Reference suy ra phải lựa chọn một trong hai quy định dựa vào thời điểm phát sinh vụ việc, dù facts chỉ cho thấy hiệu lực bắt đầu của từng quy định chứ không cho thấy quan hệ thay thế hoặc loại trừ giữa chúng."
+        },
+        {
+          "code": "answerability",
+          "reason": "Để kết luận quy định nào áp dụng cho trường hợp cụ thể, không chỉ thiếu thời điểm vụ việc mà còn thiếu căn cứ pháp lý về quan hệ hiệu lực giữa hai quy định."
+        }
+      ]
+    },
+    {
+      "scenario_id": "8c9c665e41ff912c03993858afc224efcbe5923cb77c1709f3a4b775d329197b",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Query chỉ nêu chung “giảm nhẹ”, không xác định có đúng 01 tình tiết giảm nhẹ. Số lượng tình tiết là điều kiện quyết định để áp dụng quy tắc về khoảng thời hạn tước trong fact 2e39790... ."
+        },
+        {
+          "code": "grounding",
+          "reason": "Reference khẳng định áp dụng quy tắc dành cho trường hợp có 01 tình tiết giảm nhẹ, trong khi query không xác lập điều kiện định lượng này."
+        }
+      ]
+    },
+    {
+      "scenario_id": "774ba13bab4e6d1e56983a6d4e14e340fb82661fdd4a9daf1a3c6fee6aca668d",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Câu hỏi và câu trả lời chỉ xác định yêu cầu vệ sinh môi trường khi xếp hàng trên phương tiện, không xác định hay xử lý hành vi vi phạm giao thông đường bộ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "9ee1e34004eb16f01deab6cfe5c51b17e7182af2fcf42f55cb82e010f794b0b3",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Căn cứ khởi phát việc thu hồi là vi phạm về xuất nhập cảnh, xuất nhập khẩu hoặc quản lý khu vực cửa khẩu. Facts không xác lập đây là hành vi vi phạm giao thông đường bộ, nên câu hỏi nằm ngoài domain giới hạn."
+        }
+      ]
+    },
+    {
+      "scenario_id": "e66b1a196b862a7ec26fe9f4771554b4f759266f940451a8bf332b8bf6a84b47",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "280bcf8a6fe4298b05414bc43c1cffbba99ed731d04300a401bad3e23bcd9e7b",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Query chỉ viện dẫn một điểm, khoản, điều mà không nêu văn bản hoặc bối cảnh xử lý vi phạm giao thông đường bộ. Từ query và facts được cấp không xác lập được vấn đề thuộc domain giới hạn."
+        }
+      ]
+    },
+    {
+      "scenario_id": "3e7906ccaeba01cfc542be88360ac8fd011060b1720ea248acb9be6ef0f3e354",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Claim và câu trả lời áp dụng quy tắc nhiều vi phạm chỉ với điều kiện có hai vi phạm cùng bị tước tem, nhưng bỏ điều kiện của fact rằng cùng cá nhân hoặc tổ chức vi phạm hành chính nhiều lần và bị xử phạt đối với từng hành vi vi phạm."
+        }
+      ]
+    },
+    {
+      "scenario_id": "97544438c7b0736681bc00afeb6d156401aac9d89ceb9ceee8f3638f1d74a188",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Claim về việc điểm l không nằm trong danh mục bị trừ 02 điểm đã lược bỏ giới hạn chủ thể và loại xe của fact: quy định này chỉ áp dụng cho người điều khiển xe ô tô chở hành khách, ô tô chở người và xe tương tự. Do đó không thể dùng claim không điều kiện này để bao quát cả xe chở hàng và xe vận tải nội bộ trong query."
+        }
+      ]
+    },
+    {
+      "scenario_id": "b679eee4945f528fde4516575be7e5bd52aa0574be8104d70d58b6f841148ecb",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "fc1c508ec45337cf9e4e2625e5a5edf95669307b68424c6b5a426522b76d55cf",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact cũ chỉ có hiệu lực từ 01-01-2025 và không có valid_to. Answer khẳng định quy tắc này cho toàn bộ thời gian “trước ngày 15-08-2026”, đồng thời đặt hai quy định thành đối chiếu trước/sau mà không có căn cứ metadata chứng minh quy định mới thay thế hoặc làm quy định cũ không còn áp dụng sau ngày đó."
+        }
+      ]
+    },
+    {
+      "scenario_id": "5600d2198a3c731b28ad572b6bdc8cb9ac6d7f4c05ddfbfd0796f7aceafb5293",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Câu hỏi chỉ yêu cầu xác định từ 15-08-2026 hành vi có là vi phạm hay không; fact có hiệu lực từ ngày này trả lời trực tiếp. Fact cũ về việc đơn vị không được ấn định hành trình trước đó không cần thiết cho kết luận được hỏi."
+        },
+        {
+          "code": "temporal",
+          "reason": "Câu “Trước đó ... đã không được” không giới hạn từ 01-01-2025, trong khi đó là mốc valid_from duy nhất của fact cũ; facts cũng không chứng minh phạm vi áp dụng cho mọi thời điểm trước 15-08-2026."
+        }
+      ]
+    },
+    {
+      "scenario_id": "22a56430685e79d0b777af8a4173f999585401beffa12cbdfd14b1712d530534",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Kết luận bắt buộc người đã hủy quyết định phải ban hành hoặc chuyển để ban hành quyết định tịch thu đã bỏ điều kiện “trong trường hợp quy định tại điểm c khoản 1 Điều 13”. Kết luận phải chuyển vụ việc khi thẩm quyền tịch thu phụ thuộc thẩm quyền phạt tiền cũng bỏ điều kiện người đang giải quyết thuộc ngành, lĩnh vực được liệt kê trong Nghị định 189/2025/NĐ-CP."
+        },
+        {
+          "code": "claims",
+          "reason": "Hai required_claims tương ứng cũng khái quát các quy tắc có điều kiện thành quy tắc tuyệt đối, không giữ các điều kiện giới hạn có trong facts."
+        }
+      ]
+    },
+    {
+      "scenario_id": "b94ff64009808d0bb90e73c40406a98090b82ee875fc20bb944fab637393fb72",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Answer coi nghĩa vụ nêu lý do áp dụng cho mọi đề nghị hoãn tiền phạt trong bối cảnh chuyển quyết định, nhưng fact chỉ áp dụng khi cá nhân, tổ chức đề nghị hoãn, giảm hoặc miễn theo Điều 76 và 77 Luật Xử lý vi phạm hành chính."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim khái quát thành “không đồng ý hoãn tiền phạt phải nêu rõ lý do”, làm mất điều kiện đề nghị phải theo Điều 76 và 77 cũng như phạm vi đầy đủ của fact."
+        }
+      ]
+    },
+    {
+      "scenario_id": "a1f3b6fcd84827b3a53b64d2c62152d59f1e0b965f006cf41e9d8665c7a6ed7b",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Required claim về áp dụng mức tối đa đã bỏ điều kiện đây phải là một hành vi vi phạm hành chính cụ thể có các tình tiết tăng nặng, giảm nhẹ; fact không thiết lập quy tắc áp dụng chung cho mọi trường hợp chỉ cần có từ 02 tình tiết tăng nặng."
+        }
+      ]
+    },
+    {
+      "scenario_id": "4b6fc251d53863905711e400d0edb14772a0acd3c8d30e5c48b92408ef6c3f5d",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Required claim khẳng định chung thẩm quyền đối với các hành vi thuộc Điều 39 và Điều 40, trong khi fact chỉ liệt kê cụ thể các khoản, điểm của Điều 39 mà các chức danh này có thẩm quyền xử phạt. Claim đã làm mất giới hạn phạm vi này."
+        }
+      ]
+    },
+    {
+      "scenario_id": "ece90c3a8c792d17b09e83010eb92e1a46a1cf6cbee5aeecac0015592a712193",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Query đã cho tiền đề mức trừ là 06 điểm và số điểm còn lại ít hơn; các fact đủ để kết luận trừ hết điểm còn lại và hậu quả khi hết điểm. Không cần biết hành vi cụ thể thuộc điểm b khoản 7 hay điểm c khoản 9 Điều 7 để trả lời hậu quả được hỏi."
+        },
+        {
+          "code": "grounding",
+          "reason": "Câu trả lời đặt thêm điều kiện phải xác định hành vi có thuộc hai hành vi bị trừ 06 điểm hay không, dù tình huống đã trực tiếp giả định việc bị trừ 06 điểm; điều kiện này không cần thiết cho kết luận về việc trừ hết điểm còn lại."
+        },
+        {
+          "code": "multi_hop",
+          "reason": "Fact về các hành vi cụ thể tại điểm b khoản 7 và điểm c khoản 9 Điều 7 không cần thiết cho kết luận mà query hỏi, vì mức trừ 06 điểm đã được nêu sẵn trong query."
+        },
+        {
+          "code": "claims",
+          "reason": "Claim về các hành vi bị trừ 06 điểm đã bỏ điều kiện chủ thể trong fact là người điều khiển xe mô tô, xe gắn máy hoặc các loại xe tương tự."
+        }
+      ]
+    },
+    {
+      "scenario_id": "830d874127233e2d504960f3c4af1312672e941b6ae20ac61d2913db87be2c52",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Câu trả lời nói việc hủy bỏ toàn bộ quyết định thuộc trường hợp này không bị áp dụng thời hạn nhưng bỏ điều kiện của fact: quyết định phải là quyết định đã được ban hành từ ngày Luật Xử lý vi phạm hành chính có hiệu lực thi hành."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim về việc không áp dụng thời hạn cũng làm mất điều kiện thời điểm ban hành quyết định được nêu rõ trong fact."
+        },
+        {
+          "code": "multi_hop",
+          "reason": "Fact về không áp dụng thời hạn không cần thiết để trả lời trọng tâm “ai xử lý” quyết định sai thủ tục khi hành vi còn thời hiệu; nội dung này là một kết luận độc lập ngoài vấn đề chủ thể xử lý và ban hành quyết định mới."
+        }
+      ]
+    },
+    {
+      "scenario_id": "122414499c45f62a5ff5dc49df0312ab3abcf745d3cc371e808623d71bab2ff7",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Claim về thông báo 02 lần chỉ nêu việc người có quyền không đến nhận không có lý do chính đáng, nhưng bỏ các điều kiện fact rằng tang vật/phương tiện phải bị tạm giữ theo điểm a hoặc b khoản 1 Điều 125 và phải xác định được người vi phạm, chủ sở hữu, người quản lý hoặc người sử dụng hợp pháp. Claim đầu cũng không phản ánh đầy đủ phương thức Tổ trưởng trực tiếp thông báo hoặc phân công cán bộ trong Tổ thông báo."
+        }
+      ]
+    },
+    {
+      "scenario_id": "6c6db543e92416e31a422a5f72c4392fbea0899fdacc12dae8df7292f0e628a1",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Reasoning khẳng định quy định có hiệu lực từ 01/7/2025 “thay” điều kiện của quy định cũ. Tuy nhiên fact cũ có valid_to=null và fact mới chỉ thể hiện valid_from 01/7/2025; metadata không chứng minh quy định cũ đã bị thay thế hoặc hết hiệu lực."
+        }
+      ]
+    },
+    {
+      "scenario_id": "ddcdab12e166b741e8d31e84e44042c18d6cfc2914a19db193e14ead6a93fd05",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Câu trả lời đối chiếu hai ngày theo hướng tại 02/3/2026 chỉ áp dụng cơ chế lập biên bản với chủ phương tiện, thay cho cơ chế năm 2025 có cả người điều khiển và tạm giữ xe. Nhưng fact năm 2025 có valid_to=null; fact mới hiệu lực từ 01/3/2026 không tự chứng minh quy định năm 2025 đã hết hiệu lực hoặc bị thay thế."
+        }
+      ]
+    },
+    {
+      "scenario_id": "deaf49a773b5fee1987ab3d689c11c92ef1ef1fd7fafcc73024090e3b865c476",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Kết luận về từ hai hành vi cùng bị tước đã làm mất điều kiện của fact rằng cá nhân, tổ chức phải vi phạm hành chính nhiều lần và bị xử phạt đối với từng hành vi vi phạm."
+        },
+        {
+          "code": "claims",
+          "reason": "required_claim về áp dụng khung thời hạn tước dài nhất cũng không nêu điều kiện vi phạm nhiều lần và bị xử phạt về từng hành vi."
+        }
+      ]
+    },
+    {
+      "scenario_id": "ea378af698e61ba2e99af1c80fe5ae6d40f0bd709219ab51374d767f07eb5fb0",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Fact về quyền chung của Cảnh sát giao thông vận hành, sử dụng hệ thống, phương tiện, thiết bị và dữ liệu không cần thiết để kết luận về việc tiếp nhận kết quả từ camera điều hành giao thông. Fact còn lại đã trực tiếp quy định trường hợp tiếp nhận camera, điều kiện về tổ chức phối hợp và mục đích xử lý vi phạm."
+        }
+      ]
+    },
+    {
+      "scenario_id": "35ca010abd33df2811106acfa9d93da3534bfc195f35f5542a596a4d89922157",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Fact chỉ quy định chung việc khiếu nại, khởi kiện quyết định xử phạt được giải quyết theo pháp luật; không cho biết nơi nộp khiếu nại phụ thuộc vào cơ quan hoặc người ban hành quyết định. Reference đã bổ sung quan hệ này."
+        },
+        {
+          "code": "claims",
+          "reason": "required_claim chỉ bao quát quy tắc giải quyết khiếu nại chung, không bao quát kết luận rằng chưa xác định được nơi nộp do thiếu thông tin về cơ quan hoặc người ban hành quyết định."
+        }
+      ]
+    },
+    {
+      "scenario_id": "25f9a423ac508600f79e9aa8862b4b2937c96760fc9d481fd38824ed33e2d78d",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Reference rút gọn điều kiện thẩm quyền: fact yêu cầu chức năng, nhiệm vụ được giao phải có liên quan đến trật tự, an toàn giao thông trong lĩnh vực giao thông đường bộ, trong khi reference chỉ nêu trong phạm vi chức năng, nhiệm vụ được giao."
+        },
+        {
+          "code": "claims",
+          "reason": "required_claim cũng bỏ điều kiện chức năng, nhiệm vụ được giao phải có liên quan đến trật tự, an toàn giao thông đường bộ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "d412809b89b173f3344b52293aa2181cc11e730d51257877726076a94cc11cf9",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Fact phân biệt phần giấy phép lái xe bị tước theo loại xe điều khiển đã trực tiếp trả lời câu hỏi. Fact về bản chất của tước quyền sử dụng giấy phép có thời hạn là một hình thức xử phạt hành chính không cần cho kết luận phần nào bị tước."
+        }
+      ]
+    },
+    {
+      "scenario_id": "b0c4df07614e2ce7453f33e9db75fc1fff6377aeba45688f8cfeb5977f08e9a1",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Reference thay nhóm xác định cụ thể là “những người quy định tại khoản 3 Điều 18 Luật Xử lý vi phạm hành chính” bằng “người có thẩm quyền”. Facts không xác lập hai phạm vi này đồng nhất, nên đã thay đổi điều kiện thủ tục hủy bỏ."
+        },
+        {
+          "code": "claims",
+          "reason": "required_claim không bao quát phần kết luận thủ tục rằng người ban hành quyết định phải tự mình hoặc theo yêu cầu ban hành quyết định hủy bỏ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "b52890e88e362091f17ba427659ac0ea94eeb5c1968d9d4c29c0c7b7c9360c0b",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "bca92b585507c46b6b7221e9e853df13d7e1019d47c3ecb8436136d14e820824",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "1a303e6e576c1cae86cb9c4b64726b8bcf955d25cc41a5847853f03aeb73ae34",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Required claim về thẩm quyền của Hội đồng nhân dân thành phố khẳng định thẩm quyền quá rộng, đã bỏ các điều kiện trong fact: căn cứ vào hành vi, khung hoặc mức phạt do Chính phủ quy định, yêu cầu quản lý đặc thù của địa phương và phạm vi các lĩnh vực theo khoản 1 Điều 23."
+        }
+      ]
+    },
+    {
+      "scenario_id": "1db7222773e15b08cb02b2b733d9270f0dd621803ebb0434f0cbe3659b08b314",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Reference answer nêu hệ quả pháp lý quan trọng rằng giấy phép là ngoại lệ đối với giới hạn khối lượng hàng hóa chuyên chở ghi trong giấy chứng nhận kiểm định. Required_claims không bao quát nội dung này, mà chỉ nêu phần giới hạn về khối lượng toàn bộ và tải trọng trục vẫn phải tuân thủ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "eb5de8b7dd39dbb3081e8c62911cb3edf082f45c9d53a04b3c6a1a9f1116f603",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Required_claims chỉ ghi khung phạt, nhưng bỏ kết luận về điều kiện thời gian áp dụng: chưa thể xác định quy định có áp dụng cho vụ việc nếu chưa biết thời điểm vi phạm, trong khi fact chỉ có hiệu lực từ 01/03/2026."
+        }
+      ]
+    },
+    {
+      "scenario_id": "2e8a7be281bd7d34941325b3969edfe827ae949c5ff0d711acb042eb1e10e2fb",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Required_claims không bao quát kết luận answerability trọng yếu của reference answer: chưa thể xác định chức danh có thẩm quyền cụ thể vì chưa rõ đã có nghị định của Chính phủ thay thế hay chưa."
+        }
+      ]
+    },
+    {
+      "scenario_id": "2f9a0e57a2bf02448b780251a5e06562363d1b29727a6554a972f6e604ef5ad4",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Fact về nghĩa vụ chung của người nước ngoài chấp hành pháp luật giao thông không cần thiết cho kết luận về điều kiện đình chỉ hoạt động tổ chức đưa xe vào Việt Nam; fact còn lại đã chứa đầy đủ điều kiện chủ thể, vi phạm và chưa thực hiện yêu cầu giải quyết vụ việc."
+        }
+      ]
+    },
+    {
+      "scenario_id": "a485d44379f8722bd94d531945f207c2d1ee1402a6666d6554d425a4949f9033",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact về hạn mức 37.500.000 đồng không có valid_to và không có fact nào chứng minh quy định 75.000.000 đồng từ 01/03/2026 đã thay thế, loại trừ hoặc làm hết áp dụng hạn mức cũ trong Công an nhân dân. Vì vậy không thể suy ra hai hạn mức là hai phương án loại trừ nhau chỉ theo thời điểm quyết định."
+        }
+      ]
+    },
+    {
+      "scenario_id": "980a1b49e1ba12387424a04b662a0f6b2c4c9d95871628a958c5256c67853840",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "92392daaf8242d26a57927f3d5bc68edcb9b5a8efcd69cc6f6d3f73c4445bcaf",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "4ef21149a44bdab1fe24eaffdaceb19eb5e02e5b1055981a2ca5aa4d4404fc34",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Quy định từ 01/07/2025 vẫn có valid_to=null. Fact từ 01/03/2026 chỉ khẳng định thẩm quyền của bốn chức danh, không chứng minh đây là danh sách đầy đủ, cũng không chứng minh Thủy đội trưởng đã mất thẩm quyền hoặc quyền đối với chứng chỉ hành nghề không còn áp dụng từ thời điểm đó."
+        }
+      ]
+    },
+    {
+      "scenario_id": "eb3c78a2e458e4dc264ae0722bde6d6bade30e93f07df3242bff0e0a1a313315",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Nhãn partially_answerable không phù hợp: fact trả lời trực tiếp và đầy đủ chủ thể/cách thức nhận lại giấy tờ bị tạm giữ, gồm cá nhân hoặc tổ chức bị xử phạt trực tiếp nhận hoặc nhận qua đại diện theo pháp luật hay theo ủy quyền."
+        }
+      ]
+    },
+    {
+      "scenario_id": "0a830ade329e7c8a0a2e22b40934ac24caee3ad9156e631c4e435fa3d83ed3f9",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Kết luận trả giấy tờ trong 05 ngày được nêu chung cho “giấy tờ tạm giữ”, trong khi fact chỉ áp dụng cho giấy tờ bị tạm giữ để bảo đảm việc xử phạt theo khoản 6 Điều 125; fact còn quy định cách gửi trả tùy phương thức nộp tiền."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim về trả giấy tờ đã bỏ điều kiện giấy tờ bị tạm giữ để bảo đảm xử phạt theo khoản 6 Điều 125 và không giữ các điều kiện về phương thức nộp/gửi trả trong fact."
+        }
+      ]
+    },
+    {
+      "scenario_id": "e099467098a431f7126e7e926034724ea1d356c5605b094721812ea3c0314ecf",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "aef364c4751b92059179167b4907aa7ddbc5df91e1f4f9afc349722c0377b429",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "f4c30d0ef76a5a7940fecbfe5fa7f8fa2adb426950237858dd9b62623fa7f5bc",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Answer diễn đạt ngoại lệ như không phải xem xét giải trình nói chung khi tiêu hủy ngay. Fact chỉ miễn trách nhiệm xem xét trong tình huống cá nhân, tổ chức ban đầu không yêu cầu giải trình nhưng sau đó yêu cầu trước khi hết thời hạn theo Điều 61."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim về ngoại lệ giải trình không nêu điều kiện thủ tục giới hạn của fact, nên mở rộng phạm vi ngoại lệ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "98502f58c6d5bacecf5cbc052a32a08bc64bc77108f83717b960860839f1280d",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "07fb638cec6ecea96cafc3e0d62ff0b381189a7d8320edb929e08a4dc264aefe",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "e3eec9cd4b9fc00a9b5e80460a34fc8e0a205385f5c3b89ebfe9c8b9e05ca802",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact của Nghị định 118/2021/NĐ-CP chỉ có valid_from và valid_to=null, không chứng minh quy tắc này chỉ áp dụng trước 02/05/2025 hoặc bị quy định có hiệu lực ngày 02/05/2025 thay thế. Vì vậy không đủ căn cứ để kết luận theo trục thời gian “trước” và “từ” ngày này."
+        }
+      ]
+    },
+    {
+      "scenario_id": "332191b8519aa93d4ea0b61602bd517aed5a9c1592d503e3989172e3980ce167",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Cả hai facts đều không có valid_to và không thể hiện quan hệ sửa đổi, thay thế hoặc loại trừ lẫn nhau. Do đó, thời điểm chưa xác định không tự chứng minh rằng chỉ có thể lựa chọn một trong hai căn cứ hủy bỏ toàn bộ quyết định."
+        }
+      ]
+    },
+    {
+      "scenario_id": "3b1b41aee5e477f2fc85dac7eed47c0f9c667ffd612f4df441ead487d0e3b026",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact có hiệu lực từ 01/03/2026 nêu một quy tắc có ngoại lệ, nhưng fact từ 01/01/2025 vẫn có valid_to=null và không có thông tin về việc bị sửa đổi hoặc thay thế. Không đủ căn cứ để khẳng định pháp luật đã “bổ sung ngoại lệ” làm thay đổi quy tắc áp dụng từ ngày 01/03/2026."
+        }
+      ]
+    },
+    {
+      "scenario_id": "c6f290211977f241ebdad3a303d7a88febe1a454c488e76b7d50bee6692af902",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Nội dung hỏi thủ tục thu hồi và nộp lại giấy phép xe tập lái của cơ sở đào tạo, không phải xác định hoặc xử lý một vi phạm giao thông đường bộ."
+        },
+        {
+          "code": "answerability",
+          "reason": "Câu hỏi hỏi điều kiện pháp lý chung về thời điểm phải nộp lại. Fact đã trả lời trực tiếp là ngay sau khi quyết định thu hồi có hiệu lực; không cần tình tiết về việc một quyết định cụ thể đã có hiệu lực hay chưa để trả lời câu hỏi."
+        },
+        {
+          "code": "multi_hop",
+          "reason": "Để trả lời mốc nộp lại giấy phép, chỉ cần fact về nghĩa vụ nộp lại sau khi quyết định thu hồi có hiệu lực. Fact về việc giấy phép có thể bị thu hồi theo đề nghị của cơ sở đào tạo chỉ lặp lại tiền đề đã có trong câu hỏi, không cần cho kết luận được hỏi."
+        }
+      ]
+    },
+    {
+      "scenario_id": "2ebbc06035b1c25bc15d11881cf2c7c7bb07545196c58fa674d392b3be423322",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "e3c5b54d3d03687c080cff916841655cc7c6dbc6d0b913c09bdcdb6bac45e4c8",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Đây là câu hỏi pháp lý tổng quát về cách xác định thời hạn tước, thời hạn còn lại và giao trả giấy phép. Các facts cung cấp đủ quy tắc có điều kiện để trả lời đầy đủ; không thiếu tình tiết thực tế nào khiến câu hỏi chỉ partially_answerable."
+        },
+        {
+          "code": "grounding",
+          "reason": "Reference answer áp dụng quy tắc chọn mức tối đa của khung tước dài nhất chỉ với điều kiện có nhiều hành vi cùng bị tước một loại giấy phép, nhưng fact còn yêu cầu cá nhân hoặc tổ chức vi phạm hành chính nhiều lần và bị xử phạt về từng hành vi. Việc lược bỏ các điều kiện này làm rộng phạm vi áp dụng quy tắc."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim về áp dụng mức tối đa của khung tước dài nhất cũng bỏ các điều kiện “vi phạm hành chính nhiều lần” và “bị xử phạt về từng hành vi” có trong fact."
+        }
+      ]
+    },
+    {
+      "scenario_id": "0dca22f9f056157fbf2d77f4ec369c53ce83a9b5d9992160c1001327e61701fc",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Câu hỏi và câu trả lời chỉ nêu nghĩa vụ tuân thủ quy định của người thuê vận tải, không nhằm xác định hoặc xử lý một vi phạm giao thông đường bộ."
+        },
+        {
+          "code": "answerability",
+          "reason": "Fact trả lời trực tiếp và đầy đủ câu hỏi, không có tình tiết thực tế nào còn thiếu để phân loại là partially_answerable."
+        }
+      ]
+    },
+    {
+      "scenario_id": "ff8bd257c55902c8ec4974203816886884a1921d224df33e85f9d5349ec5aa5d",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Quy tắc áp dụng khung tước dài nhất trong fact chỉ áp dụng khi cá nhân, tổ chức vi phạm hành chính nhiều lần và bị xử phạt về từng hành vi. Reference chỉ nêu nhiều hành vi vi phạm cùng bị tước, làm mất các điều kiện này."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim về áp dụng khung tước dài nhất cũng bỏ các điều kiện pháp lý “vi phạm hành chính nhiều lần” và “bị xử phạt về từng hành vi” của fact."
+        }
+      ]
+    },
+    {
+      "scenario_id": "da7790ad5885dbfe5db20704887677b5cd97819d71cc28204e3e10e931ee36e4",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Việc không có quy định thời hạn xem xét đối với đơn hoãn trong facts là thiếu quy tắc pháp lý để trả lời một phần câu hỏi, không phải do tình huống thực tế trong query còn thiếu dữ kiện."
+        }
+      ]
+    },
+    {
+      "scenario_id": "319112350d69f8c542fd4d02d4e3c160f1a096d5c8874ff8629567c13498a47c",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Kết luận giấy và tem kiểm định cấp trước 01/01/2025 còn được dùng đến hết hạn được suy ra trực tiếp từ fact chuyển tiếp. Fact nói Thông tư 16/2021/TT-BGTVT được thay thế không cần thiết cho kết luận trọng tâm này."
+        }
+      ]
+    },
+    {
+      "scenario_id": "ae903192f2f3aad664c808dbced9fa25adeff52445aa070dc11ede7c1ea03763",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Query và facts chỉ quy định thủ tục thu hồi, nộp lại và cấp lại giấy phép vận tải GMS; không xác định việc thu hồi này là xử lý vi phạm giao thông đường bộ."
+        },
+        {
+          "code": "multi_hop",
+          "reason": "Query đã xác định tình huống bị thu hồi theo quyết định. Fact về việc cơ quan cấp giấy phép ban hành quyết định thu hồi không cần để suy ra hạn nộp giấy tờ, thời gian 45 ngày không được cấp lại hoặc thủ tục sau đó."
+        }
+      ]
+    },
+    {
+      "scenario_id": "9c5fab5665c1e10e3cb42190b896bbff9e14ae00fa6b3ec43e2a4ce9b996a4fb",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Fact chỉ áp dụng khi xe không thể vào làn dừng khẩn cấp trên đường cao tốc, trong khi query không xác định bối cảnh đường cao tốc."
+        },
+        {
+          "code": "grounding",
+          "reason": "Reference nêu nghĩa vụ thông báo như quy tắc chung nhưng không giữ điều kiện áp dụng trên đường cao tốc của fact."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim khẳng định nghĩa vụ báo tin không kèm các điều kiện giới hạn của fact, đặc biệt là tình huống trên đường cao tốc."
+        }
+      ]
+    },
+    {
+      "scenario_id": "ed9d8d29be0266a1e061cb0ba66de55d401636933b00c9d38789d7fec48c4e96",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Claim và câu trả lời khẳng định phải có tín hiệu báo hướng rẽ nhưng không giữ điều kiện thay thế trong fact: xe thô sơ không có đèn báo hướng rẽ có thể dùng tín hiệu bằng tay theo hướng rẽ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "fa93baecfbe4be810ed4f7ae52d2570f65d07425b6c6eced1ab55b7af1ee63e3",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "24a407bcc3ff997ade3d813274895ee712225f116493e29c1d3809c6b21749bf",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Tình huống chỉ hỏi thủ tục cấp mới/cấp lại Giấy phép liên vận ASEAN sau thu hồi, không xác định việc xử lý một vi phạm giao thông đường bộ hoặc hệ quả trực tiếp của vi phạm đó."
+        }
+      ]
+    },
+    {
+      "scenario_id": "296dda607df59da742408d0384862f2c82affa5c8ea8a6ca94c62842e12ca5ba",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact mức phạt 500.000 đồng chỉ có valid_from 01/01/2025 và valid_to=null. Fact mức 7.500.000 đồng có hiệu lực từ 15/08/2026 không tự chứng minh quy định cũ chấm dứt hoặc bị thay thế từ ngày này, nên không thể kết luận mức 500.000 đồng chỉ áp dụng đến trước 15/08/2026."
+        }
+      ]
+    },
+    {
+      "scenario_id": "bc3479d9f40c579197e16d54b80069a5ae3a90fcab142c3c064f2fd9f7847e41",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact năm 2025 có valid_to=null; fact hiệu lực từ 15/08/2026 không chứng minh quy định cũ hết hiệu lực hay chỉ áp dụng đến trước ngày đó. Vì vậy việc chia kết luận thành hai giai đoạn loại trừ nhau không được facts chứng minh."
+        }
+      ]
+    },
+    {
+      "scenario_id": "860a81ef23a2444a57d363a711d8491c34f0e74c12d873888bcdf4045993583a",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Bridge khẳng định từ 15/09/2026 mốc 30 ngày đã chuyển từ ngày nộp đủ giấy tờ sang ngày ký quyết định thu hồi. Facts không có mốc 15/09/2026; fact mới có valid_from 10/08/2026 và fact cũ có valid_to=null, nên không chứng minh sự thay thế hoặc chấm dứt quy định cũ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "5287bb7be332c22edd83553c065ad88da382afcdde77971339803786b635d3cb",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "c9e5f9c4a65ed5fb62082d49a9c9cf329b40c399d0db95492bab96618cf713cf",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Bridge và phần kết luận về việc cần chọn quy định theo thời điểm ngầm cho rằng Nghị định 218/2026 thay đổi hoặc thay thế cách áp dụng của Nghị định 158/2024. Facts chỉ cho biết thời điểm bắt đầu hiệu lực của từng nghị định; fact về Nghị định 158/2024 có valid_to=null và không có quy tắc thay thế hoặc lựa chọn giữa hai nghị định."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim về Nghị định 158/2024 làm mất điều kiện thẩm quyền rằng chính Sở Giao thông vận tải nơi phát hành Thông báo đăng ký khai thác tuyến thành công mới là cơ quan thu hồi."
+        }
+      ]
+    },
+    {
+      "scenario_id": "fd1a0c0739ee6061d0339e042a11e90e3b7ca55d06259c1d18c05e3e866a233b",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Required claim thứ nhất bỏ điều kiện thiết yếu của quy định chuyển tiếp: chức danh đó phải là chức danh chưa được quy định thẩm quyền xử phạt trong các nghị định xử phạt vi phạm hành chính theo lĩnh vực, dù đã được Nghị định 189/2025/NĐ-CP giao thẩm quyền."
+        }
+      ]
+    },
+    {
+      "scenario_id": "47311ce65a0ec67e05965e2a3aaa658daf774a4a4ed98688ffea979038cafb88",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Bridge khẳng định mốc áp dụng đã được chuyển từ 01/3/2026 sang 15/8/2026, hàm ý quan hệ sửa đổi hoặc thay thế giữa hai quy định. Facts chỉ nêu hai quy tắc có hiệu lực từ các ngày khác nhau và không chứng minh Nghị định 238/2026/NĐ-CP thay thế, bãi bỏ hoặc đổi mốc của Nghị định 336/2025/NĐ-CP."
+        }
+      ]
+    },
+    {
+      "scenario_id": "edef2cf92cbbf392801ab3bb84b95a15eb1ba9058e60da76ce43e4187e7ee416",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Query và answer chỉ xác định một mục đích được phép sử dụng tạm thời lòng đường, vỉa hè; không xác định hành vi vi phạm giao thông đường bộ hoặc việc xử lý vi phạm giao thông đường bộ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "cb621a6cf0aefa8340ba145cff692827759d3e021c772ab0987ca67d66ba4cd6",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Required claim chỉ nêu nghĩa vụ chung phải có biện pháp bảo vệ mặt đường, nhưng không bao quát điều kiện quyết định cho kết luận của answer: lắp guốc xích chỉ là một trong các biện pháp và có thể dùng tấm đan, ghi thép hoặc biện pháp khác để bảo vệ mặt đường."
+        }
+      ]
+    },
+    {
+      "scenario_id": "3152e16d25b03565d5912ec171165669d8ae9a0243894aecee480a38939fb270",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "b23320780bc1f7435742455b579312ac077ba16a5701d5773dfb36739ddacf5a",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Câu hỏi và các fact chỉ liên quan đến thủ tục báo cáo, nộp hoặc thu hồi phù hiệu khi ngừng kinh doanh vận tải; không xác định hay xử lý một hành vi vi phạm giao thông đường bộ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "1d4769778ebd6dfac6711750861f82e16598be4350aeeb8f4a6d9e4b37831e13",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "32fac79aba1e889bdf30438f9aab6af6097afde8b4507d44e95761a34534cc48",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Required claim về miễn phần tiền phạt còn lại đã làm mất các điều kiện pháp lý cụ thể: phải được giảm theo khoản 1 Điều 77 hoặc đã nộp lần thứ nhất/lần thứ hai trong trường hợp được nộp nhiều lần; khó khăn phải tiếp tục phát sinh do thiên tai, thảm họa, hỏa hoạn hoặc dịch bệnh; và việc xác nhận phải do các chủ thể được luật liệt kê."
+        }
+      ]
+    },
+    {
+      "scenario_id": "3dc5235c2a636fbfbd7e60324afc93685d94c4252553de703b44d5a6a2d1bd48",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Hai fact trả lời hai nhánh độc lập của câu hỏi: một fact xác định người lập biên bản, fact còn lại xác định Chủ tịch UBND có thẩm quyền xử phạt. Chúng không tạo thành chuỗi suy luận nhiều bước cho cùng một kết luận."
+        }
+      ]
+    },
+    {
+      "scenario_id": "3846d5565bcadecc799da58147093975a093bc5aa9225451dba2de95fd1db7ab",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Tình huống chỉ hỏi nghĩa vụ báo cáo và việc nộp phù hiệu khi cho thuê xe kinh doanh vận tải, không phải việc xác định hoặc xử lý vi phạm giao thông đường bộ."
+        },
+        {
+          "code": "temporal",
+          "reason": "Fact năm 2025 không có valid_to. Việc fact mới có hiệu lực từ 10/8/2026 không chứng minh quy định năm 2025 đã bị thay thế hoặc không còn áp dụng, nên không đủ căn cứ để xử lý câu hỏi liệu sau ngày này còn phải nộp phù hiệu hay không theo cách đối chiếu cũ-mới."
+        }
+      ]
+    },
+    {
+      "scenario_id": "4a0804e4664ba917000640cfca2e388ce12b89766ad0bd9b0fbca16b619cd4af",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact của Nghị định 118/2021 không có valid_to và không có metadata nào xác nhận quy định này đã bị thay thế hoặc việc chọn quy định chỉ phụ thuộc vào ngày ban hành quyết định. Vì vậy không đủ căn cứ để coi đây là quy định “trước đó” theo nghĩa không còn áp dụng và kết luận thiếu ngày ban hành thì không thể chọn cũ/mới."
+        }
+      ]
+    },
+    {
+      "scenario_id": "e401fb9fda120ea4982e90362ff9492019a499b826ff95d78c38f73aa56dec3f",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Query chỉ nêu quyết định tịch thu xe hết hiệu lực, không xác định đây là việc xác định hoặc xử lý vi phạm giao thông đường bộ. Fact cũng là quy định chung về xử lý vi phạm hành chính."
+        }
+      ]
+    },
+    {
+      "scenario_id": "64b4f4e3c0a3440ebace3dbf8707d5add63319d208fc89876f0334fb8afcbf19",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "9aeee11429221800577b2d44a8913285721d692d16920d4444a2791718fcfc56",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Answer mở rộng trách nhiệm liên đới sang thủ trưởng của mọi cơ quan hoặc đơn vị quản lý trực tiếp. Fact chỉ áp dụng cho thủ trưởng cơ quan, đơn vị có thẩm quyền xử lý vi phạm hành chính đối với người có thẩm quyền xử lý vi phạm hành chính thuộc quyền quản lý trực tiếp."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim về trách nhiệm liên đới cũng bỏ điều kiện chủ thể là thủ trưởng cơ quan, đơn vị có thẩm quyền xử lý vi phạm hành chính."
+        }
+      ]
+    },
+    {
+      "scenario_id": "53279684a2c4a44f5b042c67ce1fb54e2fa8c8a4404045aea380d9526081b903",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Việc công khai quyết định thu hồi giấy chấp thuận của cơ sở đào tạo thẩm tra viên là thủ tục quản lý hoạt động đào tạo, không phải xác định hoặc xử lý một vi phạm giao thông đường bộ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "a3e61c56b2820978add8e54fdd31e140afd0a514b6eecde491fcedb2419cc04f",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Thu hồi và cấp lại Giấy phép vận tải đường bộ quốc tế GMS do đơn vị chấm dứt hoạt động là thủ tục quản lý giấy phép kinh doanh vận tải, không phải xử lý hành vi vi phạm giao thông đường bộ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "8312371ff5397710494c4d77e639cc14111b2389abada874b9a867ea1a843abd",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Kết luận cần thiết cho câu hỏi về mức xử phạt khi chưa rõ kết quả đo chỉ là chưa thể xác định người lái có thuộc ngưỡng phạt 8–10 triệu đồng hay không. Fact về hành vi bị nghiêm cấm không phải điều kiện để xác định ngưỡng phạt này và tạo thành một kết luận độc lập."
+        }
+      ]
+    },
+    {
+      "scenario_id": "29f69941b9b95e75df975b9724605c766f100e5179d51e25fe051fee4fe0c341",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "647f35fbd42e75cf45ef080ef44941799542791cecd5d7fd49028de81a590b4f",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Với tình huống đã xác định giấy phép quá thời hạn tạm giữ và người vi phạm không nhận không có lý do chính đáng, nghĩa vụ chuyển giấy phép trong 10 ngày làm việc đã được fact thứ ba quy định trực tiếp. Việc thuộc điểm c khoản 1 Điều 66, yêu cầu quyết định kéo dài và giới hạn kéo dài 2 tháng không là điều kiện cho kết luận chuyển giấy phép."
+        }
+      ]
+    },
+    {
+      "scenario_id": "d0dea861af97bbbd77a3c8a507f62a9789ffa8e94057be593aecb4ae13dfd594",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Fact chỉ quy định người ra quyết định cưỡng chế phải tổ chức thực hiện cưỡng chế. Answer khẳng định cấp phó được giao quyền phải tổ chức thực hiện cưỡng chế mà không giữ điều kiện cấp phó đó là người ra quyết định cưỡng chế."
+        }
+      ]
+    },
+    {
+      "scenario_id": "dfa5fd61b754c3c7119e21887da050d0006a7267f0964c546bf04a7c91e3638b",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Câu hỏi cần xác định điều kiện, vị trí và thời điểm trừ điểm. Fact về dữ liệu trừ điểm được cập nhật tự động không phải điều kiện hay cơ sở cần thiết cho kết luận người lái có bị trừ điểm khi quyết định xử phạt có hiệu lực hay không."
+        }
+      ]
+    },
+    {
+      "scenario_id": "36ebd35595b9c0654368f1efe07c48956c7a847d0eaf9b7b75111e45780a2e0a",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Hai facts chỉ thể hiện các ngày bắt đầu hiệu lực và fact 45 ngày không có valid_to. Evidence không chứng minh quy định 45 ngày bị thay thế hoặc rằng chỉ cần thời điểm vụ việc là có thể lựa chọn duy nhất giữa hai chế độ; answer lại ngầm coi đây là các quy định loại trừ nhau."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim về thời hạn 45 ngày chỉ nói nộp giấy phép, phù hiệu “quá hạn hoặc không đủ”, làm mất điều kiện pháp lý cụ thể là quá 10 ngày kể từ ngày ký quyết định thu hồi mà đơn vị không nộp hoặc nộp không đủ theo quyết định thu hồi."
+        }
+      ]
+    },
+    {
+      "scenario_id": "4493f2b6516a37d1ff2b51ebd667c302b263b12f5968800a44ce76c92fe70836",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "7e0e27572bd82a50833a22afed1cd7baad8e5545c24bb741a8ccb16327a69a1e",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "e971060838c9190dab6dd08fc764bd60e6ede8cbdce087345284b6b2d3321f85",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact của Nghị định 168/2024 chỉ có valid_from 01/01/2025 và valid_to=null. Fact có hiệu lực 01/03/2026 không chứng minh quy định cũ chấm dứt hoặc chỉ áp dụng đến trước ngày này. Vì vậy không thể kết luận dứt khoát toàn bộ giai đoạn “trước 01/03/2026” theo danh mục cũ."
+        },
+        {
+          "code": "answerability",
+          "reason": "Query yêu cầu so sánh cả giai đoạn không giới hạn “trước 01/03/2026”, trong khi facts không bao phủ thời gian trước 01/01/2025 và không chứng minh hiệu lực kết thúc của quy định cũ. Gán answerable không phù hợp."
+        }
+      ]
+    },
+    {
+      "scenario_id": "9be8fb83637e68f559150930a48e9b33c6fbb383e42c52d75cf7a62117de5e1e",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Reference khẳng định lệnh cấm cho toàn bộ thời gian trước 10/08/2026, nhưng fact tương ứng chỉ có hiệu lực từ 01/01/2025. Facts không chứng minh quy định này áp dụng cho khoảng thời gian trước 01/01/2025."
+        },
+        {
+          "code": "answerability",
+          "reason": "Phạm vi thời gian “trước 10/08/2026” trong query không được giới hạn từ 01/01/2025, nên facts không đủ để trả lời dứt khoát cho toàn bộ giai đoạn được hỏi; gán answerable là không phù hợp."
+        }
+      ]
+    },
+    {
+      "scenario_id": "fece6696d5a3b527aa1451a4c23d706f101fdc88558dbd498ddd7d31bd803566",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "3e0e4d360bcbac688ddce55d67df1f76df81e4d193496c7adfe01ddd914e13a4",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact từ 10/08/2026 xác lập nghĩa vụ của Sở Xây dựng nhưng không chứng minh nghĩa vụ của Sở Giao thông vận tải đã bị thay thế, vì fact cũ có valid_to=null. Reference và reasoning kết luận trách nhiệm đã “chuyển”/“thuộc về” Sở Xây dựng là suy diễn thay thế không được facts chứng minh. Ngoài ra, phần “trước 10/08/2026” không được giới hạn từ valid_from 01/01/2025 của fact cũ."
+        },
+        {
+          "code": "answerability",
+          "reason": "Do query hỏi toàn bộ giai đoạn trước 10/08/2026 và về sự phân định cơ quan theo hai giai đoạn, nhưng facts không chứng minh hiệu lực trước 01/01/2025 hoặc sự chấm dứt trách nhiệm của Sở Giao thông vận tải, gán answerable không phù hợp."
+        }
+      ]
+    },
+    {
+      "scenario_id": "9b0044a949ccc961003bb453dd1950eb26f97acac538e0ab40051859d3444e17",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "7133509aaaef2f19a65ad8125e6fc7254ebe0b324ab51d613b833c5c6c9e00c3",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Hai fact trả lời hai nhánh độc lập của câu hỏi: fact thứ nhất về hành vi bị nghiêm cấm khi không có giấy tờ, fact thứ hai về giấy tờ phải mang theo. Chúng không tạo thành chuỗi suy luận mà cả hai đều cần thiết cho một kết luận duy nhất."
+        }
+      ]
+    },
+    {
+      "scenario_id": "8510a9f0e53dcd6495b72ca880d11401d3687b0928bfdc5e57762184b393dd97",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact của Nghị định 168/2024/NĐ-CP chỉ có valid_from và valid_to=null. Facts không chứng minh quy định này bị thay thế, hết hiệu lực hoặc không còn đồng thời áp dụng từ 01/03/2026, nên chưa đủ căn cứ kết luận thẩm quyền đã thay đổi theo thời điểm đó."
+        }
+      ]
+    },
+    {
+      "scenario_id": "5002f54fefd4de61a8d567a0290f58f5a966f78b8096792b7e3c65b62922a826",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Câu hỏi chỉ hỏi nghĩa vụ an toàn của đơn vị vận tải, không đặt trong việc xác định hoặc xử lý một vi phạm giao thông đường bộ cụ thể."
+        }
+      ]
+    },
+    {
+      "scenario_id": "164719b927c80e9da9985336caa55321d35280512db40ff68050fa735ecbad3d",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "80298ea63620f4ca66c9745c08c49700b6ead3e78cfbb593070d63bb39c7c829",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Câu hỏi không xác định việc tạm giữ xe thuộc một vụ vi phạm giao thông đường bộ; fact được nêu là quy định thủ tục hành chính chung về tạm giữ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "1861e87241d3dd0affa978a2e202ac33f33c87beed17d89ad3c5587800ce3d65",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "ab5380a7335e2c2f802218ecb594afc776da7a63633e305824ccb24f1e525bf7",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "domain",
+          "reason": "Nội dung thu hồi, nộp lại và cấp lại Giấy phép vận tải đường bộ quốc tế GMS khi đơn vị chấm dứt hoạt động là thủ tục quản lý hoạt động kinh doanh vận tải. Facts không xác định hay xử lý một hành vi vi phạm giao thông đường bộ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "0af37df9d891a7faeeb2d9a74b44f05449ab02f54aeb05f7c930c67eee4eeb09",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Kết luận về cách xác định thời hạn tước khi có nhiều hành vi đã bỏ điều kiện nguồn rằng cá nhân, tổ chức phải vi phạm hành chính nhiều lần và bị xử phạt về từng hành vi vi phạm. Việc chỉ nói có từ hai hành vi cùng bị tước chưa thể hiện đầy đủ điều kiện này."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim đầu tiên cũng lược bỏ các điều kiện 'vi phạm hành chính nhiều lần' và 'bị xử phạt về từng hành vi' của fact 25cd385fe20df4eee752cecfbd6e22b5e7f7b2a50d88c913cd377a3ac9fb9b8c."
+        }
+      ]
+    },
+    {
+      "scenario_id": "f095013e2d057e66edfcef8f12c1f37e07a60a9c31c2e610058fff84b6b21eb0",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "b81511cc07108b662e316eb1922ef06d371d7714547cdd30756cdacdd4d9184a",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "8e5ed56ff13f2c411f4e9b995b31603ea40422dd9f79cfd053dc9955b9865588",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "8567c83fb639db903972c0b4efe6f2a9cb1c9e68bdb6db98b286b6d3369678ce",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "cfab035558903f4df7d3084af081fe3a02a5ab9024ca08d0f9f22a096b04b765",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Reasoning và kết luận coi nghĩa vụ gỡ phù hiệu từ 10/08/2026 và thu hồi phù hiệu theo quy định từ 01/01/2025 là các hậu quả được lựa chọn theo thời điểm chuyển nhượng. Tuy nhiên fact cũ không có valid_to và không có dữ kiện về thay thế, bãi bỏ hoặc quan hệ ưu tiên áp dụng, nên không thể suy ra thời điểm tự nó quyết định chỉ áp dụng một trong hai hậu quả."
+        }
+      ]
+    },
+    {
+      "scenario_id": "fd4bc19687b931c34fdca2f34544af19356b6df912c1f08b4706c47c1ea87593",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Fact về công thức chỉ áp dụng khi thực hiện hành vi quy định tại điểm b khoản 3 hoặc điểm c khoản 4 Điều 10 và khi áp dụng biện pháp buộc nộp lại lợi bất hợp pháp. Query chỉ nêu chung việc thu tiền sử dụng đường bộ phải nộp lợi bất hợp pháp, không xác định hành vi thuộc các điểm này."
+        },
+        {
+          "code": "claims",
+          "reason": "Claim và reference khái quát công thức cho hành vi thu tiền sử dụng đường bộ mà làm mất điều kiện giới hạn tại điểm b khoản 3, điểm c khoản 4 Điều 10, cũng như điều kiện đang áp dụng biện pháp buộc nộp lại số lợi bất hợp pháp."
+        }
+      ]
+    },
+    {
+      "scenario_id": "e4a732f61aaec0108731a1585abcb23d7fcd70958431ad980aa07dcec0069c95",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "55a98f106e0a9e2ee6d00df544db8588e3000189d71930061aa36f7dad572409",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Reference khẳng định quy định có hiệu lực từ 01/01/2025 không có ngoại lệ khi xe ngừng do tai nạn giao thông. Fact tương ứng chỉ nêu ngưỡng dưới 70% chuyến, không chứng minh sự vắng mặt của ngoại lệ trong quy định."
+        },
+        {
+          "code": "claims",
+          "reason": "Các required_claims không bao quát kết luận rằng quy định từ 01/01/2025 không có ngoại lệ do tai nạn giao thông."
+        }
+      ]
+    },
+    {
+      "scenario_id": "5801996add5f8a5ec9ff6a1044c04c3330a7cb8849a0b2a55238f81275c4b671",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "975cc1af098f4b69323739a37bebe8a198bb9be9c631a9d5c3287da8eea27c6a",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Phần trả lời cho giai đoạn từ 01/7/2025 chỉ nói thẩm quyền tịch thu “theo quy định áp dụng trong Công an nhân dân”, nhưng fact quy định rõ giới hạn giá trị tịch thu: không vượt quá 02 lần mức phạt tiền đến 30% mức tiền phạt tối đa của lĩnh vực tương ứng."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim từ 01/7/2025 làm mất giới hạn giá trị tịch thu bắt buộc nêu trong fact."
+        }
+      ]
+    },
+    {
+      "scenario_id": "0e7d73af0c615a3c4b94e43aaa0e6ad24d62508beb85cd9ad8255cece91d5bd0",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "ad8c70446167c8330c74af367695169c54121ddd2f4c9bb3648ed23aa407f164",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Reference khái quát quy tắc đình chỉ cho mọi trường hợp người nước ngoài vi phạm, nhưng fact chỉ áp dụng cho doanh nghiệp kinh doanh dịch vụ lữ hành quốc tế của Việt Nam tổ chức hoạt động nêu trên, hoặc tổ chức/cá nhân có văn bản chấp thuận đối với xe tay lái bên phải."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim về đình chỉ bỏ các điều kiện về chủ thể, loại hoạt động và trường hợp đã được cấp phép/văn bản chấp thuận trong fact."
+        }
+      ]
+    },
+    {
+      "scenario_id": "da22484f2a04b336f9cb23aa220042a4f24f258a35f1ec97caac1b972ed4cb43",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Query chỉ hỏi hành vi có bị cấm hay không và fact trả lời trực tiếp; không cần dữ kiện về chế tài để trả lời câu hỏi này. Vì vậy mẫu phải là answerable, không phải partially_answerable."
+        }
+      ]
+    },
+    {
+      "scenario_id": "de40d1d706869b075549fa3ed3ed0d9f2f9ae1a6224c07771b12a5ce7d34aa22",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Query không nêu hành vi cụ thể thuộc điểm a khoản 2 Điều 11 và hành vi tương ứng tại điểm d khoản 4 Điều 12, nên không thể xác định mức phạt áp dụng hoặc số tiền phạt cụ thể."
+        },
+        {
+          "code": "grounding",
+          "reason": "Reference trình bày quy tắc áp dụng mức phạt cá nhân theo hướng khái quát, nhưng không giữ rõ giới hạn rằng quy tắc chỉ áp dụng cho hành vi tại điểm a khoản 2 Điều 11 và hành vi tương ứng tại điểm d khoản 4 Điều 12."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim chỉ nêu chung “hành vi tương ứng”, làm mất các điều kiện pháp lý về nhóm hành vi được dẫn chiếu cụ thể tại điểm a khoản 2 Điều 11 và điểm d khoản 4 Điều 12."
+        }
+      ]
+    },
+    {
+      "scenario_id": "425a8aaf5a14597e320968f4a243dd4ddea0979868dd34806550215b550b4775",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Fact có hiệu lực từ 15/8/2026 chỉ khẳng định quyền phạt cảnh cáo của các chức danh được liệt kê; không xác lập rằng đây là danh sách đóng, đầy đủ để suy ra Thủy đội trưởng không còn được nêu hoặc không có quyền này."
+        },
+        {
+          "code": "temporal",
+          "reason": "Fact năm 2025 có valid_to=null. Việc có một fact khác hiệu lực từ 15/8/2026 không tự chứng minh quy định năm 2025 đã bị thay thế, hết hiệu lực hoặc không còn áp dụng từ thời điểm đó."
+        }
+      ]
+    },
+    {
+      "scenario_id": "05c0a0cf0c54f8136b6f42eb5e46b5293f3d421def64a88cf3ae83b8cb017754",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Việc bổ sung thời điểm xảy ra vụ việc vẫn không đủ để chọn một trong hai quy định, vì fact năm 2025 có valid_to=null và không có fact nào quy định bị bãi bỏ, bị thay thế hoặc không còn áp dụng từ 01/03/2026."
+        },
+        {
+          "code": "temporal",
+          "reason": "Reference suy luận rằng thời điểm vụ việc quyết định áp dụng riêng quy định năm 2025 hoặc năm 2026. Facts chỉ chứng minh các mốc có hiệu lực, không chứng minh quy định năm 2026 thay thế hay làm mất hiệu lực quy định năm 2025."
+        }
+      ]
+    },
+    {
+      "scenario_id": "30f2177ef0b2dab410ec5d410d19e39947ebac6a2f7e3bfcc77f5118b63ee8bb",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "5065fe86a58442065d415f33964ec79390e0eb0efbc4291d4a9cec7b8a68d37a",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "multi_hop",
+          "reason": "Fact về nghĩa vụ xe bốn bánh phải hoạt động đúng thời gian không cần thiết cho kết luận xử phạt. Fact xử phạt đã trực tiếp xác định đúng loại xe, hành vi hoạt động không đúng thời gian được phép, mức phạt và ngoại lệ; do đó kết luận được hỏi không cần dùng mọi fact của chuỗi multi-hop."
+        }
+      ]
+    },
+    {
+      "scenario_id": "b48dd9901f29cc09ab2843563adae7f5e3360cc98f5a7be8f0fcdba353dcda59",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Reference khái quát nghĩa vụ chuyển thành áp dụng cho mọi trường hợp người đang xử lý không có thẩm quyền lập biên bản. Fact chỉ quy định việc chuyển đối với các loại biên bản, tài liệu và các tình huống được liệt kê, như hành vi không thuộc thẩm quyền/lĩnh vực/địa bàn, cần giám định hoặc trường hợp cần thiết khác, hay tài liệu phát hiện trong các hoạt động được nêu."
+        },
+        {
+          "code": "claims",
+          "reason": "Required claim thứ nhất làm mất các giới hạn về loại tài liệu và điều kiện phát sinh nghĩa vụ chuyển trong fact, nên không phản ánh đầy đủ điều kiện pháp lý của quy định."
+        }
+      ]
+    },
+    {
+      "scenario_id": "0fe1d3e88ee666bcf557dc94d0670e3e77ffc5fb16c94c9fd482b25c32c5ec0c",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "75e031f20a441f1920418ce574f7bc1d1f32ffbc9120d88807e8d371ddd16996",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Reference phân kỳ quy định năm 2022 chỉ áp dụng trước 02/05/2025 và quy định năm 2025 áp dụng từ ngày đó như hai chế độ thay thế nhau. Fact năm 2022 có valid_to=null; không có fact hoặc metadata nào chứng minh quy định này bị thay thế, hết hiệu lực hoặc không còn áp dụng từ 02/05/2025."
+        }
+      ]
+    },
+    {
+      "scenario_id": "a3b0d263a761ebeebc2546f2bfb36d6825b86af84119913df992ed8afb353251",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "9d2689bdbebe3c26e2f31d2c5d904817d25cc9fc64ae82c54ba18b98e3208d36",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "claims",
+          "reason": "Required claim về miễn phần tiền phạt còn lại đã khái quát thiếu các điều kiện pháp lý cụ thể trong fact: khó khăn phải là đặc biệt hoặc đột xuất do thiên tai, thảm họa, hỏa hoạn hoặc dịch bệnh; đồng thời phải thi hành xong hình thức xử phạt bổ sung và biện pháp khắc phục hậu quả, không phải diễn đạt rộng là “thi hành xong quyết định”."
+        }
+      ]
+    },
+    {
+      "scenario_id": "e429e8fdb96e0b30677712586c77bc358ea33fabba6d5f0368ae40a877c03b2c",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "ea04bd752e78d9b9f7305da1e4de38cff2e0e3e2db4caaea56669ec1e61d569a",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Facts chỉ xác nhận hiệu lực bắt đầu của từng quy định và đều không có valid_to. Không có căn cứ để kết luận thẩm quyền theo quy định từ 01/3/2026 chỉ áp dụng đến trước 15/8/2026, hoặc quy định từ 15/8/2026 là sự bổ sung/thay thế làm các quyền cũ vẫn tiếp tục áp dụng."
+        }
+      ]
+    },
+    {
+      "scenario_id": "8cdb91484b386ff987567dacdcd4a40642349efaf6460f512afdb1d9865ce410",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "answerability",
+          "reason": "Câu hỏi chung về cách xác minh khi phải ban hành quyết định xử phạt mới được fact 52cc75... trả lời trực tiếp; không thiếu dữ kiện tình huống nào khiến mẫu chỉ partially_answerable."
+        },
+        {
+          "code": "multi_hop",
+          "reason": "Fact 52cc75... một mình đủ cho kết luận được hỏi. Fact về trường hợp cũ thuộc khoản 3 Điều 13 chỉ là so sánh bổ sung, không cần thiết cho kết luận chính nên không tạo thành multi-hop cần cả hai facts."
+        }
+      ]
+    },
+    {
+      "scenario_id": "58a0e382e10fae511b660baff3fb92af3fe4d276de8c9a2fbfe8c212a354e310",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Không có fact hay metadata nào xác lập rằng quy định có hiệu lực từ 01/01/2025 chấm dứt áp dụng vào 01/3/2026. Valid_from của quy định mới không tự chứng minh khoảng áp dụng “đến trước ngày 01/3/2026” của quy định cũ."
+        }
+      ]
+    },
+    {
+      "scenario_id": "bde8117f9332c8f2c5f40037800e7d20973ef9f0dc56e56260622ef6d470615f",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "22c4e3b8360552c65bf02d9288987cec49a62715e96af3d91a73175671b178c4",
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "scenario_id": "860cbe2c17fd20835d74c233823b56159db05b9391fb41cc8936668fdd1e73c3",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "temporal",
+          "reason": "Fact cũ có valid_to=null và fact mới chỉ xác lập thẩm quyền theo Điều 3 từ 01/3/2026, không nêu sửa đổi, thay thế hoặc chấm dứt phạm vi thẩm quyền cũ. Vì vậy không đủ facts để khẳng định quy định cũ chỉ áp dụng trước ngày 01/3/2026."
+        }
+      ]
+    },
+    {
+      "scenario_id": "8971cfcc6cab2b2bce8bc5b252e95e956c1b7f6f5569f02bc17b10487ecc070c",
+      "status": "fail",
+      "issues": [
+        {
+          "code": "grounding",
+          "reason": "Thời hạn không cấp lại 45 ngày chỉ phát sinh khi đơn vị quá 15 ngày kể từ ngày ký quyết định thu hồi mà không nộp hoặc nộp không đủ các giấy phép theo quyết định. Answer nêu 45 ngày như hệ quả của việc nộp đủ mà làm mất điều kiện tiên quyết này."
+        },
+        {
+          "code": "claims",
+          "reason": "required_claim chỉ bao quát mốc 45 ngày kể từ khi nộp đủ, nhưng không bao quát điều kiện quá hạn 15 ngày và không nộp hoặc nộp không đủ giấy phép, vốn cần thiết cho kết luận không cấp lại."
+        }
+      ]
+    }
+  ]
+}

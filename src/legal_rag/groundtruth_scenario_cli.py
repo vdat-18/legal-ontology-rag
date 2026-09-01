@@ -46,6 +46,17 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         help="JSON string array of existing bundle IDs to reconfirm",
     )
+    parser.add_argument(
+        "--replace-scenario-id",
+        action="append",
+        default=[],
+        help="Existing scenario ID whose evidence bundle must be excluded; repeat as needed",
+    )
+    parser.add_argument(
+        "--replace-scenario-ids",
+        type=Path,
+        help="JSON string array of existing scenario IDs to replace",
+    )
     parser.add_argument("--synthesis-config", type=Path, required=True, help="Versioned synthesis config JSON path")
     return parser
 
@@ -65,10 +76,12 @@ def main() -> None:
     )
     from legal_rag.benchmark_synthesis.config import SynthesisSettings
     from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError
+    from legal_rag.benchmark_synthesis.scenario_replacement import load_replace_scenario_ids
     from legal_rag.benchmark_synthesis.scenario_sampling import (
         ScenarioSamplingConfig,
         load_personas,
         load_scenario_distribution,
+        replace_scenarios,
         sample_scenarios,
     )
     from legal_rag.benchmark_synthesis.writer import (
@@ -78,6 +91,7 @@ def main() -> None:
         read_multi_hop_3_bundles,
         read_multi_hop_4_bundles,
         read_multi_hop_5_bundles,
+        read_scenarios,
         write_bundle_scope_records,
         write_scenarios,
     )
@@ -98,6 +112,36 @@ def main() -> None:
     multi_hop_5 = read_multi_hop_5_bundles(arguments.multi_hop_5_bundles_path)
     bundles = _all_bundles(facts, relations, multi_hop_3, multi_hop_4, multi_hop_5, synthesis_settings)
     bundle_ids = frozenset(bundle.bundle_id for bundle in bundles)
+    replace_scenario_ids = load_replace_scenario_ids(
+        arguments.replace_scenario_id,
+        arguments.replace_scenario_ids,
+    )
+    scenario_config = ScenarioSamplingConfig(
+        personas=load_personas(arguments.personas),
+        distribution=load_scenario_distribution(arguments.scenario_distribution),
+    )
+    facts_by_id = {fact.fact_id: fact for fact in facts}
+    if replace_scenario_ids:
+        if not arguments.scenarios_output_path.exists():
+            msg = "Selective scenario replacement requires an existing scenarios output"
+            raise ValueError(msg)
+        existing_scenarios = read_scenarios(arguments.scenarios_output_path)
+        replacement = replace_scenarios(
+            bundles,
+            facts_by_id,
+            scenario_config,
+            existing_scenarios,
+            replace_scenario_ids,
+            total_samples=arguments.total_samples,
+        )
+        write_scenarios(arguments.scenarios_output_path, replacement.scenarios)
+        logger.info(
+            "Replaced {} scenario(s) backed by {} rejected bundle(s) in {:.2f} seconds",
+            len(replacement.replaced_scenario_ids),
+            len(replacement.excluded_bundle_ids),
+            time.perf_counter() - started_at,
+        )
+        return
 
     run_id = build_bundle_scope_run_id(
         bundles,
@@ -161,13 +205,9 @@ def main() -> None:
         msg = "Bundle scope confirmation accepted no bundles"
         raise ValueError(msg)
 
-    scenario_config = ScenarioSamplingConfig(
-        personas=load_personas(arguments.personas),
-        distribution=load_scenario_distribution(arguments.scenario_distribution),
-    )
     scenarios = sample_scenarios(
         accepted_bundles,
-        {fact.fact_id: fact for fact in facts},
+        facts_by_id,
         scenario_config,
         total_samples=arguments.total_samples,
     )

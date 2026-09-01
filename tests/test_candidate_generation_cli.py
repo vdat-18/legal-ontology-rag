@@ -265,3 +265,46 @@ def test_candidate_generation_cli_selectively_regenerates_legacy_prompt_task(
     regenerated = read_candidates(candidates_path)
     assert len(regenerated) == 1
     assert regenerated[0].prompt_version == CANDIDATE_GENERATION_PROMPT_VERSION
+
+
+def test_candidate_generation_cli_migrates_only_replaced_scenarios(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Scenario replacement preserves retained progress and generates only new tasks."""
+    facts_path = tmp_path / "legal_facts.jsonl"
+    scenarios_path = tmp_path / "scenarios.jsonl"
+    candidates_path = tmp_path / "single_turn.jsonl"
+    write_legal_facts(facts_path, [_fact()])
+    first = _scenario()
+    retained = replace(_scenario(), scenario_id="scenario-2", query_style="formal")
+    replacement = replace(_scenario(), scenario_id="scenario-3", query_style="polite")
+    write_scenarios(scenarios_path, (first, retained))
+    _configure_cli(monkeypatch, facts_path, scenarios_path, candidates_path, candidates_per_scenario=1)
+    candidate_generation_cli.main()
+    retained_sample_id = {draft.scenario_id: draft.sample_id for draft in read_candidates(candidates_path)}[
+        retained.scenario_id
+    ]
+
+    write_scenarios(scenarios_path, (retained, replacement))
+    generated_task_ids: list[str] = []
+
+    class _ReplacementClient(_FakeGenerationClient):
+        def generate_batch(
+            self, items: list[CandidateGenerationBatchInput]
+        ) -> list[GeneratedSingleTurnCandidateBatchItem]:
+            generated_task_ids.extend(item.task_id for item in items)
+            return super().generate_batch(items)
+
+    monkeypatch.setattr(candidate_generation, "BamlCandidateGenerationClient", _ReplacementClient)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [*sys.argv, "--replace-scenario-id", first.scenario_id],
+    )
+
+    candidate_generation_cli.main()
+
+    drafts = read_candidates(candidates_path)
+    assert [draft.scenario_id for draft in drafts] == [retained.scenario_id, replacement.scenario_id]
+    assert drafts[0].sample_id == retained_sample_id
+    assert generated_task_ids == [f"{replacement.scenario_id}:0"]

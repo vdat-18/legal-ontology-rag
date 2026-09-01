@@ -6,6 +6,9 @@ import json
 from collections.abc import Sequence
 from pathlib import Path
 
+from legal_rag.benchmark_synthesis.candidate_record import CandidateProgressRecord
+from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
+
 
 def load_regenerate_task_ids(inline_ids: Sequence[str], ids_path: Path | None) -> frozenset[str]:
     """Return task IDs supplied inline or through a JSON string array."""
@@ -35,3 +38,50 @@ def validate_selective_generation(
     if task_ids - requested_ids - completed_ids:
         msg = "Selective candidate generation requires prior progress for every unselected task"
         raise ValueError(msg)
+
+
+def prior_scenarios_from_progress(records: Sequence[CandidateProgressRecord]) -> tuple[Scenario, ...]:
+    """Reconstruct the prior ordered scenario input from persisted candidate progress."""
+    scenarios_by_id: dict[str, Scenario] = {}
+    for record in records:
+        draft = record.draft
+        scenario = Scenario(
+            scenario_id=draft.scenario_id,
+            bundle_kind=draft.bundle_kind,
+            query_form=draft.query_form,
+            answerability=draft.answerability,
+            persona=draft.persona,
+            query_style=draft.query_style,
+            query_length=draft.query_length,
+            reasoning_hops=draft.reasoning_hops,
+            fact_ids=draft.source_fact_ids,
+            bridge=draft.bridge,
+            gold_chunk_ids=draft.gold_chunk_ids,
+        )
+        existing = scenarios_by_id.setdefault(scenario.scenario_id, scenario)
+        if existing != scenario:
+            msg = f"Candidate progress disagrees about scenario {scenario.scenario_id}"
+            raise ValueError(msg)
+    return tuple(scenarios_by_id.values())
+
+
+def validate_scenario_replacement(
+    prior_scenarios: Sequence[Scenario],
+    current_scenarios: Sequence[Scenario],
+    replace_scenario_ids: frozenset[str],
+) -> frozenset[str]:
+    """Validate an explicit same-size scenario replacement and return new scenario IDs."""
+    prior_ids = frozenset(scenario.scenario_id for scenario in prior_scenarios)
+    current_ids = frozenset(scenario.scenario_id for scenario in current_scenarios)
+    if len(prior_ids) != len(prior_scenarios) or len(current_ids) != len(current_scenarios):
+        msg = "Scenario replacement requires unique scenario IDs"
+        raise ValueError(msg)
+    removed_ids = prior_ids - current_ids
+    added_ids = current_ids - prior_ids
+    if removed_ids != replace_scenario_ids:
+        msg = f"Scenario replacement removed unexpected IDs: expected {sorted(replace_scenario_ids)}, got {sorted(removed_ids)}"
+        raise ValueError(msg)
+    if len(added_ids) != len(removed_ids) or len(current_scenarios) != len(prior_scenarios):
+        msg = "Scenario replacement must preserve the total scenario count"
+        raise ValueError(msg)
+    return added_ids
