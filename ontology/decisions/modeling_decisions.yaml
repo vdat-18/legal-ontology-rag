@@ -133,7 +133,8 @@ modeling_decisions:
     review_status: ontology_reviewed
     cq_ids: [CQ-PENALTY-001, CQ-CONSEQUENCE-001, CQ-POINTS-001, CQ-ADDITIONAL-001, CQ-REMEDY-001]
     pilot_evidence: >-
-      No-plate and plate-compliance fixtures require distinct consequence kinds, values, and targets.
+      Population data requires distinct kinds for monetary penalties, warnings, point deductions, additional
+      sanctions, remedial measures, and penalties determined through an explicit reference.
     stakeholder_approval: accepted_for_v0.1
     pending_review: []
 

@@ -580,9 +580,11 @@ lorsh:LegalConsequenceShape a sh:NodeShape ;
     sh:targetClass lorlc:LegalConsequence ;
     sh:or (
         [ sh:class lorlc:MonetaryPenalty ]
+        [ sh:class lorlc:Warning ]
         [ sh:class lorlc:PointDeduction ]
         [ sh:class lorlc:AdditionalSanction ]
         [ sh:class lorlc:RemedialMeasure ]
+        [ sh:class lorlc:ReferencedPenalty ]
     ) ;
     sh:property [
         sh:path [ sh:inversePath lorlc:imposesConsequence ] ;
@@ -650,6 +652,12 @@ lorsh:MonetaryAmountRangeShape a sh:NodeShape ;
     lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
     lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
+
+lorsh:WarningShape a sh:NodeShape ;
+    sh:targetClass lorlc:Warning ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-CONSEQUENCE-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002" .
 
 lorsh:CurrencyShape a sh:NodeShape ;
     sh:targetClass lorlc:Currency ;
@@ -737,3 +745,15 @@ lorsh:RemedialMeasureShape a sh:NodeShape ;
     lorsp:requirementReference "PURP-002", "USE-002", "SCOPE-003", "SCOPE-004", "SCOPE-005", "GRAN-002", "GRAN-005" ;
     lorsp:competencyQuestionReference "CQ-REMEDY-001", "CQ-CONSEQUENCE-001" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002", "MD-SUBJECT-001" .
+
+lorsh:ReferencedPenaltyShape a sh:NodeShape ;
+    sh:targetClass lorlc:ReferencedPenalty ;
+    sh:property [
+        sh:path lorlc:affectsTarget ;
+        sh:minCount 1 ;
+        sh:class lorlc:ConsequenceTarget ;
+        sh:message "A referenced penalty must identify the referenced conduct or rule."@en
+    ] ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-CONSEQUENCE-001", "CQ-SOURCE-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002", "MD-PROV-001" .

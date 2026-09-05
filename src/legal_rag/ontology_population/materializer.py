@@ -35,9 +35,11 @@ CONDITION_CLASSES = {
 }
 CONSEQUENCE_CLASSES = {
     "MonetaryPenalty": LORLC.MonetaryPenalty,
+    "Warning": LORLC.Warning,
     "PointDeduction": LORLC.PointDeduction,
     "AdditionalSanction": LORLC.AdditionalSanction,
     "RemedialMeasure": LORLC.RemedialMeasure,
+    "ReferencedPenalty": LORLC.ReferencedPenalty,
 }
 
 

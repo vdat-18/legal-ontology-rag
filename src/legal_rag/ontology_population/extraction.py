@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 from decimal import Decimal
@@ -55,7 +55,7 @@ from legal_rag.ontology_population.models import (
 )
 from legal_rag.settings import Settings
 
-ONTOLOGY_POPULATION_PROMPT_VERSION = "0.21.0"
+ONTOLOGY_POPULATION_PROMPT_VERSION = "0.24.0"
 
 
 def build_population_run_id(pilot_run_id: str, settings: Settings) -> str:
@@ -106,6 +106,17 @@ def build_population_binding_run_id(conduct_inventory_id: str, settings: Setting
             "llm_base_url": settings.llm_base_url,
             "llm_model": settings.llm_model,
             "llm_extra_request_body": dict(settings.llm_extra_request_body),
+        }
+    )
+
+
+def build_population_binding_rerun_id(base_run_id: str, target_chunk_ids: Sequence[str]) -> str:
+    """Identify one resumable selective population-binding rerun."""
+    return population_identity(
+        {
+            "stage": "population-binding-selective-rerun",
+            "base_run_id": base_run_id,
+            "target_chunk_ids": sorted(target_chunk_ids),
         }
     )
 
@@ -212,6 +223,7 @@ class PersistedConductPopulationClient:
 
 def extract_target_conducts(
     target_chunks: Sequence[Chunk],
+    document_chunks: Sequence[Chunk],
     client: OntologyConductClient,
     population_settings: PopulationSettings,
     *,
@@ -220,6 +232,7 @@ def extract_target_conducts(
     on_batch_processed: Callable[[Sequence[TargetConductInventoryRecord]], None] | None = None,
 ) -> tuple[TargetConductInventoryRecord, ...]:
     """Extract target-only conduct inventories with resumable batch checkpoints."""
+    chunks_by_id = {chunk.chunk_id: chunk for chunk in document_chunks}
     batches = [
         target_chunks[batch_start : batch_start + population_settings.conduct_batch_size]
         for batch_start in range(0, len(target_chunks), population_settings.conduct_batch_size)
@@ -230,7 +243,14 @@ def extract_target_conducts(
     with ThreadPoolExecutor(max_workers=max_concurrency) as executor:
         futures = {}
         for batch_index, batch in enumerate(batches):
-            inputs = tuple(_target_conduct_input_from_chunk(target) for target in batch)
+            inputs = tuple(
+                _target_conduct_input_from_chunk(
+                    target,
+                    chunks_by_id,
+                    max_preceding_chunks=population_settings.max_preceding_chunks,
+                )
+                for target in batch
+            )
             task_key = _conduct_batch_task_key(inputs)
             future = executor.submit(
                 execute_llm_task,
@@ -333,16 +353,42 @@ def _target_conduct_input(item: FactExtractionBatchItem) -> OntologyTargetConduc
     return OntologyTargetConductInput(
         target_chunk_id=item.target_chunk_id,
         structural_context=target.context_text,
+        locator_context=_format_locator_context(
+            entry for entry in item.window if entry.role in {ChunkWindowRole.Preceding, ChunkWindowRole.PrecedingTarget}
+        ),
         evidence_sources=list(fragment_evidence_sources(target.chunk_id, target.text)),
     )
 
 
-def _target_conduct_input_from_chunk(target: Chunk) -> OntologyTargetConductInput:
+def _target_conduct_input_from_chunk(
+    target: Chunk,
+    chunks_by_id: Mapping[str, Chunk],
+    *,
+    max_preceding_chunks: int,
+) -> OntologyTargetConductInput:
     """Build the isolated LLM input directly from one selected target chunk."""
+    locator_context = tuple(
+        entry
+        for entry in build_reading_window(
+            target,
+            chunks_by_id,
+            max_preceding_chunks=max_preceding_chunks,
+            max_following_chunks=0,
+        )
+        if entry.role == ChunkWindowRole.Preceding
+    )
     return OntologyTargetConductInput(
         target_chunk_id=target.chunk_id,
         structural_context=target.context_text,
+        locator_context=_format_locator_context(locator_context),
         evidence_sources=list(fragment_evidence_sources(target.chunk_id, target.text)),
+    )
+
+
+def _format_locator_context(entries: Iterable[ChunkWindowEntry]) -> str:
+    """Serialize navigation-only context without turning it into evidence."""
+    return "\n\n".join(
+        f"[{entry.role}] chunk_id={entry.chunk_id}\n{entry.context_text}\n{entry.text}" for entry in entries
     )
 
 
@@ -408,12 +454,24 @@ def finalize_population_binding_results(
     for target_id in requested_ids:
         item = items_by_target[target_id]
         conducts_by_id = {conduct.conduct_id: conduct for conduct in item.target_conducts}
+        bound_rules = results_by_target[target_id].rules
+        unknown_conduct_ids = {bound.target_conduct_id for bound in bound_rules} - set(conducts_by_id)
+        if unknown_conduct_ids:
+            msg = "Population rule must reference a locked Target conduct"
+            raise ValueError(msg)
+        bound_conduct_ids = {bound.target_conduct_id for bound in bound_rules}
+        missing_conduct_ids = set(conducts_by_id) - bound_conduct_ids
+        if missing_conduct_ids:
+            msg = f"Population binding omitted locked Target conduct: {sorted(missing_conduct_ids)[0]}"
+            raise ValueError(msg)
         rules = []
-        for bound in results_by_target[target_id].rules:
-            conduct = conducts_by_id.get(bound.target_conduct_id)
-            if conduct is None:
-                msg = "Population rule must reference a locked Target conduct"
+        for bound in bound_rules:
+            conduct = conducts_by_id[bound.target_conduct_id]
+            if not bound.rule.consequences:
+                msg = f"Population binding returned no consequence for locked Target conduct: {conduct.conduct_id}"
                 raise ValueError(msg)
+            bound.rule.conduct_label_vi = conduct.conduct_label_vi
+            bound.rule.provision_path = conduct.provision_path
             rules.append(bound.rule)
         finalized.append(OntologyPopulationBatchResult(target_chunk_id=target_id, rules=rules))
     return tuple(finalized)

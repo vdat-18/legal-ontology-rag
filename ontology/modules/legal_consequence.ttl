@@ -16,7 +16,7 @@
         <https://w3id.org/legal-ontology-rag/ontology/source-provenance> ;
     dcterms:title "Legal Consequence Module"@en,
         "Mô-đun hậu quả pháp lý"@vi ;
-    dcterms:description "Independently evidenced monetary penalties, point deductions, additional sanctions, remedial measures, qualified values, and consequence targets."@en ;
+    dcterms:description "Independently evidenced monetary penalties, warnings, point deductions, additional sanctions, remedial measures, referenced penalties, qualified values, and consequence targets."@en ;
     dcterms:issued "2026-08-18"^^xsd:date ;
     dcterms:source "docs/ontology_construction_plan.md" .
 
@@ -47,6 +47,15 @@ lorlc:MonetaryAmountRange a owl:Class ;
     lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
     lorsp:competencyQuestionReference "CQ-PENALTY-001" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001" .
+
+lorlc:Warning a owl:Class ;
+    rdfs:subClassOf lorlc:LegalConsequence ;
+    rdfs:label "Warning"@en,
+        "Cảnh cáo"@vi ;
+    rdfs:comment "A warning imposed as a principal administrative penalty without a monetary amount."@en ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-CONSEQUENCE-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002" .
 
 lorlc:Currency a owl:Class ;
     rdfs:subClassOf skos:Concept ;
@@ -86,6 +95,15 @@ lorlc:RemedialMeasure a owl:Class ;
     lorsp:competencyQuestionReference "CQ-REMEDY-001", "CQ-CONSEQUENCE-001" ;
     lorsp:glossaryReference "TERM-REMEDY-001" ;
     lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002" .
+
+lorlc:ReferencedPenalty a owl:Class ;
+    rdfs:subClassOf lorlc:LegalConsequence ;
+    rdfs:label "Referenced penalty"@en,
+        "Mức xử phạt dẫn chiếu"@vi ;
+    rdfs:comment "A legal effect whose concrete penalty is determined by an evidenced reference to another conduct or rule."@en ;
+    lorsp:requirementReference "USE-002", "SCOPE-005", "GRAN-005" ;
+    lorsp:competencyQuestionReference "CQ-CONSEQUENCE-001", "CQ-SOURCE-001" ;
+    lorsp:modelingDecisionReference "MD-CONSEQUENCE-001", "MD-CONSEQUENCE-002", "MD-PROV-001" .
 
 lorlc:ConsequenceTarget a owl:Class ;
     rdfs:label "Consequence target"@en,

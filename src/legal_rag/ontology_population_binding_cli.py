@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
@@ -29,11 +30,17 @@ def _parser() -> argparse.ArgumentParser:
     target_group.add_argument("--target-limit", type=int, help="Maximum accepted chunks selected for a pilot run")
     target_group.add_argument("--target-ids-path", type=Path, help="Reviewed pilot target-selection JSON path")
     parser.add_argument(
+        "--rerun-target-ids-path",
+        type=Path,
+        help="Reviewed target-selection JSON containing only chunks that must be bound again",
+    )
+    parser.add_argument(
         "--max-concurrency",
         type=int,
         default=DEFAULT_ONTOLOGY_MAX_CONCURRENCY,
         help="Maximum concurrent population-binding batches",
     )
+    parser.add_argument("--batch-size", type=int, help="Override target chunks per population-binding batch")
     parser.add_argument("--preflight-report-path", type=Path, help="Optional machine-readable readiness report")
     return parser
 
@@ -49,6 +56,7 @@ def main() -> None:
     from legal_rag.ontology_population.extraction import (
         BamlOntologyPopulationClient,
         PersistedConductPopulationClient,
+        build_population_binding_rerun_id,
         build_population_binding_run_id,
         extract_population_from_document,
     )
@@ -57,7 +65,11 @@ def main() -> None:
         write_population_graph,
     )
     from legal_rag.ontology_population.models import OntologyPopulationRecord, PopulationProgressRecord
-    from legal_rag.ontology_population.preflight import validate_population_resume_state
+    from legal_rag.ontology_population.preflight import (
+        load_population_target_selection,
+        select_population_rerun_targets,
+        validate_population_resume_state,
+    )
     from legal_rag.ontology_population.writer import (
         read_population_progress,
         read_population_records,
@@ -80,6 +92,14 @@ def main() -> None:
     if dotenv_path:
         load_dotenv(dotenv_path, override=True)
     provider_settings = Settings.from_environment()
+    population_settings = (
+        replace(prepared.settings, batch_size=arguments.batch_size)
+        if arguments.batch_size is not None
+        else prepared.settings
+    )
+    if population_settings.batch_size < 1:
+        msg = "Population binding batch size must be at least one"
+        raise ValueError(msg)
     inventories = read_target_conduct_inventories(arguments.inventories_path)
     target_ids = tuple(chunk.chunk_id for chunk in prepared.targets)
     validate_target_conduct_inventory(
@@ -88,7 +108,16 @@ def main() -> None:
         expected_run_id=None,
         require_complete=True,
     )
-    run_id = build_population_binding_run_id(target_conduct_inventory_identity(inventories), provider_settings)
+    base_run_id = build_population_binding_run_id(target_conduct_inventory_identity(inventories), provider_settings)
+    rerun_targets = None
+    if arguments.rerun_target_ids_path is not None:
+        rerun_selection = load_population_target_selection(arguments.rerun_target_ids_path)
+        rerun_targets = select_population_rerun_targets(prepared.bundle, prepared.targets, rerun_selection)
+    run_id = (
+        build_population_binding_rerun_id(base_run_id, tuple(chunk.chunk_id for chunk in rerun_targets))
+        if rerun_targets is not None
+        else base_run_id
+    )
     existing_records = (
         read_population_records(arguments.records_output_path) if arguments.records_output_path.exists() else ()
     )
@@ -102,11 +131,16 @@ def main() -> None:
         prepared.targets,
         existing_records,
         existing_progress,
-        expected_run_id=run_id,
+        expected_run_id=None if rerun_targets is not None else run_id,
         expected_ontology_semantic_sha256=prepared.ontology_semantic_sha256,
     )
-    processed_ids = {record.chunk_id for record in existing_progress}
-    remaining = tuple(chunk for chunk in prepared.targets if chunk.chunk_id not in processed_ids)
+    progress_by_id = {record.chunk_id: record for record in existing_progress}
+    extraction_targets = prepared.targets if rerun_targets is None else rerun_targets
+    remaining = tuple(
+        chunk
+        for chunk in extraction_targets
+        if chunk.chunk_id not in progress_by_id or progress_by_id[chunk.chunk_id].run_id != run_id
+    )
 
     def ordered_records() -> tuple[OntologyPopulationRecord, ...]:
         """Return stable source-ordered population records."""
@@ -127,32 +161,31 @@ def main() -> None:
                 del records_by_id[population_id]
             records_by_id.update({record.population_id: record for record in target_records})
         write_population_records(arguments.records_output_path, ordered_records())
-        processed_ids.update(chunk_id for chunk_id, _ in batch_results)
+        for chunk_id, _ in batch_results:
+            progress_by_id[chunk_id] = PopulationProgressRecord(chunk_id=chunk_id, run_id=run_id)
         write_population_progress(
             arguments.progress_output_path,
-            tuple(
-                PopulationProgressRecord(chunk_id=chunk.chunk_id, run_id=run_id)
-                for chunk in chunks
-                if chunk.chunk_id in processed_ids
-            ),
+            tuple(progress_by_id[chunk.chunk_id] for chunk in chunks if chunk.chunk_id in progress_by_id),
         )
 
     logger.info(
-        "Loaded {} completed conduct inventories; {} chunks already bound, {} remaining; max concurrency {}",
+        "Loaded {} completed conduct inventories; {} binding targets already current, {} remaining; "
+        "batch size {}; max concurrency {}",
         len(inventories),
-        len(prepared.targets) - len(remaining),
+        len(extraction_targets) - len(remaining),
         len(remaining),
+        population_settings.batch_size,
         arguments.max_concurrency,
     )
     if remaining:
-        baml_client = BamlOntologyPopulationClient(provider_settings, prepared.settings)
+        baml_client = BamlOntologyPopulationClient(provider_settings, population_settings)
         client = PersistedConductPopulationClient(baml_client, inventories)
         extract_population_from_document(
             remaining,
             chunks,
             client,
             prepared.bundle.metadata,
-            prepared.settings,
+            population_settings,
             ontology_semantic_sha256=prepared.ontology_semantic_sha256,
             population_run_id=run_id,
             max_concurrency=arguments.max_concurrency,
@@ -162,11 +195,7 @@ def main() -> None:
     write_population_records(arguments.records_output_path, records)
     write_population_progress(
         arguments.progress_output_path,
-        tuple(
-            PopulationProgressRecord(chunk_id=chunk.chunk_id, run_id=run_id)
-            for chunk in chunks
-            if chunk.chunk_id in processed_ids
-        ),
+        tuple(progress_by_id[chunk.chunk_id] for chunk in chunks if chunk.chunk_id in progress_by_id),
     )
     graph = materialize_population_graph(
         chunks,

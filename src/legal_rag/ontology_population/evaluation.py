@@ -21,7 +21,14 @@ POPULATION_EVALUATION_REPORT_SCHEMA_VERSION = "0.2.0"
 
 EvaluationStatus = Literal["passed", "failed"]
 
-_CONSEQUENCE_KINDS = {"MonetaryPenalty", "PointDeduction", "AdditionalSanction", "RemedialMeasure"}
+_CONSEQUENCE_KINDS = {
+    "MonetaryPenalty",
+    "Warning",
+    "PointDeduction",
+    "AdditionalSanction",
+    "RemedialMeasure",
+    "ReferencedPenalty",
+}
 _SUBJECT_KINDS = {"NaturalPerson", "Organization"}
 
 

@@ -10,7 +10,11 @@ from pathlib import Path
 import pytest
 
 from legal_rag import ontology_population_evaluation_cli
-from legal_rag.ontology_population.evaluation import PopulationGoldStandard, evaluate_population_records
+from legal_rag.ontology_population.evaluation import (
+    ConsequenceExpectation,
+    PopulationGoldStandard,
+    evaluate_population_records,
+)
 from legal_rag.ontology_population.models import OntologyPopulationRecord, PopulationProgressRecord
 from legal_rag.ontology_population.writer import write_population_progress, write_population_records
 
@@ -43,6 +47,12 @@ def _write_gold(path: Path, chunk_id: str) -> None:
         ),
         encoding="utf-8",
     )
+
+
+@pytest.mark.parametrize("kind", ["Warning", "ReferencedPenalty"])
+def test_population_gold_accepts_extended_consequence_kinds(kind: str) -> None:
+    """Gold assertions can cover every consequence kind emitted by population."""
+    assert ConsequenceExpectation.from_dict({"kind": kind}).kind == kind
 
 
 def test_population_gold_evaluation_passes_exact_structured_assertions(

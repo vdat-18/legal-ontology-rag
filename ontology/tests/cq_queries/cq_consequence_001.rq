@@ -8,9 +8,11 @@ WHERE {
     lorsp:groundedIn ?sourceProvision .
   VALUES ?consequenceType {
     lorlc:MonetaryPenalty
+    lorlc:Warning
     lorlc:PointDeduction
     lorlc:AdditionalSanction
     lorlc:RemedialMeasure
+    lorlc:ReferencedPenalty
   }
   OPTIONAL { ?legalConsequence lorlc:affectsTarget ?affectedTarget }
   OPTIONAL { ?legalConsequence lorlc:mustBePerformedBy ?responsibleRole }

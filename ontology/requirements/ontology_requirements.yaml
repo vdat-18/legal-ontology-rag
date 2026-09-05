@@ -38,7 +38,8 @@ requirement_categories:
         statement: Applicability conditions and exceptions.
       - id: SCOPE-005
         statement: >-
-          Monetary penalties, driver-license point deductions, additional sanctions, and remedial measures.
+          Monetary penalties, warnings, driver-license point deductions, additional sanctions, remedial measures,
+          and penalties determined by reference to another conduct or rule.
       - id: SCOPE-006
         statement: Effective intervals, amendment, replacement, and supersession of rules or provisions.
   - id: required_granularity
@@ -55,7 +56,8 @@ requirement_categories:
           applicability.
       - id: GRAN-005
         statement: >-
-          Monetary amount, point deduction, additional sanction, and remedial measure are distinct consequence kinds.
+          Monetary amount, warning, point deduction, additional sanction, remedial measure, and referenced penalty
+          are distinct consequence kinds.
       - id: GRAN-006
         statement: A provision citation is distinguishable from the cited provision and the source chunk containing it.
       - id: GRAN-007

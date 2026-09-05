@@ -52,6 +52,37 @@ PROMPT_CASES = (
 )
 
 
+def test_conduct_prompt_separates_locator_context_from_target_semantics() -> None:
+    """Step 1 may resolve provision hierarchy without extracting referenced or neighboring conducts."""
+    prompt = (PROJECT_ROOT / "baml_src/ontology_population.baml").read_text(encoding="utf-8")
+    compact_prompt = " ".join(prompt.split())
+
+    for phrase in (
+        "từng nhánh tự là hành vi độc lập",
+        "source xem toàn cụm là một hành vi",
+        "tham chiếu số ít hoặc predicate/qualifier chung",
+        "điều khoản chỉ ánh xạ sang provision khác",
+        "trả rỗng dù nó nhắc/mô tả lại hành vi",
+        "Locator context chỉ khôi phục Khoản/Điểm",
+        "không cấp conduct/evidence",
+    ):
+        assert phrase in compact_prompt
+
+
+def test_population_binding_prompt_distinguishes_warning_and_referenced_penalty() -> None:
+    """Step 2 preserves two legal effects that are not additional sanctions."""
+    prompt = (PROJECT_ROOT / "baml_src/ontology_population.baml").read_text(encoding="utf-8")
+    compact_prompt = " ".join(prompt.split())
+
+    for phrase in (
+        "Warning cho hình thức cảnh cáo",
+        "ReferencedPenalty khi hậu quả được xác định bằng cách dẫn chiếu",
+        "AdditionalSanction chỉ khi source xác định là hình thức xử phạt bổ sung",
+        "target_label_vi là hành vi hoặc quy tắc được dẫn chiếu",
+    ):
+        assert phrase in compact_prompt
+
+
 @pytest.mark.parametrize(("relative_path", "max_length", "required_phrases"), PROMPT_CASES)
 def test_downstream_ontology_prompt_is_concise_and_preserves_boundaries(
     relative_path: str,

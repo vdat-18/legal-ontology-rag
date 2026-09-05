@@ -128,6 +128,7 @@ def main() -> None:
         client = BamlOntologyPopulationClient(provider_settings, prepared.settings)
         extract_target_conducts(
             remaining,
+            prepared.bundle.chunks,
             client,
             prepared.settings,
             run_id=run_id,

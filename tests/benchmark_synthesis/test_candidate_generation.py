@@ -22,6 +22,7 @@ from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.settings import Settings
 
 _SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
+_PROMPT_PATH = Path(__file__).resolve().parents[2] / "baml_src" / "candidate_generation.baml"
 
 
 def _fact(fact_id: str = "fact-1") -> LegalFact:
@@ -66,6 +67,24 @@ def test_build_fact_context_accepts_general_legal_statement() -> None:
     context = build_fact_context(replace(_fact(), statement="Quyết định xử phạt phải được gửi đúng hạn."))
 
     assert context.statement == "Quyết định xử phạt phải được gửi đúng hạn."
+
+
+def test_candidate_prompt_guards_confirmed_generation_failures() -> None:
+    """The prompt preserves temporal, answerability, and multi-hop semantics."""
+    prompt = _PROMPT_PATH.read_text(encoding="utf-8")
+
+    assert "valid_to=null nghĩa là khoảng hiệu lực mở" in prompt
+    assert 'Không đổi "không mang' in prompt
+    assert 'theo" thành "không có" hoặc "thiếu"' in prompt
+    assert "Tập fact_id của required_claims phải phủ đúng toàn bộ facts" in prompt
+    assert "không giữ query khái quát rồi tự thêm" in prompt
+    assert "short 7-9 từ, medium 12-18 từ, long 23-35 từ" in prompt
+    assert "Persona không chứng minh chủ xe là cá nhân" in prompt
+    assert "Mọi style ngoài keyword_style phải là câu hỏi hoàn chỉnh" in prompt
+    assert "hai fact đều có valid_to=null" in prompt
+    assert 'Nếu fact chỉ áp dụng cho một ngưỡng như "dưới 01 tháng"' in prompt
+    assert "không tự gán tên các tình tiết" in prompt
+    assert "không có căn cứ cho phép độc lập" in prompt
 
 
 class _FakeGenerationClient:

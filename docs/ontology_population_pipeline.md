@@ -102,6 +102,21 @@ uv run --extra dev legal-bind-ontology-population `
   --max-concurrency 30
 ```
 
+Sau khi review, có thể giữ nguyên các chunk đúng và rerun riêng các chunk sai. Với chunk có nhiều conduct, dùng
+`--batch-size 1` để mỗi response có đủ không gian trả toàn bộ rule:
+
+```powershell
+uv run --extra dev legal-bind-ontology-population `
+  <chunks.jsonl> <screening.jsonl> <document_metadata.jsonl> `
+  ontology/population_contract.yaml <conducts.jsonl> `
+  <population.jsonl> <progress.jsonl> <graph.ttl> `
+  --rerun-target-ids-path <rerun-selection.json> `
+  --batch-size 1 --preflight-report-path <preflight.json> --max-concurrency 30
+```
+
+Selective rerun thay atomically records của target được chọn, giữ nguyên records của target khác và dùng run ID riêng
+cho selection để lần chạy lại cùng lệnh chỉ tiếp tục các target chưa hoàn thành.
+
 CLI `legal-populate-ontology` cũ vẫn được giữ để tương thích, nhưng nó gộp cả hai prompt và không thuộc flow sáu bước
 được khuyến nghị.
 

@@ -12,9 +12,11 @@ enum OntologyConditionKind {
 
 enum OntologyConsequenceKind {
   MonetaryPenalty
+  Warning
   PointDeduction
   AdditionalSanction
   RemedialMeasure
+  ReferencedPenalty
 }
 
 enum OntologyCurrency {
@@ -28,23 +30,23 @@ enum OntologyValidityMode {
 }
 
 class OntologyEvidenceSource {
-  evidence_id string @description(#"ID evidence trong input hiện tại."#)
+  evidence_id string
   chunk_id string
-  text string @description(#"Source nguyên văn; không sửa hoặc diễn giải lại."#)
+  text string @description(#"Source nguyên văn."#)
 }
 
 class OntologyEvidenceReference {
-  evidence_id string @description(#"Một evidence_id được cung cấp trong input hiện tại."#)
-  start_char int? @description(#"Offset Unicode 0-based, inclusive; null để dùng toàn source."#)
-  end_char int? @description(#"Offset Unicode 0-based, exclusive; null để dùng toàn source."#)
+  evidence_id string
+  start_char int? @description(#"Offset Unicode inclusive; null dùng toàn source."#)
+  end_char int? @description(#"Offset Unicode exclusive; null dùng toàn source."#)
 }
 
 class OntologyConditionEntry {
-  condition_id string @description(#"ID cục bộ duy nhất trong rule."#)
+  condition_id string
   kind OntologyConditionKind
   text_vi string @description(#"Nội dung điều kiện ngắn gọn bằng tiếng Việt."#)
   operand_ids string[] @description(#"ID condition con: Atomic rỗng; AllOf/AnyOf >=2; Not đúng 1."#)
-  evidence OntologyEvidenceReference[] @description(#"Ít nhất một evidence trực tiếp cho expression."#)
+  evidence OntologyEvidenceReference[]
 }
 
 class OntologyConsequenceEntry {
@@ -54,7 +56,7 @@ class OntologyConsequenceEntry {
   maximum_amount string? @description(#"Số thập phân không phân cách hàng nghìn; chỉ cho MonetaryPenalty."#)
   currency OntologyCurrency? @description(#"Bắt buộc cho MonetaryPenalty khi source nêu đơn vị."#)
   point_value int? @description(#"Số nguyên dương; chỉ cho PointDeduction."#)
-  consequence_label_vi string? @description(#"Tên tác động; bắt buộc cho AdditionalSanction/RemedialMeasure."#)
+  consequence_label_vi string? @description(#"Tên tác động; bắt buộc cho Warning/AdditionalSanction/RemedialMeasure/ReferencedPenalty."#)
   minimum_duration_months int? @description(#"Cận dưới theo tháng; chỉ cho AdditionalSanction."#)
   maximum_duration_months int? @description(#"Cận trên theo tháng; chỉ cho AdditionalSanction."#)
   target_label_vi string? @description(#"Đối tượng chịu tác động được source nêu."#)
@@ -87,20 +89,21 @@ class OntologyPopulationBatchResult {
 
 class OntologyTargetConductInput {
   target_chunk_id string
-  structural_context string @description(#"Metadata cấu trúc của Target; không phải quoted evidence."#)
+  structural_context string
+  locator_context string
   evidence_sources OntologyEvidenceSource[]
 }
 
 class OntologyTargetConductEntry {
   conduct_id string @description(#"ID cục bộ duy nhất trong Target."#)
-  conduct_label_vi string @description(#"Một conduct nguyên tử, giữ đúng phủ định và qualifier tiếng Việt."#)
-  provision_path string @description(#"Đường dẫn đầy đủ các cấp tiếng Việt của conduct."#)
-  evidence OntologyEvidenceReference[] @description(#"Evidence chỉ từ Target."#)
+  conduct_label_vi string
+  provision_path string
+  evidence OntologyEvidenceReference[]
 }
 
 class OntologyTargetConductBatchResult {
   target_chunk_id string
-  conducts OntologyTargetConductEntry[] @description(#"Đầy đủ conduct nguyên tử trực tiếp trong Target; rỗng sau khi audit toàn Target."#)
+  conducts OntologyTargetConductEntry[]
 }
 
 class OntologyChunkWindowEntry {
@@ -139,17 +142,23 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
     Mục đích bước 1/6: khóa danh mục đóng các hành vi trực tiếp trong từng Target
     để context sau không tự thêm conduct; chưa gắn phạm vi hay hậu quả.
 
-    - Conduct nguyên tử là hành vi cùng qualifier có thể làm căn cứ xử phạt. Tách
-      hành vi thay thế, nhưng không tách phần phải kết hợp mới thành vi phạm.
+    - Tách lựa chọn chỉ khi từng nhánh tự là hành vi độc lập. Giữ cụm phối hợp khi
+      source xem toàn cụm là một hành vi qua tham chiếu số ít hoặc
+      predicate/qualifier chung; không tách phần phải kết hợp mới thành vi phạm.
     - Quyết định theo nghĩa pháp lý toàn câu, không theo dấu câu; dùng cùng độ chi
       tiết cho cấu trúc tương đương.
-    - Không tạo conduct từ hậu quả, định nghĩa, thủ tục hoặc thẩm quyền. Trong câu
-      hậu quả/dẫn chiếu, chỉ tạo khi Target nêu đủ hành vi; locator hoặc cụm đối
-      tượng không đủ và không được suy lại nội dung được dẫn chiếu.
+    - Không tạo conduct từ định nghĩa, thủ tục, thẩm quyền, nguyên tắc xử lý,
+      sửa/bãi bỏ hoặc điều khoản chỉ ánh xạ sang provision khác; trả rỗng dù nó
+      nhắc/mô tả lại hành vi. Chỉ tạo khi Target trực tiếp quy định hoặc gắn xử
+      phạt với hành vi đủ; locator hoặc cụm đối tượng không đủ.
     - Chỉ dùng Target evidence; structural context chỉ định vị. Không dùng kiến
       thức ngoài. Giữ nguyên phủ định, qualifier và phạm vi tiếng Việt.
-    - provision_path chỉ gồm cấp có thật theo `Chương > Mục > Điều > Khoản > Điểm`.
-      Trả đúng một result mỗi target_chunk_id; conducts chỉ rỗng sau khi audit.
+    - Locator context chỉ khôi phục Khoản/Điểm, không cấp conduct/evidence.
+      provision_path giữ mọi cấp có căn cứ theo
+      `Chương > Mục > Điều > Khoản > Điểm`; không bỏ hoặc đoán cấp.
+      Nếu Target mở đầu bằng Điểm rồi mới xuất hiện Khoản mới, Điểm mở đầu vẫn
+      thuộc Khoản gần nhất trong locator context; mốc mới chỉ chi phối phần sau nó.
+    - Trả đúng một result mỗi target_chunk_id; conducts chỉ rỗng sau khi audit.
 
     {{ _.role("user") }}
 
@@ -158,6 +167,8 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
     === target_chunk_id={{ item.target_chunk_id }} ===
     Structural context (không phải source evidence):
     {{ item.structural_context }}
+    Locator context (không phải evidence):
+    {{ item.locator_context }}
     Target evidence sources:
     {% for evidence in item.evidence_sources %}
     [{{ evidence.evidence_id }}] chunk_id={{ evidence.chunk_id }}
@@ -181,13 +192,20 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
 
     Mục đích bước 2/6: gắn phạm vi và hậu quả có source support vào conduct đã khóa.
 
-    - Giữ nguyên target conducts, trỏ đúng target_conduct_id; inventory rỗng thì rules
-      rỗng. Không gộp hoặc tạo conduct; chỉ dùng reading window cùng item.
+    - Giữ nguyên target conducts: trả ít nhất một rule cho từng target_conduct_id,
+      giữ đúng conduct_label_vi và provision_path. Inventory rỗng thì rules rỗng;
+      không bỏ, gộp hoặc tạo conduct.
     - Chỉ nối hậu quả khi source, locator hoặc cấu trúc xác định conduct bị chi
-      phối; gần nhau, giống chữ hoặc cùng mức phạt không đủ. Giữ hậu quả cộng dồn;
-      tách variant khi phạm vi hoặc hậu quả phụ thuộc điều kiện khác nhau.
-    - Phân loại tiền phạt, trừ điểm, hình phạt bổ sung và khắc phục; biểu diễn phạm
-      vi/ngoại lệ bằng cây AND/OR/NOT có evidence. Thiếu source support thì giữ null.
+      phối; gần nhau, giống chữ hoặc cùng mức phạt không đủ. Mỗi rule phải có ít
+      nhất một hậu quả. Giữ hậu quả cộng dồn; tách riêng variant cá nhân và tổ
+      chức, hoặc khi phạm vi hay hậu quả phụ thuộc điều kiện khác nhau.
+    - Phân loại theo nghĩa pháp lý: Warning cho hình thức cảnh cáo;
+      ReferencedPenalty khi hậu quả được xác định bằng cách dẫn chiếu mức xử phạt
+      của hành vi/quy tắc khác; AdditionalSanction chỉ khi source xác định là hình
+      thức xử phạt bổ sung. Với ReferencedPenalty, target_label_vi là hành vi hoặc
+      quy tắc được dẫn chiếu, không phải chủ thể bị xử phạt. Các loại còn lại gồm
+      tiền phạt, trừ điểm và khắc phục. Biểu diễn phạm vi/ngoại lệ bằng cây
+      AND/OR/NOT có evidence; thiếu source support thì giữ null.
     - Chọn validity_mode theo temporal_overrides: DocumentDefault nếu không áp
       override (để hai ngày null); ExplicitInterval nếu provision có ngày riêng;
       Unresolved nếu căn cứ riêng chưa cho ngày (để hai ngày null). Đối chiếu đúng

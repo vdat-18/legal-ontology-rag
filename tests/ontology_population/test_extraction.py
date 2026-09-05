@@ -75,10 +75,55 @@ def test_target_conduct_extraction_uses_configured_batch_size(legal_chunk: Chunk
         retry_delay_seconds=0,
     )
 
-    records = extract_target_conducts(targets, _ConductClient(), settings, run_id="conduct-run")
+    records = extract_target_conducts(targets, targets, _ConductClient(), settings, run_id="conduct-run")
 
     assert batch_sizes == [5, 5, 1]
     assert [record.target_chunk_id for record in records] == [chunk.chunk_id for chunk in targets]
+
+
+def test_target_conduct_extraction_uses_preceding_chunks_only_for_locator_context(legal_chunk: Chunk) -> None:
+    """Step 1 exposes bounded preceding text separately while target evidence remains isolated."""
+    chunks = (
+        replace(legal_chunk, chunk_id="preceding-1", chunk_index=0, next_chunk_id="preceding-2"),
+        replace(
+            legal_chunk,
+            chunk_id="preceding-2",
+            chunk_index=1,
+            previous_chunk_id="preceding-1",
+            next_chunk_id="target",
+        ),
+        replace(
+            legal_chunk,
+            chunk_id="target",
+            chunk_index=2,
+            previous_chunk_id="preceding-2",
+            next_chunk_id="following",
+        ),
+        replace(legal_chunk, chunk_id="following", chunk_index=3, previous_chunk_id="target"),
+    )
+    received: list[OntologyTargetConductInput] = []
+
+    class _ConductClient:
+        def extract_conduct_batch(
+            self, items: Sequence[OntologyTargetConductInput]
+        ) -> Sequence[OntologyTargetConductBatchResult]:
+            received.extend(items)
+            return tuple(
+                OntologyTargetConductBatchResult(target_chunk_id=item.target_chunk_id, conducts=[]) for item in items
+            )
+
+    settings = replace(
+        PopulationSettings.from_path(PROJECT_ROOT / "ontology" / "population_contract.yaml"),
+        max_retries=0,
+        retry_delay_seconds=0,
+    )
+
+    extract_target_conducts((chunks[2],), chunks, _ConductClient(), settings, run_id="conduct-run")
+
+    assert "chunk_id=preceding-1" in received[0].locator_context
+    assert "chunk_id=preceding-2" in received[0].locator_context
+    assert "chunk_id=following" not in received[0].locator_context
+    assert {source.chunk_id for source in received[0].evidence_sources} == {"target"}
 
 
 def test_population_run_identity_tracks_semantic_provider_configuration() -> None:
@@ -482,13 +527,13 @@ def test_population_binding_rejects_conduct_outside_locked_inventory(
         ("Hành vi được kiểm tra", "Điều khác"),
     ],
 )
-def test_population_binding_accepts_typed_rule_content(
+def test_population_binding_restores_locked_conduct_identity(
     conduct_label: str,
     provision_path: str,
     legal_chunk: Chunk,
     document_metadata: DocumentMetadataRecord,
 ) -> None:
-    """The binding stage trusts typed rule semantics and checks only conduct identity."""
+    """The binding stage cannot rename or relocate a locked conduct."""
     item, inventory, evidence = _target_inventory_fixture(legal_chunk)
     binding_item = build_population_binding_items((item,), (inventory,), document_metadata)[0]
     rule = _rule_with_consequence(_money_consequence(evidence), evidence)
@@ -502,6 +547,55 @@ def test_population_binding_accepts_typed_rule_content(
     finalized = finalize_population_binding_results((binding_item,), (result,))
 
     assert finalized[0].rules == [rule]
+    assert rule.conduct_label_vi == inventory.conducts[0].conduct_label_vi
+    assert rule.provision_path == inventory.conducts[0].provision_path
+
+
+def test_population_binding_rejects_omitted_locked_conduct(
+    legal_chunk: Chunk,
+    document_metadata: DocumentMetadataRecord,
+) -> None:
+    """Every locked conduct must produce at least one population rule."""
+    item, inventory, evidence = _target_inventory_fixture(legal_chunk)
+    inventory.conducts.append(
+        OntologyTargetConductEntry(
+            conduct_id="conduct_2",
+            conduct_label_vi="Hành vi thứ hai",
+            provision_path="Điều kiểm tra > Điểm b",
+            evidence=[evidence],
+        )
+    )
+    binding_item = build_population_binding_items((item,), (inventory,), document_metadata)[0]
+    result = OntologyPopulationBindingBatchResult(
+        target_chunk_id=legal_chunk.chunk_id,
+        rules=[
+            OntologyBoundRuleEntry(
+                target_conduct_id="conduct_1",
+                rule=_rule_with_consequence(_money_consequence(evidence), evidence),
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="omitted locked Target conduct: conduct_2"):
+        finalize_population_binding_results((binding_item,), (result,))
+
+
+def test_population_binding_rejects_rule_without_consequence(
+    legal_chunk: Chunk,
+    document_metadata: DocumentMetadataRecord,
+) -> None:
+    """A bound conduct cannot be persisted as a rule with no legal consequence."""
+    item, inventory, evidence = _target_inventory_fixture(legal_chunk)
+    binding_item = build_population_binding_items((item,), (inventory,), document_metadata)[0]
+    rule = _rule_with_consequence(_money_consequence(evidence), evidence)
+    rule.consequences = []
+    result = OntologyPopulationBindingBatchResult(
+        target_chunk_id=legal_chunk.chunk_id,
+        rules=[OntologyBoundRuleEntry(target_conduct_id="conduct_1", rule=rule)],
+    )
+
+    with pytest.raises(ValueError, match="no consequence for locked Target conduct: conduct_1"):
+        finalize_population_binding_results((binding_item,), (result,))
 
 
 def test_population_binding_returns_existing_population_result(

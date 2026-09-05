@@ -55,20 +55,24 @@ patterns:
     boundary_fixture_ids: [FIX-SIGN-GENERAL-NONEXCLUDED]
 
   - id: consequence_bundle
-    purpose: Keep monetary, point, additional-sanction, and remedial consequences independently evidenced.
+    purpose: Keep monetary, warning, point, additional-sanction, remedial, and referenced penalties independently evidenced.
     cq_ids: [CQ-PENALTY-001, CQ-CONSEQUENCE-001, CQ-POINTS-001, CQ-ADDITIONAL-001, CQ-REMEDY-001]
     ontology_term_iris:
       - https://w3id.org/legal-ontology-rag/ontology/legal-consequence#LegalConsequence
       - https://w3id.org/legal-ontology-rag/ontology/legal-consequence#MonetaryPenalty
+      - https://w3id.org/legal-ontology-rag/ontology/legal-consequence#Warning
       - https://w3id.org/legal-ontology-rag/ontology/legal-consequence#PointDeduction
       - https://w3id.org/legal-ontology-rag/ontology/legal-consequence#AdditionalSanction
       - https://w3id.org/legal-ontology-rag/ontology/legal-consequence#RemedialMeasure
+      - https://w3id.org/legal-ontology-rag/ontology/legal-consequence#ReferencedPenalty
     shape_iris:
       - https://w3id.org/legal-ontology-rag/shapes#LegalConsequenceShape
       - https://w3id.org/legal-ontology-rag/shapes#MonetaryPenaltyShape
+      - https://w3id.org/legal-ontology-rag/shapes#WarningShape
       - https://w3id.org/legal-ontology-rag/shapes#PointDeductionShape
       - https://w3id.org/legal-ontology-rag/shapes#AdditionalSanctionShape
       - https://w3id.org/legal-ontology-rag/shapes#RemedialMeasureShape
+      - https://w3id.org/legal-ontology-rag/shapes#ReferencedPenaltyShape
     positive_fixture_ids: [FIX-NO-PLATE-RULE]
     boundary_fixture_ids: [FIX-CONSEQUENCE-ABSENCE-UNKNOWN]
 

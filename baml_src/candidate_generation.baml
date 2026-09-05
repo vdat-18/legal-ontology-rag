@@ -79,6 +79,9 @@ function GenerateSingleTurnCandidateBatch(
       query chung có thể thuộc bất kỳ lĩnh vực nào. Không sử dụng fact chỉ nói
       về vi phạm xuất nhập cảnh, xuất nhập khẩu hoặc quản lý cửa khẩu để tạo
       câu hỏi về vi phạm giao thông đường bộ.
+      Không bao giờ trả câu meta như "không thể tạo câu hỏi". Với fact xử lý
+      vi phạm hành chính áp dụng chung, hãy đặt quy tắc đó trong một vụ vi phạm
+      giao thông cụ thể, nhưng không bịa nguyên nhân vi phạm hoặc chế tài riêng.
     - Query và reference_answer phải tự đứng độc lập. Không dùng các cụm thiếu
       tiền đề như "hành vi này", "trường hợp này", "tổ chức này", "quy định
       trên" hoặc chỉ hỏi một Điều/khoản/điểm mà không nêu nội dung pháp lý cần
@@ -133,6 +136,11 @@ function GenerateSingleTurnCandidateBatch(
       để bỏ qua. Nếu query không tự giới hạn thời điểm, reference_answer phải
       nói rõ kết luận áp dụng từ ngày nào hoặc trong khoảng nào. Không áp dụng
       vô điều kiện một fact có valid_from cho vụ việc chưa rõ thời điểm.
+      valid_to=null nghĩa là khoảng hiệu lực mở sau valid_from trong tập dữ
+      liệu này. Có thể dùng fact cho thời điểm sau valid_from, nhưng không tự
+      đặt ngày kết thúc, chia hai giai đoạn loại trừ nhau hoặc nói fact mới
+      thay thế fact cũ nếu statements không nêu quan hệ đó. valid_from của quy
+      định không phải ngày xảy ra hành vi hay ngày quyết định cụ thể có hiệu lực.
 
     Query contract:
     - Viết như người hỏi thật theo persona, không lộ đáp án, không dùng
@@ -147,12 +155,30 @@ function GenerateSingleTurnCandidateBatch(
       nếu facts chỉ chứng minh một phần. Nếu fact chỉ nêu hành vi bị cấm hoặc
       nghĩa vụ, chỉ hỏi hành vi có bị cấm hoặc phải thực hiện gì; không hỏi
       mức phạt khi fact không có chế tài.
+    - Giữ đúng quan hệ và trạng thái pháp lý trong fact. Không đổi "không mang
+      theo" thành "không có" hoặc "thiếu"; không đổi "vi phạm hành chính nhiều
+      lần" thành "tái phạm"; không đồng nhất chức danh, giấy phép, phương tiện
+      hay thủ tục chỉ vì tên gần giống nhau. Nếu query dùng điểm/khoản, phải
+      kèm Điều và văn bản hoặc mô tả đủ hành vi để xác định duy nhất quy định.
+      Persona không chứng minh chủ xe là cá nhân, tổ chức hay một tư cách pháp
+      lý khác. Nếu fact có kết quả khác nhau theo chủ thể mà query không khóa
+      chủ thể, answer phải nêu đủ các trường hợp; không tự chọn một trường hợp.
+      Không tự thêm tên loại giấy phép, tuyến vận tải, căn cứ thu hồi, tình tiết
+      tăng nặng/giảm nhẹ hoặc cơ quan xử lý mà query chưa nêu.
+      Nếu fact chỉ áp dụng cho một ngưỡng như "dưới 01 tháng", query phải nêu
+      đúng ngưỡng đó. Nếu query chỉ nêu số lượng tình tiết tăng nặng hoặc giảm
+      nhẹ, không tự gán tên các tình tiết; muốn dùng facts về tình tiết cụ thể
+      thì phải gọi tên chúng ngay trong query.
+      Việc hết phạm vi của một biển báo chỉ chứng minh nơi đó không còn được
+      phép theo chính biển đó; không suy ra không có căn cứ cho phép độc lập
+      khác khi fact về chế tài chứa ngoại lệ chung "nơi cho phép".
     - length tính theo các từ ngăn cách bằng khoảng trắng: short 5-10
-      từ; medium 10-20 từ; long trên 20 từ nhưng gọn. Đếm lại và viết
-      lại query nếu nằm ngoài khoảng. Short có giới hạn cứng tối đa 10
-      từ, kể cả khi phải bỏ bớt từ lịch sự hoặc chi tiết phụ. Với short,
-      chủ động viết 7-9 từ để còn biên an toàn; tuyệt đối không trả query
-      11 từ rồi gắn nhãn short.
+      từ; medium 10-20 từ; long trên 20 từ nhưng gọn. Dùng khoảng mục tiêu
+      an toàn: short 7-9 từ, medium 12-18 từ, long 23-35 từ. Đếm lại và viết
+      lại query nếu nằm ngoài khoảng mục tiêu; tuyệt đối không trả short từ
+      11 từ hoặc medium từ 21 từ. Nếu draft quá dài, chọn một intent pháp lý
+      hẹp hơn vẫn cần đủ facts, dùng tên pháp lý chính xác hoặc dẫn chiếu đầy
+      đủ văn bản thay vì chép mọi chi tiết của answer vào query.
       Không nối các từ bằng dấu gạch để lách giới hạn; cụm từ ghép phải viết
       tự nhiên. Không hy sinh ngữ pháp, chủ thể hoặc quan hệ pháp lý chỉ để
       rút ngắn query.
@@ -163,6 +189,9 @@ function GenerateSingleTurnCandidateBatch(
       dùng từ viết tắt kiểu tin nhắn; no_diacritics=hoàn toàn
       không dấu; misspelled=có vài lỗi gõ hoặc viết tắt tự nhiên;
       keyword_style=chỉ từ khóa cốt lõi, không thành câu, không dấu hỏi.
+      Mọi style ngoài keyword_style phải là câu hỏi hoàn chỉnh và kết thúc
+      bằng dấu hỏi. polite phải vừa có từ ngữ lịch sự vừa có cấu trúc nghi vấn;
+      không dùng câu trần thuật kiểu "Xin giải đáp: ..." kết thúc bằng dấu chấm.
       Với formal, dùng một câu hỏi trung tính có đầy đủ cấu trúc, chẳng hạn
       "có được ... không", "bị xử phạt bao nhiêu" hoặc "được xử lý như thế
       nào"; không dùng câu cụt kết thúc bằng một từ như "phạt?" hoặc "sao?".
@@ -222,6 +251,8 @@ function GenerateSingleTurnCandidateBatch(
       luận của partially_answerable. Mỗi claim phải tự giữ đủ chủ thể, hành vi,
       điều kiện, ngoại lệ, thời điểm và phạm vi làm kết luận đúng; không dùng
       câu rút gọn rộng hơn fact dù reference_answer đã nêu điều kiện ở câu khác.
+      Tập fact_id của required_claims phải phủ đúng toàn bộ facts của task khi
+      reasoning_hops>1; không được bỏ fact hoặc thêm fact ngoài task.
       Nếu fact dùng nhiều điều kiện liên hợp, từng claim dựa vào fact đó phải
       giữ trọn các điều kiện; không tách một vế thành quy tắc áp dụng độc lập.
       Giữ đúng đại lượng dùng để so sánh hoặc kích hoạt quy tắc: không đổi
@@ -300,6 +331,26 @@ function GenerateSingleTurnCandidateBatch(
        viết lại query để hỏi quy tắc có thể kết luận đầy đủ từ facts và nêu rõ
        các điều kiện phạm vi đã có. Với partially_answerable, xác nhận ngoài đúng một
        tình tiết được nêu là chưa rõ, không còn chiều áp dụng nào khác mơ hồ.
+       Nếu partially_answerable nhưng facts đã trả lời trọn một câu hỏi quy tắc
+       chung, bắt buộc viết query thành vụ việc cụ thể và nêu rõ đúng một dữ
+       kiện còn thiếu; không giữ query khái quát rồi tự thêm "chưa rõ thời điểm"
+       trong answer. Nếu answerable, query phải chứa đủ điều kiện quyết định và
+       answer không được kết thúc bằng một phần còn "chưa thể xác định".
+       Với temporal, lập khoảng hiệu lực của từng fact theo valid_from và
+       valid_to; không biến valid_to=null thành ngày kết thúc ngầm. Với
+       hai fact đều có valid_to=null và không nêu quan hệ sửa đổi/thay thế,
+       không tạo query buộc chọn duy nhất một quy định theo ngày. Hãy hỏi và
+       trả lời riêng nội dung từng fact, hoặc chọn một kết luận khác mà facts
+       cùng hỗ trợ; không dùng "trước.../từ..." để tạo hai giai đoạn loại trừ.
+       Mốc valid_from phải gắn đúng kết luận của chính fact đó, không lấy mốc
+       muộn hơn của fact khác áp cho toàn bộ answer.
+       Với partially_answerable, dữ kiện thiếu phải được nói rõ ngay trong
+       query bằng cụm như "chưa rõ thời điểm/chủ thể/vị trí" và phải là dữ kiện
+       duy nhất làm đổi kết luận. Không dùng thiếu thời điểm làm lý do nếu query
+       chỉ hỏi quy tắc hiện hành có thể trả lời bằng cách nêu mốc valid_from.
+       Với
+       reasoning_hops>1, đối chiếu tập fact_id trong required_claims với tập
+       facts đầu vào và sửa cho hai tập bằng nhau trước khi trả.
     Nếu bất kỳ mục nào chưa đạt, tự viết lại candidate trước khi trả. Trả đúng
     một kết quả cho mỗi task, giữ nguyên task_id và thứ tự.
 

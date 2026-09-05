@@ -18,7 +18,7 @@ from legal_rag.ontology_population.materializer import (
     materialize_population_graph,
     validate_population_graph,
 )
-from legal_rag.ontology_population.models import OntologyPopulationRecord
+from legal_rag.ontology_population.models import OntologyPopulationRecord, PopulationConsequence
 from legal_rag.ontology_validation.paths import OntologyPaths
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -74,6 +74,51 @@ def test_materialization_is_deterministic(
     second = materialize_population_graph((legal_chunk,), document_metadata, (population_record,), INSTANCE_NAMESPACE)
 
     assert set(first) == set(second)
+
+
+def test_warning_and_referenced_penalty_materialize_as_distinct_consequences(
+    legal_chunk: Chunk,
+    document_metadata: DocumentMetadataRecord,
+    population_record: OntologyPopulationRecord,
+) -> None:
+    """Non-monetary principal and referenced penalties keep their legal classification."""
+    evidence = population_record.evidence
+    warning = PopulationConsequence(
+        consequence_id="warning",
+        kind="Warning",
+        minimum_amount=None,
+        maximum_amount=None,
+        currency_code=None,
+        point_value=None,
+        target_label_vi=None,
+        responsible_role_label_vi=None,
+        evidence=evidence,
+        consequence_label_vi="Phạt cảnh cáo",
+    )
+    referenced = PopulationConsequence(
+        consequence_id="referenced",
+        kind="ReferencedPenalty",
+        minimum_amount=None,
+        maximum_amount=None,
+        currency_code=None,
+        point_value=None,
+        target_label_vi="Hành vi không có giấy phép, chứng chỉ hành nghề",
+        responsible_role_label_vi=None,
+        evidence=evidence,
+        consequence_label_vi="Bị xử phạt như hành vi không có giấy phép, chứng chỉ hành nghề",
+    )
+    graph = materialize_population_graph(
+        (legal_chunk,),
+        document_metadata,
+        (replace(population_record, consequences=(warning, referenced)),),
+        INSTANCE_NAMESPACE,
+    )
+
+    validate_population_graph(graph, OntologyPaths(PROJECT_ROOT))
+    assert len(tuple(graph.subjects(RDF.type, LORLC.Warning))) == 1
+    assert len(tuple(graph.subjects(RDF.type, LORLC.ReferencedPenalty))) == 1
+    referenced_iri = next(graph.subjects(RDF.type, LORLC.ReferencedPenalty))
+    assert len(tuple(graph.objects(referenced_iri, LORLC.affectsTarget))) == 1
 
 
 def test_logical_condition_operator_requires_source_chunk_provenance(

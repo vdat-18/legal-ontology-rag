@@ -70,8 +70,9 @@ function ProposeOntologyRuleAssemblies(windows: RuleAssemblyWindowInput[]) -> Ru
     trong cùng rule version.
 
     - Chỉ hợp nhất record cùng văn bản, rule version, hành vi và phạm vi khi source
-      hoặc locator cho thấy chúng là các mảnh của một quy định. Tiền phạt, trừ
-      điểm, hình phạt bổ sung và khắc phục có thể là hậu quả cộng dồn cùng rule.
+      hoặc locator cho thấy chúng là các mảnh của một quy định. Tiền phạt, cảnh
+      cáo, trừ điểm, hình phạt bổ sung, khắc phục và dẫn chiếu mức phạt có thể là
+      hậu quả cùng rule khi source hỗ trợ.
     - Vị trí gần, câu chữ giống nhau, cùng mức phạt hoặc cùng loại phương tiện
       không chứng minh cùng rule; khác ngưỡng, qualifier, chủ thể hoặc phạm vi thì
       giữ riêng.

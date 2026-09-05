@@ -47,6 +47,7 @@ class _StagedPopulationClient:
     conduct_calls = 0
     conduct_target_ids: ClassVar[list[str]] = []
     binding_calls = 0
+    binding_target_ids: ClassVar[list[str]] = []
 
     def __init__(self, *_: object) -> None:
         """Accept production constructor arguments."""
@@ -75,6 +76,7 @@ class _StagedPopulationClient:
     def bind_batch(self, items: Sequence[OntologyPopulationBindingItem]) -> Sequence[OntologyPopulationBatchResult]:
         """Bind one monetary consequence to each locked conduct."""
         type(self).binding_calls += 1
+        type(self).binding_target_ids.extend(item.target_chunk_id for item in items)
         results = []
         for item in items:
             target_source = next(source for entry in item.window for source in entry.evidence_sources)
@@ -147,6 +149,7 @@ def test_population_llm_tasks_run_as_two_resumable_cli_steps(
     monkeypatch.setattr(extraction, "BamlOntologyPopulationClient", _StagedPopulationClient)
     _StagedPopulationClient.conduct_calls = 0
     _StagedPopulationClient.binding_calls = 0
+    _StagedPopulationClient.binding_target_ids = []
 
     conduct_argv = [
         "legal-extract-ontology-conducts",
@@ -187,6 +190,92 @@ def test_population_llm_tasks_run_as_two_resumable_cli_steps(
     assert len(read_population_progress(progress_path)) == 1
     assert len(Graph().parse(graph_path, format="turtle")) > 0
     assert _StagedPopulationClient.conduct_calls == 1
+    assert _StagedPopulationClient.binding_calls == 1
+
+
+def test_population_binding_selectively_reruns_only_reviewed_targets(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    legal_chunk: Chunk,
+    document_metadata: DocumentMetadataRecord,
+) -> None:
+    """Selected chunks are replaced while correct population records remain resumable."""
+    first = replace(legal_chunk, chunk_id="chunk-1", chunk_index=0, next_chunk_id="chunk-2")
+    second = replace(legal_chunk, chunk_id="chunk-2", chunk_index=1, previous_chunk_id="chunk-1")
+    chunks_path = tmp_path / "chunks.jsonl"
+    screening_path = tmp_path / "screening.jsonl"
+    metadata_path = tmp_path / "metadata.jsonl"
+    inventories_path = tmp_path / "conducts.jsonl"
+    records_path = tmp_path / "population.jsonl"
+    progress_path = tmp_path / "population-progress.jsonl"
+    graph_path = tmp_path / "population.ttl"
+    rerun_path = tmp_path / "rerun.json"
+    write_chunks(chunks_path, (first, second))
+    write_chunk_screening(
+        screening_path,
+        tuple(
+            ChunkScreeningRecord(chunk_id=chunk.chunk_id, has_penalty_content=True, reason="Penalty rule.")
+            for chunk in (first, second)
+        ),
+    )
+    write_document_metadata(metadata_path, document_metadata)
+    write_json_atomic(
+        rerun_path,
+        {
+            "schema_version": "0.1.0",
+            "document_number": document_metadata.document_number,
+            "chunk_ids": [second.chunk_id],
+        },
+    )
+    monkeypatch.setenv("LLM_BASE_URL", "https://example.test/v1")
+    monkeypatch.setenv("LLM_API_KEY", "test-key")
+    monkeypatch.setenv("LLM_MODEL", "test-model")
+    monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
+    monkeypatch.setattr(ontology_conduct_extraction_cli, "find_dotenv", lambda **_: "")
+    monkeypatch.setattr(ontology_population_binding_cli, "find_dotenv", lambda **_: "")
+    monkeypatch.setattr(extraction, "BamlOntologyPopulationClient", _StagedPopulationClient)
+    conduct_argv = [
+        "legal-extract-ontology-conducts",
+        str(chunks_path),
+        str(screening_path),
+        str(metadata_path),
+        str(PROJECT_ROOT / "ontology" / "population_contract.yaml"),
+        str(inventories_path),
+    ]
+    monkeypatch.setattr(sys, "argv", conduct_argv)
+    ontology_conduct_extraction_cli.main()
+    binding_argv = [
+        "legal-bind-ontology-population",
+        str(chunks_path),
+        str(screening_path),
+        str(metadata_path),
+        str(PROJECT_ROOT / "ontology" / "population_contract.yaml"),
+        str(inventories_path),
+        str(records_path),
+        str(progress_path),
+        str(graph_path),
+    ]
+    monkeypatch.setattr(sys, "argv", binding_argv)
+    ontology_population_binding_cli.main()
+    initial_records = {record.source_chunk_id: record for record in read_population_records(records_path)}
+    initial_progress = {record.chunk_id: record for record in read_population_progress(progress_path)}
+    _StagedPopulationClient.binding_calls = 0
+    _StagedPopulationClient.binding_target_ids = []
+
+    rerun_argv = [*binding_argv, "--rerun-target-ids-path", str(rerun_path)]
+    monkeypatch.setattr(sys, "argv", rerun_argv)
+    ontology_population_binding_cli.main()
+    rerun_records = {record.source_chunk_id: record for record in read_population_records(records_path)}
+    rerun_progress = {record.chunk_id: record for record in read_population_progress(progress_path)}
+
+    assert rerun_records[first.chunk_id] == initial_records[first.chunk_id]
+    assert rerun_records[second.chunk_id].population_run_id != initial_records[second.chunk_id].population_run_id
+    assert rerun_progress[first.chunk_id] == initial_progress[first.chunk_id]
+    assert rerun_progress[second.chunk_id].run_id == rerun_records[second.chunk_id].population_run_id
+    assert _StagedPopulationClient.binding_target_ids == [second.chunk_id]
+
+    ontology_population_binding_cli.main()
+
     assert _StagedPopulationClient.binding_calls == 1
 
 

@@ -16,7 +16,14 @@ LEGACY_ONTOLOGY_POPULATION_PROGRESS_SCHEMA_VERSION = "0.1.0"
 
 SubjectKind = Literal["NaturalPerson", "Organization"]
 ConditionKind = Literal["Atomic", "AllOf", "AnyOf", "Not"]
-ConsequenceKind = Literal["MonetaryPenalty", "PointDeduction", "AdditionalSanction", "RemedialMeasure"]
+ConsequenceKind = Literal[
+    "MonetaryPenalty",
+    "Warning",
+    "PointDeduction",
+    "AdditionalSanction",
+    "RemedialMeasure",
+    "ReferencedPenalty",
+]
 CurrencyCode = Literal["VND"]
 
 
