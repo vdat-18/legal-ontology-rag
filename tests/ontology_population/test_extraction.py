@@ -77,7 +77,7 @@ def test_target_conduct_extraction_uses_configured_batch_size(legal_chunk: Chunk
 
     records = extract_target_conducts(targets, _ConductClient(), settings, run_id="conduct-run")
 
-    assert batch_sizes == [10, 1]
+    assert batch_sizes == [5, 5, 1]
     assert [record.target_chunk_id for record in records] == [chunk.chunk_id for chunk in targets]
 
 
@@ -300,6 +300,7 @@ def test_extraction_runs_batches_concurrently_and_preserves_target_order(
 
     settings = replace(
         PopulationSettings.from_path(PROJECT_ROOT / "ontology" / "population_contract.yaml"),
+        batch_size=1,
         max_retries=0,
         retry_delay_seconds=0,
     )
@@ -341,6 +342,7 @@ def test_extraction_reports_all_concurrent_exhausted_batches(
     )
     settings = replace(
         PopulationSettings.from_path(PROJECT_ROOT / "ontology" / "population_contract.yaml"),
+        batch_size=1,
         max_retries=0,
         retry_delay_seconds=0,
     )

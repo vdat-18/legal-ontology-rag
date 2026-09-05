@@ -24,6 +24,7 @@ def test_concept_contract_and_console_scripts_are_packaged() -> None:
 
     assert settings.included_kinds == ("RegulatedConduct", "LegalSubjectRole", "VehicleCategory")
     assert settings.max_total_pairs == 100_000
+    assert settings.batch_size == 5
     assert set(load_yaml(PROJECT_ROOT / "ontology" / "concept_resolution_contract.yaml")) == {
         "schema_version",
         "candidates",

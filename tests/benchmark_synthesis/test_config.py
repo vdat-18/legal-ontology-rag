@@ -18,7 +18,7 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
 
     assert settings.embedding_profile == "bge_m3"
-    assert settings.embedding_batch_size == 100
+    assert settings.embedding_batch_size == 5
     assert settings.embedding_max_concurrency == 30
     assert settings.embedding_max_retries == 2
     assert settings.embedding_retry_delay_seconds == 120
@@ -27,35 +27,35 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.vncorenlp_timeout_seconds == 120
     assert settings.llm_max_retries == 2
     assert settings.llm_retry_delay_seconds == 120
-    assert settings.chunk_screening_batch_size == 10
+    assert settings.chunk_screening_batch_size == 5
     assert settings.chunk_screening_max_concurrency == 30
     assert settings.chunk_screening.max_output_tokens == 16_384
     assert settings.chunk_screening.reasoning_effort == "high"
     assert settings.document_metadata.reasoning_effort == "high"
-    assert settings.fact_extraction_batch_size == 1
+    assert settings.fact_extraction_batch_size == 5
     assert settings.fact_extraction_max_concurrency == 30
     assert settings.fact_extraction_max_preceding_chunks == 3
     assert settings.fact_extraction_max_following_chunks == 1
     assert settings.fact_extraction.max_output_tokens == 32_768
     assert settings.fact_extraction.reasoning_effort == "high"
-    assert settings.evidence_relation_batch_size == 10
+    assert settings.evidence_relation_batch_size == 5
     assert settings.evidence_relation_max_concurrency == 30
     assert settings.multi_hop_3_candidate_limit == 3000
-    assert settings.multi_hop_3_batch_size == 10
+    assert settings.multi_hop_3_batch_size == 5
     assert settings.multi_hop_3_max_concurrency == 30
     assert settings.multi_hop_3.max_output_tokens == 8192
     assert settings.multi_hop_3.reasoning_effort == "high"
     assert settings.multi_hop_4_candidate_limit == 3000
-    assert settings.multi_hop_4_batch_size == 10
+    assert settings.multi_hop_4_batch_size == 5
     assert settings.multi_hop_4_max_concurrency == 30
     assert settings.multi_hop_4.max_output_tokens == 8192
     assert settings.multi_hop_4.reasoning_effort == "high"
     assert settings.multi_hop_5_candidate_limit == 3000
-    assert settings.multi_hop_5_batch_size == 10
+    assert settings.multi_hop_5_batch_size == 5
     assert settings.multi_hop_5_max_concurrency == 30
     assert settings.multi_hop_5.max_output_tokens == 8192
     assert settings.multi_hop_5.reasoning_effort == "high"
-    assert settings.bundle_scope_batch_size == 10
+    assert settings.bundle_scope_batch_size == 5
     assert settings.bundle_scope_max_concurrency == 30
     assert settings.bundle_scope.max_output_tokens == 4096
     assert settings.bundle_scope.reasoning_effort == "high"

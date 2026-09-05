@@ -24,6 +24,7 @@ def test_exception_contract_and_console_scripts_are_packaged() -> None:
 
     assert settings.max_target_rules_per_window == 64
     assert settings.max_total_windows == 10_000
+    assert settings.batch_size == 5
     assert set(load_yaml(PROJECT_ROOT / "ontology" / "exception_resolution_contract.yaml")) == {
         "schema_version",
         "candidates",

@@ -18,8 +18,8 @@ def test_population_contract_loads_typed_execution_limits() -> None:
     settings = PopulationSettings.from_path(CONTRACT_PATH)
 
     assert settings.instance_namespace == "https://w3id.org/legal-ontology-rag/data/"
-    assert settings.conduct_batch_size == 10
-    assert settings.batch_size == 1
+    assert settings.conduct_batch_size == 5
+    assert settings.batch_size == 5
     assert settings.max_preceding_chunks == 2
     assert settings.max_following_chunks == 1
     assert settings.max_article_context_chunks == 32

@@ -5,7 +5,7 @@ candidates:
   max_target_rules_per_window: 64
   max_total_windows: 10000
 llm:
-  batch_size: 1
+  batch_size: 5
   max_output_tokens: 32768
   temperature: 0.0
   max_retries: 2

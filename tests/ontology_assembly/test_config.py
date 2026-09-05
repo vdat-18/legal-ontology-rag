@@ -19,7 +19,7 @@ def test_assembly_contract_loads_minimal_execution_bounds() -> None:
 
     assert settings.max_chunk_span == 4
     assert settings.max_records_per_window == 8
-    assert settings.batch_size == 1
+    assert settings.batch_size == 5
     assert settings.max_response_bytes == 1_048_576
     assert set(load_yaml(PROJECT_ROOT / "ontology" / "assembly_contract.yaml")) == {
         "schema_version",

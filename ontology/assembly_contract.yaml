@@ -3,7 +3,7 @@ candidates:
   max_chunk_span: 4
   max_records_per_window: 8
 llm:
-  batch_size: 1
+  batch_size: 5
   max_output_tokens: 32768
   temperature: 0.0
   max_retries: 2
