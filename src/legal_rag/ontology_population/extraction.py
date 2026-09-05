@@ -85,12 +85,23 @@ def build_target_conduct_run_id(pilot_run_id: str, settings: Settings) -> str:
     )
 
 
-def build_population_binding_run_id(conduct_run_id: str, settings: Settings) -> str:
+def build_target_conduct_rerun_id(base_run_id: str, target_chunk_ids: Sequence[str]) -> str:
+    """Identify one explicit selective rerun while preserving prior record provenance."""
+    return population_identity(
+        {
+            "stage": "target-conduct-selective-rerun",
+            "base_run_id": base_run_id,
+            "target_chunk_ids": sorted(target_chunk_ids),
+        }
+    )
+
+
+def build_population_binding_run_id(conduct_inventory_id: str, settings: Settings) -> str:
     """Fingerprint the rule-binding step and its conduct checkpoint."""
     return population_identity(
         {
             "stage": "population-binding",
-            "conduct_run_id": conduct_run_id,
+            "conduct_inventory_id": conduct_inventory_id,
             "prompt_version": ONTOLOGY_POPULATION_PROMPT_VERSION,
             "llm_base_url": settings.llm_base_url,
             "llm_model": settings.llm_model,

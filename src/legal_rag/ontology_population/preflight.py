@@ -179,6 +179,31 @@ def select_population_targets(
     return accepted_chunks if target_limit is None else accepted_chunks[:target_limit]
 
 
+def select_population_rerun_targets(
+    bundle: PopulationInputBundle,
+    selected_targets: Sequence[Chunk],
+    rerun_selection: PopulationTargetSelection,
+) -> tuple[Chunk, ...]:
+    """Validate an explicit rerun selection and return targets in document order."""
+    if not rerun_selection.chunk_ids:
+        msg = "Population rerun selection must contain at least one chunk ID"
+        raise ValueError(msg)
+    if rerun_selection.document_number != bundle.metadata.document_number:
+        msg = "Population rerun selection document number does not match metadata"
+        raise ValueError(msg)
+    duplicate_ids = _duplicates(rerun_selection.chunk_ids)
+    if duplicate_ids:
+        msg = f"Duplicate population rerun target IDs: {', '.join(duplicate_ids)}"
+        raise ValueError(msg)
+    selected_ids = {chunk.chunk_id for chunk in selected_targets}
+    unknown_ids = set(rerun_selection.chunk_ids) - selected_ids
+    if unknown_ids:
+        msg = f"Population rerun selection contains an unselected chunk: {sorted(unknown_ids)[0]}"
+        raise ValueError(msg)
+    rerun_ids = set(rerun_selection.chunk_ids)
+    return tuple(chunk for chunk in selected_targets if chunk.chunk_id in rerun_ids)
+
+
 def validate_population_resume_state(
     selected_targets: Sequence[Chunk],
     records: Sequence[OntologyPopulationRecord],

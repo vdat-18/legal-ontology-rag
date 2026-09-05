@@ -13,6 +13,7 @@ from legal_rag.ontology_population.conduct_models import (
     TargetConductEvidenceReference,
     TargetConductInventoryRecord,
 )
+from legal_rag.parser.hashing import sha256_json
 
 
 def write_target_conduct_inventories(path: Path, records: Sequence[TargetConductInventoryRecord]) -> None:
@@ -54,11 +55,16 @@ def read_target_conduct_inventories(path: Path) -> tuple[TargetConductInventoryR
     return tuple(records)
 
 
+def target_conduct_inventory_identity(records: Sequence[TargetConductInventoryRecord]) -> str:
+    """Fingerprint the exact reviewed inventory consumed by population binding."""
+    return sha256_json([record.to_dict() for record in sorted(records, key=lambda item: item.target_chunk_id)])
+
+
 def validate_target_conduct_inventory(
     records: Sequence[TargetConductInventoryRecord],
     target_chunk_ids: Sequence[str],
     *,
-    expected_run_id: str,
+    expected_run_id: str | None,
     require_complete: bool,
 ) -> None:
     """Validate only checkpoint identity and target membership."""
@@ -71,7 +77,7 @@ def validate_target_conduct_inventory(
     if unknown_ids:
         msg = f"Target-conduct inventory contains an unselected chunk: {sorted(unknown_ids)[0]}"
         raise ValueError(msg)
-    if any(record.run_id != expected_run_id for record in records):
+    if expected_run_id is not None and any(record.run_id != expected_run_id for record in records):
         msg = "Target-conduct inventory does not match the current inputs or LLM configuration"
         raise ValueError(msg)
     if require_complete and set(record_ids) != target_ids:

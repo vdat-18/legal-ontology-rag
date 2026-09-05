@@ -26,6 +26,11 @@ def _parser() -> argparse.ArgumentParser:
     target_group.add_argument("--target-limit", type=int, help="Maximum accepted chunks selected for a pilot run")
     target_group.add_argument("--target-ids-path", type=Path, help="Reviewed pilot target-selection JSON path")
     parser.add_argument(
+        "--rerun-target-ids-path",
+        type=Path,
+        help="Reviewed target-selection JSON containing only chunks that must be extracted again",
+    )
+    parser.add_argument(
         "--max-concurrency",
         type=int,
         default=DEFAULT_ONTOLOGY_MAX_CONCURRENCY,
@@ -46,8 +51,13 @@ def main() -> None:
     )
     from legal_rag.ontology_population.extraction import (
         BamlOntologyPopulationClient,
+        build_target_conduct_rerun_id,
         build_target_conduct_run_id,
         extract_target_conducts,
+    )
+    from legal_rag.ontology_population.preflight import (
+        load_population_target_selection,
+        select_population_rerun_targets,
     )
     from legal_rag.settings import Settings
 
@@ -65,17 +75,36 @@ def main() -> None:
     if dotenv_path:
         load_dotenv(dotenv_path, override=True)
     provider_settings = Settings.from_environment()
-    run_id = build_target_conduct_run_id(prepared.pilot_run_id, provider_settings)
+    base_run_id = build_target_conduct_run_id(prepared.pilot_run_id, provider_settings)
+    rerun_targets = None
+    if arguments.rerun_target_ids_path is not None:
+        rerun_selection = load_population_target_selection(arguments.rerun_target_ids_path)
+        rerun_targets = select_population_rerun_targets(prepared.bundle, prepared.targets, rerun_selection)
+    run_id = (
+        build_target_conduct_rerun_id(base_run_id, tuple(chunk.chunk_id for chunk in rerun_targets))
+        if rerun_targets is not None
+        else base_run_id
+    )
     existing = (
         read_target_conduct_inventories(arguments.inventories_output_path)
         if arguments.inventories_output_path.exists()
         else ()
     )
     target_ids = tuple(chunk.chunk_id for chunk in prepared.targets)
-    validate_target_conduct_inventory(existing, target_ids, expected_run_id=run_id, require_complete=False)
+    validate_target_conduct_inventory(
+        existing,
+        target_ids,
+        expected_run_id=None if rerun_targets is not None else run_id,
+        require_complete=rerun_targets is not None,
+    )
     records_by_id = {record.target_chunk_id: record for record in existing}
     chunk_order = {chunk.chunk_id: chunk.chunk_index for chunk in prepared.bundle.chunks}
-    remaining = tuple(chunk for chunk in prepared.targets if chunk.chunk_id not in records_by_id)
+    extraction_targets = prepared.targets if rerun_targets is None else rerun_targets
+    remaining = tuple(
+        chunk
+        for chunk in extraction_targets
+        if chunk.chunk_id not in records_by_id or records_by_id[chunk.chunk_id].run_id != run_id
+    )
 
     def ordered_records() -> tuple[TargetConductInventoryRecord, ...]:
         """Return stable source-ordered inventories."""
@@ -87,9 +116,10 @@ def main() -> None:
         write_target_conduct_inventories(arguments.inventories_output_path, ordered_records())
 
     logger.info(
-        "Loaded {} selected chunks; {} already inventoried, {} remaining; batch size {}; max concurrency {}",
+        "Loaded {} selected chunks; {} extraction targets already current, {} remaining; batch size {}; "
+        "max concurrency {}",
         len(prepared.targets),
-        len(prepared.targets) - len(remaining),
+        len(extraction_targets) - len(remaining),
         len(remaining),
         prepared.settings.conduct_batch_size,
         arguments.max_concurrency,

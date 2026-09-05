@@ -182,6 +182,10 @@ Omit pilot-selection options for the full document. Re-running a step resumes fr
 instead of repeating completed LLM work. The lower-level candidate, proposal, and finalize commands remain available for
 debugging and backward compatibility. See `docs/ontology_population_pipeline.md` for dependencies and output contracts.
 
+After reviewing Step 1, keep the existing `conducts.jsonl` and add
+`--rerun-target-ids-path <rerun-selection.json>` to replace only incorrect targets. The rerun selection uses the pilot
+selection schema, must be a subset of the original targets, and resumes completed rerun batches when invoked again.
+
 Review the ontology's external vocabulary boundary locally with:
 
 ```powershell

@@ -43,13 +43,13 @@ def main() -> None:
     from legal_rag.ontology_population.cli_support import prepare_population_step
     from legal_rag.ontology_population.conduct_writer import (
         read_target_conduct_inventories,
+        target_conduct_inventory_identity,
         validate_target_conduct_inventory,
     )
     from legal_rag.ontology_population.extraction import (
         BamlOntologyPopulationClient,
         PersistedConductPopulationClient,
         build_population_binding_run_id,
-        build_target_conduct_run_id,
         extract_population_from_document,
     )
     from legal_rag.ontology_population.materializer import (
@@ -80,16 +80,15 @@ def main() -> None:
     if dotenv_path:
         load_dotenv(dotenv_path, override=True)
     provider_settings = Settings.from_environment()
-    conduct_run_id = build_target_conduct_run_id(prepared.pilot_run_id, provider_settings)
     inventories = read_target_conduct_inventories(arguments.inventories_path)
     target_ids = tuple(chunk.chunk_id for chunk in prepared.targets)
     validate_target_conduct_inventory(
         inventories,
         target_ids,
-        expected_run_id=conduct_run_id,
+        expected_run_id=None,
         require_complete=True,
     )
-    run_id = build_population_binding_run_id(conduct_run_id, provider_settings)
+    run_id = build_population_binding_run_id(target_conduct_inventory_identity(inventories), provider_settings)
     existing_records = (
         read_population_records(arguments.records_output_path) if arguments.records_output_path.exists() else ()
     )

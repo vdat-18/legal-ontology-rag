@@ -63,6 +63,21 @@ uv run --extra dev legal-extract-ontology-conducts `
 
 Thêm `--target-ids-path <selection.json>` khi chạy pilot; dùng cùng option ở bước 2.
 
+Sau khi review output, có thể selective rerun mà không xóa các inventory đúng:
+
+```powershell
+uv run --extra dev legal-extract-ontology-conducts `
+  <chunks.jsonl> <screening.jsonl> <document_metadata.jsonl> `
+  ontology/population_contract.yaml <conducts.jsonl> `
+  --rerun-target-ids-path <rerun-selection.json> `
+  --preflight-report-path <preflight.json> --max-concurrency 30
+```
+
+`rerun-selection.json` dùng cùng schema với target selection và chỉ chứa các `chunk_ids` đã review là sai. CLI giữ
+nguyên nội dung cùng provenance của các target khác, thay atomically từng batch rerun và resume khi chạy lại cùng
+selection. Bước 2 fingerprint toàn bộ inventory đã review nên chấp nhận provenance theo từng record nhưng vẫn phát
+hiện mọi thay đổi nội dung đầu vào.
+
 ## 2. Population binding
 
 Population đọc target chunk cùng hai chunk trước, một chunk sau và context cùng Điều trong giới hạn cấu hình. LLM thực
