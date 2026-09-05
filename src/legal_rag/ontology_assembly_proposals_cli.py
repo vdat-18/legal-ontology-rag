@@ -39,8 +39,8 @@ def main() -> None:
     from legal_rag.ontology_population.assembly_models import AssemblyProposal, AssemblyProposalProgress
     from legal_rag.ontology_population.assembly_proposals import (
         BamlAssemblyProposalClient,
-        build_assembly_proposal_run_id,
         propose_assemblies,
+        resolve_assembly_proposal_resume_run_id,
     )
     from legal_rag.ontology_population.assembly_writer import (
         read_assembly_candidates,
@@ -63,7 +63,6 @@ def main() -> None:
     provider_settings = Settings.from_environment()
     assembly_settings = AssemblySettings.from_path(arguments.assembly_contract_path)
     candidates = read_assembly_candidates(arguments.candidates_path)
-    run_id = build_assembly_proposal_run_id(candidates.run_id, assembly_settings, provider_settings)
     chunks = read_chunks(arguments.chunks_path)
     records = read_population_records(arguments.records_path)
     metadata = read_document_metadata(arguments.metadata_path)
@@ -72,6 +71,13 @@ def main() -> None:
     )
     existing_progress = (
         read_assembly_progress(arguments.progress_output_path) if arguments.progress_output_path.exists() else ()
+    )
+    run_id = resolve_assembly_proposal_resume_run_id(
+        {item.run_id for item in (*existing_proposals, *existing_progress)},
+        candidates.run_id,
+        len(candidates.windows),
+        assembly_settings,
+        provider_settings,
     )
     candidate_ids = {window.candidate_id for window in candidates.windows}
     proposals_by_id, processed_ids = load_compatible_proposal_resume_state(

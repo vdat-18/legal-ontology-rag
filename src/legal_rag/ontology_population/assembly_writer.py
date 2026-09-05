@@ -11,11 +11,13 @@ from legal_rag.ontology_population.assembly_models import (
     ASSEMBLY_CANDIDATE_SCHEMA_VERSION,
     ASSEMBLY_PROPOSAL_PROGRESS_SCHEMA_VERSION,
     ASSEMBLY_PROPOSAL_SCHEMA_VERSION,
+    ASSEMBLY_RESOLUTION_PROGRESS_SCHEMA_VERSION,
     LEGACY_ASSEMBLY_PROPOSAL_SCHEMA_VERSION,
     AssemblyCandidateSet,
     AssemblyCandidateWindow,
     AssemblyProposal,
     AssemblyProposalProgress,
+    AssemblyResolutionProgress,
 )
 from legal_rag.ontology_population.writer import population_record_from_dict
 
@@ -90,4 +92,22 @@ def read_assembly_progress(path: Path) -> tuple[AssemblyProposalProgress, ...]:
                 msg = f"Unsupported assembly progress schema: {payload['schema_version']}"
                 raise ValueError(msg)
             progress.append(AssemblyProposalProgress(candidate_id=payload["candidate_id"], run_id=payload["run_id"]))
+    return tuple(progress)
+
+
+def write_assembly_resolution_progress(path: Path, progress: Sequence[AssemblyResolutionProgress]) -> None:
+    """Atomically replace conflict-resolution checkpoints."""
+    write_jsonl_atomic(path, (record.to_dict() for record in progress))
+
+
+def read_assembly_resolution_progress(path: Path) -> tuple[AssemblyResolutionProgress, ...]:
+    """Read conflict-resolution checkpoints."""
+    progress = []
+    with path.open(encoding="utf-8") as source_file:
+        for line in source_file:
+            payload = json.loads(line)
+            if payload["schema_version"] != ASSEMBLY_RESOLUTION_PROGRESS_SCHEMA_VERSION:
+                msg = f"Unsupported assembly resolution progress schema: {payload['schema_version']}"
+                raise ValueError(msg)
+            progress.append(AssemblyResolutionProgress(component_id=payload["component_id"], run_id=payload["run_id"]))
     return tuple(progress)

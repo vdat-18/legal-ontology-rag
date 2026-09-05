@@ -1,4 +1,4 @@
-"""Integrated CLI steps with one semantic LLM task per invocation."""
+"""Integrated ontology semantic workflow CLIs."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ def _run_modules(commands: Sequence[tuple[str, Sequence[str | Path]]]) -> None:
 def _assembly_parser() -> argparse.ArgumentParser:
     """Build the integrated within-document assembly parser."""
     parser = argparse.ArgumentParser(
-        description="Build candidates, run one rule-assembly LLM task, and finalize canonical rules."
+        description="Build candidates, propose assemblies, resolve global conflicts, and finalize canonical rules."
     )
     parser.add_argument("chunks_path", type=Path)
     parser.add_argument("metadata_path", type=Path)
@@ -38,6 +38,8 @@ def _assembly_parser() -> argparse.ArgumentParser:
     parser.add_argument("progress_output_path", type=Path)
     parser.add_argument("canonical_records_output_path", type=Path)
     parser.add_argument("graph_output_path", type=Path)
+    parser.add_argument("--resolved-proposals-output-path", type=Path)
+    parser.add_argument("--resolution-progress-output-path", type=Path)
     parser.add_argument("--max-concurrency", type=int, default=DEFAULT_ONTOLOGY_MAX_CONCURRENCY)
     return parser
 
@@ -45,6 +47,12 @@ def _assembly_parser() -> argparse.ArgumentParser:
 def assemble_main() -> None:
     """Run the complete within-document assembly step."""
     arguments = _assembly_parser().parse_args()
+    resolved_proposals_path = arguments.resolved_proposals_output_path or arguments.proposals_output_path.with_name(
+        f"{arguments.proposals_output_path.stem}.resolved{arguments.proposals_output_path.suffix}"
+    )
+    resolution_progress_path = arguments.resolution_progress_output_path or arguments.progress_output_path.with_name(
+        f"{arguments.progress_output_path.stem}.resolution{arguments.progress_output_path.suffix}"
+    )
     _run_modules(
         (
             (
@@ -71,12 +79,26 @@ def assemble_main() -> None:
                 ),
             ),
             (
-                "legal_rag.ontology_assembly_finalize_cli",
+                "legal_rag.ontology_assembly_resolution_cli",
                 (
                     arguments.chunks_path,
                     arguments.metadata_path,
                     arguments.records_path,
                     arguments.proposals_output_path,
+                    arguments.assembly_contract_path,
+                    resolved_proposals_path,
+                    resolution_progress_path,
+                    "--max-concurrency",
+                    str(arguments.max_concurrency),
+                ),
+            ),
+            (
+                "legal_rag.ontology_assembly_finalize_cli",
+                (
+                    arguments.chunks_path,
+                    arguments.metadata_path,
+                    arguments.records_path,
+                    resolved_proposals_path,
                     arguments.population_contract_path,
                     arguments.canonical_records_output_path,
                     arguments.graph_output_path,

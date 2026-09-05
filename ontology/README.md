@@ -22,6 +22,7 @@ Sau population, mỗi bước semantic dùng một quy trình chung:
 ```text
 bounded structural candidates
   -> typed LLM proposal
+  -> LLM component review before canonicalization
   -> minimal ID/reference integrity
   -> deterministic RDF materialization
 ```
@@ -31,8 +32,8 @@ parsing, candidate/reference membership, identity cần cho persistence và RDF 
 là QA tách rời, không chặn population hay các bước canonicalization. LLM không trực tiếp sửa TBox.
 
 Runtime được chạy bằng sáu CLI cấp cao: conduct inventory, population binding, assembly, legal change, exception và
-concept resolution. Mỗi CLI chứa đúng một loại nhiệm vụ LLM, tự chạy phần candidate/finalization không dùng LLM và vẫn
-giữ các file checkpoint trung gian để kiểm tra hoặc resume.
+concept resolution. Mỗi CLI tự chạy phần candidate/finalization không dùng LLM và giữ checkpoint để kiểm tra hoặc
+resume. Riêng assembly gọi thêm LLM để review từng proposal component và loại over-merge trước khi canonical hóa.
 
 ## Minimal provenance
 

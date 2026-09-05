@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -13,6 +15,7 @@ from legal_rag import (
     ontology_assembly_candidates_cli,
     ontology_assembly_finalize_cli,
     ontology_assembly_proposals_cli,
+    ontology_assembly_resolution_cli,
 )
 from legal_rag.baml_client.types import (
     OntologyConsequenceEntry,
@@ -22,6 +25,8 @@ from legal_rag.baml_client.types import (
     OntologyRuleEntry,
     OntologySubjectKind,
     OntologyValidityMode,
+    RuleAssemblyConflictInput,
+    RuleAssemblyConflictResult,
     RuleAssemblyProposal,
     RuleAssemblyWindowInput,
     RuleAssemblyWindowResult,
@@ -30,8 +35,15 @@ from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataReco
 from legal_rag.benchmark_synthesis.writer import write_document_metadata
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
-from legal_rag.ontology_population import assembly_proposals
-from legal_rag.ontology_population.assembly_writer import read_assembly_proposals
+from legal_rag.ontology_population import assembly_proposals, assembly_resolution
+from legal_rag.ontology_population.assembly_models import AssemblyProposal, AssemblyResolutionProgress
+from legal_rag.ontology_population.assembly_resolution import build_assembly_proposal_components
+from legal_rag.ontology_population.assembly_writer import (
+    read_assembly_proposals,
+    read_assembly_resolution_progress,
+    write_assembly_proposals,
+    write_assembly_resolution_progress,
+)
 from legal_rag.ontology_population.models import OntologyPopulationRecord
 from legal_rag.ontology_population.writer import read_population_records, write_population_records
 
@@ -115,6 +127,20 @@ class _EmptyAssemblyClient:
         return tuple(RuleAssemblyWindowResult(candidate_id=window.candidate_id, proposals=[]) for window in windows)
 
 
+class _EmptyResolutionClient:
+    """Reject a selected prior assembly and record resumable calls."""
+
+    calls = 0
+
+    def __init__(self, *_: object) -> None:
+        """Accept production constructor arguments."""
+
+    def resolve_batch(self, components: Sequence[RuleAssemblyConflictInput]) -> Sequence[RuleAssemblyConflictResult]:
+        """Return an explicit no-proposal decision for each selected component."""
+        type(self).calls += 1
+        return tuple(RuleAssemblyConflictResult(component_id=item.component_id, proposals=[]) for item in components)
+
+
 def test_cli_runs_candidate_proposal_and_offline_finalization(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -194,3 +220,73 @@ def test_cli_runs_candidate_proposal_and_offline_finalization(
     ontology_assembly_proposals_cli.main()
 
     assert read_assembly_proposals(proposals_path) == ()
+
+
+def test_resolution_cli_selectively_replaces_one_completed_component(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    assembly_chunks: tuple[Chunk, Chunk],
+    assembly_records: tuple[OntologyPopulationRecord, ...],
+    assembly_metadata: DocumentMetadataRecord,
+) -> None:
+    """A selected component is replayed once while its prior proposal is removed atomically."""
+    chunks_path = tmp_path / "chunks.jsonl"
+    metadata_path = tmp_path / "metadata.jsonl"
+    records_path = tmp_path / "population.jsonl"
+    proposals_path = tmp_path / "proposals.jsonl"
+    resolved_path = tmp_path / "resolved.jsonl"
+    progress_path = tmp_path / "resolution-progress.jsonl"
+    selection_path = tmp_path / "selection.json"
+    write_chunks(chunks_path, assembly_chunks)
+    write_document_metadata(metadata_path, assembly_metadata)
+    write_population_records(records_path, assembly_records)
+    proposal = AssemblyProposal(
+        proposal_id="proposal-1",
+        candidate_id="candidate-1",
+        member_population_ids=tuple(record.population_id for record in assembly_records),
+        assembled_record=replace(assembly_records[0], population_id="assembled-proposal-1"),
+        rationale_vi="Đề xuất cũ cần review lại.",
+        run_id="local-run",
+    )
+    write_assembly_proposals(proposals_path, (proposal,))
+    component = build_assembly_proposal_components((proposal,))[0]
+    write_assembly_proposals(
+        resolved_path,
+        (replace(proposal, candidate_id=component.component_id, run_id="old-resolution-run"),),
+    )
+    write_assembly_resolution_progress(
+        progress_path,
+        (AssemblyResolutionProgress(component_id=component.component_id, run_id="old-resolution-run"),),
+    )
+    selection_path.write_text(
+        json.dumps({"schema_version": "0.1.0", "component_ids": [component.component_id]}),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(assembly_resolution, "BamlAssemblyResolutionClient", _EmptyResolutionClient)
+    monkeypatch.setenv("LLM_BASE_URL", "https://example.test/v1")
+    monkeypatch.setenv("LLM_API_KEY", "test-key")
+    monkeypatch.setenv("LLM_MODEL", "test-model")
+    monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
+    arguments = [
+        "legal-resolve-rule-assembly-conflicts",
+        str(chunks_path),
+        str(metadata_path),
+        str(records_path),
+        str(proposals_path),
+        str(PROJECT_ROOT / "ontology" / "assembly_contract.yaml"),
+        str(resolved_path),
+        str(progress_path),
+        "--rerun-component-ids-path",
+        str(selection_path),
+        "--max-concurrency",
+        "2",
+    ]
+    _EmptyResolutionClient.calls = 0
+    monkeypatch.setattr(sys, "argv", arguments)
+    ontology_assembly_resolution_cli.main()
+    ontology_assembly_resolution_cli.main()
+
+    assert read_assembly_proposals(resolved_path) == ()
+    assert read_assembly_resolution_progress(progress_path)[0].run_id != "old-resolution-run"
+    assert _EmptyResolutionClient.calls == 1

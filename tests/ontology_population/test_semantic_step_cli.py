@@ -1,4 +1,4 @@
-"""Tests for integrated one-LLM semantic step orchestration."""
+"""Tests for integrated ontology semantic step orchestration."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ from legal_rag import ontology_semantic_step_cli
             (
                 "legal_rag.ontology_assembly_candidates_cli",
                 "legal_rag.ontology_assembly_proposals_cli",
+                "legal_rag.ontology_assembly_resolution_cli",
                 "legal_rag.ontology_assembly_finalize_cli",
             ),
         ),
@@ -57,9 +58,9 @@ def test_integrated_step_runs_one_proposal_component(
     tmp_path: Path,
     main: Callable[[], None],
     argument_count: int,
-    expected_modules: tuple[str, str, str],
+    expected_modules: tuple[str, ...],
 ) -> None:
-    """Each user-facing step wraps preparation, one LLM proposal, and finalization."""
+    """Each user-facing step wraps preparation, semantic work, and finalization."""
     commands: list[list[str]] = []
 
     def record_command(command: list[str], *, check: bool) -> None:
@@ -74,8 +75,9 @@ def test_integrated_step_runs_one_proposal_component(
     main()
 
     assert [command[2] for command in commands] == list(expected_modules)
-    assert sum("_proposals_cli" in command[2] for command in commands) == 1
     assert all(command[:2] == [sys.executable, "-m"] for command in commands)
-    proposal_command = next(command for command in commands if "_proposals_cli" in command[2])
-    assert proposal_command[-2:] == ["--max-concurrency", "3"]
-    assert all("--max-concurrency" not in command for command in commands if command is not proposal_command)
+    semantic_commands = [
+        command for command in commands if "_proposals_cli" in command[2] or "_resolution_cli" in command[2]
+    ]
+    assert all(command[-2:] == ["--max-concurrency", "3"] for command in semantic_commands)
+    assert all("--max-concurrency" not in command for command in commands if command not in semantic_commands)

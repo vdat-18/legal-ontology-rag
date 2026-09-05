@@ -60,26 +60,27 @@ function ProposeOntologyRuleAssemblies(windows: RuleAssemblyWindowInput[]) -> Ru
     {{ _.role("system") }}
 
     Bối cảnh: xây dựng ontology có bằng chứng chỉ cho quy định xử phạt vi phạm
-    hành chính về giao thông đường bộ Việt Nam; không dùng cho vụ việc hoặc domain
-    khác.
+    hành chính về giao thông đường bộ Việt Nam.
 
     Mục đích bước 3/6: khôi phục một rule version bị chia thành nhiều population
     record do chunking, tránh lưu các mảnh của cùng rule như các rule độc lập.
 
-    Nhiệm vụ: hợp nhất các record thực sự là những phần của cùng một PenaltyRule
-    trong cùng rule version.
-
-    - Chỉ hợp nhất record cùng văn bản, rule version, hành vi và phạm vi khi source
-      hoặc locator cho thấy chúng là các mảnh của một quy định. Tiền phạt, cảnh
-      cáo, trừ điểm, hình phạt bổ sung, khắc phục và dẫn chiếu mức phạt có thể là
-      hậu quả cùng rule khi source hỗ trợ.
-    - Vị trí gần, câu chữ giống nhau, cùng mức phạt hoặc cùng loại phương tiện
-      không chứng minh cùng rule; khác ngưỡng, qualifier, chủ thể hoặc phạm vi thì
-      giữ riêng.
+    - Chỉ hợp nhất khi đồng thời: cùng một hành vi pháp lý đơn nhất; cùng chủ thể,
+      vai trò, phương tiện, điều kiện; và record chỉ bổ sung mảnh hậu quả/evidence
+      bị tách.
+    - Giữ riêng các động từ/hành động pháp lý độc lập, kể cả khi chúng dùng chung
+      đối tượng, bổ ngữ, Điểm/Khoản, mức phạt, danh sách, từ "hoặc" hoặc dấu chấm
+      phẩy. Phần bổ ngữ bị lược để tránh lặp không biến hai hành động thành mảnh
+      của cùng conduct; không nối nhiều hành vi thành một conduct label.
+    - Không hợp nhất NaturalPerson với Organization; không dùng subject_kind=null
+      để thay cho nhiều loại chủ thể. Khác role, vehicle, ngưỡng, qualifier hoặc
+      phạm vi thì giữ riêng.
+    - Cùng locator, source chunk hoặc hậu quả không chứng minh cùng rule; không
+      hợp nhất chỉ để khử mức phạt lặp.
     - Mỗi proposal có ít nhất hai member ID duy nhất; các proposal không trùng
       member.
-    - Bảo toàn conduct, applicability, condition tree, consequences, validity,
-      provision path và evidence; giá trị chưa biết giữ null.
+    - Bảo toàn conduct, applicability, conditions, consequences, validity,
+      provision và evidence; giá trị chưa biết giữ null.
     - assembled_rule dùng ExplicitInterval và giữ nguyên ngày đã resolve; nếu cả
       hai ngày null thì dùng Unresolved. Không dùng DocumentDefault.
     - Không suy diễn role, LegalChange, LegalException, identity xuyên văn bản hay
@@ -92,21 +93,7 @@ function ProposeOntologyRuleAssemblies(windows: RuleAssemblyWindowInput[]) -> Ru
     Các candidate window cần đánh giá:
     {% for window in windows %}
     === candidate_id={{ window.candidate_id }} ===
-    {% for record in window.records %}
-    population_id={{ record.population_id }}
-    source_chunk_id={{ record.source_chunk_id }}
-    document={{ record.document_number }}
-    provision={{ record.provision_path }}
-    conduct={{ record.conduct_label_vi }}
-    subject_kind={{ record.subject_kind }}
-    roles={{ record.role_labels_vi }}
-    vehicles={{ record.vehicle_category_labels_vi }}
-    validity={{ record.valid_from }} -> {{ record.valid_to }}
-    conditions={{ record.conditions }}
-    consequences={{ record.consequences }}
-    evidence={{ record.evidence }}
-    ---
-    {% endfor %}
+    records={{ window.records }}
     === end candidate_id={{ window.candidate_id }} ===
     {% endfor %}
 

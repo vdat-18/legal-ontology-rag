@@ -32,7 +32,7 @@ enum OntologyValidityMode {
 class OntologyEvidenceSource {
   evidence_id string
   chunk_id string
-  text string @description(#"Source nguyên văn."#)
+  text string
 }
 
 class OntologyEvidenceReference {
@@ -44,39 +44,39 @@ class OntologyEvidenceReference {
 class OntologyConditionEntry {
   condition_id string
   kind OntologyConditionKind
-  text_vi string @description(#"Nội dung điều kiện ngắn gọn bằng tiếng Việt."#)
-  operand_ids string[] @description(#"ID condition con: Atomic rỗng; AllOf/AnyOf >=2; Not đúng 1."#)
+  text_vi string
+  operand_ids string[] @description(#"Atomic rỗng; AllOf/AnyOf >=2; Not đúng 1."#)
   evidence OntologyEvidenceReference[]
 }
 
 class OntologyConsequenceEntry {
-  consequence_id string @description(#"ID cục bộ duy nhất trong rule."#)
+  consequence_id string
   kind OntologyConsequenceKind
-  minimum_amount string? @description(#"Số thập phân; chỉ MonetaryPenalty."#)
-  maximum_amount string? @description(#"Số thập phân; chỉ MonetaryPenalty."#)
-  currency OntologyCurrency? @description(#"Đơn vị tiền source nêu."#)
-  point_value int? @description(#"Số nguyên dương; chỉ cho PointDeduction."#)
+  minimum_amount string? @description(#"Số thập phân; chỉ tiền phạt."#)
+  maximum_amount string? @description(#"Số thập phân; chỉ tiền phạt."#)
+  currency OntologyCurrency?
+  point_value int? @description(#"Số nguyên dương; chỉ PointDeduction."#)
   consequence_label_vi string?
-  minimum_duration_months int? @description(#"Cận dưới tháng của AdditionalSanction."#)
-  maximum_duration_months int? @description(#"Cận trên tháng của AdditionalSanction."#)
-  target_label_vi string? @description(#"Đối tượng chịu tác động được source nêu."#)
-  responsible_role_label_vi string? @description(#"Vai trò thực hiện RemedialMeasure; bắt buộc cho loại này."#)
+  minimum_duration_months int?
+  maximum_duration_months int?
+  target_label_vi string? @description(#"Đối tượng chịu tác động."#)
+  responsible_role_label_vi string? @description(#"Vai trò thực hiện RemedialMeasure."#)
   evidence OntologyEvidenceReference[]
 }
 
 class OntologyRuleEntry {
-  conduct_label_vi string @description(#"Hành vi đã khóa; giữ qualifier nội tại."#)
+  conduct_label_vi string @description(#"Hành vi đã khóa."#)
   subject_kind OntologySubjectKind?
-  role_labels_vi string[] @description(#"Vai trò áp dụng được source nêu rõ."#)
-  vehicle_category_labels_vi string[] @description(#"Loại phương tiện được văn bản nêu rõ."#)
+  role_labels_vi string[]
+  vehicle_category_labels_vi string[]
   condition_root_id string? @description(#"ID gốc; null khi không có điều kiện riêng."#)
-  conditions OntologyConditionEntry[] @description(#"Cây AND/OR/NOT có evidence."#)
-  consequences OntologyConsequenceEntry[] @description(#"Ít nhất một hậu quả pháp lý có evidence."#)
+  conditions OntologyConditionEntry[]
+  consequences OntologyConsequenceEntry[]
   validity_mode OntologyValidityMode @description(#"Nguồn hiệu lực."#)
   valid_from string? @description(#"YYYY-MM-DD khi có ngày riêng."#)
   valid_to string? @description(#"YYYY-MM-DD; null khi chưa biết."#)
-  provision_path string @description(#"Chương > Mục > Điều > Khoản > Điểm có căn cứ."#)
-  evidence OntologyEvidenceReference[] @description(#"Evidence chung của rule."#)
+  provision_path string
+  evidence OntologyEvidenceReference[]
 }
 
 class OntologyPopulationBatchResult {
@@ -139,15 +139,17 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
     Mục đích bước 1/6: khóa danh mục đóng các hành vi trực tiếp trong từng Target
     để context sau không tự thêm conduct; chưa gắn phạm vi hay hậu quả.
 
-    - Tách lựa chọn chỉ khi từng nhánh tự là hành vi độc lập. Giữ cụm phối hợp khi
-      source xem toàn cụm là một hành vi qua tham chiếu số ít hoặc
-      predicate/qualifier chung; không tách phần phải kết hợp mới thành vi phạm.
-    - Quyết định theo nghĩa pháp lý toàn câu, không theo dấu câu; dùng cùng độ chi
-      tiết cho cấu trúc tương đương.
-    - Không tạo conduct từ định nghĩa, thủ tục, thẩm quyền, nguyên tắc xử lý,
-      sửa/bãi bỏ hoặc điều khoản chỉ ánh xạ sang provision khác; trả rỗng dù nó
-      nhắc/mô tả lại hành vi. Chỉ tạo khi Target trực tiếp quy định hoặc gắn xử
-      phạt với hành vi đủ; locator hoặc cụm đối tượng không đủ.
+    - Tách từng hành động hoặc không hành động nếu riêng nó đã đủ là hành vi bị xử
+      phạt, kể cả khi các nhánh dùng chung chủ thể, hoàn cảnh hoặc kết quả. Dấu câu,
+      "và", "hoặc" chỉ là tín hiệu; quyết định theo nghĩa pháp lý, không theo dấu câu.
+    - Không tách các tham số, đối tượng, phương thức hoặc ngưỡng thay thế của cùng
+      một hành vi; giữ chúng làm qualifier. Chỉ giữ nhiều hành động trong một
+      conduct khi chúng phải kết hợp mới đủ vi phạm. Dùng cùng độ chi tiết cho cấu
+      trúc tương đương, không gộp các hành vi thay thế độc lập.
+    - Không tạo conduct từ định nghĩa, thủ tục, thẩm quyền, nguyên tắc, sửa/bãi bỏ
+      hoặc danh sách locator thuần túy. Nếu Target trực tiếp gắn hậu quả với một mô
+      tả hành vi đủ nghĩa thì vẫn tạo, dù có dẫn chiếu provision khác; locator
+      hoặc cụm đối tượng không đủ.
     - Chỉ dùng Target evidence; structural context chỉ định vị. Không dùng kiến
       thức ngoài. Giữ nguyên phủ định, qualifier và phạm vi tiếng Việt.
     - Locator context chỉ khôi phục Khoản/Điểm, không cấp conduct/evidence.
@@ -192,14 +194,17 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
     - Giữ nguyên target conducts: trả ít nhất một rule cho từng target_conduct_id,
       giữ đúng conduct_label_vi và provision_path. Inventory rỗng thì rules rỗng;
       không bỏ, gộp hoặc tạo conduct.
-    - Audit toàn window cho từng conduct. Chỉ bind khi source/locator xác định nó
-      bị chi phối; gần nhau hoặc giống chữ không đủ. Thu đủ mọi hậu quả cộng dồn,
-      kể cả điều khoản liệt kê locator; không dừng sau tiền phạt hay bỏ trừ điểm,
-      bổ sung hoặc khắc phục. Mỗi rule phải có hậu quả.
-    - Khi source nêu phạm vi hoặc mức khác nhau cho cá nhân và tổ chức, tạo rule
-      NaturalPerson và Organization riêng; không để subject_kind null, không dùng
-      target_label_vi thay subject. Chỉ null khi source thật sự không xác định;
-      tách thêm variant khi điều kiện/phạm vi/hậu quả khác nhau.
+    - Audit toàn window cho từng conduct. Chỉ bind khi source hoặc locator xác định
+      nó bị chi phối; gần nhau hay giống chữ không đủ. Với từng clause hậu quả,
+      đối chiếu toàn bộ danh sách locator rồi thu đủ tiền phạt, cảnh cáo, trừ điểm,
+      bổ sung, khắc phục và dẫn chiếu áp dụng cộng dồn. Không dừng sau hậu quả đầu;
+      mỗi rule phải có hậu quả.
+    - Suy ra subject_kind theo bản chất chủ thể được source nêu: vai trò chỉ một
+      con người thực hiện được là NaturalPerson, dù không có từ "cá nhân"; vai trò
+      chỉ một pháp nhân/tổ chức thực hiện được là Organization. Nếu source nêu mức
+      hoặc phạm vi riêng, tạo đủ hai variant. Chỉ null khi chủ thể thật sự có thể
+      thuộc nhiều loại mà source không phân biệt; không dùng target_label_vi thay
+      subject. Tách thêm variant khi điều kiện, phạm vi hoặc hậu quả khác nhau.
     - Phân loại pháp lý: Warning cho cảnh cáo; ReferencedPenalty cho dẫn chiếu
       mức phạt (target_label_vi là đích dẫn chiếu); AdditionalSanction chỉ khi
       source nêu hình thức xử phạt bổ sung. RemedialMeasure phải giữ đối tượng

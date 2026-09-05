@@ -17,6 +17,7 @@ from legal_rag.baml_client.types import (
     OntologyEvidenceSource,
     OntologyPopulationSummary,
     OntologySubjectKind,
+    RuleAssemblyProposal,
     RuleAssemblyWindowInput,
     RuleAssemblyWindowResult,
 )
@@ -31,7 +32,7 @@ from legal_rag.ontology_population.models import OntologyPopulationRecord, popul
 from legal_rag.ontology_proposal_execution import execute_proposal_batches
 from legal_rag.settings import Settings
 
-ONTOLOGY_ASSEMBLY_PROMPT_VERSION = "0.4.0"
+ONTOLOGY_ASSEMBLY_PROMPT_VERSION = "0.6.0"
 
 
 class AssemblyProposalClient(Protocol):
@@ -70,7 +71,6 @@ def build_assembly_proposal_run_id(
         {
             "candidate_run_id": candidate_run_id,
             "prompt_version": ONTOLOGY_ASSEMBLY_PROMPT_VERSION,
-            "batch_size": assembly_settings.batch_size,
             "max_output_tokens": assembly_settings.max_output_tokens,
             "temperature": assembly_settings.temperature,
             "llm_base_url": settings.llm_base_url,
@@ -78,6 +78,38 @@ def build_assembly_proposal_run_id(
             "llm_extra_request_body": dict(settings.llm_extra_request_body),
         }
     )
+
+
+def resolve_assembly_proposal_resume_run_id(
+    persisted_run_ids: set[str],
+    candidate_run_id: str,
+    candidate_count: int,
+    assembly_settings: AssemblySettings,
+    settings: Settings,
+) -> str:
+    """Accept legacy checkpoints whose only semantic difference is batch size."""
+    current_run_id = build_assembly_proposal_run_id(candidate_run_id, assembly_settings, settings)
+    if not persisted_run_ids or persisted_run_ids == {current_run_id}:
+        return current_run_id
+    if len(persisted_run_ids) != 1:
+        return current_run_id
+    persisted_run_id = next(iter(persisted_run_ids))
+    for batch_size in range(1, candidate_count + 1):
+        legacy_run_id = population_identity(
+            {
+                "candidate_run_id": candidate_run_id,
+                "prompt_version": ONTOLOGY_ASSEMBLY_PROMPT_VERSION,
+                "batch_size": batch_size,
+                "max_output_tokens": assembly_settings.max_output_tokens,
+                "temperature": assembly_settings.temperature,
+                "llm_base_url": settings.llm_base_url,
+                "llm_model": settings.llm_model,
+                "llm_extra_request_body": dict(settings.llm_extra_request_body),
+            }
+        )
+        if persisted_run_id == legacy_run_id:
+            return persisted_run_id
+    return current_run_id
 
 
 def propose_assemblies(
@@ -164,48 +196,68 @@ def _build_batch_proposals(
                 msg = "Assembly proposals within one candidate window must not overlap members"
                 raise ValueError(msg)
             used_members.update(members)
-            anchor = min(
-                (records_by_id[member] for member in members),
-                key=lambda record: (
-                    chunks_by_id[record.source_chunk_id].scope_id,
-                    chunks_by_id[record.source_chunk_id].chunk_index,
-                    record.population_id,
-                ),
-            )
-            ontology_version, ontology_semantic_sha256 = _member_ontology_identity(members, records_by_id)
-            assembled_record = build_population_record(
-                raw.assembled_rule,
-                anchor.source_chunk_id,
-                metadata,
-                [
-                    evidence_source(chunk_id, exact_text)
-                    for chunk_id, exact_text in sorted(
-                        set().union(*(_record_evidence(records_by_id[member]) for member in members))
-                    )
-                ],
-                ontology_version=ontology_version,
-                ontology_semantic_sha256=ontology_semantic_sha256,
-                population_run_id=run_id,
-            )
-            proposal_id = population_identity(
-                {
-                    "run_id": run_id,
-                    "member_population_ids": members,
-                    "assembled_population_id": assembled_record.population_id,
-                }
-            )
             candidate_proposals.append(
-                AssemblyProposal(
-                    proposal_id=proposal_id,
-                    candidate_id=candidate_id,
-                    member_population_ids=members,
-                    assembled_record=assembled_record,
-                    rationale_vi=raw.rationale_vi,
-                    run_id=run_id,
+                build_assembly_proposal(
+                    raw,
+                    candidate_id,
+                    records_by_id,
+                    chunks_by_id,
+                    metadata,
+                    run_id,
                 )
             )
         translated.append((candidate_id, tuple(candidate_proposals)))
     return tuple(translated)
+
+
+def build_assembly_proposal(
+    raw: RuleAssemblyProposal,
+    candidate_id: str,
+    records_by_id: Mapping[str, OntologyPopulationRecord],
+    chunks_by_id: Mapping[str, Chunk],
+    metadata: DocumentMetadataRecord,
+    run_id: str,
+) -> AssemblyProposal:
+    """Bind one typed model proposal to current population records and evidence."""
+    members = tuple(sorted(raw.member_population_ids))
+    anchor = min(
+        (records_by_id[member] for member in members),
+        key=lambda record: (
+            chunks_by_id[record.source_chunk_id].scope_id,
+            chunks_by_id[record.source_chunk_id].chunk_index,
+            record.population_id,
+        ),
+    )
+    ontology_version, ontology_semantic_sha256 = _member_ontology_identity(members, records_by_id)
+    assembled_record = build_population_record(
+        raw.assembled_rule,
+        anchor.source_chunk_id,
+        metadata,
+        [
+            evidence_source(chunk_id, exact_text)
+            for chunk_id, exact_text in sorted(
+                set().union(*(_record_evidence(records_by_id[member]) for member in members))
+            )
+        ],
+        ontology_version=ontology_version,
+        ontology_semantic_sha256=ontology_semantic_sha256,
+        population_run_id=run_id,
+    )
+    proposal_id = population_identity(
+        {
+            "run_id": run_id,
+            "member_population_ids": members,
+            "assembled_population_id": assembled_record.population_id,
+        }
+    )
+    return AssemblyProposal(
+        proposal_id=proposal_id,
+        candidate_id=candidate_id,
+        member_population_ids=members,
+        assembled_record=assembled_record,
+        rationale_vi=raw.rationale_vi,
+        run_id=run_id,
+    )
 
 
 def _member_ontology_identity(

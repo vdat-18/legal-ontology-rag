@@ -25,10 +25,59 @@ from legal_rag.benchmark_synthesis.llm_execution import LlmTaskExhaustedError
 from legal_rag.chunker.models import Chunk
 from legal_rag.ontology_population.assembly_candidates import build_assembly_candidates
 from legal_rag.ontology_population.assembly_config import AssemblySettings
-from legal_rag.ontology_population.assembly_proposals import propose_assemblies, summarize_population_record
-from legal_rag.ontology_population.models import OntologyPopulationRecord
+from legal_rag.ontology_population.assembly_proposals import (
+    ONTOLOGY_ASSEMBLY_PROMPT_VERSION,
+    build_assembly_proposal_run_id,
+    propose_assemblies,
+    resolve_assembly_proposal_resume_run_id,
+    summarize_population_record,
+)
+from legal_rag.ontology_population.models import OntologyPopulationRecord, population_identity
+from legal_rag.settings import Settings
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_assembly_run_id_ignores_batch_size_and_accepts_legacy_checkpoint() -> None:
+    """Changing execution batching preserves semantic proposal checkpoints."""
+    assembly_settings = AssemblySettings.from_path(PROJECT_ROOT / "ontology" / "assembly_contract.yaml")
+    provider_settings = Settings(
+        llm_base_url="https://example.test/v1",
+        llm_api_key="test-key",
+        llm_model="test-model",
+        llm_timeout_seconds=30,
+    )
+    candidate_run_id = "candidate-run"
+    current_run_id = build_assembly_proposal_run_id(candidate_run_id, assembly_settings, provider_settings)
+
+    assert current_run_id == build_assembly_proposal_run_id(
+        candidate_run_id,
+        replace(assembly_settings, batch_size=5),
+        provider_settings,
+    )
+
+    legacy_run_id = population_identity(
+        {
+            "candidate_run_id": candidate_run_id,
+            "prompt_version": ONTOLOGY_ASSEMBLY_PROMPT_VERSION,
+            "batch_size": 5,
+            "max_output_tokens": assembly_settings.max_output_tokens,
+            "temperature": assembly_settings.temperature,
+            "llm_base_url": provider_settings.llm_base_url,
+            "llm_model": provider_settings.llm_model,
+            "llm_extra_request_body": {},
+        }
+    )
+    assert (
+        resolve_assembly_proposal_resume_run_id(
+            {legacy_run_id},
+            candidate_run_id,
+            10,
+            assembly_settings,
+            provider_settings,
+        )
+        == legacy_run_id
+    )
 
 
 class _AssemblyClient:

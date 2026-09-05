@@ -14,9 +14,23 @@ PROMPT_CASES = (
         4000,
         (
             "Mục đích bước 3/6",
+            "Giữ riêng các động từ/hành động pháp lý độc lập",
+            "Phần bổ ngữ bị lược để tránh lặp",
             "không chứng minh cùng rule",
             "các proposal không trùng member",
             "Không suy diễn role, LegalChange, LegalException",
+        ),
+    ),
+    (
+        "baml_src/ontology_rule_assembly_resolution.baml",
+        3000,
+        (
+            "Mục đích bước 3",
+            "tạo kết quả nhất quán toàn cục",
+            "Giữ riêng các động từ/hành động pháp lý độc lập",
+            "Phần bổ ngữ bị lược để tránh lặp",
+            "các proposal trong một component không trùng member",
+            "trả [] nếu chưa đủ căn cứ",
         ),
     ),
     (
@@ -58,11 +72,13 @@ def test_conduct_prompt_separates_locator_context_from_target_semantics() -> Non
     compact_prompt = " ".join(prompt.split())
 
     for phrase in (
-        "từng nhánh tự là hành vi độc lập",
-        "source xem toàn cụm là một hành vi",
-        "tham chiếu số ít hoặc predicate/qualifier chung",
-        "điều khoản chỉ ánh xạ sang provision khác",
-        "trả rỗng dù nó nhắc/mô tả lại hành vi",
+        "riêng nó đã đủ là hành vi bị xử phạt",
+        "dùng chung chủ thể, hoàn cảnh hoặc kết quả",
+        "Không tách các tham số, đối tượng, phương thức hoặc ngưỡng thay thế",
+        "không gộp các hành vi thay thế độc lập",
+        "danh sách locator thuần túy",
+        "vẫn tạo, dù có dẫn chiếu provision khác",
+        "locator hoặc cụm đối tượng không đủ",
         "Locator context chỉ khôi phục Khoản/Điểm",
         "không cấp conduct/evidence",
     ):
@@ -90,9 +106,12 @@ def test_population_binding_prompt_audits_subject_variants_and_cumulative_conseq
 
     for phrase in (
         "Audit toàn window cho từng conduct",
-        "Thu đủ mọi hậu quả cộng dồn",
-        "không dừng sau tiền phạt hay bỏ trừ điểm",
-        "tạo rule NaturalPerson và Organization riêng",
+        "đối chiếu toàn bộ danh sách locator",
+        "Không dừng sau hậu quả đầu",
+        "vai trò chỉ một con người thực hiện được là NaturalPerson",
+        'dù không có từ "cá nhân"',
+        "vai trò chỉ một pháp nhân/tổ chức thực hiện được là Organization",
+        "tạo đủ hai variant",
         "không dùng target_label_vi thay subject",
         "RemedialMeasure phải giữ đối tượng",
     ):

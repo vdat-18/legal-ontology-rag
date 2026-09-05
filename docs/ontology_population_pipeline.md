@@ -123,8 +123,8 @@ CLI `legal-populate-ontology` cũ vẫn được giữ để tương thích, nh�
 ## 3. Assembly trong một văn bản
 
 Một rule có thể bị chia qua nhiều chunk. Candidate builder tạo các window gần nhau theo cấu trúc; LLM quyết định record
-nào cùng thuộc một rule. Finalizer chỉ ràng buộc member vào input, tránh identity/overlap làm transformation mơ hồ và
-ghi canonical output.
+nào cùng thuộc một rule. Resolver gom proposal có liên hệ thành component rồi review cả component đơn lẫn component
+chồng lấn để loại over-merge và tạo quyết định toàn cục. Finalizer sau đó ghi canonical output.
 
 ```powershell
 uv run --extra dev legal-assemble-ontology-rules `
@@ -133,6 +133,9 @@ uv run --extra dev legal-assemble-ontology-rules `
   <candidates.json> <proposals.jsonl> <progress.jsonl> `
   <canonical_population.jsonl> <canonical_graph.ttl> --max-concurrency 30
 ```
+
+Resolver tự tạo `<proposals>.resolved.jsonl` và `<progress>.resolution.jsonl`; chạy lại cùng lệnh sẽ resume cả proposal
+cục bộ lẫn conflict component đã hoàn thành.
 
 ## 4. Legal change giữa các văn bản
 

@@ -19,7 +19,7 @@ def test_assembly_contract_loads_minimal_execution_bounds() -> None:
 
     assert settings.max_chunk_span == 4
     assert settings.max_records_per_window == 8
-    assert settings.batch_size == 5
+    assert settings.batch_size == 1
     assert settings.max_response_bytes == 1_048_576
     assert set(load_yaml(PROJECT_ROOT / "ontology" / "assembly_contract.yaml")) == {
         "schema_version",
@@ -38,9 +38,12 @@ def test_assembly_contract_rejects_unknown_schema(tmp_path: Path) -> None:
 
 
 def test_assembly_console_scripts_are_packaged() -> None:
-    """All three operator stages remain available from the installed project."""
+    """All assembly operator stages remain available from the installed project."""
     project = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
 
     assert project["scripts"]["legal-build-assembly-candidates"] == "legal_rag.ontology_assembly_candidates_cli:main"
     assert project["scripts"]["legal-propose-rule-assemblies"] == "legal_rag.ontology_assembly_proposals_cli:main"
+    assert (
+        project["scripts"]["legal-resolve-rule-assembly-conflicts"] == "legal_rag.ontology_assembly_resolution_cli:main"
+    )
     assert project["scripts"]["legal-finalize-rule-assemblies"] == "legal_rag.ontology_assembly_finalize_cli:main"

@@ -140,9 +140,9 @@ uv run --extra dev legal-check-ontology-population `
 
 This offline preflight fingerprints inputs, validates structural consistency, and records the selected pilot targets.
 
-The recommended runtime has six user-facing steps. Each command performs exactly one semantic LLM task and wraps its
-deterministic candidate preparation, checkpoint persistence, and finalization. All six steps default to at most 30
-concurrent LLM batches; pass `--max-concurrency` only when a different limit is required:
+The recommended runtime has six user-facing steps. Each command wraps deterministic candidate preparation, resumable
+semantic LLM work, and finalization. Assembly adds a second LLM phase to review proposal components globally. All six
+steps default to at most 30 concurrent LLM batches; pass `--max-concurrency` only when a different limit is required:
 
 ```powershell
 uv run --extra dev legal-extract-ontology-conducts `

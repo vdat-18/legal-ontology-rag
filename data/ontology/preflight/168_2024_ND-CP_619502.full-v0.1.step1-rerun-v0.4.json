@@ -26,7 +26,7 @@
       "size_bytes": 378
     }
   ],
-  "checked_at": "2026-09-05T06:55:34.038948+00:00",
+  "checked_at": "2026-09-05T10:59:16.368450+00:00",
   "checks": [
     {
       "check_id": "PF-CHUNKS-001",
@@ -62,9 +62,9 @@
   "chunk_count": 166,
   "document_number": "168/2024/NĐ-CP",
   "estimated_llm_batches": 31,
-  "ontology_semantic_sha256": "cf22f5b74487d836f58ea42cc809674ddc3d11937ec7141f244dc2d1079d607b",
+  "ontology_semantic_sha256": "a0496dc220b2809cf1b533fd62845356a5a43edd66d9c6388dce903c60c97460",
   "overall_status": "ready",
-  "pilot_run_id": "b334b4353e52e2bb544472e511cd8df7766a01e182031950aea6b6fdff06e96c",
+  "pilot_run_id": "fcfcaeb39f8dc3a9c7c49aeb072ffb0d6e2abff4c8f6a545d4b9056b82437b7b",
   "schema_version": "0.2.0",
   "screening_count": 166,
   "selected_target_ids": [
