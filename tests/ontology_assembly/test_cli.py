@@ -21,6 +21,7 @@ from legal_rag.baml_client.types import (
     OntologyEvidenceReference,
     OntologyRuleEntry,
     OntologySubjectKind,
+    OntologyValidityMode,
     RuleAssemblyProposal,
     RuleAssemblyWindowInput,
     RuleAssemblyWindowResult,
@@ -83,6 +84,7 @@ class _CliAssemblyClient:
                                     for record in window.records
                                     for item in record.consequences
                                 ],
+                                validity_mode=OntologyValidityMode.ExplicitInterval,
                                 valid_from=first.valid_from,
                                 valid_to=first.valid_to,
                                 provision_path=first.provision_path,

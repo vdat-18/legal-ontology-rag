@@ -28,7 +28,9 @@ from legal_rag.benchmark_synthesis.chunk_screening import (
 )
 from legal_rag.benchmark_synthesis.document_metadata import (
     DOCUMENT_METADATA_SCHEMA_VERSION,
+    LEGACY_DOCUMENT_METADATA_SCHEMA_VERSION,
     DocumentMetadataRecord,
+    TemporalValidityOverride,
 )
 from legal_rag.benchmark_synthesis.evidence_graph import (
     EVIDENCE_CANDIDATE_SET_SCHEMA_VERSION,
@@ -117,13 +119,25 @@ def read_document_metadata(input_path: Path) -> DocumentMetadataRecord:
     """Read one document's metadata JSONL file back into a typed record."""
     with input_path.open(encoding="utf-8") as source_file:
         payload = json.loads(source_file.readline())
-    if payload["schema_version"] != DOCUMENT_METADATA_SCHEMA_VERSION:
+    if payload["schema_version"] not in {
+        DOCUMENT_METADATA_SCHEMA_VERSION,
+        LEGACY_DOCUMENT_METADATA_SCHEMA_VERSION,
+    }:
         msg = f"Unsupported document-metadata schema: {payload['schema_version']}"
         raise ValueError(msg)
     return DocumentMetadataRecord(
         document_number=payload["document_number"],
         valid_from=_parse_date(payload["valid_from"]),
         valid_to=_parse_date(payload["valid_to"]),
+        temporal_overrides=tuple(
+            TemporalValidityOverride(
+                affected_provision_paths=tuple(override["affected_provision_paths"]),
+                valid_from=_parse_date(override["valid_from"]),
+                valid_to=_parse_date(override["valid_to"]),
+                unresolved_basis_vi=override["unresolved_basis_vi"],
+            )
+            for override in payload.get("temporal_overrides", ())
+        ),
     )
 
 

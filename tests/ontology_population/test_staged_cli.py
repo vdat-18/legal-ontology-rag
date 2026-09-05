@@ -21,6 +21,7 @@ from legal_rag.baml_client.types import (
     OntologyTargetConductBatchResult,
     OntologyTargetConductEntry,
     OntologyTargetConductInput,
+    OntologyValidityMode,
 )
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
@@ -97,6 +98,7 @@ class _StagedPopulationClient:
                                     evidence=[evidence],
                                 )
                             ],
+                            validity_mode=OntologyValidityMode.DocumentDefault,
                             valid_from=None,
                             valid_to=None,
                             provision_path=item.target_conducts[0].provision_path,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import threading
 from collections.abc import Sequence
 from dataclasses import replace
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -25,8 +26,9 @@ from legal_rag.baml_client.types import (
     OntologyTargetConductBatchResult,
     OntologyTargetConductEntry,
     OntologyTargetConductInput,
+    OntologyValidityMode,
 )
-from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
+from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord, TemporalValidityOverride
 from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError, LlmTaskExhaustedError
 from legal_rag.chunker.models import Chunk
 from legal_rag.ontology_population.config import PopulationSettings
@@ -103,7 +105,11 @@ def test_population_run_identity_tracks_semantic_provider_configuration() -> Non
 class _PopulationClient:
     """Return one typed rule for each requested target."""
 
-    def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
+    def extract_batch(
+        self,
+        items: Sequence[FactExtractionBatchItem],
+        metadata: DocumentMetadataRecord,
+    ) -> Sequence[OntologyPopulationBatchResult]:
         """Build source-grounded typed BAML responses."""
         results = []
         for item in items:
@@ -138,6 +144,7 @@ class _PopulationClient:
                                     evidence=[reference],
                                 )
                             ],
+                            validity_mode=OntologyValidityMode.DocumentDefault,
                             valid_from=None,
                             valid_to=None,
                             provision_path="Điều 13 khoản 9 điểm b",
@@ -174,6 +181,56 @@ def test_extraction_binds_evidence_and_uses_reviewed_document_validity(
     assert str(first[0].consequences[0].minimum_amount) == "4000000"
 
 
+@pytest.mark.parametrize(
+    ("validity_mode", "raw_valid_from", "expected_valid_from"),
+    [
+        (OntologyValidityMode.ExplicitInterval, "2026-01-01", date(2026, 1, 1)),
+        (OntologyValidityMode.Unresolved, None, None),
+    ],
+)
+def test_population_record_respects_typed_provision_validity(
+    validity_mode: OntologyValidityMode,
+    raw_valid_from: str | None,
+    expected_valid_from: date | None,
+    legal_chunk: Chunk,
+    document_metadata: DocumentMetadataRecord,
+) -> None:
+    """A provision-specific decision overrides or suppresses document-default validity."""
+    source, evidence = _source_reference(legal_chunk.chunk_id, legal_chunk.text)
+    raw = _rule_with_consequence(_money_consequence(evidence), evidence)
+    raw.validity_mode = validity_mode
+    raw.valid_from = raw_valid_from
+
+    record = build_population_record(raw, legal_chunk.chunk_id, document_metadata, [source], **RECORD_RUN)
+
+    assert record.valid_from == expected_valid_from
+
+
+def test_population_binding_receives_document_temporal_context(
+    legal_chunk: Chunk,
+) -> None:
+    """Step 2 receives default validity and typed provision-specific overrides for semantic matching."""
+    metadata = DocumentMetadataRecord(
+        document_number="168/2024/NĐ-CP",
+        valid_from=date(2025, 1, 1),
+        valid_to=None,
+        temporal_overrides=(
+            TemporalValidityOverride(
+                affected_provision_paths=("Điểm m khoản 3 Điều 6",),
+                valid_from=date(2026, 1, 1),
+                valid_to=None,
+                unresolved_basis_vi=None,
+            ),
+        ),
+    )
+    item, inventory, _ = _target_inventory_fixture(legal_chunk)
+
+    binding = build_population_binding_items((item,), (inventory,), metadata)[0]
+
+    assert binding.temporal_overrides[0].affected_provision_paths == ["Điểm m khoản 3 Điều 6"]
+    assert binding.temporal_overrides[0].valid_from == "2026-01-01"
+
+
 def test_extraction_rejects_unknown_evidence_reference(
     legal_chunk: Chunk,
     document_metadata: DocumentMetadataRecord,
@@ -186,8 +243,12 @@ def test_extraction_rejects_unknown_evidence_reference(
     )
 
     class _UnknownEvidenceClient(_PopulationClient):
-        def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
-            results = list(super().extract_batch(items))
+        def extract_batch(
+            self,
+            items: Sequence[FactExtractionBatchItem],
+            metadata: DocumentMetadataRecord,
+        ) -> Sequence[OntologyPopulationBatchResult]:
+            results = list(super().extract_batch(items, metadata))
             results[0].rules[0].evidence = [OntologyEvidenceReference(evidence_id="ev_unknown")]
             return tuple(results)
 
@@ -218,13 +279,17 @@ def test_extraction_runs_batches_concurrently_and_preserves_target_order(
     completion_order: list[str] = []
 
     class _ConcurrentPopulationClient(_PopulationClient):
-        def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
+        def extract_batch(
+            self,
+            items: Sequence[FactExtractionBatchItem],
+            metadata: DocumentMetadataRecord,
+        ) -> Sequence[OntologyPopulationBatchResult]:
             target_id = items[0].target_chunk_id
             calls.append(target_id)
             barrier.wait(timeout=2)
             if target_id == "target-1":
                 assert second_checkpointed.wait(timeout=2)
-            return super().extract_batch(items)
+            return super().extract_batch(items, metadata)
 
     def checkpoint(batch_results: Sequence[tuple[str, tuple[OntologyPopulationRecord, ...]]]) -> None:
         """Record main-thread checkpoint order and release the first target."""
@@ -262,7 +327,11 @@ def test_extraction_reports_all_concurrent_exhausted_batches(
     """Independent failures are reported together after successful checkpoints finish."""
 
     class _FailingPopulationClient:
-        def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
+        def extract_batch(
+            self,
+            items: Sequence[FactExtractionBatchItem],
+            metadata: DocumentMetadataRecord,
+        ) -> Sequence[OntologyPopulationBatchResult]:
             """Simulate an invalid typed LLM response for each independent batch."""
             raise ValueError(items[0].target_chunk_id)
 
@@ -370,20 +439,26 @@ def test_population_window_uses_local_context_for_structural_variants(legal_chun
     assert all(entry.role != ChunkWindowRole.ArticleContext for entry in window)
 
 
-def test_population_binding_inventory_is_forwarded_without_semantic_revalidation(legal_chunk: Chunk) -> None:
+def test_population_binding_inventory_is_forwarded_without_semantic_revalidation(
+    legal_chunk: Chunk,
+    document_metadata: DocumentMetadataRecord,
+) -> None:
     """Typed inventory output is forwarded without a second evidence gate."""
     item, inventory, _ = _target_inventory_fixture(legal_chunk)
     inventory.conducts[0].evidence = [OntologyEvidenceReference(evidence_id="ev_context")]
 
-    binding = build_population_binding_items((item,), (inventory,))[0]
+    binding = build_population_binding_items((item,), (inventory,), document_metadata)[0]
 
     assert binding.target_conducts == inventory.conducts
 
 
-def test_population_binding_rejects_conduct_outside_locked_inventory(legal_chunk: Chunk) -> None:
+def test_population_binding_rejects_conduct_outside_locked_inventory(
+    legal_chunk: Chunk,
+    document_metadata: DocumentMetadataRecord,
+) -> None:
     """The consequence stage cannot create a context-only conduct."""
     item, inventory, evidence = _target_inventory_fixture(legal_chunk)
-    binding_item = build_population_binding_items((item,), (inventory,))[0]
+    binding_item = build_population_binding_items((item,), (inventory,), document_metadata)[0]
     result = OntologyPopulationBindingBatchResult(
         target_chunk_id=legal_chunk.chunk_id,
         rules=[
@@ -409,10 +484,11 @@ def test_population_binding_accepts_typed_rule_content(
     conduct_label: str,
     provision_path: str,
     legal_chunk: Chunk,
+    document_metadata: DocumentMetadataRecord,
 ) -> None:
     """The binding stage trusts typed rule semantics and checks only conduct identity."""
     item, inventory, evidence = _target_inventory_fixture(legal_chunk)
-    binding_item = build_population_binding_items((item,), (inventory,))[0]
+    binding_item = build_population_binding_items((item,), (inventory,), document_metadata)[0]
     rule = _rule_with_consequence(_money_consequence(evidence), evidence)
     rule.conduct_label_vi = conduct_label
     rule.provision_path = provision_path
@@ -426,10 +502,13 @@ def test_population_binding_accepts_typed_rule_content(
     assert finalized[0].rules == [rule]
 
 
-def test_population_binding_returns_existing_population_result(legal_chunk: Chunk) -> None:
+def test_population_binding_returns_existing_population_result(
+    legal_chunk: Chunk,
+    document_metadata: DocumentMetadataRecord,
+) -> None:
     """Two-stage extraction keeps the downstream population result API unchanged."""
     item, inventory, evidence = _target_inventory_fixture(legal_chunk)
-    binding_item = build_population_binding_items((item,), (inventory,))[0]
+    binding_item = build_population_binding_items((item,), (inventory,), document_metadata)[0]
     rule = _rule_with_consequence(_money_consequence(evidence), evidence)
     result = OntologyPopulationBindingBatchResult(
         target_chunk_id=legal_chunk.chunk_id,
@@ -506,6 +585,7 @@ def test_population_record_preserves_incomplete_remedial_measure(
                 evidence=[evidence],
             )
         ],
+        validity_mode=OntologyValidityMode.DocumentDefault,
         valid_from=None,
         valid_to=None,
         provision_path="Điều 3 khoản 3 điểm a",
@@ -635,6 +715,7 @@ def test_population_record_preserves_multiple_typed_consequences(
         condition_root_id=None,
         conditions=[],
         consequences=consequences,
+        validity_mode=OntologyValidityMode.DocumentDefault,
         valid_from=None,
         valid_to=None,
         provision_path="Điều kiểm tra",
@@ -659,6 +740,7 @@ def _rule_with_consequence(
         condition_root_id=None,
         conditions=[],
         consequences=[consequence],
+        validity_mode=OntologyValidityMode.DocumentDefault,
         valid_from=None,
         valid_to=None,
         provision_path="Điều kiểm tra",

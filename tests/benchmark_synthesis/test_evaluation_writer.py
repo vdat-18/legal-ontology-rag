@@ -12,7 +12,7 @@ from legal_rag.benchmark_synthesis.candidate_generation import (
     RequiredClaim,
 )
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
-from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
+from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord, TemporalValidityOverride
 from legal_rag.benchmark_synthesis.evidence_graph import (
     EvidenceCandidateSet,
     EvidenceRelation,
@@ -108,11 +108,36 @@ def test_chunk_screening_reads_legacy_records_without_provenance(tmp_path: Path)
 def test_document_metadata_round_trips_through_jsonl(tmp_path: Path) -> None:
     """A written document-metadata record reads back with identical field values."""
     output_path = tmp_path / "document_metadata.jsonl"
-    record = DocumentMetadataRecord(document_number="168/2024/NĐ-CP", valid_from=date(2025, 1, 1), valid_to=None)
+    record = DocumentMetadataRecord(
+        document_number="168/2024/NĐ-CP",
+        valid_from=date(2025, 1, 1),
+        valid_to=None,
+        temporal_overrides=(
+            TemporalValidityOverride(
+                affected_provision_paths=("Điểm m khoản 3 Điều 6",),
+                valid_from=date(2026, 1, 1),
+                valid_to=None,
+                unresolved_basis_vi=None,
+            ),
+        ),
+    )
 
     write_document_metadata(output_path, record)
 
     assert read_document_metadata(output_path) == record
+
+
+def test_document_metadata_reads_legacy_record_without_temporal_overrides(tmp_path: Path) -> None:
+    """Schema 1 metadata remains readable with an empty override collection."""
+    output_path = tmp_path / "document_metadata.jsonl"
+    output_path.write_text(
+        '{"schema_version":"1.0.0","document_number":"168/2024/NĐ-CP","valid_from":"2025-01-01","valid_to":null}\n',
+        encoding="utf-8",
+    )
+
+    record = read_document_metadata(output_path)
+
+    assert record.temporal_overrides == ()
 
 
 def test_extraction_progress_round_trips_through_jsonl(tmp_path: Path) -> None:

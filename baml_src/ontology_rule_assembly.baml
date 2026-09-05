@@ -44,16 +44,14 @@ class RuleAssemblyWindowInput {
 }
 
 class RuleAssemblyProposal {
-  member_population_ids string[] @description(#"
-    Ít nhất hai ID khác nhau trong candidate window, cùng thuộc một rule version.
-  "#)
-  assembled_rule OntologyRuleEntry @description(#"Rule hợp nhất, giữ evidence cho mọi condition và consequence."#)
-  rationale_vi string @description(#"Lý do ngắn gọn dựa trên source."#)
+  member_population_ids string[] @description(#"Ít nhất hai member ID duy nhất cùng rule version."#)
+  assembled_rule OntologyRuleEntry
+  rationale_vi string
 }
 
 class RuleAssemblyWindowResult {
   candidate_id string
-  proposals RuleAssemblyProposal[] @description(#"Rỗng nếu record khác rule hoặc thiếu evidence; các proposal không trùng member."#)
+  proposals RuleAssemblyProposal[]
 }
 
 function ProposeOntologyRuleAssemblies(windows: RuleAssemblyWindowInput[]) -> RuleAssemblyWindowResult[] {
@@ -81,6 +79,8 @@ function ProposeOntologyRuleAssemblies(windows: RuleAssemblyWindowInput[]) -> Ru
       member.
     - Bảo toàn conduct, applicability, condition tree, consequences, validity,
       provision path và evidence; giá trị chưa biết giữ null.
+    - assembled_rule dùng ExplicitInterval và giữ nguyên ngày đã resolve; nếu cả
+      hai ngày null thì dùng Unresolved. Không dùng DocumentDefault.
     - Không suy diễn role, LegalChange, LegalException, identity xuyên văn bản hay
       concept relation. Thiếu evidence, chỉ có citation rời hoặc khác rule thì
       không đề xuất.

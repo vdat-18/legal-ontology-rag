@@ -100,7 +100,12 @@ def test_document_preparation_cli_runs_sequentially_and_reuses_completed_outputs
 
         def resolve(self, metadata_sections: object) -> BamlDocumentMetadata:
             calls.append("metadata")
-            return BamlDocumentMetadata(document_number="168/2024/NĐ-CP", valid_from="2025-01-01", valid_to=None)
+            return BamlDocumentMetadata(
+                document_number="168/2024/NĐ-CP",
+                valid_from="2025-01-01",
+                valid_to=None,
+                temporal_overrides=[],
+            )
 
     monkeypatch.setenv("LLM_BASE_URL", "http://localhost:20128/v1")
     monkeypatch.setenv("LLM_API_KEY", "test-key")

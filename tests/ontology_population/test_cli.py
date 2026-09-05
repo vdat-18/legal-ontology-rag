@@ -19,6 +19,7 @@ from legal_rag.baml_client.types import (
     OntologyPopulationBatchResult,
     OntologyRuleEntry,
     OntologySubjectKind,
+    OntologyValidityMode,
 )
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
 from legal_rag.benchmark_synthesis.document_metadata import DocumentMetadataRecord
@@ -46,7 +47,11 @@ class _CliPopulationClient:
         """Capture the settings passed to the production client boundary."""
         type(self).settings = settings
 
-    def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
+    def extract_batch(
+        self,
+        items: Sequence[FactExtractionBatchItem],
+        metadata: DocumentMetadataRecord,
+    ) -> Sequence[OntologyPopulationBatchResult]:
         """Return one typed rule per target chunk."""
         type(self).calls += 1
         results = []
@@ -77,6 +82,7 @@ class _CliPopulationClient:
                                     evidence=[evidence],
                                 )
                             ],
+                            validity_mode=OntologyValidityMode.DocumentDefault,
                             valid_from=None,
                             valid_to=None,
                             provision_path="Điều 13 khoản 9 điểm b",

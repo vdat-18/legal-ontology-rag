@@ -91,7 +91,7 @@
       "reasoning_effort": "high"
     },
     "candidate_generation": {
-      "batch_size": 10,
+      "batch_size": 1,
       "max_concurrency": 30,
       "max_output_tokens": 8192,
       "temperature": 0.0,

@@ -12,6 +12,7 @@ from loguru import logger
 
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import DocumentMetadata as BamlDocumentMetadata
+from legal_rag.baml_client.types import DocumentTemporalOverride as BamlDocumentTemporalOverride
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
@@ -19,17 +20,38 @@ from legal_rag.benchmark_synthesis.llm_execution import execute_llm_task
 from legal_rag.chunker.models import Chunk
 from legal_rag.settings import Settings
 
-DOCUMENT_METADATA_SCHEMA_VERSION = "1.0.0"
-DOCUMENT_METADATA_PROMPT_VERSION = "5.1.0"
+DOCUMENT_METADATA_SCHEMA_VERSION = "2.0.0"
+LEGACY_DOCUMENT_METADATA_SCHEMA_VERSION = "1.0.0"
+DOCUMENT_METADATA_PROMPT_VERSION = "6.0.0"
+
+
+@dataclass(frozen=True, slots=True)
+class TemporalValidityOverride:
+    """One source-stated validity interval or unresolved basis for selected provisions."""
+
+    affected_provision_paths: tuple[str, ...]
+    valid_from: date | None
+    valid_to: date | None
+    unresolved_basis_vi: str | None
+
+    def to_dict(self) -> dict[str, object]:
+        """Return a JSON-serializable temporal override."""
+        return {
+            "affected_provision_paths": list(self.affected_provision_paths),
+            "valid_from": self.valid_from.isoformat() if self.valid_from else None,
+            "valid_to": self.valid_to.isoformat() if self.valid_to else None,
+            "unresolved_basis_vi": self.unresolved_basis_vi,
+        }
 
 
 @dataclass(frozen=True, slots=True)
 class DocumentMetadataRecord:
-    """One document's number and effective dates, stamped onto every fact extracted from it."""
+    """One document's identity, default validity, and provision-specific overrides."""
 
     document_number: str
     valid_from: date | None
     valid_to: date | None
+    temporal_overrides: tuple[TemporalValidityOverride, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable document-metadata record."""
@@ -38,6 +60,7 @@ class DocumentMetadataRecord:
             "document_number": self.document_number,
             "valid_from": self.valid_from.isoformat() if self.valid_from else None,
             "valid_to": self.valid_to.isoformat() if self.valid_to else None,
+            "temporal_overrides": [override.to_dict() for override in self.temporal_overrides],
         }
 
 
@@ -99,6 +122,7 @@ def resolve_document_metadata(
             document_number=resolved.document_number,
             valid_from=date.fromisoformat(resolved.valid_from) if resolved.valid_from else None,
             valid_to=date.fromisoformat(resolved.valid_to) if resolved.valid_to else None,
+            temporal_overrides=tuple(_temporal_override_from_baml(item) for item in resolved.temporal_overrides),
         )
 
     metadata = execute_llm_task(
@@ -109,3 +133,13 @@ def resolve_document_metadata(
     )
     logger.info("Document metadata completed: {}", metadata.document_number)
     return metadata
+
+
+def _temporal_override_from_baml(override: BamlDocumentTemporalOverride) -> TemporalValidityOverride:
+    """Convert one typed model override into persisted date values."""
+    return TemporalValidityOverride(
+        affected_provision_paths=tuple(override.affected_provision_paths),
+        valid_from=date.fromisoformat(override.valid_from) if override.valid_from else None,
+        valid_to=date.fromisoformat(override.valid_to) if override.valid_to else None,
+        unresolved_basis_vi=override.unresolved_basis_vi,
+    )

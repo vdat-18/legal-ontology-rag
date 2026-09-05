@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from legal_rag.baml_client.types import DocumentMetadata as BamlDocumentMetadata
+from legal_rag.baml_client.types import DocumentTemporalOverride
 from legal_rag.benchmark_synthesis import document_metadata
 from legal_rag.benchmark_synthesis.chunk_screening import ChunkScreeningRecord
 from legal_rag.benchmark_synthesis.config import SynthesisSettings
@@ -71,6 +72,7 @@ def _baml_metadata(**overrides: object) -> BamlDocumentMetadata:
         "document_number": "168/2024/NĐ-CP",
         "valid_from": "2025-01-01",
         "valid_to": None,
+        "temporal_overrides": [],
     }
     defaults.update(overrides)
     return BamlDocumentMetadata(**defaults)
@@ -106,6 +108,42 @@ def test_resolve_document_metadata_parses_dates_into_typed_record() -> None:
     assert record.document_number == "168/2024/NĐ-CP"
     assert record.valid_from == date(2025, 1, 1)
     assert record.valid_to is None
+    assert record.temporal_overrides == ()
+
+
+def test_resolve_document_metadata_preserves_provision_specific_validity() -> None:
+    """Explicit and unresolved provision-level validity remain typed metadata context."""
+    chunks = [_chunk("c1", "Điều khoản hiệu lực riêng")]
+    client = _RecordingMetadataClient(
+        _baml_metadata(
+            temporal_overrides=[
+                DocumentTemporalOverride(
+                    affected_provision_paths=["Điểm m khoản 3 Điều 6"],
+                    valid_from="2026-01-01",
+                    valid_to=None,
+                    unresolved_basis_vi=None,
+                ),
+                DocumentTemporalOverride(
+                    affected_provision_paths=["Điểm b khoản 1 Điều 32"],
+                    valid_from=None,
+                    valid_to=None,
+                    unresolved_basis_vi="Theo pháp luật về kiểm định khí thải xe mô tô, xe gắn máy.",
+                ),
+            ]
+        )
+    )
+
+    record = resolve_document_metadata(
+        chunks,
+        _screening(chunks, "c1"),
+        client,
+        max_retries=0,
+        retry_delay_seconds=0,
+    )
+
+    assert record.temporal_overrides[0].valid_from == date(2026, 1, 1)
+    assert record.temporal_overrides[1].valid_from is None
+    assert record.temporal_overrides[1].unresolved_basis_vi is not None
 
 
 def test_resolve_document_metadata_reads_only_selected_chunks_in_document_order() -> None:
@@ -198,7 +236,9 @@ def test_baml_document_metadata_client_parses_typed_result(monkeypatch: pytest.M
     monkeypatch.setattr(
         document_metadata,
         "execute_baml_request",
-        lambda *args, **kwargs: '{"document_number":"336/2025/NĐ-CP","valid_from":"2025-08-01","valid_to":null}',
+        lambda *args, **kwargs: (
+            '{"document_number":"336/2025/NĐ-CP","valid_from":"2025-08-01","valid_to":null,"temporal_overrides":[]}'
+        ),
     )
 
     resolved = client.resolve(["Số: 336/2025/NĐ-CP", "Điều 20. Hiệu lực thi hành."])

@@ -64,7 +64,12 @@ class _FakeMetadataClient:
 
     def resolve(self, metadata_sections: object) -> BamlDocumentMetadata:
         """Return the document number and effective date of the sampled document."""
-        return BamlDocumentMetadata(document_number="168/2024/NĐ-CP", valid_from="2025-01-01", valid_to=None)
+        return BamlDocumentMetadata(
+            document_number="168/2024/NĐ-CP",
+            valid_from="2025-01-01",
+            valid_to=None,
+            temporal_overrides=[],
+        )
 
 
 def test_document_metadata_cli_resolves_and_writes_one_record(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

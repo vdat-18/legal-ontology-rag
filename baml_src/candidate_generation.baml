@@ -139,6 +139,9 @@ function GenerateSingleTurnCandidateBatch(
       thuật ngữ nội bộ. specific nêu tình huống; abstract hỏi quy tắc
       tự nhiên, không sao chép statement. Query phải hỏi đúng kết luận mà
       reference_answer trả lời; không hỏi điều kiện nếu facts chỉ nêu thủ tục.
+      Query phải tự đứng độc lập: không dùng cụm không có tiền đề như "mỗi
+      loại", "trường hợp này" hoặc "các loại trên". Phải gọi tên rõ các loại
+      tình tiết, điều kiện hoặc đối tượng mà reference_answer sẽ phân biệt.
     - Mức độ khái quát của query không được rộng hơn facts. Không hỏi "những
       ai", "những hành vi nào", "biện pháp nào" hoặc một danh sách đầy đủ
       nếu facts chỉ chứng minh một phần. Nếu fact chỉ nêu hành vi bị cấm hoặc
@@ -183,6 +186,9 @@ function GenerateSingleTurnCandidateBatch(
       bỏ từ mô tả chủ đề trước khi bỏ chủ thể thực hiện nghĩa vụ.
       keyword_style không dùng cụm nghi vấn như "ra sao", "thế nào", "ai" hoặc
       "bao nhiêu"; chỉ giữ các từ nội dung mô tả đúng kết luận cần tìm.
+      Nếu fact xác định cách đối xử hoặc quan hệ so sánh, keyword phải giữ cả
+      đích so sánh, như "xử phạt như cá nhân"; chuỗi chỉ có "bị xử phạt" là
+      quá rộng và không xác định được reference_answer duy nhất.
       Ngoài keyword_style và misspelled, không viết điện tín, không dùng ký hiệu
       rút gọn như QĐ, GT, K1, Đ13 hoặc chuỗi phân cách bằng dấu phẩy thay cho câu.
     - Query phải diễn đạt chính xác quan hệ pháp lý được trả lời. Ví dụ, khi
@@ -288,7 +294,11 @@ function GenerateSingleTurnCandidateBatch(
        không giữ câu hỏi rộng rồi trả lời một phần dưới nhãn answerable.
        Với answerable, lập danh sách từng điều kiện kích hoạt và ngoại lệ trong
        facts rồi xác nhận query đã khóa hết; không được để đáp án tự giả định
-       điều kiện còn thiếu. Với partially_answerable, xác nhận ngoài đúng một
+       điều kiện còn thiếu. Nếu answerability=answerable nhưng reference_answer
+       phải nói "chưa thể xác định", "chưa đủ căn cứ" hoặc còn thiếu hành vi,
+       khung phạt, thời điểm hay quy định địa phương để trả lời trọng tâm, hãy
+       viết lại query để hỏi quy tắc có thể kết luận đầy đủ từ facts và nêu rõ
+       các điều kiện phạm vi đã có. Với partially_answerable, xác nhận ngoài đúng một
        tình tiết được nêu là chưa rõ, không còn chiều áp dụng nào khác mơ hồ.
     Nếu bất kỳ mục nào chưa đạt, tự viết lại candidate trước khi trả. Trả đúng
     một kết quả cho mỗi task, giữ nguyên task_id và thứ tự.

@@ -59,7 +59,7 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.bundle_scope_max_concurrency == 30
     assert settings.bundle_scope.max_output_tokens == 4096
     assert settings.bundle_scope.reasoning_effort == "high"
-    assert settings.candidate_generation_batch_size == 10
+    assert settings.candidate_generation_batch_size == 1
     assert settings.candidate_generation_max_concurrency == 30
     assert settings.evidence_retrieval.retrieval_pool_size == 30
     assert settings.evidence_retrieval.max_candidates_per_fact == 10

@@ -16,7 +16,8 @@ class ChunkScreeningResult {
     True nếu target có fact trực tiếp giúp xác định hoặc xử lý vi phạm trong domain.
   "#)
   has_document_metadata bool @description(#"
-    True nếu target giúp xác định số hiệu hoặc hiệu lực của chính văn bản đang đọc.
+    True nếu target giúp xác định số hiệu, hiệu lực chung hoặc hiệu lực riêng
+    của điều/khoản/điểm trong chính văn bản đang đọc.
   "#)
   reason string @description(#"Một câu tiếng Việt ngắn giải thích quyết định."#)
 }
@@ -214,12 +215,14 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     Với từng Target, quyết định has_document_metadata trước rồi mới quyết định
     has_penalty_content; hai field hoàn toàn độc lập và có thể khác nhau. Đặt
     metadata=true khi chính Target chứa ít nhất một thông tin giúp Step 1B xác
-    định metadata của toàn văn bản đang đọc:
+    định metadata hoặc phạm vi hiệu lực của chính văn bản đang đọc:
     - số hiệu chính thức tại phần nhận diện của văn bản nguồn;
     - ngày bắt đầu hoặc hết hiệu lực của toàn văn bản;
     - điều khoản hiệu lực tương đối của toàn văn bản như "có hiệu lực kể từ
       ngày ký", dù ngày ký nằm ở metadata candidate khác. Step 1B sẽ kết hợp
-      các candidate để suy ra giá trị cuối cùng.
+      các candidate để suy ra giá trị cuối cùng;
+    - hiệu lực riêng của một hoặc nhiều điều/khoản/điểm, kể cả khi ngày phụ
+      thuộc pháp luật, văn bản hoặc sự kiện khác và chưa xác định được chính xác.
 
     Khi quyết định metadata, phải đọc toàn bộ Target từ đầu đến cuối và chủ
     động tìm điều khoản hiệu lực của văn bản nguồn, kể cả khi nó nằm sau một
@@ -241,10 +244,10 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     metadata từ block đứng trước, đứng sau hoặc cùng request; nếu Target chỉ ở
     gần một câu hiệu lực nhưng không tự chứa thông tin đó thì đặt false. Không
     chọn riêng ngày ký/ban hành nếu Target không phải phần nhận diện chính thức;
-    ngày áp dụng riêng cho một điều/khoản; metadata của văn bản được dẫn chiếu;
-    hoặc số hiệu riêng của quy chuẩn, phụ lục, biểu mẫu hay tài liệu đính kèm.
-    Nếu Target đồng thời chứa ngày áp dụng riêng và ngày hiệu lực toàn văn bản,
-    metadata=true vì có thông tin hợp lệ về toàn văn bản.
+    metadata của văn bản được dẫn chiếu; hoặc số hiệu riêng của quy chuẩn, phụ
+    lục, biểu mẫu hay tài liệu đính kèm.
+    Ngày áp dụng riêng chỉ được chọn khi nó điều chỉnh một điều/khoản/điểm của
+    chính văn bản nguồn, không phải văn bản được dẫn chiếu.
 
     Phải xác định đúng văn bản mà thông tin metadata đang nói tới. Nếu Target
     thuộc phụ lục, mẫu biên bản, mẫu quyết định hoặc mẫu văn bản hành chính,

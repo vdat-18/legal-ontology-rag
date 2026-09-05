@@ -14,6 +14,7 @@ from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import (
     ChunkWindowEntry,
     ChunkWindowRole,
+    DocumentTemporalOverride,
     FactExtractionBatchItem,
     OntologyChunkWindowEntry,
     OntologyEvidenceReference,
@@ -24,6 +25,7 @@ from legal_rag.baml_client.types import (
     OntologyTargetConductBatchResult,
     OntologyTargetConductEntry,
     OntologyTargetConductInput,
+    OntologyValidityMode,
 )
 from legal_rag.baml_client.types import OntologyRuleEntry as BamlRule
 from legal_rag.baml_transport import BamlCaller
@@ -53,7 +55,7 @@ from legal_rag.ontology_population.models import (
 )
 from legal_rag.settings import Settings
 
-ONTOLOGY_POPULATION_PROMPT_VERSION = "0.20.0"
+ONTOLOGY_POPULATION_PROMPT_VERSION = "0.21.0"
 
 
 def build_population_run_id(pilot_run_id: str, settings: Settings) -> str:
@@ -100,7 +102,11 @@ def build_population_binding_run_id(conduct_run_id: str, settings: Settings) -> 
 class OntologyPopulationClient(Protocol):
     """Boundary implemented by an ontology-population language-model client."""
 
-    def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
+    def extract_batch(
+        self,
+        items: Sequence[FactExtractionBatchItem],
+        metadata: DocumentMetadataRecord,
+    ) -> Sequence[OntologyPopulationBatchResult]:
         """Return typed population candidates for reading windows."""
 
 
@@ -132,11 +138,15 @@ class BamlOntologyPopulationClient:
             max_response_bytes=population_settings.max_response_bytes,
         )
 
-    def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
+    def extract_batch(
+        self,
+        items: Sequence[FactExtractionBatchItem],
+        metadata: DocumentMetadataRecord,
+    ) -> Sequence[OntologyPopulationBatchResult]:
         """Inventory target conducts before binding consequences from context."""
         target_inputs = tuple(_target_conduct_input(item) for item in items)
         inventories = self.extract_conduct_batch(target_inputs)
-        binding_items = build_population_binding_items(items, inventories)
+        binding_items = build_population_binding_items(items, inventories, metadata)
         return self.bind_batch(binding_items)
 
     def extract_conduct_batch(
@@ -175,14 +185,18 @@ class PersistedConductPopulationClient:
         self._client = client
         self._inventories = {record.target_chunk_id: record for record in inventories}
 
-    def extract_batch(self, items: Sequence[FactExtractionBatchItem]) -> Sequence[OntologyPopulationBatchResult]:
+    def extract_batch(
+        self,
+        items: Sequence[FactExtractionBatchItem],
+        metadata: DocumentMetadataRecord,
+    ) -> Sequence[OntologyPopulationBatchResult]:
         """Bind only the persisted conducts corresponding to this batch."""
         missing_ids = [item.target_chunk_id for item in items if item.target_chunk_id not in self._inventories]
         if missing_ids:
             msg = f"Target-conduct inventory is missing chunk: {missing_ids[0]}"
             raise ValueError(msg)
         inventories = tuple(_inventory_to_baml(self._inventories[item.target_chunk_id]) for item in items)
-        return self._client.bind_batch(build_population_binding_items(items, inventories))
+        return self._client.bind_batch(build_population_binding_items(items, inventories, metadata))
 
 
 def extract_target_conducts(
@@ -324,6 +338,7 @@ def _target_conduct_input_from_chunk(target: Chunk) -> OntologyTargetConductInpu
 def build_population_binding_items(
     items: Sequence[FactExtractionBatchItem],
     inventories: Sequence[OntologyTargetConductBatchResult],
+    metadata: DocumentMetadataRecord,
 ) -> tuple[OntologyPopulationBindingItem, ...]:
     """Attach Target-only inventories to their full reading windows."""
     requested_ids = [item.target_chunk_id for item in items]
@@ -352,6 +367,15 @@ def build_population_binding_items(
                     for entry in item.window
                 ],
                 target_conducts=list(inventory.conducts),
+                temporal_overrides=[
+                    DocumentTemporalOverride(
+                        affected_provision_paths=list(override.affected_provision_paths),
+                        valid_from=override.valid_from.isoformat() if override.valid_from else None,
+                        valid_to=override.valid_to.isoformat() if override.valid_to else None,
+                        unresolved_basis_vi=override.unresolved_basis_vi,
+                    )
+                    for override in metadata.temporal_overrides
+                ],
             )
         )
     return tuple(binding_items)
@@ -475,7 +499,7 @@ def _extract_batch_records(
     population_run_id: str,
 ) -> tuple[tuple[str, tuple[OntologyPopulationRecord, ...]], ...]:
     """Extract one batch and preserve the model-selected source evidence."""
-    results = client.extract_batch(items)
+    results = client.extract_batch(items, metadata)
     requested_ids = [item.target_chunk_id for item in items]
     result_ids = [result.target_chunk_id for result in results]
     if len(result_ids) != len(set(result_ids)) or set(result_ids) != set(requested_ids):
@@ -519,6 +543,7 @@ def build_population_record(
     population_run_id: str,
 ) -> OntologyPopulationRecord:
     """Convert one typed model result into a stable population record."""
+    valid_from, valid_to = _resolve_population_validity(raw, metadata)
     bound_rule_evidence = bind_population_evidence(raw.evidence, evidence_sources)
     evidence = bound_rule_evidence
     conditions = tuple(
@@ -558,8 +583,8 @@ def build_population_record(
         "condition_root_id": raw.condition_root_id,
         "conditions": [condition.to_dict() for condition in conditions],
         "consequences": [consequence.to_dict() for consequence in consequences],
-        "valid_from": raw.valid_from or (metadata.valid_from.isoformat() if metadata.valid_from else None),
-        "valid_to": raw.valid_to or (metadata.valid_to.isoformat() if metadata.valid_to else None),
+        "valid_from": valid_from.isoformat() if valid_from else None,
+        "valid_to": valid_to.isoformat() if valid_to else None,
         "document_number": metadata.document_number,
         "provision_path": raw.provision_path,
         "evidence": [item.to_dict() for item in evidence],
@@ -577,14 +602,29 @@ def build_population_record(
         condition_root_id=raw.condition_root_id,
         conditions=conditions,
         consequences=consequences,
-        valid_from=date.fromisoformat(raw.valid_from) if raw.valid_from else metadata.valid_from,
-        valid_to=date.fromisoformat(raw.valid_to) if raw.valid_to else metadata.valid_to,
+        valid_from=valid_from,
+        valid_to=valid_to,
         document_number=metadata.document_number,
         provision_path=raw.provision_path,
         evidence=evidence,
         ontology_version=ontology_version,
         ontology_semantic_sha256=ontology_semantic_sha256,
         population_run_id=population_run_id,
+    )
+
+
+def _resolve_population_validity(
+    raw: BamlRule,
+    metadata: DocumentMetadataRecord,
+) -> tuple[date | None, date | None]:
+    """Resolve the typed model validity decision without text matching or legal inference."""
+    if raw.validity_mode == OntologyValidityMode.DocumentDefault:
+        return metadata.valid_from, metadata.valid_to
+    if raw.validity_mode == OntologyValidityMode.Unresolved:
+        return None, None
+    return (
+        date.fromisoformat(raw.valid_from) if raw.valid_from else None,
+        date.fromisoformat(raw.valid_to) if raw.valid_to else None,
     )
 
 
