@@ -52,34 +52,31 @@ class OntologyConditionEntry {
 class OntologyConsequenceEntry {
   consequence_id string @description(#"ID cục bộ duy nhất trong rule."#)
   kind OntologyConsequenceKind
-  minimum_amount string? @description(#"Số thập phân không phân cách hàng nghìn; chỉ cho MonetaryPenalty."#)
-  maximum_amount string? @description(#"Số thập phân không phân cách hàng nghìn; chỉ cho MonetaryPenalty."#)
-  currency OntologyCurrency? @description(#"Bắt buộc cho MonetaryPenalty khi source nêu đơn vị."#)
+  minimum_amount string? @description(#"Số thập phân; chỉ MonetaryPenalty."#)
+  maximum_amount string? @description(#"Số thập phân; chỉ MonetaryPenalty."#)
+  currency OntologyCurrency? @description(#"Đơn vị tiền source nêu."#)
   point_value int? @description(#"Số nguyên dương; chỉ cho PointDeduction."#)
-  consequence_label_vi string? @description(#"Tên tác động; bắt buộc cho Warning/AdditionalSanction/RemedialMeasure/ReferencedPenalty."#)
-  minimum_duration_months int? @description(#"Cận dưới theo tháng; chỉ cho AdditionalSanction."#)
-  maximum_duration_months int? @description(#"Cận trên theo tháng; chỉ cho AdditionalSanction."#)
+  consequence_label_vi string?
+  minimum_duration_months int? @description(#"Cận dưới tháng của AdditionalSanction."#)
+  maximum_duration_months int? @description(#"Cận trên tháng của AdditionalSanction."#)
   target_label_vi string? @description(#"Đối tượng chịu tác động được source nêu."#)
   responsible_role_label_vi string? @description(#"Vai trò thực hiện RemedialMeasure; bắt buộc cho loại này."#)
   evidence OntologyEvidenceReference[]
 }
 
 class OntologyRuleEntry {
-  conduct_label_vi string @description(#"
-    Một hành vi độc lập; không gộp các hành vi thay thế. Giữ qualifier nội tại;
-    ngoại lệ áp dụng thuộc condition tree.
-  "#)
+  conduct_label_vi string @description(#"Hành vi đã khóa; giữ qualifier nội tại."#)
   subject_kind OntologySubjectKind?
   role_labels_vi string[] @description(#"Vai trò áp dụng được source nêu rõ."#)
   vehicle_category_labels_vi string[] @description(#"Loại phương tiện được văn bản nêu rõ."#)
-  condition_root_id string? @description(#"ID condition gốc; null khi rule không có điều kiện/ngoại lệ riêng."#)
-  conditions OntologyConditionEntry[] @description(#"Cây AND/OR/NOT giữ qualifier và ngoại lệ có evidence."#)
+  condition_root_id string? @description(#"ID gốc; null khi không có điều kiện riêng."#)
+  conditions OntologyConditionEntry[] @description(#"Cây AND/OR/NOT có evidence."#)
   consequences OntologyConsequenceEntry[] @description(#"Ít nhất một hậu quả pháp lý có evidence."#)
-  validity_mode OntologyValidityMode @description(#"Nguồn hiệu lực: chung, riêng có ngày, hoặc chưa xác định."#)
-  valid_from string? @description(#"YYYY-MM-DD, chỉ điền khi window nêu hiệu lực riêng cho rule."#)
-  valid_to string? @description(#"YYYY-MM-DD; null là chưa biết, không có nghĩa vô hạn."#)
-  provision_path string @description(#"Các cấp có thật theo Chương > Mục > Điều > Khoản > Điểm; không thêm tiêu đề."#)
-  evidence OntologyEvidenceReference[] @description(#"Evidence chung cho conduct, applicability và rule."#)
+  validity_mode OntologyValidityMode @description(#"Nguồn hiệu lực."#)
+  valid_from string? @description(#"YYYY-MM-DD khi có ngày riêng."#)
+  valid_to string? @description(#"YYYY-MM-DD; null khi chưa biết."#)
+  provision_path string @description(#"Chương > Mục > Điều > Khoản > Điểm có căn cứ."#)
+  evidence OntologyEvidenceReference[] @description(#"Evidence chung của rule."#)
 }
 
 class OntologyPopulationBatchResult {
@@ -195,17 +192,19 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
     - Giữ nguyên target conducts: trả ít nhất một rule cho từng target_conduct_id,
       giữ đúng conduct_label_vi và provision_path. Inventory rỗng thì rules rỗng;
       không bỏ, gộp hoặc tạo conduct.
-    - Chỉ nối hậu quả khi source, locator hoặc cấu trúc xác định conduct bị chi
-      phối; gần nhau, giống chữ hoặc cùng mức phạt không đủ. Mỗi rule phải có ít
-      nhất một hậu quả. Giữ hậu quả cộng dồn; tách riêng variant cá nhân và tổ
-      chức, hoặc khi phạm vi hay hậu quả phụ thuộc điều kiện khác nhau.
-    - Phân loại theo nghĩa pháp lý: Warning cho hình thức cảnh cáo;
-      ReferencedPenalty khi hậu quả được xác định bằng cách dẫn chiếu mức xử phạt
-      của hành vi/quy tắc khác; AdditionalSanction chỉ khi source xác định là hình
-      thức xử phạt bổ sung. Với ReferencedPenalty, target_label_vi là hành vi hoặc
-      quy tắc được dẫn chiếu, không phải chủ thể bị xử phạt. Các loại còn lại gồm
-      tiền phạt, trừ điểm và khắc phục. Biểu diễn phạm vi/ngoại lệ bằng cây
-      AND/OR/NOT có evidence; thiếu source support thì giữ null.
+    - Audit toàn window cho từng conduct. Chỉ bind khi source/locator xác định nó
+      bị chi phối; gần nhau hoặc giống chữ không đủ. Thu đủ mọi hậu quả cộng dồn,
+      kể cả điều khoản liệt kê locator; không dừng sau tiền phạt hay bỏ trừ điểm,
+      bổ sung hoặc khắc phục. Mỗi rule phải có hậu quả.
+    - Khi source nêu phạm vi hoặc mức khác nhau cho cá nhân và tổ chức, tạo rule
+      NaturalPerson và Organization riêng; không để subject_kind null, không dùng
+      target_label_vi thay subject. Chỉ null khi source thật sự không xác định;
+      tách thêm variant khi điều kiện/phạm vi/hậu quả khác nhau.
+    - Phân loại pháp lý: Warning cho cảnh cáo; ReferencedPenalty cho dẫn chiếu
+      mức phạt (target_label_vi là đích dẫn chiếu); AdditionalSanction chỉ khi
+      source nêu hình thức xử phạt bổ sung. RemedialMeasure phải giữ đối tượng
+      được khôi phục/sửa chữa trong target_label_vi và vai trò thực hiện nếu có.
+      Điều kiện dùng cây AND/OR/NOT.
     - Chọn validity_mode theo temporal_overrides: DocumentDefault nếu không áp
       override (để hai ngày null); ExplicitInterval nếu provision có ngày riêng;
       Unresolved nếu căn cứ riêng chưa cho ngày (để hai ngày null). Đối chiếu đúng

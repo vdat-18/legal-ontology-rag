@@ -6,11 +6,9 @@ This directory stores generated evaluation data.
 - `groundtruth-corpus-v1-snapshot.json` fingerprints the first ground-truth
   source corpus.
 - `candidates.jsonl` contains machine-generated samples waiting for legal review.
-- `ground_truth.jsonl` contains the active evaluation samples. The current
-  `retrieval_content_v2` rows are deterministic starter samples generated from
-  content-bearing legal chunks and marked `starter_needs_legal_review`.
-- `predictions.jsonl` contains CRAG outputs produced from reviewed samples.
-- `metrics.json` contains aggregate offline metrics.
+- `data/benchmark_synthesis/groundtruth.jsonl` contains the active reviewed benchmark.
+- `<pipeline>_predictions.jsonl` contains normalized outputs from one RAG implementation.
+- `<pipeline>_metrics.json` contains its aggregate deterministic metrics.
 
 Offline retrieval metrics include:
 
@@ -39,14 +37,26 @@ Run retrieval-only evaluation without LLM calls:
 ```powershell
 docker compose --profile milvus up -d milvus
 python -m legal_rag.corrective_rag.api.cli index --data-dir data/processed/groundtruth
-python -m legal_rag.evaluation retrieve --ground-truth data/evaluation/ground_truth.jsonl --limit 10 --k-values 1,3,5,10
+python -m legal_rag.evaluation retrieve `
+  --ground-truth data/benchmark_synthesis/groundtruth.jsonl --limit 10 --k-values 1,3,5,10
 ```
 
-Run CRAG against reviewed ground truth and score the output:
+Run each complete RAG implementation against the same synthesized ground truth. The shared runner
+preserves the original ground-truth row and emits the same `actual_answer`, `retrieved_chunk_ids`,
+`retrieved_source_names`, and `retrieved_contexts` fields for every pipeline:
 
 ```powershell
-python -m legal_rag.evaluation run --ground-truth data/evaluation/ground_truth.jsonl --k-values 1,3,5,10
+uv run legal-evaluate run --pipeline naive --limit 10 --k-values 1,3,5,10
+uv run legal-evaluate run --pipeline corrective --limit 10 --k-values 1,3,5,10
+uv run legal-evaluate run --pipeline graphiti --limit 10 --k-values 1,3,5,10 `
+  --group-id traffic_penalty_groundtruth_v1
 ```
+
+The commands write pipeline-specific prediction and metric files under `data/evaluation/`; every
+metric report records its pipeline and retrieval limit, so one run never overwrites or becomes
+indistinguishable from another. Index the same chunk corpus into each pipeline's backend before
+comparing results. For Corrective RAG, retrieval metrics score the initial Milvus ranking while
+faithfulness receives the refined internal or external knowledge actually passed to generation.
 
 The `src/legal_rag/evaluation/` package only scores existing prediction or
 retrieval JSONL files. Benchmark synthesis code lives in

@@ -32,6 +32,16 @@ def test_correct_branch_generates_from_only_correct_internal_knowledge() -> None
     assert result["crag_action"] == "CORRECT"
     assert result["internal_knowledge_count"] == 1
     assert result["external_knowledge_count"] == 0
+    assert result["generation_contexts"] == [
+        {
+            "text": "correct internal",
+            "source_name": "correct-source",
+            "score": 0.9,
+            "kind": "internal",
+            "chunk_id": "correct-source",
+            "url": None,
+        }
+    ]
     assert _knowledge_sources(pipeline.generator.knowledge) == ["correct-source"]
     assert pipeline.web_search.queries == []
 

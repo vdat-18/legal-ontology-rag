@@ -50,3 +50,7 @@ class NaiveRAGPipeline:
         active = search_mode or self.settings.search_mode
         logger.info("Pipeline completed: {} sources, {} search", len(hits), active)
         return RAGResult(query=query, answer=answer, sources=tuple(hits))
+
+    def close(self) -> None:
+        """Close the underlying retrieval connection."""
+        self._retriever.close()

@@ -5,6 +5,7 @@ Implements query execution, document grading, query reformulation, and final ans
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Any
 
 from loguru import logger
@@ -135,6 +136,7 @@ class CorrectiveRAGPipeline:
             "external_knowledge_count": len(external_knowledge),
             "relevant_count": len(corrected_knowledge),
             "graded_chunks": graded_results,
+            "generation_contexts": [asdict(item) for item in corrected_knowledge],
             "answer": answer,
         }
 

@@ -1,0 +1,249 @@
+"""Shared prediction contract for end-to-end Legal RAG evaluation."""
+
+from __future__ import annotations
+
+import json
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any, Protocol
+
+from loguru import logger
+
+from legal_rag.evaluation.metrics import EvaluationSample
+
+
+@dataclass(frozen=True, slots=True)
+class EvaluationRecord:
+    """One original ground-truth row and its normalized scoring fields."""
+
+    raw: Mapping[str, Any]
+    sample: EvaluationSample
+
+
+@dataclass(frozen=True, slots=True)
+class PredictionContext:
+    """One context item actually supplied to answer generation."""
+
+    text: str
+    chunk_id: str | None = None
+    source_name: str | None = None
+    kind: str | None = None
+    url: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PipelinePrediction:
+    """Pipeline-neutral answer and retrieval result."""
+
+    answer: str
+    retrieved_chunk_ids: tuple[str, ...]
+    retrieved_source_names: tuple[str, ...]
+    retrieved_contexts: tuple[PredictionContext, ...]
+    metadata: Mapping[str, Any]
+
+
+class EvaluationBackend(Protocol):
+    """Boundary implemented by each evaluated RAG pipeline."""
+
+    name: str
+
+    async def predict(self, question: str, limit: int) -> PipelinePrediction:
+        """Run one question and return the shared prediction contract."""
+
+    async def close(self) -> None:
+        """Release external resources owned by the pipeline."""
+
+
+class NaiveEvaluationBackend:
+    """Adapt the naive retrieve-then-generate pipeline for shared evaluation."""
+
+    name = "naive"
+
+    def __init__(self, pipeline: Any, search_mode: str | None = None) -> None:
+        """Store the pipeline and optional retrieval-mode override."""
+        self._pipeline = pipeline
+        self._search_mode = search_mode
+
+    async def predict(self, question: str, limit: int) -> PipelinePrediction:
+        """Run naive RAG and expose its retrieved chunks as generation context."""
+        result = self._pipeline.run(question, top_k=limit, search_mode=self._search_mode)
+        contexts = tuple(
+            PredictionContext(
+                chunk_id=source.chunk_id,
+                source_name=source.source_name,
+                text=source.text,
+                kind=source.kind,
+            )
+            for source in result.sources
+        )
+        return PipelinePrediction(
+            answer=result.answer,
+            retrieved_chunk_ids=tuple(context.chunk_id for context in contexts if context.chunk_id),
+            retrieved_source_names=tuple(context.source_name for context in contexts if context.source_name),
+            retrieved_contexts=contexts,
+            metadata={"search_mode": self._search_mode or self._pipeline.settings.search_mode},
+        )
+
+    async def close(self) -> None:
+        """Close the naive pipeline's Milvus connection."""
+        self._pipeline.close()
+
+
+class CorrectiveEvaluationBackend:
+    """Adapt Corrective RAG while separating retrieval labels from generation context."""
+
+    name = "corrective"
+
+    def __init__(self, pipeline: Any) -> None:
+        """Store the Corrective RAG pipeline."""
+        self._pipeline = pipeline
+
+    async def predict(self, question: str, limit: int) -> PipelinePrediction:
+        """Run CRAG and retain both initial retrieval and corrected knowledge."""
+        result = self._pipeline.run(question, limit=limit)
+        graded_chunks = _mapping_sequence(result.get("graded_chunks"))
+        generation_contexts = _mapping_sequence(result.get("generation_contexts"))
+        contexts = tuple(
+            PredictionContext(
+                chunk_id=_optional_string(item.get("chunk_id")),
+                source_name=_optional_string(item.get("source_name")),
+                text=_required_string(item.get("text"), "CRAG generation context text"),
+                kind=_optional_string(item.get("kind")),
+                url=_optional_string(item.get("url")),
+            )
+            for item in generation_contexts
+        )
+        return PipelinePrediction(
+            answer=_required_string(result.get("answer"), "CRAG answer"),
+            retrieved_chunk_ids=_field_values(graded_chunks, "chunk_id"),
+            retrieved_source_names=_field_values(graded_chunks, "source_name"),
+            retrieved_contexts=contexts,
+            metadata={
+                "status": result.get("status"),
+                "crag_action": result.get("crag_action"),
+                "reformulated_query": result.get("reformulated_query"),
+                "web_search_count": result.get("web_search_count"),
+                "graded_chunks": graded_chunks,
+            },
+        )
+
+    async def close(self) -> None:
+        """Close all Corrective RAG clients."""
+        self._pipeline.close()
+
+
+class GraphitiEvaluationBackend:
+    """Adapt Graphiti facts and their chunk provenance for shared evaluation."""
+
+    name = "graphiti"
+
+    def __init__(self, pipeline: Any) -> None:
+        """Store the Graphiti RAG pipeline."""
+        self._pipeline = pipeline
+
+    async def predict(self, question: str, limit: int) -> PipelinePrediction:
+        """Run Graphiti RAG and flatten ranked fact provenance into chunk labels."""
+        from legal_rag.graphiti_rag.generator import format_fact_context
+
+        result = await self._pipeline.run(question, max_facts=limit)
+        contexts = tuple(
+            PredictionContext(
+                chunk_id=source.chunk_id,
+                source_name=source.source_name,
+                text=format_fact_context(fact.fact, source.text),
+                kind="graph_fact",
+            )
+            for fact in result.sources
+            for source in fact.sources
+        )
+        return PipelinePrediction(
+            answer=result.answer,
+            retrieved_chunk_ids=_unique(context.chunk_id for context in contexts if context.chunk_id),
+            retrieved_source_names=_unique(context.source_name for context in contexts if context.source_name),
+            retrieved_contexts=contexts,
+            metadata={
+                "rewritten_query": result.rewritten_query,
+                "unindexed_citations": list(result.unindexed_citations),
+                "suggestions": list(result.suggestions),
+            },
+        )
+
+    async def close(self) -> None:
+        """Close the Graphiti/Neo4j connection."""
+        await self._pipeline.close()
+
+
+def load_evaluation_records(path: Path) -> list[EvaluationRecord]:
+    """Load ground truth without discarding synthesis metadata."""
+    records: list[EvaluationRecord] = []
+    with path.open(encoding="utf-8") as file:
+        for line_number, line in enumerate(file, 1):
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if not isinstance(row, Mapping):
+                msg = f"Expected a JSON object at {path}:{line_number}"
+                raise TypeError(msg)
+            records.append(EvaluationRecord(raw=dict(row), sample=EvaluationSample.from_mapping(row)))
+    return records
+
+
+async def run_evaluation(
+    records: Sequence[EvaluationRecord],
+    backend: EvaluationBackend,
+    *,
+    limit: int,
+) -> list[dict[str, Any]]:
+    """Run one backend over every record and emit a shared prediction schema."""
+    rows: list[dict[str, Any]] = []
+    try:
+        for index, record in enumerate(records, 1):
+            logger.info("Evaluating {} sample {}/{}", backend.name, index, len(records))
+            prediction = await backend.predict(record.sample.question, limit)
+            row = dict(record.raw)
+            row.update(
+                {
+                    "pipeline": backend.name,
+                    "actual_answer": prediction.answer,
+                    "retrieved_chunk_ids": list(prediction.retrieved_chunk_ids),
+                    "retrieved_source_names": list(prediction.retrieved_source_names),
+                    "retrieved_contexts": [asdict(context) for context in prediction.retrieved_contexts],
+                    "pipeline_metadata": dict(prediction.metadata),
+                }
+            )
+            rows.append(row)
+    finally:
+        await backend.close()
+    return rows
+
+
+def _mapping_sequence(value: Any) -> list[Mapping[str, Any]]:
+    """Return mapping items from an external sequence response."""
+    if not isinstance(value, Sequence) or isinstance(value, str):
+        return []
+    return [item for item in value if isinstance(item, Mapping)]
+
+
+def _field_values(items: Sequence[Mapping[str, Any]], key: str) -> tuple[str, ...]:
+    """Read non-empty string values from result mappings."""
+    return tuple(value for item in items if (value := _optional_string(item.get(key))))
+
+
+def _optional_string(value: Any) -> str | None:
+    """Normalize one optional external string."""
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _required_string(value: Any, label: str) -> str:
+    """Require a non-empty string at an external pipeline boundary."""
+    normalized = _optional_string(value)
+    if normalized is None:
+        msg = f"{label} must be a non-empty string"
+        raise ValueError(msg)
+    return normalized
+
+
+def _unique(values: Iterable[str]) -> tuple[str, ...]:
+    """Deduplicate ranked identifiers without changing their order."""
+    return tuple(dict.fromkeys(values))

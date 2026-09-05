@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import sys
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,14 @@ from dotenv import find_dotenv, load_dotenv
 from loguru import logger
 
 from legal_rag.evaluation.metrics import DEFAULT_K_VALUES, EvaluationSample, evaluate_samples, load_jsonl_samples
+from legal_rag.evaluation.runner import (
+    CorrectiveEvaluationBackend,
+    EvaluationBackend,
+    GraphitiEvaluationBackend,
+    NaiveEvaluationBackend,
+    load_evaluation_records,
+    run_evaluation,
+)
 
 
 def main() -> None:
@@ -45,14 +54,25 @@ def _parser() -> argparse.ArgumentParser:
     )
     score_parser.add_argument("--output", type=Path, help="Optional JSON path for aggregate metrics.")
 
-    run_parser = subparsers.add_parser("run", help="Run CRAG on a ground_truth.jsonl file and score predictions.")
+    run_parser = subparsers.add_parser("run", help="Run one RAG pipeline and score it with the shared metrics.")
+    run_parser.add_argument(
+        "--pipeline",
+        choices=("naive", "corrective", "graphiti"),
+        default="corrective",
+        help="RAG implementation to evaluate. All choices emit the same prediction schema.",
+    )
     run_parser.add_argument(
         "--ground-truth",
         type=Path,
-        default=Path("data/evaluation/ground_truth.jsonl"),
-        help="Reviewed evaluation JSONL file.",
+        default=Path("data/benchmark_synthesis/groundtruth.jsonl"),
+        help="Reviewed ground-truth JSONL file.",
     )
-    run_parser.add_argument("--limit", type=int, default=5, help="Maximum chunks to retrieve per question.")
+    run_parser.add_argument(
+        "--limit",
+        type=_positive_int,
+        default=5,
+        help="Maximum ranked retrieval units supplied to each pipeline per question.",
+    )
     run_parser.add_argument(
         "--k-values",
         type=_parse_k_values,
@@ -62,24 +82,53 @@ def _parser() -> argparse.ArgumentParser:
     run_parser.add_argument(
         "--predictions-output",
         type=Path,
-        default=Path("data/evaluation/predictions.jsonl"),
-        help="Path where per-sample predictions are written.",
+        default=None,
+        help="Per-sample JSONL path; defaults to data/evaluation/<pipeline>_predictions.jsonl.",
     )
     run_parser.add_argument(
         "--metrics-output",
         type=Path,
-        default=Path("data/evaluation/metrics.json"),
-        help="Path where aggregate metrics are written.",
+        default=None,
+        help="Aggregate JSON path; defaults to data/evaluation/<pipeline>_metrics.json.",
+    )
+    run_parser.add_argument(
+        "--naive-search-mode",
+        choices=("keyword", "semantic", "hybrid"),
+        default=None,
+        help="Optional search-mode override for the naive pipeline.",
+    )
+    run_parser.add_argument(
+        "--group-id",
+        default="traffic_penalty_groundtruth_v1",
+        help="Graphiti group to evaluate when --pipeline graphiti.",
+    )
+    run_parser.add_argument(
+        "--corpus-config",
+        type=Path,
+        default=None,
+        help="Optional Graphiti corpus config used to detect citations outside the indexed corpus.",
+    )
+    run_parser.add_argument(
+        "--no-graph-expansion",
+        action="store_true",
+        help="Disable Graphiti graph-proximity expansion.",
+    )
+    run_parser.add_argument(
+        "--cross-encoder",
+        action="store_true",
+        help="Use Graphiti cross-encoder ranking instead of rank fusion.",
     )
 
     retrieve_parser = subparsers.add_parser("retrieve", help="Run retrieval-only evaluation without LLM calls.")
     retrieve_parser.add_argument(
         "--ground-truth",
         type=Path,
-        default=Path("data/evaluation/ground_truth.jsonl"),
+        default=Path("data/benchmark_synthesis/groundtruth.jsonl"),
         help="Reviewed evaluation JSONL file.",
     )
-    retrieve_parser.add_argument("--limit", type=int, default=10, help="Maximum chunks to retrieve per question.")
+    retrieve_parser.add_argument(
+        "--limit", type=_positive_int, default=10, help="Maximum chunks to retrieve per question."
+    )
     retrieve_parser.add_argument(
         "--retriever",
         choices=("vector", "graph"),
@@ -135,7 +184,7 @@ def _handle_score(args: argparse.Namespace) -> None:
 
 
 def _handle_run(args: argparse.Namespace) -> None:
-    """Run the CRAG pipeline for each ground-truth sample and score it."""
+    """Run one selected RAG pipeline and score its normalized predictions."""
     dotenv_path = find_dotenv(usecwd=True)
     if dotenv_path:
         load_dotenv(dotenv_path)
@@ -145,29 +194,67 @@ def _handle_run(args: argparse.Namespace) -> None:
         msg = f"Evaluation file not found: {ground_truth_path}"
         raise SystemExit(msg)
 
-    from legal_rag.corrective_rag.generate.config import RAGConfig
-    from legal_rag.corrective_rag.generate.pipeline import CorrectiveRAGPipeline
-
-    samples = load_jsonl_samples(ground_truth_path)
-    if not samples:
+    records = load_evaluation_records(ground_truth_path)
+    if not records:
         msg = f"Evaluation file has no samples: {ground_truth_path}"
         raise SystemExit(msg)
 
-    config = RAGConfig.from_env()
-    pipeline = CorrectiveRAGPipeline(config)
-    rows: list[dict[str, Any]] = []
-    try:
-        for index, sample in enumerate(samples, 1):
-            logger.info("Evaluating sample {}/{}", index, len(samples))
-            result = pipeline.run(sample.question, limit=args.limit)
-            rows.append(_prediction_row(sample, result))
-    finally:
-        pipeline.close()
-
-    _write_jsonl(args.predictions_output, rows)
+    backend = _build_evaluation_backend(args)
+    rows = asyncio.run(run_evaluation(records, backend, limit=args.limit))
+    predictions_output = args.predictions_output or Path(f"data/evaluation/{args.pipeline}_predictions.jsonl")
+    metrics_output = args.metrics_output or Path(f"data/evaluation/{args.pipeline}_metrics.json")
+    _write_jsonl(predictions_output, rows)
     metrics = evaluate_samples([EvaluationSample.from_mapping(row) for row in rows], k_values=args.k_values)
-    _write_json(args.metrics_output, metrics.to_dict())
-    _write_stdout(metrics.to_dict())
+    metrics_payload = {
+        "pipeline": args.pipeline,
+        "retrieval_limit": args.limit,
+        **metrics.to_dict(),
+    }
+    _write_json(metrics_output, metrics_payload)
+    _write_stdout(metrics_payload)
+
+
+def _build_evaluation_backend(args: argparse.Namespace) -> EvaluationBackend:
+    """Build the selected pipeline behind the shared evaluation boundary."""
+    if args.pipeline == "naive":
+        from legal_rag.naive_rag.pipeline import NaiveRAGPipeline
+        from legal_rag.settings import MilvusSettings, NaiveRagSettings, Settings
+
+        pipeline = NaiveRAGPipeline(
+            Settings.from_environment(),
+            MilvusSettings.from_environment(),
+            NaiveRagSettings.from_environment(),
+        )
+        return NaiveEvaluationBackend(pipeline, search_mode=args.naive_search_mode)
+
+    if args.pipeline == "corrective":
+        from legal_rag.corrective_rag.generate.config import RAGConfig
+        from legal_rag.corrective_rag.generate.pipeline import CorrectiveRAGPipeline
+
+        return CorrectiveEvaluationBackend(CorrectiveRAGPipeline(RAGConfig.from_env()))
+
+    from legal_rag.graphiti_rag.indexer import load_corpus_metadata
+    from legal_rag.graphiti_rag.pipeline import GraphitiRAGPipeline
+    from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
+
+    graphiti_settings = GraphitiSettings.from_environment()
+    graphiti_settings = replace(
+        graphiti_settings,
+        expand_around_top_fact=not args.no_graph_expansion,
+        rerank_with_cross_encoder=args.cross_encoder,
+    )
+    known_document_numbers: frozenset[str] | None = None
+    if args.corpus_config is not None:
+        corpus_metadata = load_corpus_metadata(args.corpus_config)
+        known_document_numbers = frozenset(document.document_number for document in corpus_metadata.documents.values())
+    pipeline = GraphitiRAGPipeline(
+        Settings.from_environment(),
+        Neo4jSettings.from_environment(),
+        graphiti_settings,
+        args.group_id,
+        known_document_numbers=known_document_numbers,
+    )
+    return GraphitiEvaluationBackend(pipeline)
 
 
 def _handle_retrieve(args: argparse.Namespace) -> None:
@@ -265,24 +352,6 @@ def _retrieve_with_graph(samples: list[EvaluationSample], args: argparse.Namespa
     return asyncio.run(retrieve_all())
 
 
-def _prediction_row(sample: EvaluationSample, result: dict[str, Any]) -> dict[str, Any]:
-    """Merge one ground-truth sample with one CRAG result."""
-    row = asdict(sample)
-    graded_chunks = result.get("graded_chunks", [])
-    row.update(
-        {
-            "actual_answer": result.get("answer"),
-            "retrieved_chunk_ids": _extract_result_field(graded_chunks, "chunk_id"),
-            "retrieved_source_names": _extract_result_field(graded_chunks, "source_name"),
-            "crag_action": result.get("crag_action"),
-            "status": result.get("status"),
-            "reformulated_query": result.get("reformulated_query"),
-            "graded_chunks": graded_chunks,
-        }
-    )
-    return row
-
-
 def _retrieval_prediction_row(sample: EvaluationSample, retrieved_chunks: list[dict[str, Any]]) -> dict[str, Any]:
     """Merge one ground-truth sample with vector retrieval output."""
     row = asdict(sample)
@@ -313,6 +382,15 @@ def _parse_k_values(value: str) -> tuple[int, ...]:
 
     if not parsed or any(item <= 0 for item in parsed):
         msg = "--k-values must contain positive integers"
+        raise argparse.ArgumentTypeError(msg)
+    return parsed
+
+
+def _positive_int(value: str) -> int:
+    """Parse a positive integer CLI value."""
+    parsed = int(value)
+    if parsed < 1:
+        msg = f"Expected a positive integer, got {parsed}"
         raise argparse.ArgumentTypeError(msg)
     return parsed
 

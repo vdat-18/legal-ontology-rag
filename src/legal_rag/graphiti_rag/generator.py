@@ -18,7 +18,7 @@ def generate_answer(query: str, facts: Sequence[RetrievedFact], client: Generati
     contexts = [
         BamlRetrievedChunkContext(
             chunk_id=source.chunk_id,
-            text=_context_text(fact.fact, source.text),
+            text=format_fact_context(fact.fact, source.text),
             source_name=source.source_name,
         )
         for fact in facts
@@ -27,7 +27,7 @@ def generate_answer(query: str, facts: Sequence[RetrievedFact], client: Generati
     return client.generate(query, contexts)
 
 
-def _context_text(fact: str, passage: str) -> str:
+def format_fact_context(fact: str, passage: str) -> str:
     """Combine the source passage with the fact extracted from it.
 
     The passage comes first because quoting a provision needs its actual wording — the article

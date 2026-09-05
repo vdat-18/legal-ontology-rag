@@ -75,10 +75,26 @@ def test_population_binding_prompt_distinguishes_warning_and_referenced_penalty(
     compact_prompt = " ".join(prompt.split())
 
     for phrase in (
-        "Warning cho hình thức cảnh cáo",
-        "ReferencedPenalty khi hậu quả được xác định bằng cách dẫn chiếu",
-        "AdditionalSanction chỉ khi source xác định là hình thức xử phạt bổ sung",
-        "target_label_vi là hành vi hoặc quy tắc được dẫn chiếu",
+        "Warning cho cảnh cáo",
+        "ReferencedPenalty cho dẫn chiếu mức phạt",
+        "AdditionalSanction chỉ khi source nêu hình thức xử phạt bổ sung",
+        "target_label_vi là đích dẫn chiếu",
+    ):
+        assert phrase in compact_prompt
+
+
+def test_population_binding_prompt_audits_subject_variants_and_cumulative_consequences() -> None:
+    """Step 2 must not collapse actor-specific ranges or omit referenced consequences."""
+    prompt = (PROJECT_ROOT / "baml_src/ontology_population.baml").read_text(encoding="utf-8")
+    compact_prompt = " ".join(prompt.split())
+
+    for phrase in (
+        "Audit toàn window cho từng conduct",
+        "Thu đủ mọi hậu quả cộng dồn",
+        "không dừng sau tiền phạt hay bỏ trừ điểm",
+        "tạo rule NaturalPerson và Organization riêng",
+        "không dùng target_label_vi thay subject",
+        "RemedialMeasure phải giữ đối tượng",
     ):
         assert phrase in compact_prompt
 

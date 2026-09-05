@@ -156,3 +156,7 @@ class Retriever:
 
         logger.debug("Retrieved {} chunks via {} search", len(hits), active_mode.value)
         return hits
+
+    def close(self) -> None:
+        """Close the Milvus client."""
+        self.client.close()

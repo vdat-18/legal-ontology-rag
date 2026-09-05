@@ -66,8 +66,16 @@ ground-truth questions. Fields are read flexibly:
 
 ```bash
 # BAML client must be generated once (project setup): baml generate
-python -m evaluations data/evaluation/predictions.jsonl \
-  --output data/evaluation/quest_metrics.json --batch-size 5 --concurrency 8
+python -m evaluations data/evaluation/naive_predictions.jsonl \
+  --output data/evaluation/naive_quest_metrics.json --batch-size 5 --concurrency 8
+python -m evaluations data/evaluation/corrective_predictions.jsonl \
+  --output data/evaluation/corrective_quest_metrics.json --batch-size 5 --concurrency 8
+python -m evaluations data/evaluation/graphiti_predictions.jsonl \
+  --output data/evaluation/graphiti_quest_metrics.json --batch-size 5 --concurrency 8
 ```
+
+Generate these three prediction files with `legal-evaluate run --pipeline
+naive|corrective|graphiti`. Because every backend uses the same prediction contract, the judge
+applies exactly the same answer-quality rubric to all three outputs.
 
 The judge reuses `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`.
