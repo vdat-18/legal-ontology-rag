@@ -1,0 +1,71 @@
+{
+  "accepted_chunk_count": 0,
+  "artifacts": [
+    {
+      "artifact_type": "chunks",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\9303_QD-BCA_m_637615.chunks.jsonl",
+      "sha256": "a248a1450b53acaa10be5c482939716975c8c30ac6dfb7f3dbbaf0433f97ae5a",
+      "size_bytes": 36137
+    },
+    {
+      "artifact_type": "screening",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\9303_QD-BCA_m_637615.chunk_screening.jsonl",
+      "sha256": "8612aebc9f2fd239c494014df388e818986fb9951546980608c308a0163bfb64",
+      "size_bytes": 4057
+    },
+    {
+      "artifact_type": "metadata",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\9303_QD-BCA_m_637615.document_metadata.jsonl",
+      "sha256": "5e7ebe7cd34e36a5f456ef6bed7422f3a5b6a0bcfb82aaae9c5518a910f48d63",
+      "size_bytes": 102
+    },
+    {
+      "artifact_type": "population_contract",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\ontology\\population_contract.yaml",
+      "sha256": "4ce0599f1969b433db258e54cbe0ea67297ee5fc952a08ca8aae22f321684834",
+      "size_bytes": 378
+    }
+  ],
+  "checked_at": "2026-09-05T14:11:23.101763+00:00",
+  "checks": [
+    {
+      "check_id": "PF-CHUNKS-001",
+      "status": "passed",
+      "summary": "Loaded 9 unique chunks."
+    },
+    {
+      "check_id": "PF-DOCUMENT-001",
+      "status": "passed",
+      "summary": "Chunks belong to one root legal document."
+    },
+    {
+      "check_id": "PF-ADJACENCY-001",
+      "status": "passed",
+      "summary": "Neighbor links are consistent across 1 scopes."
+    },
+    {
+      "check_id": "PF-SCREENING-001",
+      "status": "passed",
+      "summary": "Screening covers all 9 chunks exactly once."
+    },
+    {
+      "check_id": "PF-TARGETS-001",
+      "status": "failed",
+      "summary": "Screening accepted no population targets."
+    },
+    {
+      "check_id": "PF-METADATA-001",
+      "status": "passed",
+      "summary": "Document metadata has a validity baseline from 2025-01-01."
+    }
+  ],
+  "chunk_count": 9,
+  "document_number": "9303/QĐ-BCA",
+  "estimated_llm_batches": 0,
+  "ontology_semantic_sha256": "a0496dc220b2809cf1b533fd62845356a5a43edd66d9c6388dce903c60c97460",
+  "overall_status": "blocked",
+  "pilot_run_id": "87754ab21befd6e8f07b36d0c8bf24078e749ef16aaadc55b032c4891a035cca",
+  "schema_version": "0.2.0",
+  "screening_count": 9,
+  "selected_target_ids": []
+}

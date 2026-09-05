@@ -37,7 +37,7 @@ class _ConceptClient:
 
     def propose_batch(self, pairs: Sequence[ConceptResolutionPairInput]) -> Sequence[ConceptResolutionPairResult]:
         """Capture complete typed pairs and propose equivalence only for roles."""
-        self.inputs = tuple(pairs)
+        self.inputs += tuple(pairs)
         results = []
         for pair in pairs:
             proposal = None

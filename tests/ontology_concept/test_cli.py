@@ -86,7 +86,7 @@ def test_cli_runs_resumable_proposal_and_offline_finalization(
     tmp_path: Path,
     exception_corpus: ChangeCorpus,
 ) -> None:
-    """The three commands call the fake model once and materialize typed outputs."""
+    """The three commands call the fake model once per pair and resume completed work."""
     manifest_path = tmp_path / "corpus.json"
     canonical_path = write_exception_manifest(manifest_path, exception_corpus)
     change_events_path = tmp_path / "change-events.jsonl"
@@ -133,7 +133,7 @@ def test_cli_runs_resumable_proposal_and_offline_finalization(
     ontology_concept_proposals_cli.main()
 
     assert len(read_concept_proposals(proposals_path)) == 1
-    assert _CliConceptClient.calls == 1
+    assert _CliConceptClient.calls == 3
     finalize_argv = [
         "legal-finalize-concept-resolution",
         str(manifest_path),

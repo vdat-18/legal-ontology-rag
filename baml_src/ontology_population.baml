@@ -132,36 +132,41 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
   prompt #"
     {{ _.role("system") }}
 
-    Bối cảnh: xây dựng ontology có bằng chứng chỉ cho quy định xử phạt vi phạm
-    hành chính về giao thông đường bộ Việt Nam; không dùng cho vụ việc hoặc domain
-    khác.
+    Bối cảnh: xây dựng ontology chỉ cho quy định xử phạt vi phạm
+    hành chính về giao thông đường bộ Việt Nam.
 
-    Mục đích bước 1/6: khóa danh mục đóng các hành vi trực tiếp trong từng Target
-    để context sau không tự thêm conduct; chưa gắn phạm vi hay hậu quả.
+    Mục đích bước 1/6: danh mục đóng conduct.
 
-    - Tách từng hành động hoặc không hành động nếu riêng nó đã đủ là hành vi bị xử
-      phạt, kể cả khi các nhánh dùng chung chủ thể, hoàn cảnh hoặc kết quả. Dấu câu,
-      "và", "hoặc" chỉ là tín hiệu; quyết định theo nghĩa pháp lý, không theo dấu câu.
+    - Cổng bắt buộc: chỉ trực tiếp quy định hoặc sửa/thay một điều khoản xử
+      phạt hành chính về giao thông đường bộ: cảnh cáo, tiền phạt, trừ điểm, bổ
+      sung, khắc phục hoặc dẫn chiếu mức phạt.
+    - Loại kỷ luật, hình sự/dân sự, cưỡng chế/nghĩa vụ thi hành và thủ tục chung
+      nhiều lĩnh vực. "Xử lý theo quy định của pháp luật" không đủ căn cứ.
+    - Loại nghĩa vụ đúng, quyền/nghĩa vụ chung, điều cấm phạt nơi khác và ví dụ thủ
+      tục/thẩm quyền. Không tự đảo nghĩa vụ tích cực thành vi phạm.
+    - Mỗi conduct chỉ có một predicate vi phạm tối thiểu. Nếu từng động từ phối hợp
+      riêng nó đã đủ là hành vi bị xử phạt, trả một conduct/nhánh dù chung chủ thể,
+      đối tượng hay hậu quả; không gộp để giảm số lượng.
+    - Nhánh rút gọn chỉ khôi phục thành phần dùng chung. Nhãn phải bắt đầu từ
+      predicate của chính nhánh; không mang predicate nhánh khác
+      hoặc tự thêm liên từ. Chỉ giữ chung khi các predicate phải kết hợp mới vi phạm.
     - Không tách các tham số, đối tượng, phương thức hoặc ngưỡng thay thế của cùng
-      một hành vi; giữ chúng làm qualifier. Chỉ giữ nhiều hành động trong một
-      conduct khi chúng phải kết hợp mới đủ vi phạm. Dùng cùng độ chi tiết cho cấu
-      trúc tương đương, không gộp các hành vi thay thế độc lập.
-    - Không tạo conduct từ định nghĩa, thủ tục, thẩm quyền, nguyên tắc, sửa/bãi bỏ
-      hoặc danh sách locator thuần túy. Nếu Target trực tiếp gắn hậu quả với một mô
-      tả hành vi đủ nghĩa thì vẫn tạo, dù có dẫn chiếu provision khác; locator
+      một predicate. "Và", "hoặc", dấu câu chỉ là tín hiệu; quyết định theo nghĩa
+      pháp lý, không theo dấu câu. Dùng cùng độ chi tiết cho cấu trúc tương đương,
+      không gộp các hành vi thay thế độc lập.
+    - Loại định nghĩa, nguyên tắc và danh sách locator thuần túy. Sửa/bãi bỏ hoặc
+      dẫn chiếu phải xác định conduct và mức/điều khoản xử phạt áp dụng; locator
       hoặc cụm đối tượng không đủ.
-    - Chỉ dùng Target evidence; structural context chỉ định vị. Không dùng kiến
-      thức ngoài. Giữ nguyên phủ định, qualifier và phạm vi tiếng Việt.
-    - Locator context chỉ khôi phục Khoản/Điểm, không cấp conduct/evidence.
-      provision_path giữ mọi cấp có căn cứ theo
-      `Chương > Mục > Điều > Khoản > Điểm`; không bỏ hoặc đoán cấp.
-      Nếu Target mở đầu bằng Điểm rồi mới xuất hiện Khoản mới, Điểm mở đầu vẫn
-      thuộc Khoản gần nhất trong locator context; mốc mới chỉ chi phối phần sau nó.
-    - Trả đúng một result mỗi target_chunk_id; conducts chỉ rỗng sau khi audit.
+    - Chỉ dùng Target evidence; context chỉ định vị. Không dùng kiến thức ngoài.
+      Giữ nguyên phủ định, qualifier và phạm vi tiếng Việt.
+    - Với văn bản sửa đổi, provision_path là điều khoản được sửa/thay; Điều sửa đổi
+      chỉ là provenance. Theo `Chương > Mục > Điều > Khoản > Điểm`; không đoán/lặp
+      loại locator. Locator context chỉ khôi phục Khoản/Điểm, không cấp evidence.
+    - Loại mục không đạt; trả một result/target_chunk_id.
 
     {{ _.role("user") }}
 
-    Các Target cần trích conduct:
+    Targets:
     {% for item in items %}
     === target_chunk_id={{ item.target_chunk_id }} ===
     Structural context (không phải source evidence):

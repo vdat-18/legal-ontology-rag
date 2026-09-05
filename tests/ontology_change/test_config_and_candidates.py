@@ -26,7 +26,7 @@ def test_change_contract_and_console_scripts_are_packaged() -> None:
 
     assert settings.max_source_chunks_per_window == 6
     assert settings.max_total_windows == 10_000
-    assert settings.batch_size == 5
+    assert settings.batch_size == 1
     assert set(load_yaml(PROJECT_ROOT / "ontology" / "change_resolution_contract.yaml")) == {
         "schema_version",
         "candidates",

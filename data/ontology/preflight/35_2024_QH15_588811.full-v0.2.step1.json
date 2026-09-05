@@ -1,0 +1,94 @@
+{
+  "accepted_chunk_count": 22,
+  "artifacts": [
+    {
+      "artifact_type": "chunks",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\35_2024_QH15_588811.chunks.jsonl",
+      "sha256": "bf9995a1766c7b89c8fb2fe41c95702223c155d90dfe265db2ca75bd6bc9e7f5",
+      "size_bytes": 579889
+    },
+    {
+      "artifact_type": "screening",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\35_2024_QH15_588811.chunk_screening.jsonl",
+      "sha256": "1f1ac3371609b12a67c9a57ad1aa1ae8a8f785f60d8953d08d8036c96e350cbf",
+      "size_bytes": 42975
+    },
+    {
+      "artifact_type": "metadata",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\35_2024_QH15_588811.document_metadata.jsonl",
+      "sha256": "a6da3c92986ca00c12af60ea742f1cfe6553830ebf3f39919be220faba82e4b7",
+      "size_bytes": 102
+    },
+    {
+      "artifact_type": "population_contract",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\ontology\\population_contract.yaml",
+      "sha256": "4ce0599f1969b433db258e54cbe0ea67297ee5fc952a08ca8aae22f321684834",
+      "size_bytes": 378
+    }
+  ],
+  "checked_at": "2026-09-05T14:47:42.765085+00:00",
+  "checks": [
+    {
+      "check_id": "PF-CHUNKS-001",
+      "status": "passed",
+      "summary": "Loaded 90 unique chunks."
+    },
+    {
+      "check_id": "PF-DOCUMENT-001",
+      "status": "passed",
+      "summary": "Chunks belong to one root legal document."
+    },
+    {
+      "check_id": "PF-ADJACENCY-001",
+      "status": "passed",
+      "summary": "Neighbor links are consistent across 1 scopes."
+    },
+    {
+      "check_id": "PF-SCREENING-001",
+      "status": "passed",
+      "summary": "Screening covers all 90 chunks exactly once."
+    },
+    {
+      "check_id": "PF-TARGETS-001",
+      "status": "passed",
+      "summary": "Selected 22 of 22 accepted chunks for this run."
+    },
+    {
+      "check_id": "PF-METADATA-001",
+      "status": "passed",
+      "summary": "Document metadata has a validity baseline from 2025-01-01."
+    }
+  ],
+  "chunk_count": 90,
+  "document_number": "35/2024/QH15",
+  "estimated_llm_batches": 22,
+  "ontology_semantic_sha256": "a0496dc220b2809cf1b533fd62845356a5a43edd66d9c6388dce903c60c97460",
+  "overall_status": "ready",
+  "pilot_run_id": "dc411c10a9d637bf11537a9d7a5672b7612e8d62b55addce81a7e3abd01f13de",
+  "schema_version": "0.2.0",
+  "screening_count": 90,
+  "selected_target_ids": [
+    "a84de638834acaff9c4662f553e758be66e2f21490bf46420edfe8f6c1f65bf2",
+    "855d432b316299bc80b6a23f247bf732c3a6613ac5b61afbf43f541030f31c6c",
+    "10eedefba49ac3a7f6e396ce6d1aa4f32d154ca1f46c10d04d6e84c9e352a5ad",
+    "8e7609d67ce08dd74790fe1dfc96d64a8ff5213e99d9b3b6f15d8ffd77a440ee",
+    "1f3b7e72c27292bf3abd5ed274eb228aa24bb7b85eaffdc6a8ad6c41bd18c3e4",
+    "15ed3f892a672d76119b0c61d47ec57edfb9e112722b46384b21bd6c3d31487a",
+    "96eb8c7145670e0d0b472bcca90676a49d44bc119514d0c3754129e57f786405",
+    "6be614473d3905ea9b3a80ee92d44ecc4cec7b30263b6196e8148907c020f00f",
+    "5a0cd2e56c7cd05897f6e528e7ae042a544e19b51043626febbe14a712196ecd",
+    "97767b662d0832f5210d7d8dc77018bc7acb6d889c3c51e1d3f12c4b1211df7f",
+    "48156cd4eef09bbbbbac7e8112a8a51d52a54ae96fa49da7f9432393acda6a64",
+    "8746df3db2168e11d956bf2cba7b4c8639d5acda0cbb5a8b3e63070637ee3d64",
+    "8eb7bd27d03187ca03d2a38d898c93a9cae6339d9447b64cadb4873b1bf51faf",
+    "91cb4bfea97f00f31414908d7b80932223aa3ba65ce0b3747fa2080a9837cc4f",
+    "419d500cfcb6a519d1eeaff2c9ae6a65d98b416c09ad7b59b567d09f28ded59c",
+    "d237a44e7f6c516c1cc2c399b082b65e189d78e350f3df62b50d3426a3ba33b0",
+    "1d578774804161a3ba96c94a7c077feb88121586b79e90aed160c71e20e15b0f",
+    "091a8ca46cdc9cfb9b401aedef5a65e65df24a59e51832671af498c91bb8a129",
+    "807baf5ee736f08058bf162f0c6807dcb5a30cbeddbe2a64156c828a73faf724",
+    "e537bc619e46f9957b58dcbe812a9e1d00d09928bbbea711866e05a5427fd5e6",
+    "c2a9f529af1a4132f2d66f1b75c4a35d77821a453790726dfe25c83ffbfea00d",
+    "592be1683a2d845fc12fe98403dc6f6962686047cf6ad9749a233899484d4ecb"
+  ]
+}

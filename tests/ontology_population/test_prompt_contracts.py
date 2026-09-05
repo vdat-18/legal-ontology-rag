@@ -72,15 +72,29 @@ def test_conduct_prompt_separates_locator_context_from_target_semantics() -> Non
     compact_prompt = " ".join(prompt.split())
 
     for phrase in (
+        "Cổng bắt buộc",
+        "chỉ trực tiếp quy định hoặc sửa/thay một điều khoản xử phạt hành chính về giao thông đường bộ",
+        "Loại kỷ luật, hình sự/dân sự, cưỡng chế/nghĩa vụ thi hành",
+        "thủ tục chung nhiều lĩnh vực",
+        "Không tự đảo nghĩa vụ tích cực thành vi phạm",
+        "Mỗi conduct chỉ có một predicate vi phạm tối thiểu",
         "riêng nó đã đủ là hành vi bị xử phạt",
-        "dùng chung chủ thể, hoàn cảnh hoặc kết quả",
+        "trả một conduct/nhánh",
+        "không gộp để giảm số lượng",
+        "Nhánh rút gọn chỉ khôi phục thành phần dùng chung",
+        "phải bắt đầu từ predicate của chính nhánh",
+        "không mang predicate nhánh khác",
+        "tự thêm liên từ",
         "Không tách các tham số, đối tượng, phương thức hoặc ngưỡng thay thế",
         "không gộp các hành vi thay thế độc lập",
         "danh sách locator thuần túy",
-        "vẫn tạo, dù có dẫn chiếu provision khác",
+        "dẫn chiếu phải xác định conduct và mức/điều khoản xử phạt áp dụng",
         "locator hoặc cụm đối tượng không đủ",
+        "provision_path là điều khoản được sửa/thay",
+        "Điều sửa đổi chỉ là provenance",
+        "không đoán/lặp loại locator",
         "Locator context chỉ khôi phục Khoản/Điểm",
-        "không cấp conduct/evidence",
+        "không cấp evidence",
     ):
         assert phrase in compact_prompt
 

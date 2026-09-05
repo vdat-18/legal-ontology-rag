@@ -22,11 +22,11 @@
     {
       "artifact_type": "population_contract",
       "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\ontology\\population_contract.yaml",
-      "sha256": "227b61a32fa182698e64dbcb7a6613a17b8276563e471be6126bfb430b49a8f7",
-      "size_bytes": 379
+      "sha256": "4ce0599f1969b433db258e54cbe0ea67297ee5fc952a08ca8aae22f321684834",
+      "size_bytes": 378
     }
   ],
-  "checked_at": "2026-09-05T03:38:37.793276+00:00",
+  "checked_at": "2026-09-05T14:15:52.418579+00:00",
   "checks": [
     {
       "check_id": "PF-CHUNKS-001",
@@ -62,9 +62,9 @@
   "chunk_count": 166,
   "document_number": "168/2024/NĐ-CP",
   "estimated_llm_batches": 153,
-  "ontology_semantic_sha256": "cf22f5b74487d836f58ea42cc809674ddc3d11937ec7141f244dc2d1079d607b",
+  "ontology_semantic_sha256": "a0496dc220b2809cf1b533fd62845356a5a43edd66d9c6388dce903c60c97460",
   "overall_status": "ready",
-  "pilot_run_id": "539e42c34461ecaa3d22cabdae9287dde06669219592b2d0d2e05d80b237ad05",
+  "pilot_run_id": "53469c7ad0feed0fe70d51f7416e198463df59dffefbbac91f0d6f07a1274e87",
   "schema_version": "0.2.0",
   "screening_count": 166,
   "selected_target_ids": [

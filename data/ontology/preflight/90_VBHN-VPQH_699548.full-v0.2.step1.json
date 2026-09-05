@@ -1,0 +1,144 @@
+{
+  "accepted_chunk_count": 72,
+  "artifacts": [
+    {
+      "artifact_type": "chunks",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\90_VBHN-VPQH_699548.chunks.jsonl",
+      "sha256": "fc70707bbf7b23c3f8822b015b1b10f141e921fcbb93071037aa38213e91646f",
+      "size_bytes": 965798
+    },
+    {
+      "artifact_type": "screening",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\90_VBHN-VPQH_699548.chunk_screening.jsonl",
+      "sha256": "4644d7a5d46f34ef8adb660755b4f75d22f5acd56b649e8c7d6f9a9b9d64a96a",
+      "size_bytes": 79429
+    },
+    {
+      "artifact_type": "metadata",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\90_VBHN-VPQH_699548.document_metadata.jsonl",
+      "sha256": "8dd2021af557190251b185ac9a74dd09ed52a4a6870d3d26ba35c8c598be8941",
+      "size_bytes": 94
+    },
+    {
+      "artifact_type": "population_contract",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\ontology\\population_contract.yaml",
+      "sha256": "4ce0599f1969b433db258e54cbe0ea67297ee5fc952a08ca8aae22f321684834",
+      "size_bytes": 378
+    }
+  ],
+  "checked_at": "2026-09-05T15:00:40.256134+00:00",
+  "checks": [
+    {
+      "check_id": "PF-CHUNKS-001",
+      "status": "passed",
+      "summary": "Loaded 165 unique chunks."
+    },
+    {
+      "check_id": "PF-DOCUMENT-001",
+      "status": "passed",
+      "summary": "Chunks belong to one root legal document."
+    },
+    {
+      "check_id": "PF-ADJACENCY-001",
+      "status": "passed",
+      "summary": "Neighbor links are consistent across 1 scopes."
+    },
+    {
+      "check_id": "PF-SCREENING-001",
+      "status": "passed",
+      "summary": "Screening covers all 165 chunks exactly once."
+    },
+    {
+      "check_id": "PF-TARGETS-001",
+      "status": "passed",
+      "summary": "Selected 72 of 72 accepted chunks for this run."
+    },
+    {
+      "check_id": "PF-METADATA-001",
+      "status": "warning",
+      "summary": "Document valid_from is unknown; every populated rule must supply source-specific validity."
+    }
+  ],
+  "chunk_count": 165,
+  "document_number": "90/VBHN-VPQH",
+  "estimated_llm_batches": 72,
+  "ontology_semantic_sha256": "a0496dc220b2809cf1b533fd62845356a5a43edd66d9c6388dce903c60c97460",
+  "overall_status": "ready",
+  "pilot_run_id": "64fff430a08955a330425d30d167fe9e473cb791b831227b8cd9457e2508d2cb",
+  "schema_version": "0.2.0",
+  "screening_count": 165,
+  "selected_target_ids": [
+    "4b9db6e4adea5978133a3259bff1b9cb9adf02cded36902605f2ed56459df2bd",
+    "a867ce4b83b0797607ab7a57eba14401f1d9498e2e076ccce207db8cc0a8a7f4",
+    "231c69cc06e8b9e5d022367cd3adba58224a755b960794a0084024c614887c84",
+    "bb62aaca7e6459c296b17efc0f15b90281fd0f63755bfc779bcea78a5a20c58c",
+    "eacc31a88a1ddfda755643fc240acfe878d945453e0630c8a939a36d90bf443b",
+    "c4abbb5504d8c3bb7a0f25ea50428826ae3bf4244859c71b43d47ea3a5bcdb0b",
+    "d85bd737fcb7bbcc73639137b56fef5b8c1da92a525ca7a260451116d6d745c9",
+    "697215c8de515d040b6d74c8b9a7e4ad9ffc2a2ef9765fe071fa34fde21f6756",
+    "37abb2248768f274c35ff7ee1bc41359dfd4acc598aadd096ddbb5e92379d2a3",
+    "c3aeeeb5443330deafc55a2f52ebee94ccd4008490d1cfd2c96a8587ec5d9e9c",
+    "51fed412c84a42390389c2342314ce9b973124b027aa8b987ec6798b1ef93a09",
+    "1e3d85be89f3689a661bb002731faff4e133d11f017e7db2975dc4af5df41e97",
+    "3c49f30778486b0c1971fd18a9f7f962fe4b1721f67274fc58d6621800e491ad",
+    "8c5e0bcb56c9656debfb56dbd240091dd846a07870d7ae6c4c309580767e2a11",
+    "ef75ebf02cafc52fd0ca3c67e6785c55bf3cbf5d5c2e9e92e37c5182fe1a7d14",
+    "5f392404b0fe8bfba1fc32509c579a78014504aed7eefd2e4d655e05c686e083",
+    "fcb0b2e6b9cfb548a305f30c7e280306223c887b0e27475ff023c9ec3666e8a6",
+    "673d518f557e2813729f0de0233b287e8455f1034debdd7f38c9b9836242bb8f",
+    "a48dc3d252b103726c0834279a65b18f3f1e2572e991aee232c5f4959c7affac",
+    "069be4095ae65140dd2a7733a031f6f45df191b13f743e32d3a5191a09773002",
+    "45608f24719808a6a64ec7a1c234ae727358b9e4ba48459db4130f4b49bb3fd1",
+    "39bf8f0121ccea99fea1eac9b387591e5782a652434636272ebf90f62093c093",
+    "d7089b61b812e160f0784abc067ad0feff646e235eb51ffdf21ed47a1d8a325d",
+    "35ccc22ce1d6a886f92b8c3abe566a1019313a61c91aca20d12bd58e3466a626",
+    "43c1f3d7679c3268b57b4fb528a69473b40888fafc8a2aaf03f1b5404fb2795f",
+    "c20ba8390882b7dfd9c35300d27c5b058ce422cfd73a6d05b5aec94aeea5ca58",
+    "c09642c516f676a7863e3ba65049c19c6ad892ccde99f339cb922cb2ee682624",
+    "d9abdd82beeb357bb5f7f1d4d57b6652fe72615e4013f5e79e29de1c195e892b",
+    "d9ce309276d332e7e7093a6af64efea255b4a40ce50dcd93fe1729f0fb2337cd",
+    "f0dd463fe8f3b2ea7b6651d2df0d076fc6fcb55bbb7a5aeabb824035986584d2",
+    "800347a223152b56b11abada9f3503e8c3f89fdd820b9aa31cc92e1fccd055d1",
+    "0d1dcd8215dc1ae25e1c128b152116348623feab8b16588e4e333af8b8ccb265",
+    "a9910f83816be2ddee2ab4be256d601b9a0d61436987b6171bad0edf19aacce0",
+    "3657e8c2fc23809a4b4d27f10c441770d6ce077064b5e0fe93cb55f144508eef",
+    "416d085f38f86cc0ac5941be17b0118059477312d6055f5f33d0530ee20699cf",
+    "feebd514ea10e1315ad3a991d9e2b8d0aa709ddfea98e52464b1ee8f653be39b",
+    "91cf261e49fdc9e5a36413a71f9d184c4d69b7395d6afee7efbf0501fc8a203b",
+    "671dfaadf7780ad824bd31221fb5e3dac1d15bda3a1cf084d22752a1532d70ec",
+    "064371ff7ab31295399b873085669489ef5fc6de15ae7f9f635d493cf76447f8",
+    "04e4b237d21c52172cb6602d292f6f2ffd394bab278f2cba0867a0975d3128c2",
+    "d68e57e0fb38edff8d918d9b9bb1cbe384fa07981f4b4f1e7379cf9db1bb3779",
+    "9a7bc2ed54625c1031c60b2c8fc563cfc4fce4cfa4f920b65af0a9793b7ba2bf",
+    "064485db29ab5f7ef9737a1a1d84f468e42987a488d38bc0cb41ba8f8a099c03",
+    "b015e5d70042c252536142651c006d0966379cec0d876f8d7ad24fedd2eedaa9",
+    "5442c52c49e3a77392e2f737c38be231e13dbf4d48e4912c4c966fab8177d203",
+    "32c8cba431a2f24babe7be6114c1388d54967e1049e786ff066f7cd76165389c",
+    "c4d35440ca3d8f295bd78d9f18585c19786f04d96f244678bdda6b9ee56eff28",
+    "7d2f77abb50b8bdefaf6826f921d03b97c13f7a62c173c0a26c86d58191e9cfa",
+    "3a1d273064fbf43d85173410bee9cb84b4e26dd9c647b719ded4638d8ee132d9",
+    "61caf3838769cace508bee79a5c1fb37468660f42078d476f815242a73bc575d",
+    "1d4f9d854e66a60794fc09643d5d9690d6771207112e4007bff30f908252745e",
+    "259eb640e0c466193f80765e10769dc006065b00951841fbb7c3abe6fc56f030",
+    "f899a5259343980499fc8aeb721cf137304833035c38d0ac656f85c6aff7a345",
+    "cc63842cc7841a2aa464cacd876c1588157ab59f1559e9cd78c86e6570aac403",
+    "c68132cf07377ed624a7a4fb6315750162f3e377bd5fa4b59c32c7f708152ac9",
+    "e971372ae29d2517aba10a3f7325154c7fa3a598a3e1d16f61899fe30d36f76a",
+    "b11445d645182374f4a196c2ffa0019eccd02e4f96e994cbe39868d3d7b110d1",
+    "e8fac04ee46d8c88f71d81daa7d6f4cc2df7834c48ee85a758a83defea71a106",
+    "e52cf032b29b7eff73e6ec581913b0ab8da2d6bee7a1fcaa69bdc8ad68b53af7",
+    "4c68511e7fce6cb8e43de91e86603f2eda0bd10edeacf77b1d24da01332a09e9",
+    "2e191ca2a034d63b6709076a1dab4fea0fb00bd064145eb4b997b1a2a26f6c77",
+    "38d6facdc6ea84ea45a7ac1f811808f69d5b1395ab163f303d663ef259c1a357",
+    "be10acc1652ba9f8a285361131993aed5a278bc4ffa8e19e6d4ee4fcc595748a",
+    "be8766ae81094fe62dbdb6f09e62b85e7b85748747d780b73fb91d95142c62d7",
+    "f6104eb2bce30c05b8f3821084c427ec4bed193de1338dea2d7f7dad65206eb6",
+    "1a39ad713b9b88ea7cfb58573f563459af267f47376812970e9d7583d095585f",
+    "521eaaa449fe4569c72b30f29a8c1a76b5f4b355d85ecb677abd01c1241a63fc",
+    "2580dd835be14d4a00a54c3c8ace6411ec34c1241c14137a222552852e5db9ca",
+    "d97591b8a6173c6bea70fd516d5f0922fdc262a19fcbd11c8e329871bc39d3d8",
+    "7c22920a6690e5e8056b08f0b02566f6a7b52776b87c899c4dc642edb4434952",
+    "a1157896d3e8cc47d2ec12ac2f23c6b1aaf13f7157654f0b398fe36f720b9ab6",
+    "3fbebd6b9659c923eb48300263b6f34c535f247236d9fd0a72b76808db16585f"
+  ]
+}
