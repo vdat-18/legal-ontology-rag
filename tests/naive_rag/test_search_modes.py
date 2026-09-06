@@ -19,6 +19,11 @@ def _fake_settings(**overrides):
         "search_mode": "semantic",
         "hybrid_rrf_k": 60,
         "hybrid_pool_multiplier": 3,
+        "bm25_k1": 1.5,
+        "bm25_b": 0.75,
+        "bm25_delta": 0.5,
+        "keyword_retrieval_pool_size": 100,
+        "keyword_max_candidates_per_fact": 10,
     }
     defaults.update(overrides)
     return type("S", (), defaults)()

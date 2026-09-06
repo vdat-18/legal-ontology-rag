@@ -8,7 +8,9 @@ from enum import Enum
 from loguru import logger
 from pymilvus import MilvusClient
 
+from legal_rag.benchmark_synthesis.vietnamese_lexical import VietnameseWordSegmenter
 from legal_rag.embedding.encoder import EmbeddingEncoder
+from legal_rag.retrieval.vietnamese_bm25 import vietnamese_legal_tokens
 from legal_rag.settings import NaiveRagSettings
 
 
@@ -31,28 +33,31 @@ class RetrievedChunk:
     score: float
 
 
-def _tokenize(text: str) -> list[str]:
-    """Split text into lowercase tokens for BM25 indexing."""
-    return text.lower().split()
-
-
 class Retriever:
     """Search Milvus chunks by keyword, semantic vector, or hybrid fusion."""
 
-    def __init__(self, encoder: EmbeddingEncoder, milvus_client: MilvusClient, settings: NaiveRagSettings) -> None:
-        """Initialize with an embedding encoder, Milvus client, and naive RAG settings."""
+    def __init__(
+        self,
+        encoder: EmbeddingEncoder,
+        milvus_client: MilvusClient,
+        settings: NaiveRagSettings,
+        *,
+        word_segmenter: VietnameseWordSegmenter | None = None,
+    ) -> None:
+        """Initialize with encoder, Milvus client, settings, and optional word segmenter."""
         self.encoder = encoder
         self.client = milvus_client
         self.settings = settings
+        self._word_segmenter = word_segmenter
         self._bm25: object | None = None
         self._bm25_chunks: list[dict] | None = None
 
     def _ensure_bm25_index(self) -> None:
-        """Build the BM25 index lazily from Milvus on first keyword or hybrid query."""
+        """Build the BM25L index lazily from Milvus on first keyword or hybrid query."""
         if self._bm25_chunks is not None:
             return
 
-        from rank_bm25 import BM25Okapi
+        from rank_bm25 import BM25L
 
         iterator = self.client.query_iterator(
             collection_name=self.settings.milvus_collection_name,
@@ -65,10 +70,25 @@ class Retriever:
                 all_chunks.extend(batch)
         finally:
             iterator.close()
-        corpus = [_tokenize(chunk["text"]) for chunk in all_chunks]
-        self._bm25 = BM25Okapi(corpus) if corpus else None
+
+        if not all_chunks:
+            return
+
+        texts = [chunk["text"] for chunk in all_chunks]
+        if self._word_segmenter is not None:
+            segmented = self._word_segmenter.segment(texts)
+            corpus = [vietnamese_legal_tokens(tokens) for tokens in segmented]
+        else:
+            corpus = [[token for token in text.lower().split() if token] for text in texts]
+
+        self._bm25 = BM25L(
+            corpus,
+            k1=self.settings.bm25_k1,
+            b=self.settings.bm25_b,
+            delta=self.settings.bm25_delta,
+        )
         self._bm25_chunks = all_chunks
-        logger.info("Built BM25 index over {} chunks", len(all_chunks))
+        logger.info("Built BM25L index over {} chunks", len(all_chunks))
 
     def _semantic_search(self, query: str, top_k: int) -> list[RetrievedChunk]:
         """Dense vector search via Milvus."""
@@ -95,14 +115,20 @@ class Retriever:
         ]
 
     def _keyword_search(self, query: str, top_k: int) -> list[RetrievedChunk]:
-        """BM25 keyword search over all indexed chunks."""
         self._ensure_bm25_index()
         if not self._bm25_chunks:
             return []
         bm25 = self._bm25
         chunks = self._bm25_chunks
 
-        query_tokens = _tokenize(query)
+        if self._word_segmenter is not None:
+            segmented_query = self._word_segmenter.segment([query])
+            if not segmented_query:
+                return []
+            query_tokens = vietnamese_legal_tokens(segmented_query[0])
+        else:
+            query_tokens = [token for token in query.lower().split() if token]
+
         scores = bm25.get_scores(query_tokens)
         ranked_indices = sorted(range(len(scores)), key=lambda i: -scores[i])[:top_k]
 

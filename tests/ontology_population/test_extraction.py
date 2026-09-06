@@ -41,6 +41,7 @@ from legal_rag.ontology_population.extraction import (
     extract_population_from_document,
     extract_target_conducts,
     finalize_population_binding_results,
+    split_population_binding_item,
 )
 from legal_rag.ontology_population.models import OntologyPopulationRecord
 from legal_rag.settings import Settings
@@ -507,6 +508,40 @@ def test_population_binding_inventory_is_forwarded_without_semantic_revalidation
     binding = build_population_binding_items((item,), (inventory,), document_metadata)[0]
 
     assert binding.target_conducts == inventory.conducts
+
+
+def test_population_binding_splits_requests_by_provision_path(
+    legal_chunk: Chunk,
+    document_metadata: DocumentMetadataRecord,
+) -> None:
+    """Each LLM request keeps only conduct siblings that share a legal locator."""
+    item, inventory, evidence = _target_inventory_fixture(legal_chunk)
+    inventory.conducts.extend(
+        [
+            OntologyTargetConductEntry(
+                conduct_id="conduct_2",
+                conduct_label_vi="Hành vi cùng điểm",
+                provision_path="Điều kiểm tra",
+                evidence=[evidence],
+            ),
+            OntologyTargetConductEntry(
+                conduct_id="conduct_3",
+                conduct_label_vi="Hành vi điểm khác",
+                provision_path="Điều kiểm tra > Điểm b",
+                evidence=[evidence],
+            ),
+        ]
+    )
+    binding = build_population_binding_items((item,), (inventory,), document_metadata)[0]
+
+    groups = split_population_binding_item(binding)
+
+    assert [[conduct.conduct_id for conduct in group.target_conducts] for group in groups] == [
+        ["conduct_1", "conduct_2"],
+        ["conduct_3"],
+    ]
+    assert all(group.target_chunk_id == legal_chunk.chunk_id for group in groups)
+    assert all(group.window == binding.window for group in groups)
 
 
 def test_population_binding_rejects_conduct_outside_locked_inventory(

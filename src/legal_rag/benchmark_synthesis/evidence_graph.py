@@ -8,7 +8,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from functools import partial
 from typing import Any, Literal, Protocol
-from unicodedata import normalize
 
 import numpy as np
 from baml_py.logging import set_log_level
@@ -30,6 +29,7 @@ from legal_rag.benchmark_synthesis.vietnamese_lexical import (
 )
 from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.parser.hashing import sha256_json
+from legal_rag.retrieval.vietnamese_bm25 import vietnamese_legal_tokens
 from legal_rag.settings import Settings
 
 LEGACY_EVIDENCE_RELATION_SCHEMA_VERSION = "3.0.0"
@@ -137,40 +137,15 @@ class EvidenceCandidateSet:
 
 
 def _fact_embedding_text(fact: LegalFact) -> str:
-    """Return the legal statement used by both retrieval legs."""
     return fact.statement
 
 
-def _lexical_units(text: str) -> list[str]:
-    """Split normalized text on Unicode punctuation and separators while preserving letters and digits."""
-    return "".join(character if character.isalnum() else " " for character in text).split()
-
-
-def _vietnamese_legal_tokens(segmented_tokens: Sequence[str]) -> list[str]:
-    """Return namespaced VnCoreNLP words and adjacent word bigrams for Vietnamese legal BM25."""
-    word_tokens: list[str] = []
-    bigram_tokens: list[str] = []
-    previous_word: str | None = None
-    for segmented_token in segmented_tokens:
-        units = _lexical_units(normalize("NFC", segmented_token).casefold())
-        if not units:
-            previous_word = None
-            continue
-        word = "_".join(units)
-        word_tokens.append(f"w:{word}")
-        if previous_word is not None:
-            bigram_tokens.append(f"b:{previous_word}|{word}")
-        previous_word = word
-    return [*word_tokens, *bigram_tokens]
-
-
 def _lexical_corpus(texts: Sequence[str], word_segmenter: VietnameseWordSegmenter) -> list[list[str]]:
-    """Build the Vietnamese BM25 corpus from complete legal statements."""
     segmented = word_segmenter.segment(texts)
     if len(segmented) != len(texts):
         msg = f"Word segmenter returned {len(segmented)} outputs for {len(texts)} statements"
         raise ValueError(msg)
-    return [_vietnamese_legal_tokens(tokens) for tokens in segmented]
+    return [vietnamese_legal_tokens(tokens) for tokens in segmented]
 
 
 class _FactEncoder(Protocol):

@@ -36,6 +36,11 @@ def test_every_declared_tunable_is_overridable_from_the_environment() -> None:
         "search_mode": "keyword",
         "hybrid_rrf_k": "30",
         "hybrid_pool_multiplier": "2",
+        "bm25_k1": "1.2",
+        "bm25_b": "0.8",
+        "bm25_delta": "0.3",
+        "keyword_retrieval_pool_size": "50",
+        "keyword_max_candidates_per_fact": "5",
     }
 
     assert raw_values.keys() == _NAIVE_RAG_TUNABLES.keys()

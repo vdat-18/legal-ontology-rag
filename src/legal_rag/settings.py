@@ -217,6 +217,11 @@ _NAIVE_RAG_TUNABLES: dict[str, Callable[[str], str | bool | float | int]] = {
     "search_mode": str.strip,
     "hybrid_rrf_k": int,
     "hybrid_pool_multiplier": int,
+    "bm25_k1": float,
+    "bm25_b": float,
+    "bm25_delta": float,
+    "keyword_retrieval_pool_size": int,
+    "keyword_max_candidates_per_fact": int,
 }
 
 
@@ -242,6 +247,11 @@ class NaiveRagSettings:
     search_mode: str = "semantic"
     hybrid_rrf_k: int = 60
     hybrid_pool_multiplier: int = 3
+    bm25_k1: float = 1.5
+    bm25_b: float = 0.75
+    bm25_delta: float = 0.5
+    keyword_retrieval_pool_size: int = 100
+    keyword_max_candidates_per_fact: int = 10
 
     def __post_init__(self) -> None:
         """Reject invalid external-service configuration before connecting to Milvus."""
@@ -281,10 +291,22 @@ class NaiveRagSettings:
         positive_hybrid = {
             "hybrid_rrf_k": self.hybrid_rrf_k,
             "hybrid_pool_multiplier": self.hybrid_pool_multiplier,
+            "keyword_retrieval_pool_size": self.keyword_retrieval_pool_size,
+            "keyword_max_candidates_per_fact": self.keyword_max_candidates_per_fact,
         }
         for name, value in positive_hybrid.items():
             if value < 1:
                 msg = f"{name} must be positive, got {value}"
+                raise ValueError(msg)
+
+        non_negative_bm25 = {
+            "bm25_k1": self.bm25_k1,
+            "bm25_b": self.bm25_b,
+            "bm25_delta": self.bm25_delta,
+        }
+        for name, value in non_negative_bm25.items():
+            if value < 0:
+                msg = f"{name} must be non-negative, got {value}"
                 raise ValueError(msg)
 
         if not isfinite(self.answer_temperature) or not 0 <= self.answer_temperature <= _MAX_LLM_TEMPERATURE:

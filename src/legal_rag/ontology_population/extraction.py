@@ -55,7 +55,7 @@ from legal_rag.ontology_population.models import (
 )
 from legal_rag.settings import Settings
 
-ONTOLOGY_POPULATION_PROMPT_VERSION = "0.45.0"
+ONTOLOGY_POPULATION_PROMPT_VERSION = "0.60.0"
 
 
 def build_population_run_id(pilot_run_id: str, settings: Settings) -> str:
@@ -181,14 +181,18 @@ class BamlOntologyPopulationClient:
 
     def bind_batch(self, items: Sequence[OntologyPopulationBindingItem]) -> Sequence[OntologyPopulationBatchResult]:
         """Bind reading-window context to a persisted conduct inventory."""
-        if not any(item.target_conducts for item in items):
-            return tuple(
-                OntologyPopulationBatchResult(target_chunk_id=item.target_chunk_id, rules=[]) for item in items
-            )
-        binding_request = b.request.BindOntologyPopulationBatch(list(items), baml_options=self._caller.options)
-        binding_output = self._caller.execute(binding_request)
-        binding_results = b.parse.BindOntologyPopulationBatch(binding_output, baml_options=self._caller.options)
-        return finalize_population_binding_results(items, binding_results)
+        results = []
+        for item in items:
+            rules = []
+            for grouped_item in split_population_binding_item(item):
+                binding_request = b.request.BindOntologyPopulationBatch(
+                    [grouped_item], baml_options=self._caller.options
+                )
+                binding_output = self._caller.execute(binding_request)
+                binding_results = b.parse.BindOntologyPopulationBatch(binding_output, baml_options=self._caller.options)
+                rules.extend(finalize_population_binding_results((grouped_item,), binding_results)[0].rules)
+            results.append(OntologyPopulationBatchResult(target_chunk_id=item.target_chunk_id, rules=rules))
+        return tuple(results)
 
 
 class PersistedConductPopulationClient:
@@ -436,6 +440,24 @@ def build_population_binding_items(
             )
         )
     return tuple(binding_items)
+
+
+def split_population_binding_item(
+    item: OntologyPopulationBindingItem,
+) -> tuple[OntologyPopulationBindingItem, ...]:
+    """Keep conduct siblings together while bounding each binding request to one provision."""
+    conducts_by_provision: dict[str, list[OntologyTargetConductEntry]] = {}
+    for conduct in item.target_conducts:
+        conducts_by_provision.setdefault(conduct.provision_path, []).append(conduct)
+    return tuple(
+        OntologyPopulationBindingItem(
+            target_chunk_id=item.target_chunk_id,
+            window=item.window,
+            target_conducts=conducts,
+            temporal_overrides=item.temporal_overrides,
+        )
+        for conducts in conducts_by_provision.values()
+    )
 
 
 def finalize_population_binding_results(

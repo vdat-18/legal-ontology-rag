@@ -316,7 +316,10 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
       và hỏi text đó có tự phát biểu assertion đang dẫn hay không. Nếu không chứa
       chính nội dung hoặc diễn đạt tương đương rõ ràng của condition/consequence,
       ref đó sai và phải bỏ hoặc thay bằng ref của clause thực tế. Một ref đúng
-      khác trong cùng danh sách không hợp thức hóa ref sai.
+      khác trong cùng danh sách không hợp thức hóa ref sai. Evidence của condition
+      chỉ gồm clause phát biểu condition. Nếu consequence kế thừa loại pháp lý từ
+      câu dẫn chung, evidence có thể gồm câu dẫn đó và chính clause consequence;
+      không thêm các Điểm/câu sibling nằm giữa chúng.
     - Cụm `nếu có`, `nếu đã được cấp` hoặc tương đương không cho phép bỏ hậu quả;
       tạo rule hậu quả với điều kiện có/đã được cấp đối tượng chịu tác động. Cụm
       `trừ trường hợp X` không xóa hậu quả chung; tạo điều kiện Not(X) cho rule đó.
@@ -371,6 +374,11 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
       từ clause áp dụng chung và source không loại variant đó, output chưa hoàn
       thành: sao chép đúng chữ ký clause sang variant thiếu, dùng cùng điều kiện và
       evidence của clause thực tế. Lặp đến khi không còn sibling thiếu hậu quả.
+      Sau đó quét ngược từng clause hậu quả trong toàn window: mỗi clause phải được
+      đánh dấu đã có rule cho mọi variant áp dụng hoặc có lý do source-explicit để
+      không áp dụng. Clause chưa xuất hiện ở bất kỳ sibling nào vẫn không được bỏ;
+      đặc biệt hậu quả kèm `nếu có` phải có rule điều kiện. Nếu còn clause áp dụng
+      chưa được biểu diễn, bổ sung nó rồi chạy lại cả audit clause và sibling.
     - Không tạo LegalChange, concept relation hay occurrence. Trả một result mỗi
       target_chunk_id sau khi xử lý mọi locked conduct.
 
