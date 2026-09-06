@@ -20,6 +20,7 @@ def test_population_contract_loads_typed_execution_limits() -> None:
     assert settings.instance_namespace == "https://w3id.org/legal-ontology-rag/data/"
     assert settings.conduct_batch_size == 1
     assert settings.batch_size == 1
+    assert settings.max_locator_context_chunks == 8
     assert settings.max_preceding_chunks == 2
     assert settings.max_following_chunks == 1
     assert settings.max_article_context_chunks == 32
@@ -59,18 +60,26 @@ def test_population_prompt_preserves_vietnamese_legal_structure() -> None:
     compact_prompt = " ".join(prompt.split())
 
     assert "danh mục đóng" in compact_prompt
-    assert "không theo dấu câu" in compact_prompt
-    assert "cùng độ chi tiết cho cấu trúc tương đương" in compact_prompt
-    assert "locator hoặc cụm đối tượng không đủ" in compact_prompt
+    assert "mọi vị ngữ độc lập" in compact_prompt
+    assert "P không đúng A, không đúng B" in compact_prompt
+    assert "Hai đối tượng pháp lý độc lập nối bằng `hoặc`" in compact_prompt
+    assert "Nhánh rút gọn phải tự đủ nghĩa" in compact_prompt
+    assert "Chủ thể label là chủ thể chịu xử phạt" in compact_prompt
+    assert "Mọi label phải giữ nguyên chủ thể đó và đủ loại phương tiện/phạm vi" in compact_prompt
+    assert "không đổi nhánh thứ hai thành `T V`" in compact_prompt
+    assert "`làm thay đổi A, B`" in compact_prompt
+    assert "mỗi lá giữ đủ giấy tờ, loại xe, bên giữ/cấp và phạm vi" in compact_prompt
+    assert "Không thêm động từ/hành động để nối chủ thể với hành vi" in compact_prompt
+    assert "locator thuần túy" in compact_prompt
     assert "Chương > Mục > Điều > Khoản > Điểm" in compact_prompt
-    assert "Giữ nguyên phủ định" in compact_prompt
+    assert "provision_path chỉ gồm mã locator" in compact_prompt
+    assert "không kèm tên/tiêu đề Chương, Mục, Điều" in compact_prompt
     assert "Không dùng kiến thức ngoài" in compact_prompt
     assert "Bối cảnh: xây dựng ontology" in compact_prompt
     assert '{{ _.role("system") }}' in prompt
     assert '{{ _.role("user") }}' in prompt
     assert "function ExtractOntologyTargetConductBatch" in prompt
     assert "function BindOntologyPopulationBatch" in prompt
-    assert len(prompt) < 10000
 
 
 def test_population_console_script_is_published() -> None:

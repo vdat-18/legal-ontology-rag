@@ -1,7 +1,8 @@
-schema_version: "0.2.0"
+schema_version: "0.3.0"
 ontology_version: "0.2.0"
 instance_namespace: https://w3id.org/legal-ontology-rag/data/
 reading_window:
+  max_locator_context_chunks: 8
   max_preceding_chunks: 2
   max_following_chunks: 1
   max_article_context_chunks: 32

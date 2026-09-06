@@ -7,7 +7,7 @@ from pathlib import Path
 
 from legal_rag.ontology_validation.loader import load_yaml
 
-POPULATION_CONTRACT_SCHEMA_VERSION = "0.2.0"
+POPULATION_CONTRACT_SCHEMA_VERSION = "0.3.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,6 +18,7 @@ class PopulationSettings:
     instance_namespace: str
     conduct_batch_size: int
     batch_size: int
+    max_locator_context_chunks: int
     max_preceding_chunks: int
     max_following_chunks: int
     max_article_context_chunks: int
@@ -41,6 +42,7 @@ class PopulationSettings:
             instance_namespace=document["instance_namespace"].rstrip("/") + "/",
             conduct_batch_size=llm["conduct_batch_size"],
             batch_size=llm["batch_size"],
+            max_locator_context_chunks=reading_window["max_locator_context_chunks"],
             max_preceding_chunks=reading_window["max_preceding_chunks"],
             max_following_chunks=reading_window["max_following_chunks"],
             max_article_context_chunks=reading_window["max_article_context_chunks"],

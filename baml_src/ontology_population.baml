@@ -137,35 +137,77 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
 
     Mục đích bước 1/6: danh mục đóng conduct.
 
-    - Cổng bắt buộc: (a) gắn conduct với cảnh cáo, tiền phạt, trừ điểm, bổ sung,
-      khắc phục/dẫn chiếu mức phạt; hoặc (b) sửa/thay Khoản/Điểm xác định bằng nội
-      dung trực tiếp liệt kê conduct vi phạm giao thông. (b) không cần lặp hậu quả
-      của điều khoản đích.
-    - Loại kỷ luật, hình sự/dân sự, cưỡng chế/nghĩa vụ thi hành và thủ tục chung
-      nhiều lĩnh vực. "Xử lý theo quy định của pháp luật" không đủ căn cứ.
-    - Loại nghĩa vụ đúng, quyền/nghĩa vụ chung, điều cấm phạt nơi khác và ví dụ thủ
-      tục/thẩm quyền. Không tự đảo nghĩa vụ tích cực thành vi phạm.
-    - Audit phân rã bắt buộc, không xuất audit: xác định mọi động từ đầu; mỗi hành
-      động/không hành động tự đủ bị phạt là một conduct lá.
-    - Động từ đầu độc lập vẫn là lá riêng dù sau dấu câu/liên từ hoặc chung chủ thể,
-      đối tượng. `P X hoặc Q Y` thành hai lá nếu P, Q tự đủ vi phạm; `P bị A, Q, R`
-      thành `P bị A`, `Q`, `R` khi Q, R là động từ đầu.
-    - Cùng động từ đầu, chỉ khác công cụ/thuộc tính/phương thức/ngưỡng thì một lá:
-      `P bằng A/B/C`. Chỉ gộp động từ đầu khác nhau nếu chúng phải cùng xảy ra.
-    - Nhánh rút gọn đã có động từ đầu thì bắt đầu nhãn tại đó; chỉ khôi phục bổ ngữ
-      dùng chung, không mang động từ nhánh khác. Role/loại xe để bước 2 bind. Quyết
-      định theo nghĩa pháp lý, không theo dấu câu; dùng cùng độ chi tiết cho cấu
-      trúc tương đương.
-    - Loại định nghĩa, nguyên tắc và danh sách locator thuần túy. Sửa/bãi bỏ hoặc
-      dẫn chiếu phải xác định conduct và mức/điều khoản xử phạt áp dụng; locator
-      hoặc cụm đối tượng không đủ.
-    - Chỉ dùng Target evidence; context chỉ định vị. Không dùng kiến thức ngoài.
-      Giữ nguyên phủ định, qualifier và phạm vi tiếng Việt.
-    - Với văn bản sửa đổi, provision_path là điều khoản được sửa/thay; Điều sửa đổi
-      chỉ là provenance. Theo `Chương > Mục > Điều > Khoản > Điểm`; không đoán/lặp
-      loại locator. Locator context chỉ khôi phục Khoản/Điểm, không cấp evidence.
-    - Loại mục không đạt; trả một result/target.
+    Thứ tự ưu tiên bắt buộc: (1) bao phủ đủ Target từ đầu đến cuối; (2) giữ đúng
+    chủ thể, hành động, đối tượng và điều kiện nguồn; (3) phân rã thành conduct lá;
+    (4) gắn locator. Không được bỏ một nhánh nguồn để làm label ngắn hoặc dễ tách.
 
+    - Cổng bắt buộc: Target trực tiếp (a) gắn conduct với cảnh cáo, tiền phạt, trừ
+      điểm, bổ sung, khắc phục/dẫn chiếu mức phạt; hoặc (b) sửa/thay điều khoản xác
+      định bằng danh sách conduct vi phạm giao thông. (b) không cần lặp hậu quả.
+    - Loại kỷ luật, hình sự/dân sự, cưỡng chế/thi hành, thủ tục/thẩm quyền, nghĩa vụ
+      đúng, quyền/nghĩa vụ chung và điều cấm bị phạt nơi khác. Không tự đảo nghĩa vụ
+      tích cực thành vi phạm; "xử lý theo pháp luật" không đủ căn cứ.
+    - Quét Target từ ký tự đầu đến cuối. Audit riêng đoạn mở đầu trước heading mới;
+      nếu nó tiếp nối Điểm/Khoản/danh sách, Locator context được xác nhận tiêu đề xử
+      phạt/cấu trúc chi phối. Không bỏ đoạn mở đầu vì phía sau có heading mới;
+      conduct/evidence vẫn chỉ từ Target.
+    - Audit từng Điểm/nhánh, không xuất audit: đánh dấu mọi hành động, không hành
+      động, trạng thái vi phạm; mỗi đoạn mở đầu, Điểm và nhánh trực tiếp bị xử phạt
+      phải có conduct tương ứng hoặc được loại theo cổng bằng căn cứ rõ ràng. Kiểm
+      tra lại coverage sau khi phân rã; không bỏ sót khi Target chuyển Khoản/Điều.
+    - Trước khi phân rã, xác định chủ thể chịu xử phạt từ câu dẫn mức phạt/cấu trúc
+      chi phối. Mọi label phải giữ nguyên chủ thể đó và đủ loại phương tiện/phạm vi;
+      không lấy công cụ, phần mềm, giấy tờ, phương tiện hoặc người thực hiện hành
+      động phụ làm chủ thể nếu họ không phải đối tượng bị xử phạt.
+    - Mỗi phương án tự đủ bị phạt là một conduct lá. Khôi phục phần dùng chung rồi
+      tách: (1) mọi vị ngữ độc lập, kể cả động từ dùng như bổ nghĩa bị động;
+      `S V1, V2 O` -> `S V1 O`, `S V2 O`, `O V1, V2 trái quy định` -> hai lá;
+      (2) các bổ ngữ lựa chọn độc lập cùng một vị ngữ: `S V O1 hoặc O2` ->
+      `S V O1`, `S V O2` nếu thay lần lượt O1/O2 đều tạo câu vi phạm tự đủ.
+      `P không đúng A, không đúng B` cũng thành hai lá.
+    - Giữ chung danh sách dấu phẩy sau một lần xuất hiện của vị ngữ khi source không
+      lặp vị ngữ và không dùng liên từ lựa chọn để tạo nhánh: `V tại A, B`,
+      `làm thay đổi A, B`, `P bằng A/B/C` là một lá. Danh sách có thể gồm thành phần,
+      thuộc tính, vị trí, phương thức, phạm vi hoặc ngưỡng; không tách chỉ vì từng
+      phần có thể ghép thành câu ngắn. Hai đối tượng pháp lý độc lập nối bằng `hoặc`
+      vẫn phải tách.
+    - Trước khi trả kết quả, đọc lại từng label theo chủ thể-vị ngữ-bổ ngữ. Chỉ tách
+      khi có nhiều vị ngữ hoặc các nhánh lựa chọn độc lập trong source; không dùng
+      khả năng viết lại thành câu ngắn làm căn cứ duy nhất. Cụm danh từ chứa nhiều
+      động từ cùng nhận một qualifier pháp lý, `O V1, V2 trái quy định`, bắt buộc
+      thành `O V1 trái quy định` và `O V2 trái quy định`; quy tắc này ưu tiên hơn
+      quy tắc giữ danh sách dấu phẩy. Ví dụ tổng quát: `phương tiện chế tạo, cải tạo
+      trái quy định` phải thành hai conduct cho `chế tạo` và `cải tạo`. Không được
+      trả label vẫn chứa hai động từ cùng đứng trước `trái quy định`.
+    - Với `S cho phép/chở/để T V1, V2 hoặc V3`, giữ S là chủ thể chịu xử phạt nhưng
+      tách V1/V2/V3 nếu từng hành động của T tự tạo thành phương án bị cấm. Chỉ gộp
+      các hành động hoặc khả năng khi pháp lý buộc chúng cùng cấu thành một yêu cầu.
+      Áp dụng tương tự cho động từ lồng sau mục đích/khả năng: `S P O để/thực hiện
+      việc V1, V2, V3` -> lặp toàn bộ khung `S P O để V1`, `... để V2`, `... để V3`
+      khi từng V là một khả năng pháp lý độc lập. Động từ lồng vẫn là vị ngữ cần audit.
+    - Chủ thể label là chủ thể chịu xử phạt trong mệnh đề chi phối, không phải người
+      thực hiện hành động phụ. Với `S tự V hoặc chở/cho phép/để T V`, tạo `S tự V`
+      và `S chở/cho phép/để T V`; không đổi nhánh thứ hai thành `T V`. Kiểm tra lại
+      mọi label đều bắt đầu từ S, kể cả khi câu nguồn bắt đầu bằng thuộc tính của O.
+    - Nhánh rút gọn phải tự đủ nghĩa: khôi phục cả chủ thể và vị ngữ chi phối bị
+      lược, cùng phủ định, đối tượng, qualifier/phạm vi dùng chung. `S V O1; O2`
+      mặc định tạo `S V O1`, `S V O2` nếu O2 không mở một vị ngữ chính mới; phải
+      lặp lại V trong label, không đổi `S V O` thành `S O` hay hành động khác của S.
+    - Bảo toàn toàn bộ điều kiện xác định đối tượng, kể cả phần trong ngoặc hoặc
+      mệnh đề cuối áp dụng cho nhiều nhánh; ưu tiên đủ nghĩa hơn label ngắn. Với cụm
+      danh từ pháp lý được lặp lại hoặc rút gọn, mỗi lá giữ đủ giấy tờ, loại xe, bên
+      giữ/cấp và phạm vi. Không thêm động từ/hành động để nối chủ thể với hành vi;
+      chỉ dùng nội dung được source trực tiếp hỗ trợ. Không rút ngắn phần trong ngoặc
+      nếu việc bỏ nó làm thay đổi đối tượng hoặc điều kiện áp dụng của leaf. Phân loại
+      chủ thể để bước 2 bind.
+    - Loại định nghĩa, nguyên tắc và locator thuần túy. Dẫn chiếu phải trực tiếp xác
+      định conduct và mức/điều khoản xử phạt. Đoạn chỉ thi hành, khắc phục hoặc tính
+      hậu quả/số lợi từ conduct dẫn chiếu không tạo conduct mới.
+    - Không dùng kiến thức ngoài. Với văn bản sửa đổi, provision_path là điều khoản
+      được sửa/thay; Điều sửa đổi chỉ là provenance. provision_path chỉ gồm mã
+      locator theo `Chương > Mục > Điều > Khoản > Điểm`, đúng dấu ` > `; không kèm
+      tên/tiêu đề Chương, Mục, Điều và không đoán/lặp locator. Context không cấp
+      evidence hay conduct.
     {{ _.role("user") }}
 
     {% for item in items %}
@@ -192,8 +234,7 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
     {{ _.role("system") }}
 
     Bối cảnh: xây dựng ontology có bằng chứng chỉ cho quy định xử phạt vi phạm
-    hành chính về giao thông đường bộ Việt Nam; không dùng cho vụ việc hoặc domain
-    khác.
+    hành chính về giao thông đường bộ Việt Nam.
 
     Mục đích bước 2/6: gắn phạm vi và hậu quả có source support vào conduct đã khóa.
 
@@ -225,7 +266,6 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
 
     {{ _.role("user") }}
 
-    Các reading window cần bind:
     {% for item in items %}
     === target_chunk_id={{ item.target_chunk_id }} ===
     Temporal overrides:
@@ -257,7 +297,7 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
     {% endfor %}
     ---
     {% endfor %}
-    === end target_chunk_id={{ item.target_chunk_id }} ===
+    === end ===
     {% endfor %}
 
     {{ ctx.output_format }}

@@ -81,25 +81,32 @@ def test_target_conduct_extraction_uses_configured_batch_size(legal_chunk: Chunk
     assert [record.target_chunk_id for record in records] == [chunk.chunk_id for chunk in targets]
 
 
-def test_target_conduct_extraction_uses_preceding_chunks_only_for_locator_context(legal_chunk: Chunk) -> None:
-    """Step 1 exposes bounded preceding text separately while target evidence remains isolated."""
+def test_target_conduct_extraction_uses_dedicated_preceding_locator_window(legal_chunk: Chunk) -> None:
+    """Step 1 exposes its bounded locator window while target evidence remains isolated."""
     chunks = (
-        replace(legal_chunk, chunk_id="preceding-1", chunk_index=0, next_chunk_id="preceding-2"),
+        replace(legal_chunk, chunk_id="preceding-3", chunk_index=0, next_chunk_id="preceding-2"),
         replace(
             legal_chunk,
             chunk_id="preceding-2",
             chunk_index=1,
-            previous_chunk_id="preceding-1",
+            previous_chunk_id="preceding-3",
+            next_chunk_id="preceding-1",
+        ),
+        replace(
+            legal_chunk,
+            chunk_id="preceding-1",
+            chunk_index=2,
+            previous_chunk_id="preceding-2",
             next_chunk_id="target",
         ),
         replace(
             legal_chunk,
             chunk_id="target",
-            chunk_index=2,
-            previous_chunk_id="preceding-2",
+            chunk_index=3,
+            previous_chunk_id="preceding-1",
             next_chunk_id="following",
         ),
-        replace(legal_chunk, chunk_id="following", chunk_index=3, previous_chunk_id="target"),
+        replace(legal_chunk, chunk_id="following", chunk_index=4, previous_chunk_id="target"),
     )
     received: list[OntologyTargetConductInput] = []
 
@@ -114,14 +121,17 @@ def test_target_conduct_extraction_uses_preceding_chunks_only_for_locator_contex
 
     settings = replace(
         PopulationSettings.from_path(PROJECT_ROOT / "ontology" / "population_contract.yaml"),
+        max_locator_context_chunks=3,
+        max_preceding_chunks=1,
         max_retries=0,
         retry_delay_seconds=0,
     )
 
-    extract_target_conducts((chunks[2],), chunks, _ConductClient(), settings, run_id="conduct-run")
+    extract_target_conducts((chunks[3],), chunks, _ConductClient(), settings, run_id="conduct-run")
 
-    assert "chunk_id=preceding-1" in received[0].locator_context
+    assert "chunk_id=preceding-3" in received[0].locator_context
     assert "chunk_id=preceding-2" in received[0].locator_context
+    assert "chunk_id=preceding-1" in received[0].locator_context
     assert "chunk_id=following" not in received[0].locator_context
     assert {source.chunk_id for source in received[0].evidence_sources} == {"target"}
 

@@ -55,7 +55,7 @@ from legal_rag.ontology_population.models import (
 )
 from legal_rag.settings import Settings
 
-ONTOLOGY_POPULATION_PROMPT_VERSION = "0.29.0"
+ONTOLOGY_POPULATION_PROMPT_VERSION = "0.42.0"
 
 
 def build_population_run_id(pilot_run_id: str, settings: Settings) -> str:
@@ -247,7 +247,7 @@ def extract_target_conducts(
                 _target_conduct_input_from_chunk(
                     target,
                     chunks_by_id,
-                    max_preceding_chunks=population_settings.max_preceding_chunks,
+                    max_locator_context_chunks=population_settings.max_locator_context_chunks,
                 )
                 for target in batch
             )
@@ -364,7 +364,7 @@ def _target_conduct_input_from_chunk(
     target: Chunk,
     chunks_by_id: Mapping[str, Chunk],
     *,
-    max_preceding_chunks: int,
+    max_locator_context_chunks: int,
 ) -> OntologyTargetConductInput:
     """Build the isolated LLM input directly from one selected target chunk."""
     locator_context = tuple(
@@ -372,7 +372,7 @@ def _target_conduct_input_from_chunk(
         for entry in build_reading_window(
             target,
             chunks_by_id,
-            max_preceding_chunks=max_preceding_chunks,
+            max_preceding_chunks=max_locator_context_chunks,
             max_following_chunks=0,
         )
         if entry.role == ChunkWindowRole.Preceding
