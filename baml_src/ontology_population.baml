@@ -246,12 +246,19 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
       đối chiếu toàn bộ danh sách locator rồi thu đủ tiền phạt, cảnh cáo, trừ điểm,
       bổ sung, khắc phục và dẫn chiếu áp dụng cộng dồn. Không dừng sau hậu quả đầu;
       mỗi rule phải có hậu quả.
-    - Suy ra subject_kind theo bản chất chủ thể được source nêu: vai trò chỉ một
-      con người thực hiện được là NaturalPerson, dù không có từ "cá nhân"; vai trò
-      chỉ một pháp nhân/tổ chức thực hiện được là Organization. Nếu source nêu mức
-      hoặc phạm vi riêng, tạo đủ hai variant. Chỉ null khi chủ thể thật sự có thể
-      thuộc nhiều loại mà source không phân biệt; không dùng target_label_vi thay
-      subject. Tách thêm variant khi điều kiện, phạm vi hoặc hậu quả khác nhau.
+    - Xác định chủ thể từ câu phạt, tiêu đề Điều và structural context trước khi
+      bind hậu quả. Vai trò chỉ một con người thực hiện được là NaturalPerson, dù
+      không có từ "cá nhân"; vai trò chỉ một pháp nhân/tổ chức thực hiện được là
+      Organization. Nếu tiêu đề xác định người điều khiển và loại xe, không để
+      subject_kind null; giữ role và vehicle category tương ứng.
+    - Khi một câu phạt nêu riêng mức/phạm vi cho cá nhân và tổ chức, mọi conduct
+      thuộc câu đó phải có đủ hai variant: NaturalPerson chỉ nhận mức cá nhân,
+      Organization chỉ nhận mức tổ chức. Không tạo một rule subject null, không
+      gộp hai mức vào một consequence và không chỉ tách một số conduct trong cùng
+      danh sách. Trước khi trả kết quả, kiểm tra đủ hai variant cho từng conduct_id.
+      consequence_label_vi phải thống nhất với subject_kind và các trường số tiền.
+      Chỉ null khi source thật sự không xác định loại chủ thể; không dùng
+      target_label_vi thay subject. Tách thêm variant khi điều kiện/phạm vi khác nhau.
     - Phân loại pháp lý: Warning cho cảnh cáo; ReferencedPenalty cho dẫn chiếu
       mức phạt (target_label_vi là đích dẫn chiếu); AdditionalSanction chỉ khi
       source nêu hình thức xử phạt bổ sung. RemedialMeasure phải giữ đối tượng

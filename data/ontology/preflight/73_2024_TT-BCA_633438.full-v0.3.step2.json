@@ -1,0 +1,105 @@
+{
+  "accepted_chunk_count": 33,
+  "artifacts": [
+    {
+      "artifact_type": "chunks",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\73_2024_TT-BCA_633438.chunks.jsonl",
+      "sha256": "500de3bc2ca4d30da0bffd16b966dd7558106c8459ff13bb087217e5cdbfc1d5",
+      "size_bytes": 370896
+    },
+    {
+      "artifact_type": "screening",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\73_2024_TT-BCA_633438.chunk_screening.jsonl",
+      "sha256": "2d8041b5489c6de78422933f6bd3fe800c99773de84231668484d9ed211a5e4a",
+      "size_bytes": 35837
+    },
+    {
+      "artifact_type": "metadata",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\73_2024_TT-BCA_633438.document_metadata.jsonl",
+      "sha256": "2d3e7c83e363aa2f64976a6a49388d8cc910834d2596b54c67a817809b3db486",
+      "size_bytes": 104
+    },
+    {
+      "artifact_type": "population_contract",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\ontology\\population_contract.yaml",
+      "sha256": "bc30b82dcb34f297c7c886528214f7520bb38ea746556bc943e48607e08b0fc5",
+      "size_bytes": 410
+    }
+  ],
+  "checked_at": "2026-09-06T08:30:55.764912+00:00",
+  "checks": [
+    {
+      "check_id": "PF-CHUNKS-001",
+      "status": "passed",
+      "summary": "Loaded 77 unique chunks."
+    },
+    {
+      "check_id": "PF-DOCUMENT-001",
+      "status": "passed",
+      "summary": "Chunks belong to one root legal document."
+    },
+    {
+      "check_id": "PF-ADJACENCY-001",
+      "status": "passed",
+      "summary": "Neighbor links are consistent across 1 scopes."
+    },
+    {
+      "check_id": "PF-SCREENING-001",
+      "status": "passed",
+      "summary": "Screening covers all 77 chunks exactly once."
+    },
+    {
+      "check_id": "PF-TARGETS-001",
+      "status": "passed",
+      "summary": "Selected 33 of 33 accepted chunks for this run."
+    },
+    {
+      "check_id": "PF-METADATA-001",
+      "status": "passed",
+      "summary": "Document metadata has a validity baseline from 2025-01-01."
+    }
+  ],
+  "chunk_count": 77,
+  "document_number": "73/2024/TT-BCA",
+  "estimated_llm_batches": 33,
+  "ontology_semantic_sha256": "a0496dc220b2809cf1b533fd62845356a5a43edd66d9c6388dce903c60c97460",
+  "overall_status": "ready",
+  "pilot_run_id": "29ac86d524794e9798cfc9c5be9f4f6e2afd31aa854a1575bed7553181e29ee1",
+  "schema_version": "0.2.0",
+  "screening_count": 77,
+  "selected_target_ids": [
+    "6042ebbbea4ba703e84e5e43ef7d841578ec0b358e253938d9558a9083b4bc7f",
+    "e01c14215789ae8d16fb34aab8ee4e70be7b32b7607407fa5f33107003df75e8",
+    "3d603feb8fea298bb9a9208ab53a05ad93ebbcb7e28f1135746e0d9106fd99ca",
+    "e56d3e7b0717f07a5da6d602412c73e07c90e355d1e1f50dad5c22264b856951",
+    "afa38cb96204874791984161aeb85c6c3c6902723edf2598d2d37b767ff3987a",
+    "710540d998cafc81b66868fa12495c58e4b18b527e55553ec7fab1ca7d71ff54",
+    "a4894e63af9d786a9811db8584f7a337a34281bd114832ca54a73d73381ef0f7",
+    "2540191245e7bead054f29fada3402d37a43a381f581726af3d1f11fc972f312",
+    "93d487bf249ef295084f6f0cc873cca8701fffaf105642b73f9fc03fba942072",
+    "55517b2fd2ccc67da43cb70d9d15e7d90954b0a6139ec14eb78002cc6ea73399",
+    "97aa15d21433ffb62543362836b387dcccfb0bb4027744ee90db4a8381aec527",
+    "f023d4673fa78be3f9defd3e94e49742ad7ef0c8de1c328aaef97cc7ec37bebd",
+    "87dfd6db6ce3954afd7c5946a1c6a9baa18ac718f51f8afe1d323f1c73d51ab4",
+    "e60d1911490d021f6818d6c7d05f070e91eb2fb46587682ca27411bca6d1c47e",
+    "23f12ae2ef3805fe2d950b9cfd94a2bd4b4ac18d105b542fd9a58d54ae96f650",
+    "b375e626ed9039cd21db40fc1ae518e45daf487cb3d55b3b77bdad21e45ae812",
+    "ecbe7f306badf2a98866265853406a45b6dfb7df4d2a2e8fb881387e449cffa0",
+    "85923f74455430693275718fe814aa8b9aa5fa18e2d445cb71ae4d00087708ae",
+    "317a8c6415d38e00d5ec417e996510ddf99d22b276ae9a3f7bfd9484a5866d32",
+    "7f99b6a57ffa564c95052f8cac693a23d68dd66a76b65a5f56d4b00f644df6fa",
+    "137ea756685c79a84c8cc2a6d570cd500c6c87b7a7e641e49b042e7204b4da2f",
+    "6da2ef1f1bc16b0902f00dd974346b7982b27d422e3032240e4a94fd365407ea",
+    "842fa8c68dc6bc9958bca1da296d693fc5ca2e532f139d74071bd147a4313c34",
+    "a1db6d29213e7ef0d3611ec9aff6151bf2433a5e158220f032d20b4422afc7e4",
+    "65476bb0b45d43a25c86d43d68f1c8e5ad74580af9d6ef3e97b86c96d48d4d4b",
+    "6d1df1350217eeafebfc087c89addebab3013d3701b3b56c5e255ceab6556f3c",
+    "e888c09c380b5dd9769a9e04581da313d6885a3fad64e38e7734e12d1306232d",
+    "0c47d5c605ad49da99f984bb2c6acf3baff0d98a96d3e33cb2ac879f3c3c5d93",
+    "4b4f1cdd043d1776659e223ebdf8b36878bc319d912089b616ba615a4d3c3b20",
+    "abb15ff086087518b5e855061e37bdaf65088507a9dd13f5e4edf14412704873",
+    "fc51ddbc5858330ef11c852c7cbcae1d7a92d175b8691e5ac1dfcae5a47f7719",
+    "3b883125521a36f65dfaa0217572dce331fd0c7273b97d9b007a565543a3d4cd",
+    "5f89fc10132381c4b9be653128832606b0db7e1e32765d75d2ce8e358e4257d9"
+  ]
+}

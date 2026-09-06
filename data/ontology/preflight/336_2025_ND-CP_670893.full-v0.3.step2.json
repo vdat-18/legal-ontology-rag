@@ -1,0 +1,113 @@
+{
+  "accepted_chunk_count": 41,
+  "artifacts": [
+    {
+      "artifact_type": "chunks",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\336_2025_ND-CP_670893.chunks.jsonl",
+      "sha256": "59ecb4e8c6b40b8adf8e437787f54e429deaad4b90030abac85444d311a1e808",
+      "size_bytes": 271437
+    },
+    {
+      "artifact_type": "screening",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\336_2025_ND-CP_670893.chunk_screening.jsonl",
+      "sha256": "d032a26f3e51ae8a51679da8f87c687d61705651c685ff7d0c1b5b5b551fc900",
+      "size_bytes": 20959
+    },
+    {
+      "artifact_type": "metadata",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\336_2025_ND-CP_670893.document_metadata.jsonl",
+      "sha256": "8f58944a33507bc898215a80e9c63830a15ac5eee1853f7061c7855a6a79972f",
+      "size_bytes": 105
+    },
+    {
+      "artifact_type": "population_contract",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\ontology\\population_contract.yaml",
+      "sha256": "bc30b82dcb34f297c7c886528214f7520bb38ea746556bc943e48607e08b0fc5",
+      "size_bytes": 410
+    }
+  ],
+  "checked_at": "2026-09-06T09:15:08.887903+00:00",
+  "checks": [
+    {
+      "check_id": "PF-CHUNKS-001",
+      "status": "passed",
+      "summary": "Loaded 45 unique chunks."
+    },
+    {
+      "check_id": "PF-DOCUMENT-001",
+      "status": "passed",
+      "summary": "Chunks belong to one root legal document."
+    },
+    {
+      "check_id": "PF-ADJACENCY-001",
+      "status": "passed",
+      "summary": "Neighbor links are consistent across 1 scopes."
+    },
+    {
+      "check_id": "PF-SCREENING-001",
+      "status": "passed",
+      "summary": "Screening covers all 45 chunks exactly once."
+    },
+    {
+      "check_id": "PF-TARGETS-001",
+      "status": "passed",
+      "summary": "Selected 41 of 41 accepted chunks for this run."
+    },
+    {
+      "check_id": "PF-METADATA-001",
+      "status": "passed",
+      "summary": "Document metadata has a validity baseline from 2026-03-01."
+    }
+  ],
+  "chunk_count": 45,
+  "document_number": "336/2025/NĐ-CP",
+  "estimated_llm_batches": 41,
+  "ontology_semantic_sha256": "a0496dc220b2809cf1b533fd62845356a5a43edd66d9c6388dce903c60c97460",
+  "overall_status": "ready",
+  "pilot_run_id": "d1ad803fa5faf985926f525940f90df0edfa2efbc9553f4bb3ce52f1d3059405",
+  "schema_version": "0.2.0",
+  "screening_count": 45,
+  "selected_target_ids": [
+    "fdf7a5dc49d210a978139a0baad7103945082da890a63950f6d2492c48382b9d",
+    "ada9d8f487219bd55e2ed8fb385f8bf8bd9ddd0baeaf0589e8aa2f431166c6b9",
+    "986c7146e8c3e6e58896798546ba3228c1eef5859c8ca5af0b368e96134b9e27",
+    "aa37e4089c6a6ead750fd3f01708350f1afec95c9c5bda539f64253fc2aee9ae",
+    "e4d2f75e321a9ab6a94bd6f3ecbaa0b4c3a7f060a40a0481f699531f90c78e37",
+    "13b115d44f5dcf21f6cbf3badae436492b8f929bb6122a4b596afe161edcc783",
+    "d2d661931d2909350f5161ddc174e0f91af5ac9d8de7210d10fa644ddb7d6660",
+    "88657788fc125a278951017d163618e5a5c8f1baa93f405697f58296d0b2ca43",
+    "0bb8b409c8bd02f26becfac7c3db52e74238878645abbb401f77fefd0107b777",
+    "a1c9d717c1a2f2535bf379f2381ae37f218276fa1e5fbd0abad897be6a9e715d",
+    "04a8c4806b879b2a655021dbfb4b6a6186a00ca141872d8461f6e6bbbbb25677",
+    "ca8e0e86a3ca14fa5b5f6f71cfbcb1c39de0316ad298727ba97c10432e65b2b4",
+    "71090af82bacf1ba54c2b0f5004bd25dc7167f1453e7aded987f000dbb908d17",
+    "07ca1a744330154988a1d711fc1ae135841be14014430ce1508b4d51cbbc77d1",
+    "d7250509c13bee5e9e6a99124a8a99c4f17bdd4f5fa839f0d5af6a9365054eae",
+    "064eea0131f4f6e2d84a36ded1351aa8fcbfc6d18f9d326f24f8b93b693bd870",
+    "d27131f1fa5bc327637a50d4be776a9b91e5b2a26c93efa907135be730f6026f",
+    "280790718a2e55404bd48d2bad60bd95c58a804a912cbe39c09803cd569e09c1",
+    "0ca4ed14ed81a18c329bd9a55900a4265ca941386b40a6a674c360fff13c7aa6",
+    "9f97c26c6c92c72e4de9df41d03967a8b7f1f42ae6ac556f24a27f77f81b24ca",
+    "fb4ff867a02673b1e3509e1b3350ac1f1ea21341ee2d368dca54e55a0261247d",
+    "5277eee8ed08bf4c44da0ff9ef82a5c26c487430be7a4972c7b4a21dffa18aa1",
+    "fddb642f4848952654809f3fd05e190e859dc00bccee3498425062b64999f289",
+    "ed73fd08676c2bbe4b8513d4f7b6a39cf93e67c9c68951036a509ddd4fdb737d",
+    "0b682f08844bde711c19dae0cd94b15e3489ac4c25729d53b740fce4ad0ed743",
+    "d9b5cbf1749cc3852a2acd3f221bc145d41ded2a1b2e53e9edf21a9a095465a8",
+    "9abc76a33aad363d01fb656d98e8f1892bb0dbce4c16e2025337ad3df8856864",
+    "1faca9f71848b67a78808848449e2eb6e22d9b1325f22d172a4c0af66bd0a77f",
+    "97e00843a4d0a394628082ae7b47d60045eac9fb2219b316ce61f560475bb0fe",
+    "c1407f6c7e13ef4843eaacea912dcff653bd3a5410c18d0025280a0c6185fba4",
+    "e8088a9f05165e81d09f23237f1454a42de47096941bed0069439851b00cdacf",
+    "2c86703b37a2be1d4898422c02ea3dea3fbb4918d2b566f0ac5044d1d4b5bf52",
+    "50d7ce6caad51c1726a1892ad8c4480c79b314c9b32e1a84d6ac9ea53123e672",
+    "5f23d3abe87a38ac28f22a8eea8696a1a82e0601c5f41017cb046e00105c51d9",
+    "375bafe4bcbde556e140dc6862d1417b62fa8b4322dbe6396a089a58e67d6d7b",
+    "b39d06b130bf6f7571511fc91c0bc29c6a51a252a7da0fca1f1ce25c8c777709",
+    "f6167778452ae2775c1db3fea3b4de44758f704a11ca25ae8bac191e5b89d6fc",
+    "29e7038412814877ea2ade6cb2c96405f369347c723f62d21f63d1b8981c10ab",
+    "71ad023a69cf78c1dcc48d6b8af6bfac02180db4a24f22343b7095c6cafe7b5a",
+    "5891432d32c3af8a40b720617ab122e9a657e1c5af48a7284c096da5a0b06b87",
+    "a297cae38f14a16232fe74d34a9871a15365a454d416b7dedc5c13a20e0c0f04"
+  ]
+}

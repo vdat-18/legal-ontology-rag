@@ -1,0 +1,413 @@
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/00007fd7093ae075ecaee1892e3e2c3d8b7ea120d7e544b67653af90c5311121> a lorsp:SourceChunk ;
+    dcterms:identifier "b941a08f307c10cf5ac501dc3113da6977c10a10fac8ac0dbdcc9ed7d4d73b0c" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/0015692ba6fc4b1edc37e0915761eba0763656c608f2125424119233c461bdb3> a lorsp:SourceChunk ;
+    dcterms:identifier "60a9431600141a808ba85dd62426b976321dc9a5b91e3a1395aba618c092ba9f" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/0205f22445ff47f6b8d9dec8d9ca8f540c417ec7a15ffd874bc983e8420c8511> a lorsp:SourceChunk ;
+    dcterms:identifier "ac5c98736406a3331c45aa4121ab91945231db171a200553ee11e3607548aaf5" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/0538041274b8ac40ea6ae14c010f4af6686718592b9b31a073de8323dc6063ef> a lorsp:SourceChunk ;
+    dcterms:identifier "e2351c6c2fecaa7838d6abcff2e333910e99da84dc5ae7ab009a1ae648cb79cf" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/071b10ed455f2da1521402000d8597080a3919012568cc5b4d7b1775d79854e3> a lorsp:SourceChunk ;
+    dcterms:identifier "f1d90018f923e713cd0380bb3ab24507bf2644fc6cab817fca9ebd163814c5ea" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/0a029002135b1a09596c4e2db862e44b3a50e8616d847024d45e361deb05de84> a lorsp:SourceChunk ;
+    dcterms:identifier "2e5d0a2ea4ce4a36283bf65cba0937668459f55592280d4652d4be4fb2c92757" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/0c44e78156d6a36a7a2d9248c844c1e1c9cc912e914b5a7f89fb2e1bc6252400> a lorsp:SourceChunk ;
+    dcterms:identifier "e347276053061225d4dd37ccaacde4b4d7ba1727789b3d54f697f480f5314826" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/0d9c378c442f968449769cdec3504eaad8927b37152fd619c954a0edd51cb0de> a lorsp:SourceChunk ;
+    dcterms:identifier "f169b8d9374bacc3e85cae49ae9bb164faab87c12d5c8feea4610e274a98e126" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/0e2d650cb623b7f17c5684af9043d1ea743cafb2429d2ff9db2126c1266a4ff6> a lorsp:SourceChunk ;
+    dcterms:identifier "4729cee5aa7443e70f0c4b91711c40c3f63548d74022dd637e4b73e5ef59f7ca" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/145d92c71bcc3d0d57d7ef01992ed3ff8c64dd9864d4e1c269a7ba169692eec1> a lorsp:SourceChunk ;
+    dcterms:identifier "c84c858498d169b2cc92b32dddb96fed6cdf6817db20f8e7e69d29b358e16928" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/1544defdd82804560a34fdcf57f042e15a64da35fe43ff4c5dc24ee9c1900306> a lorsp:SourceChunk ;
+    dcterms:identifier "e855cec25d738a4bcffe0ce1eae2e3dd31d2aa47abbe0d525eba9e10cb354a69" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/16061145538c06dfe60dd6cb14f6af99050f4d0e33aacb505afc8326614bd0a9> a lorsp:SourceChunk ;
+    dcterms:identifier "d99c91f91ce2e9b5fa4cf710c3f63d372db9fa19da0d621c81a141428fb8dc49" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/1de5813f5ba9087711c1ed2b13da5e7b284a2be7384963aadadbed6cec00986d> a lorsp:SourceChunk ;
+    dcterms:identifier "93e413c8761c3e880e56c7a9c45bb983c7a4161399818fd8eff130e91967c79a" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/1e283d69686b400f0e6dee858560c2f5529bec3de8417cc841d487664a9986fd> a lorsp:SourceChunk ;
+    dcterms:identifier "0e50b96b032a2660e6eb1a05a60f85a4bbd616e9dc492699b041a2cfef8806ad" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/22f9f24a70e80b9542ccb6356e6a66de37aca7dd12307fc6167e697377e06790> a lorsp:SourceChunk ;
+    dcterms:identifier "144528051f232c39fb64f6f425d42d77e4a3d1ff02be88de1697eff5d5e9877f" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/257ed64dce2c4a4b79db817abe9894ad862bbbd60e223c595ba2be0712945e3e> a lorsp:SourceChunk ;
+    dcterms:identifier "e40a4ae1b6a9ccc2a5d2a580177119e36c50b98556bfc32e2fa365e4bd1d0537" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/277d6ed92196dedea1d2e7f62fdab457d236a73a90d0823ab223c3dcfac0a18b> a lorsp:SourceChunk ;
+    dcterms:identifier "e0bdfa8e622cd76d5d2a77a384399d1a46cd6e216d507540a5d91cc14828db3f" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/298930a1289e369f558c45f63e2618b3966e9d0094ef4bb35d6b37412b0aa29f> a lorsp:SourceChunk ;
+    dcterms:identifier "a76744aca5992f93a0c1cc3c68831ee14d82ef2bc07199a0de302deb3617d80b" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/2de6b439cde1b9ffba1c8e52875781c9f5380652238e678795b69d16975b89d7> a lorsp:SourceChunk ;
+    dcterms:identifier "f5f4ac7f2c1dc062f556e3d05809a1c3bd0cbf725d47d363cb16f0009e0d3d10" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/36ced4750763837ce37ee604152daac98063b78878ed5e20821cfbd3598a8b2a> a lorsp:SourceChunk ;
+    dcterms:identifier "b615a6e28d5544ae7b71d939ee859037abb0ffeec6075892c42495b64bfb3d8a" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/3820494a90ccba89b0912270c960ada5c1b6e0d205366e6328f96589eba8c5d3> a lorsp:SourceChunk ;
+    dcterms:identifier "478377748f912c4d070d7c0d7b593a726c37ae94aa1f0c2d5a7e7974c4bd242a" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/38fd9141037b4442ae09b861da9ae9471a7daf6982c7302fa67b90209f44909c> a lorsp:SourceChunk ;
+    dcterms:identifier "8ab1051f66fbcdefe1e1fd2c9a3cee45650a03534bcf610c00c776abb8912416" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/39becd93a6cc625a29860a5f8089d4cbc27cdac3602b904a976ad6330c0051c1> a lorsp:SourceChunk ;
+    dcterms:identifier "79e4b5e33c1e7cc598f704929cb14595400f591752cb004354a61e4c638afd6b" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/3ba7da40db89cb1464fb1afff39dc007aaa34e6719f72d9aebb1d37fdda1811d> a lorsp:SourceChunk ;
+    dcterms:identifier "a6c8faf9596eb59cbb1b03506f7f2cf3ce72384e57bef0be4267ef6cd129bc34" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/3dbd7f1755a28194edeb09a8307c0df9c45ad396139f6bc373115dc4b4cf827c> a lorsp:SourceChunk ;
+    dcterms:identifier "912df12e2d00a903d55d6480277d4c02d7de15a9651c07dfb03f77a4b08c1d91" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/3f5525363eab36c5a69ecc98f2e6e22d49aa596e98d32f8417368c66d8d973e1> a lorsp:SourceChunk ;
+    dcterms:identifier "fd32d92186156fb5a51c22f56f18ae0634ebecab26a2d2cb434797a32c1bb32b" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/43fca32ff8e0c0a8345412b657dd56bd65f4e2d15aad631ec91a87eaf600f794> a lorsp:SourceChunk ;
+    dcterms:identifier "b11439b71941d1065313e25e6abb1afb764d5b5054b0d4c6681a5eda4d21f479" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/4ab3cd0731a8042f30bd4ecb0b8cfb0bf13ca0518b8bf36fc4443e91582c680a> a lorsp:SourceChunk ;
+    dcterms:identifier "0168a875c3f65d7711b94f7e24303fd0e878a125cecec2e17e236ae7b9491380" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/4bc6fd10eadeb73ae4abc444d664630585df6bce19270d3ee3c06801f853f12a> a lorsp:SourceChunk ;
+    dcterms:identifier "2677cdddc3628ba7060ffaa4b961033e7a3bfc4415802f6be6cfdc755d691429" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/4cf3059a69b47584de59c83374e5eba629c85f8eaf3a5fcf02d7ca4fa5ec51f9> a lorsp:SourceChunk ;
+    dcterms:identifier "32eaa7098562d029653fb905f0a5edffda39fb2560d3f476ea5c8e5ede9b741a" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/53623287a0e10bd6e847b1b35c4f968f4f4b95e80932ebe83718618bf819a0f8> a lorsp:SourceChunk ;
+    dcterms:identifier "9309264a89c767b1b8ae441b620e2f9c1723bb4cb75e1bc73f580943b00ffa2e" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/53ecc6e03a25d09562f7f77dabb18e6c5ea8ba5979050cd63f470d82c22af8d2> a lorsp:SourceChunk ;
+    dcterms:identifier "779e0bcc9271015a28464969237470efbb46d11e4dabbaee417404e6828976ec" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/5d8ecd93a4fdda9d67a935dd12c82dd03c9da32dd1d03a34df15101a54004bca> a lorsp:SourceChunk ;
+    dcterms:identifier "991c26801e564e08e1e1aba4fdd7fbad2d779d662af9d5d66543a953e3ce608a" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/5f7f1c9ebe7389e222441133a5923178effa97571dd54fedc6a5f8025c1ae2e2> a lorsp:SourceChunk ;
+    dcterms:identifier "21bff41ef54f62f3c14ba06515a8f0f5ec139aac473739d306dc8dc34bba3480" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/60ff1100e6ca67629940960b87cb1e5e25717f5ea4fef75dcf35a0439b095c02> a lorsp:SourceChunk ;
+    dcterms:identifier "4552e4d44263b422f11b0d26182d1f90604329e04dcd56d7343310e49d45a501" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/61d45f3500223da0fed0932a304658f19854bb37749735d1675b3f52adb80657> a lorsp:SourceChunk ;
+    dcterms:identifier "6976b3bb9bc7c66157cf7a73eeb76430893c96aa963bab6c9673dd138545bc41" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/67ad86c3b30fc938f270e41b05bc802f3bafca51238378e07d9ab1147a90717f> a lorsp:SourceChunk ;
+    dcterms:identifier "d367439d1988fc99ad6cda16f6f6c70b64f3678c124344dd2a746486b19b3c99" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/67bd7e8df41da594a5ea13e25714a7444bc19eefbce8528ba5e184cc19a0fbb3> a lorsp:SourceChunk ;
+    dcterms:identifier "da44012c9aa4ab1328fc4a7d06015ec637194388f22c3ab464ec8c8eb7479a83" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/688856e4229d6c2b43e4e82fac206bc1f55c495ee0c0d9e51fa3b0ff8bc96c2b> a lorsp:SourceChunk ;
+    dcterms:identifier "46e0abb0f8dee6f5c1e53c6dc70c26cc5102b7d89c4dde6af9df0a2f16376c7d" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/692f32164174a700efec28e0c1a271139200346101725772c6ab589da4b92d65> a lorsp:SourceChunk ;
+    dcterms:identifier "eac04e78f0806138a7f1c357b0693740a4f27bd0588e14158b003d86c20ce01c" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/6936825ed1b40945e5e96966ba61cf80a2a4481b2a1ed9b8ef7e6678c34361b9> a lorsp:SourceChunk ;
+    dcterms:identifier "970646b09eca17dfbdfd370ee03e7606d00b3d4b299e233d0f23551d951d2748" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/7591f0c63dfc06273ae8b132f189481509d14c3eec290d0c522e69fb7495dd26> a lorsp:SourceChunk ;
+    dcterms:identifier "53a42bba45297d897b1ea6040df1eb37d6048216cb1eb4e466b36f2855f17c2b" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/772a5f892f551f1e44b2cd0d40b0cd9e5223f8393b7b0e72d8685cd575f1f841> a lorsp:SourceChunk ;
+    dcterms:identifier "01f0b4b04473e3a4715d82d97db542aad4d5e329734ecbfb967cacba9ce0ac60" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/7c300e9735dfea2c7b585735f8abad225d89eba9e2030eca9f8fbd1b0f04718b> a lorsp:SourceChunk ;
+    dcterms:identifier "f731f22148b4e015f5a0f54bdef9d6550d9bb14bf9d6834bf1cdea583e78646b" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/7dd831ccd337e860f48d9e4385d629c1edff74b5cbdc97bea4a9d44aaf5fbd68> a lorsp:SourceChunk ;
+    dcterms:identifier "efaab384a593859c958ff6a3d7affd0acc2b9e4d17d992bf35b6baa1d01a2bcc" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/804421f91ebf961c8b5596da211bb1a2c226d5a40f3d6905955e8845902c935c> a lorsp:SourceChunk ;
+    dcterms:identifier "5aa11a36d75d8db413a156b626cc2de383ba53d5684318b34cc74e828cad1521" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/8622e29ee36828c2d7af08a6c29abadc7462ac3e7359ff16a15ddbc8735d346d> a lorsp:SourceChunk ;
+    dcterms:identifier "576e05d4d64d289a12a891d755061bb330b9d13086de79ec294f740882bc1d40" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/8894d195284f88243226b3d7bb6d72cdde5e1ef91652fa70f5b32b60cb447fa0> a lorsp:SourceChunk ;
+    dcterms:identifier "fe0026d26fa06b39036ce0d6b828433c3a3e9a477ac77710bfd73864841bc52b" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/892049edec6b2147b2033d77c5816046b9e2d841376b2312bac2da77254d8b42> a lorsp:SourceChunk ;
+    dcterms:identifier "39fe067e03555861b1d0809d7892d0d30a1d254afc2dbf30544269a1a538e8a1" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/8d0355997cc39f4d706bd1f160dabeb7df56a32738bae2874ce3af6d6c06e514> a lorsp:SourceChunk ;
+    dcterms:identifier "bbf6981627174e700fbe35b07de6fef011f6769bf23d80b258050f8ca2e630a2" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/933e6e7346509ae102b6d44791031145927a7d8bf0180bb7e948fa084805da5c> a lorsp:SourceChunk ;
+    dcterms:identifier "591bd2548e9c15863687d6f32615b989fca9302d2889fd316e8feebfb10c92c7" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/957eac37372e4fcd0e89bc91a156339cafca18f8558e74c9b38f67331ae5a8e0> a lorsp:SourceChunk ;
+    dcterms:identifier "0f90d56a3e87f63d3dc09715955d11caa3e3c524d03b2973cc447ae26e6640db" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/9662440b95b195c26304919dcea9ec289c8caf6ad39a605e2a6989ed4fca9028> a lorsp:SourceChunk ;
+    dcterms:identifier "db25cbc20eaa5989b8de4fd42dd7c5231f967c13bf927a0213a4d7ff6bb69ef5" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/97a7bd94196ee2c1089f90cc5fb40deaa53fcba8feba0476f985281546712abd> a lorsp:SourceChunk ;
+    dcterms:identifier "1da0105baaa40de1fc391cb5dc46c30c4f36d0e2bb58447a5fe0646f956a4d18" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/980324aac14ea845215b1d9317c8c67ef67217c0d63408277247f5cbc491d691> a lorsp:SourceChunk ;
+    dcterms:identifier "80234a85fb93e542b113ce88bb835ec4046e891c03442ea70c0af5779b3b9b70" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/98f03562ec51c62405cdf527baafbace64f1199e10743e84050edbc3a87fc9da> a lorsp:SourceChunk ;
+    dcterms:identifier "53e8994ce6b85e89461b7732625853040c1eb7da9ac98124545e522de21033ad" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/995dabfc2e27118d645c263b9fd3887ce54e833163bdfa20d99d4e167c89a9f1> a lorsp:SourceChunk ;
+    dcterms:identifier "896ff60f73735ea6b72ec4fb44af8eb5fef156d796ed535556f4249bd6e720a9" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/9978e26c51c897c8fd878eaefd0af5eba08e5b75929d691100cb32974a978599> a lorsp:SourceChunk ;
+    dcterms:identifier "4b1ec61eb34cabe012be12bbf01397e6341a7c6bd1e5cfff39b8f1fd65cfe5b1" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/9bf41323751d73bfc09e1f06a3bbf495ca7c9447a6924856a8a66debbcb53ada> a lorsp:SourceChunk ;
+    dcterms:identifier "9872a1cd6a773af462092e0f4399b426ec3cdbffbee17ebfaa149a76f40fa666" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/9f22d6cac3da3c7c198ffe80312d8d963cfc764514c03f38f4ee8bafcf06f15e> a lorsp:SourceChunk ;
+    dcterms:identifier "c9c42f7e6614fce00bc9d057cc5371af0f9f7882591fa9728dac1c44ac79e741" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/a467fc4cc9498df51803453c9bf5a428606d811c054faf4778d0296c5c765f45> a lorsp:SourceChunk ;
+    dcterms:identifier "fc90f5c688b56a8548f362798761e0dbafa6668cbfb641656a977e1d478d9580" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/a8711725e52b09079dadaef1d898d82dc7b55cf06e944d5de1211dd2ca8e15f0> a lorsp:SourceChunk ;
+    dcterms:identifier "f830103cc63da007f2887c70d18184ad159b4218da48f4448cdd5a671754cdad" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/ae80f37408d8451b3e548f9bf768841028be9fd211dab53f3c25c9e0f055d06b> a lorsp:SourceChunk ;
+    dcterms:identifier "4d1c836ea043a875ac4abedabae173fbb37d7d76624b3feeecbac09bdee8a352" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/af31a91b9c3df9cb4ed5bf661f24c066aec2d6196529e0e212131f8e8c433350> a lorsp:SourceChunk ;
+    dcterms:identifier "b31a03e82f0c59ad2b864430ded8b8ed95c01ba4940d2506daf36d528bbbfea5" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/b0770ceeb73e4d5b52bae7e77d0db219a23f6297a43ac0f35a21405c61055aa4> a lorsp:SourceChunk ;
+    dcterms:identifier "92062bbe4afb13cb48d45dc667927a464bc35115164919301062d6010ef23898" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/b09d6203de05ba76eed56cc92d725ca174d88227a9f06dac6067857de95f7118> a lorsp:SourceChunk ;
+    dcterms:identifier "cb7632b488c885c7096c8e92e524132c6a6bea13c5b9c93c3d8eeca9b6f5f942" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/b2666afbc5041e7cf40b833a8170d8de538092bca30c1b9e94e200a033635f9c> a lorsp:SourceChunk ;
+    dcterms:identifier "2cb824483efeb456060f3f66ac4e23049072da5d8784309c7a506f1c21f1b428" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/b43d4524628ca85ac347bc50604401da28bf351f2f0ce8cb008d3347079fe832> a lorsp:SourceChunk ;
+    dcterms:identifier "2e70f46f4ff84ea607ec6026e83bf2c5c14de0e6296b3385bc9c6c2d8ef910c4" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/b52dfb9e5fdcd45610905c1a68d7ec162b4baec4fdb1c09c7b92a3636c531e34> a lorsp:SourceChunk ;
+    dcterms:identifier "6d286b027938d85e20db6033240bb6f688b655e9fe57f6d138a2a2b25929977c" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/b859033090c4538ee39e22e9420a2d48fe956ce90ef1ecbc531adec930f69007> a lorsp:SourceChunk ;
+    dcterms:identifier "d3be4cf354981be2632041b2de049e73b2e9e222e329db344e8117c6f4bbfa8a" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/ba6f07ad2f6a821ac82995fdcba34798cd1021849aeb86134d50dac2d35eedb9> a lorsp:SourceChunk ;
+    dcterms:identifier "b993a5f0448085764fe4005d223a320c03f4b3303b58380a751c90dcd72e6570" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/bbbb17618bdd6e9de75ce647b199a4905d4fdebb17a3378e1db25a6f2c2cc2c5> a lorsp:SourceChunk ;
+    dcterms:identifier "991c7bb5f3726f3ae928419d40adb00e28874bf5bc3f6719945ccecc956a2f65" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/bcf6172bae4de0453a0040507e8793aa28a1ee3300f4f8362e3d758d6b9d540b> a lorsp:SourceChunk ;
+    dcterms:identifier "2f9c646f2bc6348243b07049ed8afa8a8412b0087d9396c8d1794f9eb60d6877" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/bda5172ec8b7c8c859c16df201c0fac59012d4f4ce4e6f77679c5c42bf808569> a lorsp:SourceChunk ;
+    dcterms:identifier "316d9f9fd306977ab2fb8d52a36ec117acc226d54a28de28a4f46a9c6d8fd05c" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/c228abea9c395849a33f6dde687bd243c88eb480bb3a4bb78372857363b06c1f> a lorsp:SourceChunk ;
+    dcterms:identifier "57f6b2f24c8e45acf127850a3063ae949ff66a8f9a183d9a416cb086c7ca8b9f" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/c2ba5ae147680216f0ea50b254e931636412507ed58965fe0633487d8a8b9190> a lorsp:SourceChunk ;
+    dcterms:identifier "50480e60df3cc559550182411c2421a888950461021b227191e9351f81a902a2" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/c3f6604dfa8ecad0d0591d315e2021b2a746ca4921bd7bf2e604bbd9bbfed453> a lorsp:SourceChunk ;
+    dcterms:identifier "f447f5f4832777d1e5024e2d347faa24f9a96800ac4a3be9a3d21d17735954d5" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/c7bfcbee73ad21ed0e8148b1ee1ac2cc9b99ecea690ac8bd00713f5af2f68c16> a lorsp:SourceChunk ;
+    dcterms:identifier "e87f0adf6f22d55e21a687b7fa7f69fae1a73a9a31157cae36899dca7f9755eb" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/c9b36d91aafd95869298bf2ab39bafc73bc2aeccfcd2fbbf286ccf5adc298c1b> a lorsp:SourceChunk ;
+    dcterms:identifier "dbc14530ea22d1cfb4a4dbb59ae113e300383641c2304c80d3cb47550932661c" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/cb1c2c38ce24b5371745d40c9e1503a5e54388ff656d7874a0aeb6ce9dc94676> a lorsp:SourceChunk ;
+    dcterms:identifier "8d5cee925c76e6921224a7019f5ec186c6beb5e1df64e0bc487720be910211db" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/cb9c068db723e425b5f4892d0bfe3f0c69a5968da20c136d085a3dd681d34e23> a lorsp:SourceChunk ;
+    dcterms:identifier "688e819ea87ade3ce7ebcaf631703b9f59ff0ff2c5a46cece4c5b84fb4830370" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/cbd6ac0273b5a20512df20c90f0895d2e87eb1ddc41c6c15283bb120d066b84c> a lorsp:SourceChunk ;
+    dcterms:identifier "d0577414f3e394058ca05e608a08a267cefee80f82f9b8e84bccd2850b32c304" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/ce68cd7becb2fc787a4bb484107c9c8abc4de0ef4df43845519cbe5899f68a9b> a lorsp:SourceChunk ;
+    dcterms:identifier "05df6c0c06eb7bc3833b009328584a920bb3bed037fd5b51cde3b7b2535eeaf8" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/ce6fb3ee7324f64aa50685849939ca981f6026df322b9f32636c193c88939abd> a lorsp:SourceChunk ;
+    dcterms:identifier "9965433cc035a7cc6b06ff5b9acf299e932715aeedfd81e029e802d18c66c59b" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/cff14ba0cafdeda2bab2c6d412182bbeaf324022c97c48bcb9e0466f28e03105> a lorsp:SourceChunk ;
+    dcterms:identifier "4d0a8b1be8e7b2ef39a10e350ba5be269f2b861f793a37944f6c1a667b3bac9c" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/d2543b409fec1275633d1414103b48aee327d4ab6e4127327b0d8e24b8714aff> a lorsp:SourceChunk ;
+    dcterms:identifier "7e47c588ff162c034037c49c7d1f2b02d04d59c8a43a3681eccf182f18a338bd" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/d2fa74bf3d40fb125e278809064bcacd2ab4163d8764bae9524d197e08afda22> a lorsp:SourceChunk ;
+    dcterms:identifier "b357d8affec7d87b8a58c22a1977e367d584da5438372d4e9c62903673bbc809" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/d9382cc96fe813fb4a8c97f93598f228af54d50736a9255184dc1c88f5011804> a lorsp:SourceChunk ;
+    dcterms:identifier "c90ba2677019e8428622ba4037696a89725d38dc38d98f87191bd22ad6c3a6f1" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/dd69ebacfca1f254ffe53e5309701ae2fbe4910e294bccbd54dc0f8f017e4661> a lorsp:SourceChunk ;
+    dcterms:identifier "06b0526fdd66a6bcd90d3e23031853a9d0ed75a460e5fe883e3e1bf396515048" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/e078a410bca2a3d694d1b9a8852c2daf69cb2a0f51608682dfcdbb0a598ce1b1> a lorsp:SourceChunk ;
+    dcterms:identifier "5f6778872c938a9f8f6319d07ce75a81b4a4ccfd0bc31f30a2eb8d7fc64c2909" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/e13ac97c70af3eeee2c0bfb0d9f9611d2f00f882d0bfe445691c283cc2d3b57f> a lorsp:SourceChunk ;
+    dcterms:identifier "5ca416b5fce49763a63e54e2c3b9729934d3dedc1f63557500ad40f4b8ca5046" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/e3458b4faf729383870f7b40c67d1bbefb95f4651572a6c866814a10d0d2090c> a lorsp:SourceChunk ;
+    dcterms:identifier "cbd3ae6746a0b1b4975fa5a9f7d18d92acf540307f051c39d33ad5c494178dbd" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/e5f7b287905748bd14d8736e06a5eb63efd73c5d7bc970eec0ddc43c2d26febf> a lorsp:SourceChunk ;
+    dcterms:identifier "354dfabc3317e1b9d0cc51858111a306cafc2c7edbdfc78d45c9f723ac7c1a51" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/e637c0040a98a8a544fb373ea5115c32796fb559963ec0b0f41635cb28cc1954> a lorsp:SourceChunk ;
+    dcterms:identifier "e0b13a0b02b25dc3f6bded1dc5026f6f27c29360189c1f7efc3e3ac280ffb799" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/eb508b92b69ca0191b5f20bb77eb8c407da20e165fedb54325c7153ed0790dc1> a lorsp:SourceChunk ;
+    dcterms:identifier "7c8ba9fcf861802abf29a0917af97693aafb7b414e2464157051288ee9947704" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/eccaf4ea64efc00ca092f94bef85a91b2d6ca0ebb85d7cba719772eb9b30380d> a lorsp:SourceChunk ;
+    dcterms:identifier "b4c81b4ef412ca348a0197a703d95009a191937b975640ca29be3930fddaae27" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/f5ba60753e8e0132268f97e38640d82b19a668937dbcbc6a9fb42b870e7530e8> a lorsp:SourceChunk ;
+    dcterms:identifier "de0bc8428556edcc9551ddb25897d9e8655425dd04a53e8a2dca50da4cbcd5b9" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/f68c78ff6705fcc14aba2ce6ce2b5890cdb0a9255396ee5728664b485b0c2dcd> a lorsp:SourceChunk ;
+    dcterms:identifier "1c321aecc6832807c4727e29d3b3594e88895a74634e6f74ba336b341d60a205" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/fd599f63d1adc1e9882a2ee077607b5d4128e7109fba126d2add99ee1dcc4539> a lorsp:SourceChunk ;
+    dcterms:identifier "ec2c0ed49cacd26529d28672ed90f8ce5eed20828e805d8a32a9119d09891f90" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/fe7883bad6d4c2ce1d2644a2db472a1b99fc246828edfa60a0b1108ba7a380dd> a lorsp:SourceChunk ;
+    dcterms:identifier "8182d23b9604ec8a11ab9d6adc757d687f2716bdacede6e67e89804b17bd77c5" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/resource/d2a551a5e32574ae943ebc658414a67272d4096dac208551c3dd69f9a87643b8> a lorsp:LegalResource ;
+    dcterms:identifier "36/2024/QH15" ;
+    lorsp:hasExpression <https://w3id.org/legal-ontology-rag/data/expression/c77f01b2fd627346530e0eafdffdce5f4e0b18c02e662c9b3384cc32cfd1da9e> .
+
+<https://w3id.org/legal-ontology-rag/data/expression/c77f01b2fd627346530e0eafdffdce5f4e0b18c02e662c9b3384cc32cfd1da9e> a lorsp:LegalExpression ;
+    lorsp:representedBy <https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> .
+
+<https://w3id.org/legal-ontology-rag/data/file/fab5a841a01ab916cf1c03341a4cfd01dcad7554056a68e34ac87583e784e99e> a lorsp:SourceFile ;
+    dcterms:identifier "36_2024_QH15_444251.docx" .
+
