@@ -35,13 +35,9 @@ def test_evaluate_samples_computes_retrieval_and_answer_metrics() -> None:
     assert metrics.answer_sample_count == 2
     assert metrics.k_values == (1, 2, 3)
     assert metrics.hit_rate == 0.5
-    assert metrics.mrr == 0.25
     assert metrics.hit_rate_at_k == {1: 0.0, 2: 0.5, 3: 0.5}
     assert metrics.precision_at_k == {1: 0.0, 2: 0.25, 3: 1 / 6}
     assert metrics.recall_at_k == {1: 0.0, 2: 0.25, 3: 0.25}
-    assert metrics.ndcg_at_k[1] == 0.0
-    assert metrics.ndcg_at_k[2] == pytest.approx(0.1934264)
-    assert metrics.ndcg_at_k[3] == pytest.approx(0.1934264)
     assert metrics.context_precision == 1 / 6
     assert metrics.context_recall == 0.25
     assert metrics.answer_exact_match == 0.5
@@ -60,7 +56,6 @@ def test_metrics_to_dict_uses_json_friendly_k_keys() -> None:
 
     assert data["precision_at_k"] == {"1": 1.0}
     assert data["recall_at_k"] == {"1": 1.0}
-    assert data["ndcg_at_k"] == {"1": 1.0}
     assert data["hit_rate_at_k"] == {"1": 1.0}
 
 
@@ -100,10 +95,8 @@ def test_retrieval_metrics_count_empty_retrieval_as_zero() -> None:
 
     assert metrics.retrieval_sample_count == 1
     assert metrics.hit_rate == 0.0
-    assert metrics.mrr == 0.0
     assert metrics.precision_at_k == {1: 0.0, 3: 0.0}
     assert metrics.recall_at_k == {1: 0.0, 3: 0.0}
-    assert metrics.ndcg_at_k == {1: 0.0, 3: 0.0}
     assert metrics.context_precision == 0.0
     assert metrics.context_recall == 0.0
 

@@ -66,8 +66,15 @@ function ProposeOntologyRuleAssemblies(windows: RuleAssemblyWindowInput[]) -> Ru
     record do chunking, tránh lưu các mảnh của cùng rule như các rule độc lập.
 
     - Chỉ hợp nhất khi đồng thời: cùng một hành vi pháp lý đơn nhất; cùng chủ thể,
-      vai trò, phương tiện, điều kiện; và record chỉ bổ sung mảnh hậu quả/evidence
-      bị tách.
+      vai trò, phương tiện và cây điều kiện tương đương về nghĩa; record chỉ bổ
+      sung mảnh hậu quả/evidence bị tách.
+    - Cây conditions của một rule chi phối mọi consequence trong rule đó. Vì vậy,
+      không hợp nhất record vô điều kiện với record có điều kiện, hoặc các record
+      có điều kiện khác nhau, dù cùng conduct và locator. Đặc biệt phải giữ riêng
+      hậu quả kèm `nếu`, `trong trường hợp`, `trừ trường hợp` hoặc điều kiện tương
+      đương; không được làm tiền phạt hay hậu quả khác kế thừa nhầm điều kiện ấy.
+      Chỉ khác condition_id nhưng cùng cấu trúc và cùng nghĩa thì vẫn được xem là
+      tương đương.
     - Giữ riêng các động từ/hành động pháp lý độc lập, kể cả khi chúng dùng chung
       đối tượng, bổ ngữ, Điểm/Khoản, mức phạt, danh sách, từ "hoặc" hoặc dấu chấm
       phẩy. Phần bổ ngữ bị lược để tránh lặp không biến hai hành động thành mảnh
@@ -80,7 +87,10 @@ function ProposeOntologyRuleAssemblies(windows: RuleAssemblyWindowInput[]) -> Ru
     - Mỗi proposal có ít nhất hai member ID duy nhất; các proposal không trùng
       member.
     - Bảo toàn conduct, applicability, conditions, consequences, validity,
-      provision và evidence; giá trị chưa biết giữ null.
+      provision và evidence; giá trị chưa biết giữ null. Trước khi đề xuất, audit
+      từng consequence của assembled_rule: chính cây conditions chung phải áp dụng
+      đúng cho consequence đó trong source. Sai một consequence thì không hợp nhất
+      các member ấy.
     - assembled_rule dùng ExplicitInterval và giữ nguyên ngày đã resolve; nếu cả
       hai ngày null thì dùng Unresolved. Không dùng DocumentDefault.
     - Không suy diễn role, LegalChange, LegalException, identity xuyên văn bản hay

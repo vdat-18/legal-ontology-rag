@@ -12,11 +12,9 @@ This directory stores generated evaluation data.
 
 Offline retrieval metrics include:
 
-- `precision_at_k`
-- `recall_at_k`
-- `mrr`
-- `ndcg_at_k`
-- `hit_rate` and `hit_rate_at_k`
+- `precision_at_k` - Percentage of relevant chunks in top-K
+- `recall_at_k` - Percentage of gold chunks found in top-K
+- `hit_rate` and `hit_rate_at_k` - Whether at least one relevant chunk appears in top-K
 
 Supported metric fields in `ground_truth.jsonl` are flexible:
 

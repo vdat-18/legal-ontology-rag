@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import math
 import re
 import string
 from collections import Counter
@@ -73,10 +72,8 @@ class EvaluationMetrics:
     k_values: tuple[int, ...]
     hit_rate: float | None
     hit_rate_at_k: dict[int, float | None]
-    mrr: float | None
     precision_at_k: dict[int, float | None]
     recall_at_k: dict[int, float | None]
-    ndcg_at_k: dict[int, float | None]
     context_precision: float | None
     context_recall: float | None
     answer_exact_match: float | None
@@ -91,10 +88,8 @@ class EvaluationMetrics:
             "k_values": list(self.k_values),
             "hit_rate": self.hit_rate,
             "hit_rate_at_k": _string_keyed_metrics(self.hit_rate_at_k),
-            "mrr": self.mrr,
             "precision_at_k": _string_keyed_metrics(self.precision_at_k),
             "recall_at_k": _string_keyed_metrics(self.recall_at_k),
-            "ndcg_at_k": _string_keyed_metrics(self.ndcg_at_k),
             "context_precision": self.context_precision,
             "context_recall": self.context_recall,
             "answer_exact_match": self.answer_exact_match,
@@ -137,10 +132,8 @@ def evaluate_samples(
         k_values=normalized_k_values,
         hit_rate=_mean(score["hit"] for score in retrieval_scores),
         hit_rate_at_k=_aggregate_at_k(retrieval_scores, "hit", normalized_k_values),
-        mrr=_mean(score["mrr"] for score in retrieval_scores),
         precision_at_k=_aggregate_at_k(retrieval_scores, "precision", normalized_k_values),
         recall_at_k=_aggregate_at_k(retrieval_scores, "recall", normalized_k_values),
-        ndcg_at_k=_aggregate_at_k(retrieval_scores, "ndcg", normalized_k_values),
         context_precision=_mean(score["precision"] for score in retrieval_scores),
         context_recall=_mean(score["recall"] for score in retrieval_scores),
         answer_exact_match=_mean(score["exact_match"] for score in answer_scores),
@@ -156,11 +149,9 @@ def _retrieval_scores(sample: EvaluationSample, k_values: Sequence[int]) -> dict
     reference_ids, retrieved_ids = label_pair
     reference_set = set(reference_ids)
     relevance_flags = _binary_relevance_flags(retrieved_ids, reference_set)
-    relevant_positions = [index for index, is_relevant in enumerate(relevance_flags, 1) if is_relevant]
     relevant_count = sum(relevance_flags)
-    scores = {
+    scores: dict[str, float] = {
         "hit": 1.0 if relevant_count else 0.0,
-        "mrr": 1.0 / relevant_positions[0] if relevant_positions else 0.0,
         "precision": relevant_count / len(retrieved_ids) if retrieved_ids else 0.0,
         "recall": relevant_count / len(reference_set),
     }
@@ -170,7 +161,6 @@ def _retrieval_scores(sample: EvaluationSample, k_values: Sequence[int]) -> dict
         scores[f"hit@{k}"] = 1.0 if top_k_relevant_count else 0.0
         scores[f"precision@{k}"] = top_k_relevant_count / k
         scores[f"recall@{k}"] = top_k_relevant_count / len(reference_set)
-        scores[f"ndcg@{k}"] = _ndcg_at_k(top_k_flags, len(reference_set), k)
     return scores
 
 
@@ -194,16 +184,6 @@ def _binary_relevance_flags(retrieved_ids: Sequence[str], reference_set: set[str
         else:
             flags.append(0)
     return flags
-
-
-def _ndcg_at_k(relevance_flags: Sequence[int], reference_count: int, k: int) -> float:
-    """Compute binary nDCG@k."""
-    dcg = sum(value / math.log2(index + 2) for index, value in enumerate(relevance_flags[:k]))
-    ideal_relevance_count = min(reference_count, k)
-    if ideal_relevance_count == 0:
-        return 0.0
-    ideal_dcg = sum(1.0 / math.log2(index + 2) for index in range(ideal_relevance_count))
-    return dcg / ideal_dcg
 
 
 def _answer_scores(sample: EvaluationSample) -> dict[str, float] | None:

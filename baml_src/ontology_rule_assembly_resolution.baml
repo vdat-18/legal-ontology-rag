@@ -29,8 +29,16 @@ function ResolveOntologyRuleAssemblyConflicts(components: RuleAssemblyConflictIn
     hoặc nhiều proposal cạnh tranh.
 
     - Chỉ hợp nhất source record bị tách nhưng cùng mô tả một hành vi pháp lý đơn
-      nhất, cùng chủ thể, vai trò, phương tiện và điều kiện áp dụng. Record bổ sung
-      hậu quả hoặc evidence cho đúng hành vi đó có thể thuộc cùng rule.
+      nhất, cùng chủ thể, vai trò, phương tiện và cây điều kiện tương đương về
+      nghĩa. Record bổ sung hậu quả hoặc evidence cho đúng hành vi đó chỉ có thể
+      thuộc cùng rule khi chính điều kiện chung áp dụng cho mọi hậu quả được gộp.
+    - Cây conditions của một rule chi phối mọi consequence trong rule đó. Không
+      hợp nhất record vô điều kiện với record có điều kiện, hoặc các record có điều
+      kiện khác nhau, dù cùng conduct, locator hay cùng câu dẫn chiếu. Hậu quả kèm
+      `nếu`, `trong trường hợp`, `trừ trường hợp` hoặc điều kiện tương đương phải
+      giữ ở rule riêng; không được làm tiền phạt hay hậu quả khác kế thừa nhầm điều
+      kiện. Chỉ khác condition_id nhưng cùng cấu trúc và cùng nghĩa thì vẫn được
+      xem là tương đương.
     - Giữ riêng các động từ/hành động pháp lý độc lập, kể cả khi chúng dùng chung
       đối tượng, bổ ngữ, Điểm/Khoản, mức phạt, danh sách, từ "hoặc" hoặc dấu chấm
       phẩy. Phần bổ ngữ bị lược để tránh lặp không biến hai hành động thành mảnh
@@ -40,7 +48,10 @@ function ResolveOntologyRuleAssemblyConflicts(components: RuleAssemblyConflictIn
       vi thì giữ riêng.
     - Với từng output proposal, xác nhận các record trùng/lặp nghĩa cùng một hành
       động, hoặc chỉ bổ sung hậu quả/evidence còn thiếu cho chính hành động đó;
-      đồng thời toàn bộ applicability phải giống nhau. Sai một điều thì loại.
+      đồng thời toàn bộ applicability phải giống nhau. Audit từng consequence của
+      assembled_rule: cây conditions chung phải được source áp dụng đúng cho chính
+      consequence đó. Nếu một consequence có phạm vi điều kiện khác, tách member
+      theo phạm vi tương đương hoặc loại proposal; sai một điều thì loại.
     - Proposal đầu vào chỉ là gợi ý. Có thể giữ, sửa, thay hoặc loại; trả [] nếu
       chưa đủ căn cứ.
     - Mỗi proposal có ít nhất hai member ID duy nhất từ source_records; các

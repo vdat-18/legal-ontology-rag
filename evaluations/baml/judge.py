@@ -1,8 +1,8 @@
 """LLM judge that scores a batch of answers in one BAML call through the project's runtime.
 
 One ``EvaluateAnswers`` call scores a whole batch of samples, and each result carries every metric
-for its sample as a typed object (the QUEST 1-5 rubric, faithfulness, answer relevancy, temporal
-correctness, and optional factual correctness). So a batch of samples costs a single LLM call, and
+for its sample as a typed object (faithfulness 0-1, correctness 1-5, answer_relevancy 1-5,
+and temporal_correctness binary). So a batch of samples costs a single LLM call, and
 the runner runs many batches concurrently.
 """
 
@@ -12,7 +12,6 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Protocol
 
 from evaluations.core.dataset import EvalSample
-from evaluations.quest.rubric import QUEST_DIMENSIONS, TEMPORAL_CORRECTNESS_NAME
 
 if TYPE_CHECKING:
     from legal_rag.settings import Settings
@@ -72,12 +71,9 @@ class BamlJudgeClient:
 def _to_scores(evaluation: Any) -> dict[str, float | None]:
     """Flatten one typed BAML evaluation into a metric-name to score mapping."""
     scores: dict[str, float | None] = {
-        f"quest_{dimension}": float(getattr(evaluation, dimension)) for dimension in QUEST_DIMENSIONS
+        "faithfulness": float(evaluation.faithfulness),
+        "correctness": float(evaluation.correctness),
+        "answer_relevancy": float(evaluation.answer_relevancy),
+        "temporal_correctness": 1.0 if evaluation.temporal_correctness else 0.0,
     }
-    scores["faithfulness"] = float(evaluation.faithfulness)
-    scores["answer_relevancy"] = float(evaluation.answer_relevancy)
-    scores[TEMPORAL_CORRECTNESS_NAME] = 1.0 if evaluation.temporal_correctness else 0.0
-    scores["factual_correctness"] = (
-        float(evaluation.factual_correctness) if evaluation.factual_correctness is not None else None
-    )
     return scores
