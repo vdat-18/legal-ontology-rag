@@ -33,11 +33,7 @@ class MultiTurnRetriever(Retriever):
         """Initialize retriever with conversation state manager and query rewriter."""
         super().__init__(encoder, milvus_client, rag_settings, word_segmenter=word_segmenter)
         self._state_store = ConversationStateStore()
-        self._query_rewriter = BamlMultiTurnQueryRewriter(
-            app_settings,
-            max_output_tokens=512,
-            temperature=0.0,
-        )
+        self._query_rewriter = BamlMultiTurnQueryRewriter(app_settings)
         self._max_history_turns = max_history_turns
 
     def retrieve_multi_turn(

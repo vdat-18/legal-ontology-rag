@@ -25,14 +25,13 @@ class BamlMultiTurnQueryRewriter:
     def __init__(
         self,
         settings: Settings,
-        max_output_tokens: int = 512,
-        temperature: float = 0.3,
+        temperature: float = 0.0,
         max_response_bytes: int = 1024 * 1024,
     ) -> None:
         """Create a runtime BAML client from typed, secret-safe configuration."""
         self._caller = BamlCaller.from_settings(
             settings,
-            max_output_tokens=max_output_tokens,
+            max_output_tokens=4096,
             temperature=temperature,
             max_response_bytes=max_response_bytes,
         )
