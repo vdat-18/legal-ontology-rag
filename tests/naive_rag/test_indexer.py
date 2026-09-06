@@ -12,7 +12,7 @@ from pymilvus import MilvusClient
 from legal_rag.chunker.models import Chunk
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.embedding.profiles import EmbeddingProfile
-from legal_rag.naive_rag.indexer import _truncate_varchar, index_chunks
+from legal_rag.naive_rag.indexer import _truncate_varchar, _validate_field_schema, index_chunks
 from legal_rag.settings import NaiveRagSettings
 
 
@@ -117,6 +117,45 @@ def test_index_chunks_inserts_one_row_per_chunk(tmp_path: Path) -> None:
 
     assert total == 2
     assert client.get_collection_stats(settings.milvus_collection_name)["row_count"] == 2
+    fields = {field["name"] for field in client.describe_collection(settings.milvus_collection_name)["fields"]}
+    assert "text" in fields
+    assert "embedding_text" not in fields
+    assert "record_scope" not in fields
+    assert "chunk_index" not in fields
+
+
+def test_index_chunks_uses_embedding_text_without_persisting_it(tmp_path: Path) -> None:
+    """Embedding input may differ from source text without creating a duplicate Milvus field."""
+    chunk = replace(_chunk("chunk-1", "Source text."), embedding_text="Text optimized for embedding.")
+    backend = _FakeEncoderBackend()
+    encoder = EmbeddingEncoder(_profile(), backend)
+    settings = _settings()
+    client = MilvusClient(uri=_milvus_uri(tmp_path))
+
+    index_chunks((chunk,), encoder, client, settings)
+
+    rows = client.query(
+        collection_name=settings.milvus_collection_name,
+        filter="chunk_id == 'chunk-1'",
+        output_fields=["text"],
+    )
+    assert backend.calls == [["Text optimized for embedding."]]
+    assert rows[0]["text"] == "Source text."
+    assert "embedding_text" not in rows[0]
+
+
+@pytest.mark.parametrize("legacy_field", ["embedding_text", "record_scope", "chunk_index"])
+def test_legacy_collection_fields_require_rebuild(tmp_path: Path, legacy_field: str) -> None:
+    """Fields removed from the persisted schema cannot be silently reused by the new indexer."""
+    encoder = EmbeddingEncoder(_profile(), _FakeEncoderBackend())
+    settings = _settings()
+    client = MilvusClient(uri=_milvus_uri(tmp_path))
+    index_chunks((_chunk("chunk-1", "Source text."),), encoder, client, settings)
+    fields = {field["name"]: field for field in client.describe_collection(settings.milvus_collection_name)["fields"]}
+    fields[legacy_field] = fields["text"]
+
+    with pytest.raises(ValueError, match=rf"incompatible extra fields \({legacy_field}\); rebuild the collection"):
+        _validate_field_schema(fields, settings.milvus_collection_name, encoder.profile.dimensions)
 
 
 def test_index_chunks_is_a_no_op_when_the_matching_corpus_is_complete(tmp_path: Path) -> None:

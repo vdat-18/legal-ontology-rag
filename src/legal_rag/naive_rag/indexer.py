@@ -18,7 +18,6 @@ _MAX_VARCHAR_BYTES = 65_535
 _CHUNK_ID_MAX_LENGTH = 256
 _SOURCE_NAME_MAX_LENGTH = 512
 _KIND_MAX_LENGTH = 64
-_RECORD_SCOPE_MAX_LENGTH = 64
 _HASH_MAX_LENGTH = 64
 _EMBEDDING_PROFILE_MAX_LENGTH = 256
 _MODEL_ID_MAX_LENGTH = 512
@@ -27,11 +26,8 @@ _EXPECTED_FIELD_TYPES = {
     "chunk_id": DataType.VARCHAR,
     "vector": DataType.FLOAT_VECTOR,
     "text": DataType.VARCHAR,
-    "embedding_text": DataType.VARCHAR,
     "source_name": DataType.VARCHAR,
     "kind": DataType.VARCHAR,
-    "record_scope": DataType.VARCHAR,
-    "chunk_index": DataType.INT64,
     "content_sha256": DataType.VARCHAR,
     "chunker_config_sha256": DataType.VARCHAR,
     "embedding_profile_id": DataType.VARCHAR,
@@ -41,10 +37,8 @@ _EXPECTED_FIELD_TYPES = {
 _EXPECTED_VARCHAR_LENGTHS = {
     "chunk_id": _CHUNK_ID_MAX_LENGTH,
     "text": _MAX_VARCHAR_BYTES,
-    "embedding_text": _MAX_VARCHAR_BYTES,
     "source_name": _SOURCE_NAME_MAX_LENGTH,
     "kind": _KIND_MAX_LENGTH,
-    "record_scope": _RECORD_SCOPE_MAX_LENGTH,
     "content_sha256": _HASH_MAX_LENGTH,
     "chunker_config_sha256": _HASH_MAX_LENGTH,
     "embedding_profile_id": _EMBEDDING_PROFILE_MAX_LENGTH,
@@ -85,11 +79,8 @@ def _collection_schema(dim: int) -> CollectionSchema:
             FieldSchema(name="chunk_id", dtype=DataType.VARCHAR, is_primary=True, max_length=_CHUNK_ID_MAX_LENGTH),
             FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=dim),
             FieldSchema(name="text", dtype=DataType.VARCHAR, max_length=_MAX_VARCHAR_BYTES),
-            FieldSchema(name="embedding_text", dtype=DataType.VARCHAR, max_length=_MAX_VARCHAR_BYTES),
             FieldSchema(name="source_name", dtype=DataType.VARCHAR, max_length=_SOURCE_NAME_MAX_LENGTH),
             FieldSchema(name="kind", dtype=DataType.VARCHAR, max_length=_KIND_MAX_LENGTH),
-            FieldSchema(name="record_scope", dtype=DataType.VARCHAR, max_length=_RECORD_SCOPE_MAX_LENGTH),
-            FieldSchema(name="chunk_index", dtype=DataType.INT64),
             FieldSchema(name="content_sha256", dtype=DataType.VARCHAR, max_length=_HASH_MAX_LENGTH),
             FieldSchema(name="chunker_config_sha256", dtype=DataType.VARCHAR, max_length=_HASH_MAX_LENGTH),
             FieldSchema(name="embedding_profile_id", dtype=DataType.VARCHAR, max_length=_EMBEDDING_PROFILE_MAX_LENGTH),
@@ -101,6 +92,12 @@ def _collection_schema(dim: int) -> CollectionSchema:
 
 def _validate_field_schema(fields: Mapping[str, Mapping[str, Any]], collection_name: str, dim: int) -> None:
     """Validate required field types, capacities, primary key, and vector dimension."""
+    unexpected_fields = fields.keys() - _EXPECTED_FIELD_TYPES.keys()
+    if unexpected_fields:
+        names = ", ".join(sorted(unexpected_fields))
+        msg = f"Milvus collection '{collection_name}' has incompatible extra fields ({names}); rebuild the collection"
+        raise ValueError(msg)
+
     for name, expected_type in _EXPECTED_FIELD_TYPES.items():
         field = fields.get(name)
         if field is None or field["type"] != expected_type:
@@ -231,11 +228,8 @@ def _row(chunk: Chunk, vector: Sequence[float], encoder: EmbeddingEncoder) -> di
         "chunk_id": chunk.chunk_id,
         "vector": list(vector),
         "text": _truncate_varchar(chunk.text),
-        "embedding_text": _truncate_varchar(chunk.embedding_text),
         "source_name": chunk.source_name,
         "kind": chunk.kind,
-        "record_scope": chunk.record_scope,
-        "chunk_index": chunk.chunk_index,
         **_chunk_metadata(chunk, encoder),
     }
 

@@ -34,7 +34,9 @@ Milvus uses one shared database configured by `MILVUS_DATABASE`. Each retrieval 
 
 When upgrading an existing environment, rename `NAIVE_RAG_MILVUS_URI` to `MILVUS_URI`, `NAIVE_RAG_MILVUS_TOKEN` to `MILVUS_TOKEN`, and `NAIVE_RAG_MILVUS_DATABASE` to `MILVUS_DATABASE`. No automatic data migration runs: keep the previous database value to reuse existing data, or select `legal_rag` and rebuild the method-specific collections there.
 
-The naive index stores content, chunker, and embedding-model identity metadata with each chunk. Re-running the indexer resumes missing chunks after a partial run. It fails instead of mixing data when the collection schema, vector dimension, index metric, corpus IDs, chunk content, chunker configuration, or embedding revision differs.
+The naive index stores one source-text field (`text`), its vector, and chunker/embedding-model identity metadata with each chunk. The vector is generated from the chunk's `embedding_text` in memory, but that duplicate input is not persisted in Milvus. Re-running the indexer resumes missing chunks after a partial run. It fails instead of mixing data when the collection schema, vector dimension, index metric, corpus IDs, chunk content, chunker configuration, or embedding revision differs.
+
+Existing naive collections that still contain the former `embedding_text`, `record_scope`, or `chunk_index` fields must be dropped and rebuilt once with the current schema.
 
 Collections created before this metadata was introduced are intentionally incompatible. Back them up, then configure the shared `MILVUS_DATABASE` and a method-specific collection name, or explicitly drop and rebuild the old collection.
 

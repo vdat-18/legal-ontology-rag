@@ -147,6 +147,10 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
     - Loại kỷ luật, hình sự/dân sự, cưỡng chế/thi hành, thủ tục/thẩm quyền, nghĩa vụ
       đúng, quyền/nghĩa vụ chung và điều cấm bị phạt nơi khác. Không tự đảo nghĩa vụ
       tích cực thành vi phạm; "xử lý theo pháp luật" không đủ căn cứ.
+    - Xét riêng từng nhánh có hiệu lực pháp lý. Câu khẳng định xử phạt một conduct
+      vẫn tạo conduct; nhánh chỉ nói `không xử phạt`, `không ra quyết định xử phạt`,
+      miễn hoặc chấm dứt xử phạt thì không tạo conduct và không biến hành vi được
+      nhắc lại trong nhánh đó thành conduct. Đây không phải dẫn chiếu mức phạt.
     - Quét Target từ ký tự đầu đến cuối. Audit riêng đoạn mở đầu trước heading mới;
       nếu nó tiếp nối Điểm/Khoản/danh sách, Locator context được xác nhận tiêu đề xử
       phạt/cấu trúc chi phối. Không bỏ đoạn mở đầu vì phía sau có heading mới;
@@ -193,6 +197,8 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
       lược, cùng phủ định, đối tượng, qualifier/phạm vi dùng chung. `S V O1; O2`
       mặc định tạo `S V O1`, `S V O2` nếu O2 không mở một vị ngữ chính mới; phải
       lặp lại V trong label, không đổi `S V O` thành `S O` hay hành động khác của S.
+      Với `S V1 hoặc V2 C`, nếu C là bổ ngữ dùng chung thì tạo `S V1 C` và
+      `S V2 C`; không trả nhánh cụt chỉ có `S V1` hoặc `S V2`.
     - Bảo toàn toàn bộ điều kiện xác định đối tượng, kể cả phần trong ngoặc hoặc
       mệnh đề cuối áp dụng cho nhiều nhánh; ưu tiên đủ nghĩa hơn label ngắn. Với cụm
       danh từ pháp lý được lặp lại hoặc rút gọn, mỗi lá giữ đủ giấy tờ, loại xe, bên
@@ -204,10 +210,21 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
       định conduct và mức/điều khoản xử phạt. Đoạn chỉ thi hành, khắc phục hoặc tính
       hậu quả/số lợi từ conduct dẫn chiếu không tạo conduct mới.
     - Không dùng kiến thức ngoài. Với văn bản sửa đổi, provision_path là điều khoản
-      được sửa/thay; Điều sửa đổi chỉ là provenance. provision_path chỉ gồm mã
-      locator theo `Chương > Mục > Điều > Khoản > Điểm`, đúng dấu ` > `; không kèm
-      tên/tiêu đề Chương, Mục, Điều và không đoán/lặp locator. Context không cấp
-      evidence hay conduct.
+      được sửa/thay; toàn bộ Chương/Điều/Khoản/Điểm dùng để chứa hoặc đánh số thao
+      tác sửa đổi chỉ là provenance và phải bị loại khỏi path. Lấy locator đích từ
+      câu `sửa đổi/bổ sung ... Điều ...` đang chi phối; nếu phần trích dẫn tiếp tục
+      ở đầu Target thì dùng Locator context để hoàn thành chính locator đích đó.
+      Không nối path của văn bản sửa đổi với path của điều khoản được sửa.
+      Chỉ áp dụng việc loại ancestor khi source/context thể hiện rõ đây là thao tác
+      sửa đổi một điều khoản khác. Với quy định trực tiếp, phải giữ đủ mọi ancestor
+      `Chương`, `Mục`, `Điều` đã có trong Cấu trúc rồi nối `Khoản`, `Điểm` của Target;
+      không tự rút path xuống chỉ còn `Điều`.
+      provision_path chỉ gồm mã locator theo `Chương > Mục > Điều > Khoản > Điểm`,
+      đúng dấu ` > `; không kèm tên/tiêu đề Chương, Mục, Điều và không đoán/lặp
+      locator. Context không cấp evidence hay conduct.
+    - Mỗi conduct phải dẫn ít nhất một evidence_id được liệt kê trong đúng mục
+      Evidence của target_chunk_id hiện tại. Không tự tạo, ghi nhớ hoặc tái sử dụng
+      evidence_id từ target hay lần chạy khác; chỉ trả ID nguyên văn đã được cấp.
     {{ _.role("user") }}
 
     {% for item in items %}
