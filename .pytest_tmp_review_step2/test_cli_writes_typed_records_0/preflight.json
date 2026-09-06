@@ -1,0 +1,79 @@
+{
+  "accepted_chunk_count": 1,
+  "artifacts": [
+    {
+      "artifact_type": "chunks",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\.pytest_tmp_review_step2\\test_cli_writes_typed_records_0\\chunks.jsonl",
+      "sha256": "b1379147d921003d0ff03b3af5c34bace8a6cb0cc29de1ec3962f89f7d55e508",
+      "size_bytes": 1885
+    },
+    {
+      "artifact_type": "screening",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\.pytest_tmp_review_step2\\test_cli_writes_typed_records_0\\screening.jsonl",
+      "sha256": "1c5fdefae124428ea39d05f4a96d02ef21f66cb996065707177d76603f6e95f3",
+      "size_bytes": 189
+    },
+    {
+      "artifact_type": "metadata",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\.pytest_tmp_review_step2\\test_cli_writes_typed_records_0\\metadata.jsonl",
+      "sha256": "c1b8e1d20a980995624a1e34c7e8718867f3279157483078a1a03f6c57bbd9e7",
+      "size_bytes": 129
+    },
+    {
+      "artifact_type": "population_contract",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\ontology\\population_contract.yaml",
+      "sha256": "bc30b82dcb34f297c7c886528214f7520bb38ea746556bc943e48607e08b0fc5",
+      "size_bytes": 410
+    },
+    {
+      "artifact_type": "target_selection",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\.pytest_tmp_review_step2\\test_cli_writes_typed_records_0\\target-selection.json",
+      "sha256": "0645d5cc4d034adf5c3217083d7d51a8b2877a4209d8db510c1cff6ba916162a",
+      "size_bytes": 95
+    }
+  ],
+  "checked_at": "2026-09-06T10:15:40.921665+00:00",
+  "checks": [
+    {
+      "check_id": "PF-CHUNKS-001",
+      "status": "passed",
+      "summary": "Loaded 1 unique chunks."
+    },
+    {
+      "check_id": "PF-DOCUMENT-001",
+      "status": "passed",
+      "summary": "Chunks belong to one root legal document."
+    },
+    {
+      "check_id": "PF-ADJACENCY-001",
+      "status": "passed",
+      "summary": "Neighbor links are consistent across 1 scopes."
+    },
+    {
+      "check_id": "PF-SCREENING-001",
+      "status": "passed",
+      "summary": "Screening covers all 1 chunks exactly once."
+    },
+    {
+      "check_id": "PF-TARGETS-001",
+      "status": "passed",
+      "summary": "Selected 1 of 1 accepted chunks for this run."
+    },
+    {
+      "check_id": "PF-METADATA-001",
+      "status": "passed",
+      "summary": "Document metadata has a validity baseline from 2025-01-01."
+    }
+  ],
+  "chunk_count": 1,
+  "document_number": "168/2024/NĐ-CP",
+  "estimated_llm_batches": 1,
+  "ontology_semantic_sha256": "a0496dc220b2809cf1b533fd62845356a5a43edd66d9c6388dce903c60c97460",
+  "overall_status": "ready",
+  "pilot_run_id": "5865237b37faa8c030911dc2fd2ea6c918072c271c365c48cbd4d576fd60031b",
+  "schema_version": "0.2.0",
+  "screening_count": 1,
+  "selected_target_ids": [
+    "chunk-1"
+  ]
+}

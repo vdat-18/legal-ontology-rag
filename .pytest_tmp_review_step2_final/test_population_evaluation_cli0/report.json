@@ -1,0 +1,19 @@
+{
+  "document_number": "168/2024/NĐ-CP",
+  "expected_record_count": 1,
+  "forbidden_assertion_count": 1,
+  "issues": [
+    {
+      "assertion_id": null,
+      "check_id": "EVAL-TARGET-001",
+      "source_chunk_id": "chunk-1",
+      "summary": "Target chunk has not completed population."
+    }
+  ],
+  "overall_status": "failed",
+  "population_record_count": 1,
+  "processed_target_count": 0,
+  "required_assertion_count": 1,
+  "schema_version": "0.2.0",
+  "target_chunk_count": 1
+}

@@ -54,12 +54,17 @@ class Retriever:
 
         from rank_bm25 import BM25Okapi
 
-        all_chunks = self.client.query(
+        iterator = self.client.query_iterator(
             collection_name=self.settings.milvus_collection_name,
-            filter="",
+            batch_size=self.settings.milvus_insert_batch_size,
             output_fields=["chunk_id", "text", "source_name", "kind"],
-            limit=self.settings.bm25_corpus_limit,
         )
+        all_chunks: list[dict] = []
+        try:
+            while batch := iterator.next():
+                all_chunks.extend(batch)
+        finally:
+            iterator.close()
         corpus = [_tokenize(chunk["text"]) for chunk in all_chunks]
         self._bm25 = BM25Okapi(corpus) if corpus else None
         self._bm25_chunks = all_chunks

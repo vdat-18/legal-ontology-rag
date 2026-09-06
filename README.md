@@ -3,7 +3,7 @@
 This repository provides multiple retrieval backends over the same versioned legal-document chunks:
 
 - Graphiti uses Neo4j for temporal entities, relationships, and source provenance.
-- Naive RAG uses Milvus for dense-vector retrieval.
+- Naive RAG uses Milvus with three retrieval modes (`NAIVE_RAG_SEARCH_MODE`): semantic dense-vector search (default), BM25 keyword search, or hybrid search fused with Reciprocal Rank Fusion (RRF).
 - Corrective RAG uses Milvus retrieval plus CRAG grading, refinement, optional web search, and answer generation.
 - Attu is an optional Milvus administration UI; it is not part of the application data path.
 

@@ -1,0 +1,22 @@
+schema_version: "0.2.0"
+document_number: 168/2024/NĐ-CP
+cases:
+  - source_chunk_id: chunk-1
+    expected_record_count: 1
+    required_records:
+      - id: REQUIRED-MONEY
+        provision_path: Điều 13 khoản 9 điểm b
+        conduct_label_vi: Điều khiển xe không gắn biển số
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "4000000"
+            maximum_amount: "6000000"
+      - id: REQUIRED-SECOND
+        provision_path: Điều 13 khoản 9 điểm c
+    forbidden_records:
+      - id: FORBIDDEN-MONEY
+        provision_path: Điều 13 khoản 9 điểm b
+        consequences:
+          - kind: MonetaryPenalty
+            minimum_amount: "100"
+            maximum_amount: "200"

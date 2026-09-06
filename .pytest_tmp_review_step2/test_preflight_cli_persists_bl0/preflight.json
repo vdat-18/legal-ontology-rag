@@ -1,0 +1,73 @@
+{
+  "accepted_chunk_count": 1,
+  "artifacts": [
+    {
+      "artifact_type": "chunks",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\.pytest_tmp_review_step2\\test_preflight_cli_persists_bl0\\chunks.jsonl",
+      "sha256": "b1379147d921003d0ff03b3af5c34bace8a6cb0cc29de1ec3962f89f7d55e508",
+      "size_bytes": 1885
+    },
+    {
+      "artifact_type": "screening",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\.pytest_tmp_review_step2\\test_preflight_cli_persists_bl0\\screening.jsonl",
+      "sha256": "095485762e1da41655b17c1cb9ed4846136d8dddf1ad3d99b9b8c0bebb451c95",
+      "size_bytes": 195
+    },
+    {
+      "artifact_type": "metadata",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\.pytest_tmp_review_step2\\test_preflight_cli_persists_bl0\\metadata.jsonl",
+      "sha256": "d6557da928843f03ff1d7537e6fe6136feb70ba6bb6b8408271ee4b0e2d2ede5",
+      "size_bytes": 114
+    },
+    {
+      "artifact_type": "population_contract",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\ontology\\population_contract.yaml",
+      "sha256": "bc30b82dcb34f297c7c886528214f7520bb38ea746556bc943e48607e08b0fc5",
+      "size_bytes": 410
+    }
+  ],
+  "checked_at": "2026-09-06T10:17:07.330992+00:00",
+  "checks": [
+    {
+      "check_id": "PF-CHUNKS-001",
+      "status": "passed",
+      "summary": "Loaded 1 unique chunks."
+    },
+    {
+      "check_id": "PF-DOCUMENT-001",
+      "status": "passed",
+      "summary": "Chunks belong to one root legal document."
+    },
+    {
+      "check_id": "PF-ADJACENCY-001",
+      "status": "passed",
+      "summary": "Neighbor links are consistent across 1 scopes."
+    },
+    {
+      "check_id": "PF-SCREENING-001",
+      "status": "passed",
+      "summary": "Screening covers all 1 chunks exactly once."
+    },
+    {
+      "check_id": "PF-TARGETS-001",
+      "status": "passed",
+      "summary": "Selected 1 of 1 accepted chunks for this run."
+    },
+    {
+      "check_id": "PF-METADATA-001",
+      "status": "failed",
+      "summary": "Document number is empty."
+    }
+  ],
+  "chunk_count": 1,
+  "document_number": "",
+  "estimated_llm_batches": 1,
+  "ontology_semantic_sha256": "a0496dc220b2809cf1b533fd62845356a5a43edd66d9c6388dce903c60c97460",
+  "overall_status": "blocked",
+  "pilot_run_id": "505c7b1c935cb184a30f082e83ec09639f071a625f95846a3672483ea18379b3",
+  "schema_version": "0.2.0",
+  "screening_count": 1,
+  "selected_target_ids": [
+    "chunk-1"
+  ]
+}

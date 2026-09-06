@@ -15,10 +15,10 @@ def _fake_settings(**overrides):
         "milvus_collection_name": "test",
         "milvus_metric_type": "COSINE",
         "milvus_nprobe": 16,
+        "milvus_insert_batch_size": 200,
         "search_mode": "semantic",
         "hybrid_rrf_k": 60,
         "hybrid_pool_multiplier": 3,
-        "bm25_corpus_limit": 100,
     }
     defaults.update(overrides)
     return type("S", (), defaults)()
@@ -38,9 +38,12 @@ def _make_retriever():
             for i in range(3)
         ]
     ]
-    client.query.return_value = [
+    chunk_rows = [
         {"chunk_id": f"k-{i}", "text": f"keyword text {i}", "source_name": "doc.docx", "kind": "p"} for i in range(5)
     ]
+    iterator = MagicMock()
+    iterator.next.side_effect = [chunk_rows, []]
+    client.query_iterator.return_value = iterator
     return Retriever(encoder, client, _fake_settings())
 
 
@@ -110,10 +113,8 @@ def test_pipeline_passes_search_mode():
     mock_retriever.retrieve.assert_called_once_with("test", top_k=5, mode=SearchMode.KEYWORD)
 
 
-def test_api_rejects_invalid_search_mode():
+def test_api_rejects_invalid_search_mode(monkeypatch: pytest.MonkeyPatch):
     """API rejects search_mode values outside the allowed set."""
-    import os
-
     from fastapi.testclient import TestClient
 
     env = {
@@ -128,7 +129,7 @@ def test_api_rejects_invalid_search_mode():
         "RAG_API_KEY": "test-key",
     }
     for k, v in env.items():
-        os.environ.setdefault(k, v)
+        monkeypatch.setenv(k, v)
 
     mock_pipeline = MagicMock()
     mock_redis = MagicMock()

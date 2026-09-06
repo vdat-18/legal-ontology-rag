@@ -33,6 +33,9 @@ def test_every_declared_tunable_is_overridable_from_the_environment() -> None:
         "answer_max_output_tokens": "2048",
         "answer_temperature": "0.5",
         "max_response_bytes": "2097152",
+        "search_mode": "keyword",
+        "hybrid_rrf_k": "30",
+        "hybrid_pool_multiplier": "2",
     }
 
     assert raw_values.keys() == _NAIVE_RAG_TUNABLES.keys()

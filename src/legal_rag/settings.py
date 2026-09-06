@@ -217,7 +217,6 @@ _NAIVE_RAG_TUNABLES: dict[str, Callable[[str], str | bool | float | int]] = {
     "search_mode": str.strip,
     "hybrid_rrf_k": int,
     "hybrid_pool_multiplier": int,
-    "bm25_corpus_limit": int,
 }
 
 
@@ -243,7 +242,6 @@ class NaiveRagSettings:
     search_mode: str = "semantic"
     hybrid_rrf_k: int = 60
     hybrid_pool_multiplier: int = 3
-    bm25_corpus_limit: int = 16384
 
     def __post_init__(self) -> None:
         """Reject invalid external-service configuration before connecting to Milvus."""
@@ -283,7 +281,6 @@ class NaiveRagSettings:
         positive_hybrid = {
             "hybrid_rrf_k": self.hybrid_rrf_k,
             "hybrid_pool_multiplier": self.hybrid_pool_multiplier,
-            "bm25_corpus_limit": self.bm25_corpus_limit,
         }
         for name, value in positive_hybrid.items():
             if value < 1:
