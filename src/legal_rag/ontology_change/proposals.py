@@ -12,19 +12,25 @@ from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import (
     CrossDocumentChangeWindowInput,
     CrossDocumentChangeWindowResult,
+    LegalChangeConditionSummary,
+    LegalChangeConsequenceSummary,
+    LegalChangeRuleSummary,
+    OntologyConditionKind,
+    OntologyConsequenceKind,
+    OntologyCurrency,
+    OntologySubjectKind,
 )
 from legal_rag.baml_transport import BamlCaller
 from legal_rag.ontology_change.config import ChangeResolutionSettings
 from legal_rag.ontology_change.corpus import ChangeCorpus, ChangeCorpusDocument
 from legal_rag.ontology_change.models import ChangeCandidateWindow, LegalChangeProposal
-from legal_rag.ontology_population.assembly_proposals import summarize_population_record
 from legal_rag.ontology_population.evidence import fragment_evidence_sources
 from legal_rag.ontology_population.extraction import bind_population_evidence
 from legal_rag.ontology_population.models import OntologyPopulationRecord, population_identity
 from legal_rag.ontology_proposal_execution import execute_proposal_batches
 from legal_rag.settings import Settings
 
-ONTOLOGY_CHANGE_PROMPT_VERSION = "0.4.0"
+ONTOLOGY_CHANGE_PROMPT_VERSION = "0.5.0"
 
 
 class ChangeProposalClient(Protocol):
@@ -218,16 +224,57 @@ def _window_input(
         earlier_document_number=earlier_document.metadata.document_number,
         later_document_number=later_document.metadata.document_number,
         earlier_records=[
-            summarize_population_record(records_by_id[population_id]) for population_id in window.earlier_population_ids
+            _summarize_change_record(records_by_id[population_id]) for population_id in window.earlier_population_ids
         ],
         later_records=[
-            summarize_population_record(records_by_id[population_id]) for population_id in window.later_population_ids
+            _summarize_change_record(records_by_id[population_id]) for population_id in window.later_population_ids
         ],
         change_evidence_sources=[
             source
             for chunk_id in window.change_source_chunk_ids
             for source in fragment_evidence_sources(chunk_id, chunks_by_id[chunk_id].text)
         ],
+    )
+
+
+def _summarize_change_record(record: OntologyPopulationRecord) -> LegalChangeRuleSummary:
+    """Keep rule semantics while leaving source evidence in the dedicated change context."""
+    return LegalChangeRuleSummary(
+        population_id=record.population_id,
+        conduct_label_vi=record.conduct_label_vi,
+        subject_kind=OntologySubjectKind(record.subject_kind) if record.subject_kind else None,
+        role_labels_vi=list(record.role_labels_vi),
+        vehicle_category_labels_vi=list(record.vehicle_category_labels_vi),
+        condition_root_id=record.condition_root_id,
+        conditions=[
+            LegalChangeConditionSummary(
+                condition_id=condition.condition_id,
+                kind=OntologyConditionKind(condition.kind),
+                text_vi=condition.text_vi,
+                operand_ids=list(condition.operand_ids),
+            )
+            for condition in record.conditions
+        ],
+        consequences=[
+            LegalChangeConsequenceSummary(
+                consequence_id=consequence.consequence_id,
+                kind=OntologyConsequenceKind(consequence.kind),
+                minimum_amount=str(consequence.minimum_amount) if consequence.minimum_amount is not None else None,
+                maximum_amount=str(consequence.maximum_amount) if consequence.maximum_amount is not None else None,
+                currency=OntologyCurrency(consequence.currency_code) if consequence.currency_code else None,
+                point_value=consequence.point_value,
+                consequence_label_vi=consequence.consequence_label_vi,
+                minimum_duration_months=consequence.minimum_duration_months,
+                maximum_duration_months=consequence.maximum_duration_months,
+                target_label_vi=consequence.target_label_vi,
+                responsible_role_label_vi=consequence.responsible_role_label_vi,
+            )
+            for consequence in record.consequences
+        ],
+        valid_from=record.valid_from.isoformat() if record.valid_from else None,
+        valid_to=record.valid_to.isoformat() if record.valid_to else None,
+        document_number=record.document_number,
+        provision_path=record.provision_path,
     )
 
 

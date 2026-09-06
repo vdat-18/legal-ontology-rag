@@ -8,9 +8,45 @@ class CrossDocumentChangeWindowInput {
   candidate_id string
   earlier_document_number string
   later_document_number string
-  earlier_records OntologyPopulationSummary[]
-  later_records OntologyPopulationSummary[]
+  earlier_records LegalChangeRuleSummary[]
+  later_records LegalChangeRuleSummary[]
   change_evidence_sources OntologyEvidenceSource[]
+}
+
+class LegalChangeConditionSummary {
+  condition_id string
+  kind OntologyConditionKind
+  text_vi string
+  operand_ids string[]
+}
+
+class LegalChangeConsequenceSummary {
+  consequence_id string
+  kind OntologyConsequenceKind
+  minimum_amount string?
+  maximum_amount string?
+  currency OntologyCurrency?
+  point_value int?
+  consequence_label_vi string?
+  minimum_duration_months int?
+  maximum_duration_months int?
+  target_label_vi string?
+  responsible_role_label_vi string?
+}
+
+class LegalChangeRuleSummary {
+  population_id string
+  conduct_label_vi string
+  subject_kind OntologySubjectKind?
+  role_labels_vi string[]
+  vehicle_category_labels_vi string[]
+  condition_root_id string?
+  conditions LegalChangeConditionSummary[]
+  consequences LegalChangeConsequenceSummary[]
+  valid_from string?
+  valid_to string?
+  document_number string
+  provision_path string
 }
 
 class LegalChangeProposalEntry {
@@ -49,6 +85,12 @@ function ProposeCrossDocumentLegalChanges(windows: CrossDocumentChangeWindowInpu
     - Chỉ đề xuất khi quy định sửa đổi, thay thế hoặc bãi bỏ trực tiếp xác định
       target, loại thay đổi và ngày hiệu lực của rule xử phạt. Văn bản sau có hành
       vi hay mức phạt tương tự không tự tạo LegalChange.
+    - Đọc toàn bộ earlier_records và later_records trong window. Chọn đúng rule
+      được change_evidence_sources chỉ tới; record xuất hiện trong window chỉ là
+      ứng viên, không phải bằng chứng rằng có thay đổi.
+    - later_records chỉ gồm rule có provenance từ chính nhóm source chunks đang
+      đọc. Danh sách rỗng là hợp lệ đối với bãi bỏ hoặc source không tạo rule mới.
+      Không yêu cầu ghép một later rule khi source chỉ chứng minh bãi bỏ.
     - Không suy ra từ similarity, chênh lệch mức phạt, thứ tự văn bản, metadata
       hoặc valid_to null.
     - earlier ID thuộc earlier_records; later ID nếu có thuộc later_records; mỗi ID

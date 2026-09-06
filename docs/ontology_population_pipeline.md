@@ -140,7 +140,11 @@ cục bộ lẫn conflict component đã hoàn thành.
 ## 4. Legal change giữa các văn bản
 
 Corpus manifest sắp xếp các văn bản theo thứ tự cần so sánh. Candidate builder tạo bounded cross-document windows mà
-không chấm điểm similarity. LLM đề xuất `Amendment`, `Replacement` hoặc `RepealOrSupersession` chỉ khi nguồn nêu trực tiếp.
+không chấm điểm similarity. Later records chỉ đi cùng nhóm source chunks đã sinh ra chúng, thay vì bị nhân với mọi
+source chunk của văn bản sau. Rule summaries giữ đủ semantics nhưng không lặp evidence vì authoritative change evidence
+đã được cung cấp riêng. Mỗi document có thể khai báo `comparison_document_ids`; danh sách rỗng giữ văn bản độc lập trong
+canonical output nhưng không tạo candidate, còn khi bỏ field này thì vẫn so với mọi văn bản đứng trước để tương thích.
+LLM đề xuất `Amendment`, `Replacement` hoặc `RepealOrSupersession` chỉ khi nguồn nêu trực tiếp.
 Finalizer ràng buộc rule IDs vào corpus và cập nhật validity của các rule version mà không đánh giá lại nội dung thay đổi.
 
 ```powershell

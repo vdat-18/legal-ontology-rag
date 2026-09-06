@@ -87,11 +87,11 @@ def _propose(corpus: ChangeCorpus, client: _ChangeClient) -> tuple:
     return propose_legal_changes(candidates.windows, corpus, client, settings, run_id="change-run")
 
 
-def test_proposal_preserves_complete_rules_and_binds_exact_change_evidence(
+def test_proposal_preserves_rule_semantics_and_binds_exact_change_evidence(
     change_corpus: ChangeCorpus,
     change_evidence_text: str,
 ) -> None:
-    """The LLM receives both rule versions and accepted output is rebound to authoritative text."""
+    """The LLM receives compact rule semantics and output is rebound to authoritative text."""
     client = _ChangeClient(change_evidence_text)
     first = _propose(change_corpus, client)
     second = _propose(change_corpus, client)
@@ -101,6 +101,8 @@ def test_proposal_preserves_complete_rules_and_binds_exact_change_evidence(
     assert first[0].evidence[0].exact_text == change_evidence_text
     assert client.inputs[0].earlier_records[0].consequences[0].minimum_amount == "3000000"
     assert client.inputs[0].later_records[0].consequences[0].maximum_amount == "6000000"
+    assert "evidence" not in client.inputs[0].earlier_records[0].model_dump()
+    assert "evidence" not in client.inputs[0].earlier_records[0].consequences[0].model_dump()
     assert change_evidence_text in {item.text for item in client.inputs[0].change_evidence_sources}
 
 

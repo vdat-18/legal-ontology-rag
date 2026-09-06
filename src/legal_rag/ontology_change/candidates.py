@@ -1,4 +1,4 @@
-"""Build exhaustive bounded windows for downstream legal-change confirmation."""
+"""Build bounded provenance-aligned windows for legal-change confirmation."""
 
 from __future__ import annotations
 
@@ -23,10 +23,21 @@ def build_change_candidates(corpus: ChangeCorpus, settings: ChangeResolutionSett
         )
         later_records = _ordered_records(later_document.records, later_document.chunks)
         source_batches = _batches(later_chunks, settings.max_source_chunks_per_window)
-        later_batches = _batches(later_records, settings.max_later_records_per_window) or ((),)
-        for earlier_document in corpus.documents[:later_index]:
+        earlier_documents = corpus.documents[:later_index]
+        if later_document.comparison_document_ids is not None:
+            comparison_ids = set(later_document.comparison_document_ids)
+            earlier_documents = tuple(
+                document for document in earlier_documents if document.document_id in comparison_ids
+            )
+        for earlier_document in earlier_documents:
             earlier_records = _ordered_records(earlier_document.records, earlier_document.chunks)
             for source_batch in source_batches:
+                source_chunk_ids = tuple(chunk.chunk_id for chunk in source_batch)
+                source_chunk_id_set = set(source_chunk_ids)
+                source_records = tuple(
+                    record for record in later_records if record.source_chunk_id in source_chunk_id_set
+                )
+                later_batches = _batches(source_records, settings.max_later_records_per_window) or ((),)
                 for earlier_batch in _batches(earlier_records, settings.max_earlier_records_per_window):
                     for later_batch in later_batches:
                         windows.append(
@@ -35,7 +46,7 @@ def build_change_candidates(corpus: ChangeCorpus, settings: ChangeResolutionSett
                                 later_document.document_id,
                                 earlier_batch,
                                 later_batch,
-                                tuple(chunk.chunk_id for chunk in source_batch),
+                                source_chunk_ids,
                             )
                         )
                         if len(windows) > settings.max_total_windows:
@@ -50,11 +61,13 @@ def build_change_candidates(corpus: ChangeCorpus, settings: ChangeResolutionSett
                 "earlier_records": settings.max_earlier_records_per_window,
                 "later_records": settings.max_later_records_per_window,
             },
+            "later_record_scope": "change-source-batch",
             "documents": [
                 {
                     "document_id": document.document_id,
                     "order_index": document.order_index,
                     "document_number": document.metadata.document_number,
+                    "comparison_document_ids": document.comparison_document_ids,
                     "chunks": sorted(chunk.chunk_id for chunk in document.chunks),
                     "records": sorted(record.population_id for record in document.records),
                 }

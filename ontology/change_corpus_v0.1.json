@@ -1,0 +1,31 @@
+{
+  "schema_version": "0.1.0",
+  "documents": [
+    {
+      "document_id": "168_2024_ND-CP_619502",
+      "order_index": 0,
+      "comparison_document_ids": [],
+      "chunks_path": "../data/processed/groundtruth/168_2024_ND-CP_619502.chunks.jsonl",
+      "metadata_path": "../data/processed/groundtruth/168_2024_ND-CP_619502.document_metadata.jsonl",
+      "canonical_records_path": "../data/ontology/canonical/168_2024_ND-CP_619502.step3-v0.3.jsonl"
+    },
+    {
+      "document_id": "336_2025_ND-CP_670893",
+      "order_index": 1,
+      "comparison_document_ids": [],
+      "chunks_path": "../data/processed/groundtruth/336_2025_ND-CP_670893.chunks.jsonl",
+      "metadata_path": "../data/processed/groundtruth/336_2025_ND-CP_670893.document_metadata.jsonl",
+      "canonical_records_path": "../data/ontology/canonical/336_2025_ND-CP_670893.step3-v0.1.jsonl"
+    },
+    {
+      "document_id": "238_2026_ND-CP_712521",
+      "order_index": 2,
+      "comparison_document_ids": [
+        "168_2024_ND-CP_619502"
+      ],
+      "chunks_path": "../data/processed/groundtruth/238_2026_ND-CP_712521.chunks.jsonl",
+      "metadata_path": "../data/processed/groundtruth/238_2026_ND-CP_712521.document_metadata.jsonl",
+      "canonical_records_path": "../data/ontology/canonical/238_2026_ND-CP_712521.step3-v0.1.jsonl"
+    }
+  ]
+}

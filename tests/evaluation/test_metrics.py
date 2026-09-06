@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from legal_rag.evaluation.metrics import EvaluationSample, evaluate_samples, load_jsonl_samples
 
 

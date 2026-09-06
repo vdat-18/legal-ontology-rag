@@ -25,6 +25,7 @@ class ChangeCorpusDocument:
     chunks: tuple[Chunk, ...]
     metadata: DocumentMetadataRecord
     records: tuple[OntologyPopulationRecord, ...]
+    comparison_document_ids: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +75,7 @@ def read_change_corpus_manifest(path: Path) -> ChangeCorpus:
     if len({document.metadata.document_number for document in documents}) != len(documents):
         msg = "Change corpus document numbers must be unique"
         raise ValueError(msg)
+    _validate_comparison_documents(documents)
     return ChangeCorpus(documents=documents)
 
 
@@ -95,4 +97,27 @@ def _load_document(manifest_directory: Path, payload: dict[str, object]) -> Chan
         chunks=chunks,
         metadata=metadata,
         records=records,
+        comparison_document_ids=(
+            tuple(str(item) for item in payload["comparison_document_ids"])
+            if "comparison_document_ids" in payload
+            else None
+        ),
     )
+
+
+def _validate_comparison_documents(documents: tuple[ChangeCorpusDocument, ...]) -> None:
+    """Require explicit comparison scopes to reference only earlier manifest documents."""
+    order_by_id = {document.document_id: document.order_index for document in documents}
+    for document in documents:
+        if document.comparison_document_ids is None:
+            continue
+        if len(set(document.comparison_document_ids)) != len(document.comparison_document_ids):
+            msg = "Change corpus comparison document identifiers must be unique"
+            raise ValueError(msg)
+        for comparison_id in document.comparison_document_ids:
+            if comparison_id not in order_by_id:
+                msg = "Change corpus comparison document must exist in the manifest"
+                raise ValueError(msg)
+            if order_by_id[comparison_id] >= document.order_index:
+                msg = "Change corpus comparisons must reference an earlier document"
+                raise ValueError(msg)
