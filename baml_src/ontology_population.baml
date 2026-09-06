@@ -137,23 +137,25 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
 
     Mục đích bước 1/6: danh mục đóng conduct.
 
-    - Cổng bắt buộc: chỉ trực tiếp quy định hoặc sửa/thay một điều khoản xử
-      phạt hành chính về giao thông đường bộ: cảnh cáo, tiền phạt, trừ điểm, bổ
-      sung, khắc phục hoặc dẫn chiếu mức phạt.
+    - Cổng bắt buộc: (a) gắn conduct với cảnh cáo, tiền phạt, trừ điểm, bổ sung,
+      khắc phục/dẫn chiếu mức phạt; hoặc (b) sửa/thay Khoản/Điểm xác định bằng nội
+      dung trực tiếp liệt kê conduct vi phạm giao thông. (b) không cần lặp hậu quả
+      của điều khoản đích.
     - Loại kỷ luật, hình sự/dân sự, cưỡng chế/nghĩa vụ thi hành và thủ tục chung
       nhiều lĩnh vực. "Xử lý theo quy định của pháp luật" không đủ căn cứ.
     - Loại nghĩa vụ đúng, quyền/nghĩa vụ chung, điều cấm phạt nơi khác và ví dụ thủ
       tục/thẩm quyền. Không tự đảo nghĩa vụ tích cực thành vi phạm.
-    - Mỗi conduct chỉ có một predicate vi phạm tối thiểu. Nếu từng động từ phối hợp
-      riêng nó đã đủ là hành vi bị xử phạt, trả một conduct/nhánh dù chung chủ thể,
-      đối tượng hay hậu quả; không gộp để giảm số lượng.
-    - Nhánh rút gọn chỉ khôi phục thành phần dùng chung. Nhãn phải bắt đầu từ
-      predicate của chính nhánh; không mang predicate nhánh khác
-      hoặc tự thêm liên từ. Chỉ giữ chung khi các predicate phải kết hợp mới vi phạm.
-    - Không tách các tham số, đối tượng, phương thức hoặc ngưỡng thay thế của cùng
-      một predicate. "Và", "hoặc", dấu câu chỉ là tín hiệu; quyết định theo nghĩa
-      pháp lý, không theo dấu câu. Dùng cùng độ chi tiết cho cấu trúc tương đương,
-      không gộp các hành vi thay thế độc lập.
+    - Audit phân rã bắt buộc, không xuất audit: xác định mọi động từ đầu; mỗi hành
+      động/không hành động tự đủ bị phạt là một conduct lá.
+    - Động từ đầu độc lập vẫn là lá riêng dù sau dấu câu/liên từ hoặc chung chủ thể,
+      đối tượng. `P X hoặc Q Y` thành hai lá nếu P, Q tự đủ vi phạm; `P bị A, Q, R`
+      thành `P bị A`, `Q`, `R` khi Q, R là động từ đầu.
+    - Cùng động từ đầu, chỉ khác công cụ/thuộc tính/phương thức/ngưỡng thì một lá:
+      `P bằng A/B/C`. Chỉ gộp động từ đầu khác nhau nếu chúng phải cùng xảy ra.
+    - Nhánh rút gọn đã có động từ đầu thì bắt đầu nhãn tại đó; chỉ khôi phục bổ ngữ
+      dùng chung, không mang động từ nhánh khác. Role/loại xe để bước 2 bind. Quyết
+      định theo nghĩa pháp lý, không theo dấu câu; dùng cùng độ chi tiết cho cấu
+      trúc tương đương.
     - Loại định nghĩa, nguyên tắc và danh sách locator thuần túy. Sửa/bãi bỏ hoặc
       dẫn chiếu phải xác định conduct và mức/điều khoản xử phạt áp dụng; locator
       hoặc cụm đối tượng không đủ.
@@ -162,23 +164,22 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
     - Với văn bản sửa đổi, provision_path là điều khoản được sửa/thay; Điều sửa đổi
       chỉ là provenance. Theo `Chương > Mục > Điều > Khoản > Điểm`; không đoán/lặp
       loại locator. Locator context chỉ khôi phục Khoản/Điểm, không cấp evidence.
-    - Loại mục không đạt; trả một result/target_chunk_id.
+    - Loại mục không đạt; trả một result/target.
 
     {{ _.role("user") }}
 
-    Targets:
     {% for item in items %}
     === target_chunk_id={{ item.target_chunk_id }} ===
-    Structural context (không phải source evidence):
+    Cấu trúc:
     {{ item.structural_context }}
-    Locator context (không phải evidence):
+    Locator context:
     {{ item.locator_context }}
-    Target evidence sources:
+    Evidence:
     {% for evidence in item.evidence_sources %}
     [{{ evidence.evidence_id }}] chunk_id={{ evidence.chunk_id }}
     {{ evidence.text }}
     {% endfor %}
-    === end target_chunk_id={{ item.target_chunk_id }} ===
+    === end ===
     {% endfor %}
 
     {{ ctx.output_format }}

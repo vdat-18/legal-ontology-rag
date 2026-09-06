@@ -1,0 +1,77 @@
+{
+  "accepted_chunk_count": 5,
+  "artifacts": [
+    {
+      "artifact_type": "chunks",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\161_2024_ND-CP_623658.chunks.jsonl",
+      "sha256": "dd7f4dd2e3c05cbe64571027910e1779a41adcb6fc37e9d627078adbd91c463e",
+      "size_bytes": 4423985
+    },
+    {
+      "artifact_type": "screening",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\161_2024_ND-CP_623658.chunk_screening.jsonl",
+      "sha256": "c8eeff18f1a74f3436042a170f32b4d59be728c4a0dc6b604792a06a0ee8c18a",
+      "size_bytes": 337573
+    },
+    {
+      "artifact_type": "metadata",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\161_2024_ND-CP_623658.document_metadata.jsonl",
+      "sha256": "8d6fbd7a60a22da13a02ed0533b55fce768fdc897a356d1d2fe81dcb18079421",
+      "size_bytes": 105
+    },
+    {
+      "artifact_type": "population_contract",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\ontology\\population_contract.yaml",
+      "sha256": "4ce0599f1969b433db258e54cbe0ea67297ee5fc952a08ca8aae22f321684834",
+      "size_bytes": 378
+    }
+  ],
+  "checked_at": "2026-09-06T04:16:30.669471+00:00",
+  "checks": [
+    {
+      "check_id": "PF-CHUNKS-001",
+      "status": "passed",
+      "summary": "Loaded 748 unique chunks."
+    },
+    {
+      "check_id": "PF-DOCUMENT-001",
+      "status": "passed",
+      "summary": "Chunks belong to one root legal document."
+    },
+    {
+      "check_id": "PF-ADJACENCY-001",
+      "status": "passed",
+      "summary": "Neighbor links are consistent across 2 scopes."
+    },
+    {
+      "check_id": "PF-SCREENING-001",
+      "status": "passed",
+      "summary": "Screening covers all 748 chunks exactly once."
+    },
+    {
+      "check_id": "PF-TARGETS-001",
+      "status": "passed",
+      "summary": "Selected 5 of 5 accepted chunks for this run."
+    },
+    {
+      "check_id": "PF-METADATA-001",
+      "status": "passed",
+      "summary": "Document metadata has a validity baseline from 2025-01-01."
+    }
+  ],
+  "chunk_count": 748,
+  "document_number": "161/2024/NĐ-CP",
+  "estimated_llm_batches": 5,
+  "ontology_semantic_sha256": "a0496dc220b2809cf1b533fd62845356a5a43edd66d9c6388dce903c60c97460",
+  "overall_status": "ready",
+  "pilot_run_id": "1778af010c3dd87aef37f0f842d0d7c1221514d9152a1cd0334870a0429317d6",
+  "schema_version": "0.2.0",
+  "screening_count": 748,
+  "selected_target_ids": [
+    "73936509d723e93fd784f206ecb88a3dd2ad930e0478ff540d9855bafa80a0c5",
+    "96737d2029bb4b0d8faaa2dda91484d205e1e68bf7a015641c8d244f711704a8",
+    "0165d7e98af45550ec9c912431264c2f66dd5f4bbc3ad49708ecb33ffacdc440",
+    "f8eb6613cd239d03113b39a988295ae6b94861e1f3b2b1abfc9bfb3a786ad80c",
+    "53d8a943bc7123c2ef351e8992215dd498cb8e998db341c1e358ea9b1f1af73d"
+  ]
+}

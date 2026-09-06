@@ -1,0 +1,83 @@
+{
+  "accepted_chunk_count": 11,
+  "artifacts": [
+    {
+      "artifact_type": "chunks",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\39_2024_TT-BGTVT_m_633952.chunks.jsonl",
+      "sha256": "88a3bb5801be222fc37c180f8b75cda8a33863099adf13fdc13b95024291970d",
+      "size_bytes": 544025
+    },
+    {
+      "artifact_type": "screening",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\39_2024_TT-BGTVT_m_633952.chunk_screening.jsonl",
+      "sha256": "94ecf2809b64ce37d21c34000034cda94cd5eddfdeb31b6962452b91e1e0762d",
+      "size_bytes": 71608
+    },
+    {
+      "artifact_type": "metadata",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\39_2024_TT-BGTVT_m_633952.document_metadata.jsonl",
+      "sha256": "bdc48702fb357d70c62a9963088833c558d1971ea7d12c009bbb4ef1266092b6",
+      "size_bytes": 106
+    },
+    {
+      "artifact_type": "population_contract",
+      "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\ontology\\population_contract.yaml",
+      "sha256": "4ce0599f1969b433db258e54cbe0ea67297ee5fc952a08ca8aae22f321684834",
+      "size_bytes": 378
+    }
+  ],
+  "checked_at": "2026-09-06T04:16:19.605602+00:00",
+  "checks": [
+    {
+      "check_id": "PF-CHUNKS-001",
+      "status": "passed",
+      "summary": "Loaded 159 unique chunks."
+    },
+    {
+      "check_id": "PF-DOCUMENT-001",
+      "status": "passed",
+      "summary": "Chunks belong to one root legal document."
+    },
+    {
+      "check_id": "PF-ADJACENCY-001",
+      "status": "passed",
+      "summary": "Neighbor links are consistent across 1 scopes."
+    },
+    {
+      "check_id": "PF-SCREENING-001",
+      "status": "passed",
+      "summary": "Screening covers all 159 chunks exactly once."
+    },
+    {
+      "check_id": "PF-TARGETS-001",
+      "status": "passed",
+      "summary": "Selected 11 of 11 accepted chunks for this run."
+    },
+    {
+      "check_id": "PF-METADATA-001",
+      "status": "passed",
+      "summary": "Document metadata has a validity baseline from 2025-01-01."
+    }
+  ],
+  "chunk_count": 159,
+  "document_number": "39/2024/TT-BGTVT",
+  "estimated_llm_batches": 11,
+  "ontology_semantic_sha256": "a0496dc220b2809cf1b533fd62845356a5a43edd66d9c6388dce903c60c97460",
+  "overall_status": "ready",
+  "pilot_run_id": "dfbd026bac977b17aad620772930bb02aeb0b2b002d3d05d15553cc050714411",
+  "schema_version": "0.2.0",
+  "screening_count": 159,
+  "selected_target_ids": [
+    "92a28854178fe26a494f1f32c3f8e392801fb23c7f27f04e8a65a89484204e1e",
+    "e12c58a6a601b488037c02bb932b89ebf322eb4497858fbf662fe864a013d0f8",
+    "786c99e7cca352364740432d830600fcca6af5a8f2d73e86312451368625ed6c",
+    "1e81d160da286f92ba8f753059dd7ca135b31e61d86255b040dc55b3a638387d",
+    "4f12c4e649b55a25cd73cae6328e44de45bfbef2e4a725721d1ff8fa2107fcc1",
+    "c8c837121038ae2b6eab63c43d3e3e477dd504bc27f5d76c612b1cd48dcf388c",
+    "ba1e3c59648cf46af9fc938b056c00fece686eeb913c54c3101ea58ed4407fe4",
+    "388b0c77681cd1d2138f647b373947060fd714f602ffc119bbdb504f3c79b7c5",
+    "e2029afb2771005fc7a5d35111cb8f80f34abea3c533c213403779e8788ca2eb",
+    "d2ac211c33510112889dbecd5ce1807989ddd74f04c834deb6d73e30d7b30021",
+    "81a8c446d9b782ab6e2db90fa89f98a2abf7f5103ec714ba4420e0c75563489a"
+  ]
+}
