@@ -302,6 +302,8 @@ def test_population_binding_prompt_audits_subject_variants_and_cumulative_conseq
         "mỗi clause phải được đánh dấu đã có rule",
         "Clause chưa xuất hiện ở bất kỳ sibling nào vẫn không được bỏ",
         "hậu quả kèm `nếu có` phải có rule điều kiện",
+        "không chỉ được giữ như phần mô tả",
+        "tách hậu quả có điều kiện sang rule riêng",
         "chạy lại cả audit clause và sibling",
     ):
         assert phrase in compact_prompt

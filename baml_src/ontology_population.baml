@@ -321,7 +321,10 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
       câu dẫn chung, evidence có thể gồm câu dẫn đó và chính clause consequence;
       không thêm các Điểm/câu sibling nằm giữa chúng.
     - Cụm `nếu có`, `nếu đã được cấp` hoặc tương đương không cho phép bỏ hậu quả;
-      tạo rule hậu quả với điều kiện có/đã được cấp đối tượng chịu tác động. Cụm
+      tạo rule hậu quả với điều kiện có/đã được cấp đối tượng chịu tác động. Điều
+      kiện này phải nằm trong cây conditions, không chỉ được giữ như phần mô tả
+      trong consequence_label_vi. Nếu rule còn hậu quả vô điều kiện, tách hậu quả
+      có điều kiện sang rule riêng cho cùng conduct và subject variant. Cụm
       `trừ trường hợp X` không xóa hậu quả chung; tạo điều kiện Not(X) cho rule đó.
       Nếu cùng conduct có một hậu quả khi X và hậu quả khác khi Not(X), phải giữ cả
       hai rule có điều kiện đối ứng. Không được bỏ âm bản hoặc dương bản.

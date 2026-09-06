@@ -255,13 +255,15 @@ def index_chunks(
     missing_chunks = [chunk for chunk in chunks if chunk.chunk_id not in existing_rows]
 
     total_inserted = 0
-    for batch_start in range(0, len(missing_chunks), settings.milvus_insert_batch_size):
+    total_batches = (len(missing_chunks) + settings.milvus_insert_batch_size - 1) // settings.milvus_insert_batch_size
+    for batch_index, batch_start in enumerate(range(0, len(missing_chunks), settings.milvus_insert_batch_size), 1):
         batch = missing_chunks[batch_start : batch_start + settings.milvus_insert_batch_size]
+        logger.info("Embedding batch {}/{} ({} chunks)...", batch_index, total_batches, len(batch))
         vectors = encoder.encode([item.embedding_text for item in batch])
         data = [_row(item, vectors[offset].tolist(), encoder) for offset, item in enumerate(batch)]
         milvus_client.insert(collection_name=settings.milvus_collection_name, data=data)
         total_inserted += len(data)
-        logger.debug("Inserted batch {}/{}", total_inserted, len(missing_chunks))
+        logger.info("Inserted {}/{} chunks (batch {}/{})", total_inserted, len(missing_chunks), batch_index, total_batches)
 
     if total_inserted and settings.milvus_flush_after_insert:
         milvus_client.flush(settings.milvus_collection_name)
