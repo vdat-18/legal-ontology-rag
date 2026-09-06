@@ -141,6 +141,16 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
     chủ thể, hành động, đối tượng và điều kiện nguồn; (3) phân rã thành conduct lá;
     (4) gắn locator. Không được bỏ một nhánh nguồn để làm label ngắn hoặc dễ tách.
 
+    - Cổng domain áp dụng trước coverage: chỉ lấy conduct xử phạt thuộc giao thông
+      đường bộ. Loại conduct thuộc đường sắt, hàng hải, hàng không hoặc lĩnh vực
+      khác, kể cả khi nằm trong văn bản/Điều sửa đổi đồng thời nhiều lĩnh vực.
+      Đánh giá từng conduct theo nội dung trực tiếp, không theo tên chung của văn
+      bản. Xác định domain sau khi khôi phục toàn bộ phần dùng chung của câu, nhất
+      là bổ ngữ cuối xác định loại phương tiện/lĩnh vực cho nhiều chủ thể hoặc
+      hành vi; không được xóa bổ ngữ ngoài domain để biến clause thành đường bộ.
+      Việc nhắc `cầu, đường`, tải trọng hoặc vận tải không đủ biến một quy định về
+      phương tiện đường sắt thành đường bộ. Target chỉ có nội dung ngoài domain
+      thì trả conducts rỗng.
     - Cổng bắt buộc: Target trực tiếp (a) gắn conduct với cảnh cáo, tiền phạt, trừ
       điểm, bổ sung, khắc phục/dẫn chiếu mức phạt; hoặc (b) sửa/thay điều khoản xác
       định bằng danh sách conduct vi phạm giao thông. (b) không cần lặp hậu quả.
@@ -169,6 +179,8 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
       (2) các bổ ngữ lựa chọn độc lập cùng một vị ngữ: `S V O1 hoặc O2` ->
       `S V O1`, `S V O2` nếu thay lần lượt O1/O2 đều tạo câu vi phạm tự đủ.
       `P không đúng A, không đúng B` cũng thành hai lá.
+      Label chỉ mô tả conduct; không nối hình thức xử phạt, biện pháp khắc phục hay
+      cụm hậu quả như `bị phạt`, `bị tước`, `bị buộc` vào conduct_label_vi.
     - Giữ chung danh sách dấu phẩy sau một lần xuất hiện của vị ngữ khi source không
       lặp vị ngữ và không dùng liên từ lựa chọn để tạo nhánh: `V tại A, B`,
       `làm thay đổi A, B`, `P bằng A/B/C` là một lá. Danh sách có thể gồm thành phần,
@@ -255,6 +267,14 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
 
     Mục đích bước 2/6: gắn phạm vi và hậu quả có source support vào conduct đã khóa.
 
+    Cổng hoàn thành: với từng conduct/subject variant, phải quét hết window và xử
+    lý mọi clause hậu quả dẫn chiếu đúng provision_path trước khi trả kết quả.
+    Output chỉ có tiền phạt trực tiếp trong khi window còn clause cùng locator về
+    trừ điểm, bổ sung, khắc phục hoặc dẫn chiếu là output chưa hoàn thành.
+    Trong một Điểm/Khoản hậu quả có nhiều câu, phải audit độc lập từng câu sau dấu
+    chấm và từng nhóm locator sau dấu chấm phẩy; câu đầu không đại diện cho các câu
+    sau. Mọi câu vẫn kế thừa loại hậu quả từ phần dẫn của Điểm/Khoản đó.
+
     - Giữ nguyên target conducts: trả ít nhất một rule cho từng target_conduct_id,
       giữ đúng conduct_label_vi và provision_path. Inventory rỗng thì rules rỗng;
       không bỏ, gộp hoặc tạo conduct.
@@ -262,12 +282,62 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
       nó bị chi phối; gần nhau hay giống chữ không đủ. Với từng clause hậu quả,
       đối chiếu toàn bộ danh sách locator rồi thu đủ tiền phạt, cảnh cáo, trừ điểm,
       bổ sung, khắc phục và dẫn chiếu áp dụng cộng dồn. Không dừng sau hậu quả đầu;
-      mỗi rule phải có hậu quả.
+      không bỏ hậu quả vì nó nằm xa conduct hoặc có thêm điều kiện. Nếu locator
+      khớp nhưng hậu quả chỉ áp dụng khi có điều kiện, vẫn gắn hậu quả và biểu diễn
+      điều kiện đó trong cây conditions. Trước khi trả kết quả, lập checklist nội
+      bộ cho từng provision_path và đối chiếu lại mọi clause hậu quả trong window.
+      Với mỗi nhóm conduct_id cùng provision_path, sau khi xác định các subject_kind
+      hợp lệ, lập ma trận từng conduct_id x từng subject_kind x từng clause hậu quả
+      có locator khớp: mặc định clause áp dụng cho mọi conduct và subject variant
+      trong nhóm; chỉ loại một ô khi chính source giới hạn nhánh đó bằng chủ thể,
+      đối tượng, hành động hoặc điều kiện không thể áp dụng. Không được gắn hậu quả
+      cho một conduct/subject rồi bỏ các conduct đồng cấp hoặc subject variant còn
+      lại chỉ vì chúng được tách từ cùng Điểm hoặc cùng câu phạt.
+      Khi clause dẫn chiếu cả Điểm/Khoản, khác biệt câu chữ giữa các conduct lá
+      trong Điểm/Khoản không tự tạo ngoại lệ. Clause có nhiều hậu quả cộng dồn phải
+      giữ đủ từng hậu quả. Mỗi rule phải có hậu quả.
+      Cổng cuối phải audit từng ô ma trận riêng: tạo chữ ký gồm loại hậu quả, đích,
+      khoảng giá trị và điều kiện cho từng conduct_id/subject_kind. Các ô cùng
+      provision_path phải có cùng tập chữ ký hậu quả phi tiền tệ khi clause không
+      giới hạn chủ thể hoặc conduct; khác số tiền và trừ điểm chỉ cho người trực
+      tiếp điều khiển là các khác biệt hợp lệ. Một ô đã đủ không chứng minh ô khác
+      đã đủ. Nếu thiếu chữ ký ở bất kỳ ô nào, phải bổ sung rule cho chính ô đó rồi
+      audit lại toàn bộ ma trận trước khi trả output.
+    - Một rule chỉ được chứa các hậu quả có cùng tập điều kiện áp dụng. Hậu quả vô
+      điều kiện phải ở rule có condition_root_id=null; hậu quả có các điều kiện
+      khác nhau phải tách thành các rule cho cùng target_conduct_id. Không được lấy
+      điều kiện của một clause để chi phối tiền phạt hoặc hậu quả từ clause khác.
+      Kiểm tra từng consequence trong rule đều được source áp dụng dưới chính cây
+      conditions của rule đó. Evidence của mỗi condition và consequence phải chứa
+      chính câu phát biểu điều kiện hoặc hậu quả ấy. Không dùng Điểm/câu liền kề,
+      dù cùng chunk hoặc cùng loại hậu quả, làm evidence thay cho clause thực tế;
+      nếu hai hậu quả ở hai clause thì mỗi hậu quả dẫn evidence của clause riêng.
+      Audit provenance cuối cùng cho từng evidence ref: đọc lại riêng text của ref
+      và hỏi text đó có tự phát biểu assertion đang dẫn hay không. Nếu không chứa
+      chính nội dung hoặc diễn đạt tương đương rõ ràng của condition/consequence,
+      ref đó sai và phải bỏ hoặc thay bằng ref của clause thực tế. Một ref đúng
+      khác trong cùng danh sách không hợp thức hóa ref sai.
+    - Cụm `nếu có`, `nếu đã được cấp` hoặc tương đương không cho phép bỏ hậu quả;
+      tạo rule hậu quả với điều kiện có/đã được cấp đối tượng chịu tác động. Cụm
+      `trừ trường hợp X` không xóa hậu quả chung; tạo điều kiện Not(X) cho rule đó.
+      Nếu cùng conduct có một hậu quả khi X và hậu quả khác khi Not(X), phải giữ cả
+      hai rule có điều kiện đối ứng. Không được bỏ âm bản hoặc dương bản.
+    - Tiền phạt có thể khác theo NaturalPerson/Organization, nhưng hậu quả bổ sung,
+      khắc phục và điều kiện không tự giới hạn theo subject_kind. Khi câu dẫn hoặc
+      clause hậu quả áp dụng cho cả cá nhân và tổ chức, phải nhân từng hậu quả đó
+      sang cả hai variant; hoàn thành NaturalPerson không thay thế Organization và
+      ngược lại. Chỉ giữ một phía khi source trực tiếp giới hạn chủ thể.
     - Xác định chủ thể từ câu phạt, tiêu đề Điều và structural context trước khi
       bind hậu quả. Vai trò chỉ một con người thực hiện được là NaturalPerson, dù
       không có từ "cá nhân"; vai trò chỉ một pháp nhân/tổ chức thực hiện được là
       Organization. Nếu tiêu đề xác định người điều khiển và loại xe, không để
       subject_kind null; giữ role và vehicle category tương ứng.
+      Xét tính khả thi riêng cho từng conduct lá, không sao chép máy móc mọi loại
+      chủ thể từ câu dẫn chung. Nhánh yêu cầu chính chủ thể trực tiếp điều khiển,
+      lái hoặc thực hiện hành động thể chất của con người chỉ có NaturalPerson;
+      Organization không được tạo variant đó. Câu dẫn có cả cá nhân và tổ chức vẫn
+      cho phép hai variant ở các nhánh mà cả hai thực sự có thể thực hiện, như giao
+      phương tiện hoặc để người khác điều khiển.
     - Khi một câu phạt nêu riêng mức/phạm vi cho cá nhân và tổ chức, mọi conduct
       thuộc câu đó phải có đủ hai variant: NaturalPerson chỉ nhận mức cá nhân,
       Organization chỉ nhận mức tổ chức. Không tạo một rule subject null, không
@@ -277,14 +347,30 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
       Chỉ null khi source thật sự không xác định loại chủ thể; không dùng
       target_label_vi thay subject. Tách thêm variant khi điều kiện/phạm vi khác nhau.
     - Phân loại pháp lý: Warning cho cảnh cáo; ReferencedPenalty cho dẫn chiếu
-      mức phạt (target_label_vi là đích dẫn chiếu); AdditionalSanction chỉ khi
-      source nêu hình thức xử phạt bổ sung. RemedialMeasure phải giữ đối tượng
-      được khôi phục/sửa chữa trong target_label_vi và vai trò thực hiện nếu có.
-      Điều kiện dùng cây AND/OR/NOT.
+      mức phạt (target_label_vi là đích dẫn chiếu); AdditionalSanction chỉ khi source
+      nêu hình thức xử phạt bổ sung và đặt hậu quả trong phạm vi đó; không phân loại
+      chỉ vì có từ `bị`, `tước`, `tịch thu` hoặc `thu hồi`. RemedialMeasure phải giữ
+      đối tượng được tác động trong target_label_vi cùng vai trò thực hiện nếu có;
+      dùng loại này cho biện pháp khắc phục/khôi phục/điều chỉnh/thu hồi hồ sơ, giấy
+      tờ sau vi phạm.
+      Điều kiện dùng cây AND/OR/NOT. Với văn bản sửa đổi định nghĩa/thay conduct
+      bên trong một Khoản xử phạt nhưng không lặp lại mức phạt, tạo
+      ReferencedPenalty tới chính Khoản/Điều được sửa cho mọi conduct lá tương ứng;
+      hậu quả bổ sung hoặc khắc phục không thay thế dẫn chiếu mức phạt nền. Không
+      tạo ReferencedPenalty này nếu window đã cho mức phạt trực tiếp hoặc source
+      xác định conduct không bị xử phạt. Khi clause khắc phục/tịch thu dẫn chiếu
+      locator rồi mô tả giấy tờ, phương tiện hoặc trạng thái cụ thể, đối chiếu nội
+      dung từng conduct: giữ clause cùng điều kiện cho mọi conduct có thể thỏa mô
+      tả đó, thay vì bỏ toàn bộ hoặc áp dụng cho nhánh không liên quan.
     - Chọn validity_mode theo temporal_overrides: DocumentDefault nếu không áp
       override (để hai ngày null); ExplicitInterval nếu provision có ngày riêng;
       Unresolved nếu căn cứ riêng chưa cho ngày (để hai ngày null). Đối chiếu đúng
       Điều/Khoản/Điểm, không lan sang provision khác hoặc suy từ kiến thức ngoài.
+    - Ngay trước khi trả output, so sánh các sibling cùng provision_path. Nếu một
+      conduct/subject variant chỉ có tiền phạt nhưng sibling có hậu quả phi tiền tệ
+      từ clause áp dụng chung và source không loại variant đó, output chưa hoàn
+      thành: sao chép đúng chữ ký clause sang variant thiếu, dùng cùng điều kiện và
+      evidence của clause thực tế. Lặp đến khi không còn sibling thiếu hậu quả.
     - Không tạo LegalChange, concept relation hay occurrence. Trả một result mỗi
       target_chunk_id sau khi xử lý mọi locked conduct.
 
