@@ -12,6 +12,7 @@ from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import (
     ExceptionDiscoveryWindowInput,
     ExceptionDiscoveryWindowResult,
+    ExceptionSourceContext,
     ExceptionTargetCandidateInput,
     ExceptionTargetResolutionWindowInput,
     ExceptionTargetResolutionWindowResult,
@@ -28,13 +29,11 @@ from legal_rag.ontology_exception.models import (
     LegalExceptionProposal,
 )
 from legal_rag.ontology_population.assembly_proposals import summarize_population_record
-from legal_rag.ontology_population.evidence import fragment_evidence_sources
-from legal_rag.ontology_population.extraction import bind_population_evidence
 from legal_rag.ontology_population.models import OntologyPopulationRecord, PopulationEvidence, population_identity
 from legal_rag.ontology_proposal_execution import execute_proposal_batches
 from legal_rag.settings import Settings
 
-ONTOLOGY_EXCEPTION_PROMPT_VERSION = "0.6.0"
+ONTOLOGY_EXCEPTION_PROMPT_VERSION = "0.11.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -213,15 +212,19 @@ def _build_batch_proposals(
     for candidate_id in requested_ids:
         source_document = documents_by_id[windows_by_id[candidate_id].source_document_id]
         proposals = tuple(
-            _proposal(
-                candidate_id,
-                proposal_index,
-                discovery,
-                source_document.metadata.document_number,
-                resolved_targets,
-                run_id,
-            )
+            proposal
             for proposal_index, discovery in enumerate(discoveries_by_id[candidate_id])
+            if (
+                proposal := _proposal(
+                    candidate_id,
+                    proposal_index,
+                    discovery,
+                    source_document.metadata.document_number,
+                    resolved_targets,
+                    run_id,
+                )
+            )
+            is not None
         )
         translated.append((candidate_id, proposals))
     return tuple(translated)
@@ -242,16 +245,23 @@ def _bind_discoveries(
         general_record = next(
             record for record in discovery_input.general_records if record.population_id == raw.general_population_id
         )
-        evidence_sources = _general_evidence_sources(discovery_input, general_record)
-        evidence = bind_population_evidence(raw.evidence, evidence_sources)
+        evidence_sources = _general_evidence_sources(general_record)
+        sources_by_id = {source.evidence_id: source for source in evidence_sources}
+        evidence = _bind_whole_evidence(raw.evidence_source_ids, sources_by_id)
         citations = []
         for citation in raw.citations:
-            bound = bind_population_evidence((citation.citation,), evidence_sources)[0]
+            source = sources_by_id.get(citation.source_evidence_id)
+            if source is None:
+                msg = "Exception citation evidence must belong to the selected general rule"
+                raise ValueError(msg)
+            if not citation.citation_text.strip():
+                msg = "Exception citation text must not be empty"
+                raise ValueError(msg)
             target_paths = tuple(dict.fromkeys(citation.target_provision_paths))
             citations.append(
                 _DiscoveredCitation(
-                    citation_text=bound.exact_text,
-                    source_chunk_id=bound.chunk_id,
+                    citation_text=citation.citation_text,
+                    source_chunk_id=source.chunk_id,
                     target_document_number=citation.target_document_number,
                     target_provision_paths=target_paths,
                     target_records=_records_at_locators(corpus, citation.target_document_number, target_paths),
@@ -270,24 +280,38 @@ def _bind_discoveries(
 
 
 def _general_evidence_sources(
-    window: ExceptionDiscoveryWindowInput,
     general_record: OntologyPopulationSummary,
 ) -> tuple[OntologyEvidenceSource, ...]:
     """Collect evidence supplied for one selected general rule."""
-    record_sources = _summary_evidence_sources(general_record)
-    allowed_chunk_ids = {general_record.source_chunk_id, *(source.chunk_id for source in record_sources)}
-    sources = [
-        *record_sources,
-        *(source for source in window.source_evidence_sources if source.chunk_id in allowed_chunk_ids),
-    ]
     sources_by_id: dict[str, OntologyEvidenceSource] = {}
-    for source in sources:
+    for source in _summary_evidence_sources(general_record):
         existing = sources_by_id.get(source.evidence_id)
         if existing is not None and (existing.chunk_id, existing.text) != (source.chunk_id, source.text):
             msg = f"Evidence source ID collision: {source.evidence_id}"
             raise ValueError(msg)
         sources_by_id[source.evidence_id] = source
     return tuple(sources_by_id.values())
+
+
+def _bind_whole_evidence(
+    evidence_source_ids: Sequence[str],
+    sources_by_id: Mapping[str, OntologyEvidenceSource],
+) -> tuple[PopulationEvidence, ...]:
+    """Bind complete canonical evidence sources without model-calculated offsets."""
+    if not evidence_source_ids:
+        msg = "A legal exception must select at least one evidence source"
+        raise ValueError(msg)
+    if len(evidence_source_ids) != len(set(evidence_source_ids)):
+        msg = "Exception evidence source IDs must be unique"
+        raise ValueError(msg)
+    unknown_ids = set(evidence_source_ids) - set(sources_by_id)
+    if unknown_ids:
+        msg = "Exception evidence must belong to the selected general rule"
+        raise ValueError(msg)
+    return tuple(
+        PopulationEvidence(chunk_id=sources_by_id[source_id].chunk_id, exact_text=sources_by_id[source_id].text)
+        for source_id in evidence_source_ids
+    )
 
 
 def _summary_evidence_sources(record: OntologyPopulationSummary) -> tuple[OntologyEvidenceSource, ...]:
@@ -364,7 +388,7 @@ def _proposal(
     source_document_number: str,
     resolved_targets: Mapping[tuple[str, int, int], tuple[str, ...]],
     run_id: str,
-) -> LegalExceptionProposal:
+) -> LegalExceptionProposal | None:
     """Build one stable final proposal from a bound discovery."""
     citations = tuple(
         ExceptionCitationResolution(
@@ -373,7 +397,10 @@ def _proposal(
             target_population_ids=resolved_targets.get((candidate_id, proposal_index, citation_index), ()),
         )
         for citation_index, citation in enumerate(discovery.citations)
+        if not citation.target_records or resolved_targets.get((candidate_id, proposal_index, citation_index), ())
     )
+    if discovery.citations and not citations:
+        return None
     proposal_id = population_identity(
         {
             "run_id": run_id,
@@ -443,19 +470,24 @@ def _discovery_input(
 ) -> ExceptionDiscoveryWindowInput:
     """Build one complete source-local discovery input without target-corpus records."""
     source_document = documents_by_id[window.source_document_id]
-    chunks_by_id = {chunk.chunk_id: chunk for chunk in source_document.chunks}
+    general_records = [
+        summarize_population_record(records_by_id[population_id]) for population_id in window.general_population_ids
+    ]
+    evidence_chunk_ids = {source.chunk_id for record in general_records for source in _summary_evidence_sources(record)}
     return ExceptionDiscoveryWindowInput(
         candidate_id=window.candidate_id,
         source_document_number=source_document.metadata.document_number,
+        comparison_document_numbers=[
+            documents_by_id[document_id].metadata.document_number
+            for document_id in (source_document.comparison_document_ids or ())
+        ],
         corpus_document_numbers=sorted({document.metadata.document_number for document in corpus.documents}),
-        general_records=[
-            summarize_population_record(records_by_id[population_id]) for population_id in window.general_population_ids
+        source_contexts=[
+            ExceptionSourceContext(chunk_id=chunk.chunk_id, text=chunk.text)
+            for chunk in source_document.chunks
+            if chunk.chunk_id in evidence_chunk_ids
         ],
-        source_evidence_sources=[
-            source
-            for chunk_id in window.source_chunk_ids
-            for source in fragment_evidence_sources(chunk_id, chunks_by_id[chunk_id].text)
-        ],
+        general_records=general_records,
     )
 
 

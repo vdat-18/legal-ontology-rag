@@ -23,7 +23,6 @@ from legal_rag.baml_client.types import (
     ExceptionTargetResolutionWindowInput,
     ExceptionTargetResolutionWindowResult,
     LegalExceptionDiscoveryEntry,
-    OntologyEvidenceReference,
 )
 from legal_rag.ontology_change.corpus import ChangeCorpus
 from legal_rag.ontology_change.writer import write_legal_change_events
@@ -56,24 +55,22 @@ class _CliExceptionClient:
         results = []
         for window in windows:
             source = next(
-                item for item in window.source_evidence_sources if item.text == "Trừ trường hợp quy định tại Điều 3."
+                item
+                for record in window.general_records
+                for item in record.evidence
+                if "Trừ trường hợp quy định tại Điều 3." in item.text
             )
-            citation_text = "Điều 3"
-            citation_start = source.text.index(citation_text)
             results.append(
                 ExceptionDiscoveryWindowResult(
                     candidate_id=window.candidate_id,
                     discoveries=[
                         LegalExceptionDiscoveryEntry(
                             general_population_id="general-population",
-                            evidence=[OntologyEvidenceReference(evidence_id=source.evidence_id)],
+                            evidence_source_ids=[source.evidence_id],
                             citations=[
                                 ExceptionCitationDiscoveryEntry(
-                                    citation=OntologyEvidenceReference(
-                                        evidence_id=source.evidence_id,
-                                        start_char=citation_start,
-                                        end_char=citation_start + len(citation_text),
-                                    ),
+                                    source_evidence_id=source.evidence_id,
+                                    citation_text="Điều 3",
                                     target_document_number="168/2024/NĐ-CP",
                                     target_provision_paths=["Điều 3"],
                                 )

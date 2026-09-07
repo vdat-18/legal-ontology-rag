@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0.0",
+  "conversation_length_weights": {
+    "3": 4.0,
+    "5": 7.0,
+    "7": 6.0,
+    "10": 3.0
+  },
+  "turn_flow_weights": {
+    "continuity": 50.0,
+    "switch": 25.0,
+    "return": 10.0,
+    "clarification": 8.0,
+    "underspecified": 7.0
+  },
+  "turn_context_dependency_weights": {
+    "anaphora": 50.0,
+    "ellipsis": 38.0
+  },
+  "turn_answerability_weights": {
+    "answerable": 0.85,
+    "partially_answerable": 0.05
+  }
+}
