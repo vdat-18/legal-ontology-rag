@@ -8,7 +8,6 @@ class ExceptionCitationDiscoveryEntry {
 
 class LegalExceptionDiscoveryEntry {
   general_population_id string @description(#"Một rule ID trong general_records."#)
-  exception_provision_path string @description(#"Đường dẫn đầy đủ nhất của quy định ngoại lệ."#)
   evidence OntologyEvidenceReference[] @description(#"Evidence trực tiếp nêu đầy đủ ngoại lệ."#)
   citations ExceptionCitationDiscoveryEntry[] @description(#"Các dẫn chiếu tạo nên phạm vi ngoại lệ."#)
   rationale_vi string @description(#"Lý do ngắn gọn cho quan hệ ngoại lệ."#)
@@ -68,17 +67,25 @@ function DiscoverLegalExceptions(windows: ExceptionDiscoveryWindowInput[]) -> Ex
     - Chỉ đề xuất khi nguồn trực tiếp loại trừ một trường hợp hoặc chỉ ra quy định
       chuyên biệt làm hẹp general rule. Citation đơn thuần, hậu quả cộng dồn và
       LegalChange không tự tạo ngoại lệ.
-    - General ID phải thuộc general_records. Evidence và citation chỉ lấy từ
-      source_evidence_sources; không diễn giải lại nguyên văn evidence.
+    - general_population_id là rule bị câu ngoại lệ trực tiếp làm hẹp, không phải
+      rule được dẫn chiếu. Evidence phải trực tiếp thuộc chính general rule đó;
+      không đảo chiều quan hệ vì một rule khác nhắc tới general rule.
+    - Evidence và citation chỉ chọn từ evidence của general record tương ứng hoặc
+      source_evidence_sources cùng nguồn với record đó; không diễn giải lại.
     - Với dẫn chiếu nội bộ, target_document_number là source_document_number.
       Với dẫn chiếu sang văn bản khác, chuẩn hóa theo corpus_document_numbers nếu
       nguồn đủ căn cứ; không dùng kiến thức ngoài.
     - Chuyển dẫn chiếu tương đối như `khoản 2 Điều này` thành locator tuyệt đối từ
       source/general context. Mỗi target_provision_path chỉ gồm locator cần thiết
       theo thứ tự `Điều > Khoản > Điểm`, không chứa Chương/Mục.
+    - citation phải là span nguyên văn ngắn nhất chứa riêng cụm dẫn chiếu, ví dụ
+      `điểm d khoản 8 Điều 21`, không lấy cả câu hành vi hoặc câu xử phạt.
+    - Mỗi câu ngoại lệ của một general rule chỉ tạo một discovery. Không tách thành
+      nhiều discovery theo từng locator; gom mọi locator trong cùng citation vào
+      target_provision_paths theo đúng thứ tự xuất hiện.
     - Không chọn target rule ID ở bước này. Thiếu căn cứ thì không đề xuất hoặc để
-      danh sách locator rỗng; không suy đoán.
-    - Trả đúng một result cho mỗi candidate_id và không lặp exception.
+      danh sách locator rỗng; không suy đoán. Trả đúng một result cho mỗi
+      candidate_id và không lặp exception.
 
     {{ _.role("user") }}
 

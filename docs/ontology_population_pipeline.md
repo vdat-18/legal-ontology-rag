@@ -169,6 +169,10 @@ similarity để quyết định ngữ nghĩa. Finalizer gộp các fragment cù
 Candidate schema `0.2.0` không còn nhúng toàn bộ target IDs. Artifact candidate cũ phải được tạo lại bằng candidate
 builder hoặc command tích hợp trước khi resume Step 5.
 
+Khi review phát hiện candidate sai, truyền selection JSON dạng
+`{"schema_version":"0.1.0","candidate_ids":[...]}` qua `--rerun-candidate-ids-path`. Selective rerun yêu cầu progress
+cũ đã đủ toàn bộ candidate, chỉ thay proposals của tập được chọn và giữ nguyên các kết quả còn lại.
+
 ```powershell
 uv run --extra dev legal-resolve-ontology-exceptions `
   <corpus_manifest.json> <canonical_population.jsonl> <legal_change_events.jsonl> `

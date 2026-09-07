@@ -23,7 +23,7 @@ from legal_rag.ontology_change.corpus import ChangeCorpus
 from legal_rag.ontology_exception.candidates import build_exception_candidates
 from legal_rag.ontology_exception.config import ExceptionResolutionSettings
 from legal_rag.ontology_exception.models import LegalExceptionProposal
-from legal_rag.ontology_exception.proposals import propose_legal_exceptions
+from legal_rag.ontology_exception.proposals import build_exception_proposal_rerun_id, propose_legal_exceptions
 from legal_rag.ontology_population.models import PopulationEvidence
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -93,7 +93,6 @@ class _ExceptionClient:
                     discoveries=[
                         LegalExceptionDiscoveryEntry(
                             general_population_id=self._general_id,
-                            exception_provision_path="Điều 6 > Khoản 1 > Điểm a",
                             evidence=[exception_reference],
                             citations=[
                                 ExceptionCitationDiscoveryEntry(
@@ -154,6 +153,7 @@ def test_proposal_discovers_locally_then_resolves_only_structural_targets(
     assert first[0].evidence[0].exact_text == exception_text
     assert first[0].citations[0].citation_text == "Điều 3"
     assert first[0].citations[0].target_population_ids == ("target-population",)
+    assert first[0].exception_provision_path == "Điều 6 khoản 1 điểm a"
     assert not hasattr(client.discovery_inputs[0], "target_records")
 
 
@@ -189,6 +189,18 @@ def test_proposal_rejects_ids_outside_discovery_or_structural_lookup(
         )
 
 
+def test_proposal_rejects_evidence_owned_by_another_general_rule(
+    exception_corpus: ChangeCorpus,
+    exception_text: str,
+) -> None:
+    """A nearby rule cannot borrow exception evidence from another general rule."""
+    with pytest.raises(LlmTaskExhaustedError):
+        _propose(
+            exception_corpus,
+            _ExceptionClient(exception_text, general_id="target-population"),
+        )
+
+
 @pytest.mark.parametrize(
     ("exception_value", "citation_value"),
     [("Nội dung ngoại lệ do mô hình diễn giải.", "Điều 3"), ("Trừ trường hợp quy định tại Điều 3.", "Điều ba")],
@@ -217,6 +229,25 @@ def test_unresolved_locator_preserves_citation_without_hallucinated_target(
 
     assert proposals[0].citations[0].target_population_ids == ()
     assert client.resolution_inputs == ()
+
+
+def test_structural_locator_lookup_ignores_boundary_punctuation(
+    exception_corpus: ChangeCorpus,
+    exception_text: str,
+) -> None:
+    """Equivalent locator components match despite source punctuation around a point label."""
+    document = exception_corpus.documents[0]
+    general, target = document.records
+    corpus = ChangeCorpus(
+        documents=(replace(document, records=(general, replace(target, provision_path="Điều 3 > Khoản 8 > Điểm d)"))),)
+    )
+
+    proposals = _propose(
+        corpus,
+        _ExceptionClient(exception_text, target_path="Điều 3 > Khoản 8 > Điểm d"),
+    )
+
+    assert proposals[0].citations[0].target_population_ids == ("target-population",)
 
 
 def test_general_record_evidence_outside_source_window_remains_bindable(
@@ -260,3 +291,10 @@ def test_empty_exception_result_is_valid_and_checkpointed(
 
     assert proposals == ()
     assert processed == [(candidates.windows[0].candidate_id, ())]
+
+
+def test_exception_rerun_id_is_stable_under_candidate_order() -> None:
+    """A selective replay identity depends on the selected set, not JSON ordering."""
+    assert build_exception_proposal_rerun_id("base-run", ("candidate-b", "candidate-a")) == (
+        build_exception_proposal_rerun_id("base-run", ("candidate-a", "candidate-b"))
+    )

@@ -34,7 +34,7 @@ from legal_rag.ontology_population.models import OntologyPopulationRecord, Popul
 from legal_rag.ontology_proposal_execution import execute_proposal_batches
 from legal_rag.settings import Settings
 
-ONTOLOGY_EXCEPTION_PROMPT_VERSION = "0.5.0"
+ONTOLOGY_EXCEPTION_PROMPT_VERSION = "0.6.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,6 +118,17 @@ def build_exception_proposal_run_id(
     )
 
 
+def build_exception_proposal_rerun_id(base_run_id: str, candidate_ids: Sequence[str]) -> str:
+    """Fingerprint one explicit candidate replay without invalidating retained proposals."""
+    return population_identity(
+        {
+            "stage": "exception-proposal-selective-rerun",
+            "base_run_id": base_run_id,
+            "candidate_ids": sorted(candidate_ids),
+        }
+    )
+
+
 def propose_legal_exceptions(
     windows: Sequence[ExceptionCandidateWindow],
     corpus: ChangeCorpus,
@@ -185,7 +196,7 @@ def _build_batch_proposals(
     discoveries_by_id = {
         candidate_id: _bind_discoveries(
             results_by_id[candidate_id].discoveries,
-            _available_evidence_sources(inputs_by_id[candidate_id]),
+            inputs_by_id[candidate_id],
             windows_by_id[candidate_id],
             corpus,
         )
@@ -218,7 +229,7 @@ def _build_batch_proposals(
 
 def _bind_discoveries(
     raw_discoveries: Sequence[LegalExceptionDiscoveryEntry],
-    evidence_sources: Sequence[OntologyEvidenceSource],
+    discovery_input: ExceptionDiscoveryWindowInput,
     window: ExceptionCandidateWindow,
     corpus: ChangeCorpus,
 ) -> tuple[_DiscoveredException, ...]:
@@ -228,6 +239,10 @@ def _bind_discoveries(
         if raw.general_population_id not in window.general_population_ids:
             msg = "Exception general rule must belong to the discovery window"
             raise ValueError(msg)
+        general_record = next(
+            record for record in discovery_input.general_records if record.population_id == raw.general_population_id
+        )
+        evidence_sources = _general_evidence_sources(discovery_input, general_record)
         evidence = bind_population_evidence(raw.evidence, evidence_sources)
         citations = []
         for citation in raw.citations:
@@ -245,7 +260,7 @@ def _bind_discoveries(
         discoveries.append(
             _DiscoveredException(
                 general_population_id=raw.general_population_id,
-                exception_provision_path=raw.exception_provision_path,
+                exception_provision_path=general_record.provision_path,
                 evidence=evidence,
                 citations=tuple(citations),
                 rationale_vi=raw.rationale_vi,
@@ -254,11 +269,17 @@ def _bind_discoveries(
     return tuple(discoveries)
 
 
-def _available_evidence_sources(window: ExceptionDiscoveryWindowInput) -> tuple[OntologyEvidenceSource, ...]:
-    """Collect every evidence source visibly supplied in one discovery window."""
-    sources = list(window.source_evidence_sources)
-    for record in window.general_records:
-        sources.extend(_summary_evidence_sources(record))
+def _general_evidence_sources(
+    window: ExceptionDiscoveryWindowInput,
+    general_record: OntologyPopulationSummary,
+) -> tuple[OntologyEvidenceSource, ...]:
+    """Collect evidence supplied for one selected general rule."""
+    record_sources = _summary_evidence_sources(general_record)
+    allowed_chunk_ids = {general_record.source_chunk_id, *(source.chunk_id for source in record_sources)}
+    sources = [
+        *record_sources,
+        *(source for source in window.source_evidence_sources if source.chunk_id in allowed_chunk_ids),
+    ]
     sources_by_id: dict[str, OntologyEvidenceSource] = {}
     for source in sources:
         existing = sources_by_id.get(source.evidence_id)
@@ -401,7 +422,12 @@ def _contains_locator(canonical: tuple[str, ...], target: tuple[str, ...]) -> bo
 
 def _locator_parts(value: str) -> tuple[str, ...]:
     """Normalize explicit hierarchy separators without interpreting legal text."""
-    return tuple(_normalized_text(part) for part in value.split(">") if part.strip())
+    return tuple(_normalized_locator_part(part) for part in value.split(">") if part.strip())
+
+
+def _normalized_locator_part(value: str) -> str:
+    """Normalize punctuation around one explicit locator component."""
+    return _normalized_text(value).strip("()[]{}.,;:")
 
 
 def _normalized_text(value: str) -> str:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -28,6 +29,7 @@ from legal_rag.ontology_change.corpus import ChangeCorpus
 from legal_rag.ontology_change.writer import write_legal_change_events
 from legal_rag.ontology_exception import proposals as exception_proposals
 from legal_rag.ontology_exception.writer import (
+    read_exception_progress,
     read_exception_proposals,
     read_legal_exception_records,
 )
@@ -64,7 +66,6 @@ class _CliExceptionClient:
                     discoveries=[
                         LegalExceptionDiscoveryEntry(
                             general_population_id="general-population",
-                            exception_provision_path="Điều 6 khoản 1 điểm a",
                             evidence=[OntologyEvidenceReference(evidence_id=source.evidence_id)],
                             citations=[
                                 ExceptionCitationDiscoveryEntry(
@@ -107,6 +108,7 @@ class _CliExceptionClient:
 class _EmptyExceptionClient:
     """Return a completed candidate result with no legal-exception proposal."""
 
+    calls = 0
     model = "test-model"
 
     def __init__(self, *_: object) -> None:
@@ -116,6 +118,7 @@ class _EmptyExceptionClient:
         self, windows: Sequence[ExceptionDiscoveryWindowInput]
     ) -> Sequence[ExceptionDiscoveryWindowResult]:
         """Return an explicit no-proposal result for every replayed window."""
+        type(self).calls += 1
         return tuple(
             ExceptionDiscoveryWindowResult(candidate_id=window.candidate_id, discoveries=[]) for window in windows
         )
@@ -195,9 +198,19 @@ def test_cli_runs_candidate_proposal_and_offline_exception_finalization(
     assert len(read_legal_exception_records(exceptions_path)) == 1
     assert len(Graph().parse(graph_path, format="turtle")) > 0
 
-    progress_path.unlink()
+    proposal = read_exception_proposals(proposals_path)[0]
+    selection_path = tmp_path / "exception-rerun.json"
+    selection_path.write_text(
+        json.dumps({"schema_version": "0.1.0", "candidate_ids": [proposal.candidate_id]}),
+        encoding="utf-8",
+    )
     monkeypatch.setattr(exception_proposals, "BamlExceptionProposalClient", _EmptyExceptionClient)
-    monkeypatch.setattr(sys, "argv", proposal_argv)
+    selective_argv = [*proposal_argv, "--rerun-candidate-ids-path", str(selection_path)]
+    _EmptyExceptionClient.calls = 0
+    monkeypatch.setattr(sys, "argv", selective_argv)
+    ontology_exception_proposals_cli.main()
     ontology_exception_proposals_cli.main()
 
     assert read_exception_proposals(proposals_path) == ()
+    assert read_exception_progress(progress_path)[0].run_id != proposal.run_id
+    assert _EmptyExceptionClient.calls == 1
