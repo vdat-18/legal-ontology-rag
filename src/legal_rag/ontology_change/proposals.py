@@ -30,7 +30,7 @@ from legal_rag.ontology_population.models import OntologyPopulationRecord, popul
 from legal_rag.ontology_proposal_execution import execute_proposal_batches
 from legal_rag.settings import Settings
 
-ONTOLOGY_CHANGE_PROMPT_VERSION = "0.5.0"
+ONTOLOGY_CHANGE_PROMPT_VERSION = "1.0.0"
 
 
 class ChangeProposalClient(Protocol):
@@ -153,11 +153,9 @@ def _build_batch_proposals(
         window = windows_by_id[candidate_id]
         later_document = documents_by_id[window.later_document_id]
         evidence_sources = inputs_by_id[candidate_id].change_evidence_sources
-        used_earlier: set[str] = set()
-        used_later: set[str] = set()
         candidate_proposals = []
         for raw in results_by_id[candidate_id].proposals:
-            _validate_members(raw.earlier_population_id, raw.later_population_id, window, used_earlier, used_later)
+            _validate_members(raw.earlier_population_id, raw.later_population_id, window)
             evidence = bind_population_evidence(raw.evidence, evidence_sources)
             effective_on = date.fromisoformat(raw.effective_on)
             proposal_id = population_identity(
@@ -195,19 +193,14 @@ def _validate_members(
     earlier_id: str,
     later_id: str | None,
     window: ChangeCandidateWindow,
-    used_earlier: set[str],
-    used_later: set[str],
 ) -> None:
-    """Require proposal members to be unique members of the current window."""
-    if earlier_id not in window.earlier_population_ids or earlier_id in used_earlier:
-        msg = "Legal-change earlier rule must be a unique member of the candidate window"
+    """Require proposal members to belong to the current window."""
+    if earlier_id not in window.earlier_population_ids:
+        msg = "Legal-change earlier rule must be a member of the candidate window"
         raise ValueError(msg)
-    if later_id is not None and (later_id not in window.later_population_ids or later_id in used_later):
-        msg = "Legal-change later rule must be a unique member of the candidate window"
+    if later_id is not None and later_id not in window.later_population_ids:
+        msg = "Legal-change later rule must be a member of the candidate window"
         raise ValueError(msg)
-    used_earlier.add(earlier_id)
-    if later_id is not None:
-        used_later.add(later_id)
 
 
 def _window_input(
@@ -223,6 +216,9 @@ def _window_input(
         candidate_id=window.candidate_id,
         earlier_document_number=earlier_document.metadata.document_number,
         later_document_number=later_document.metadata.document_number,
+        later_document_valid_from=(
+            later_document.metadata.valid_from.isoformat() if later_document.metadata.valid_from else None
+        ),
         earlier_records=[
             _summarize_change_record(records_by_id[population_id]) for population_id in window.earlier_population_ids
         ],

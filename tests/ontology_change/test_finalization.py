@@ -105,14 +105,18 @@ def test_unknown_rule_members_are_rejected(
         finalize_legal_changes(records, (proposal,))
 
 
-def test_overlapping_changes_are_rejected(
+def test_one_rule_can_participate_in_multiple_change_links(
     change_corpus: ChangeCorpus,
     change_evidence_text: str,
 ) -> None:
-    """One earlier rule version cannot receive multiple terminal changes."""
+    """Rule splits and merges can create multiple links while sharing validity."""
     records = tuple(record for document in change_corpus.documents for record in document.records)
     first = _proposal(change_evidence_text)
-    second = replace(first, proposal_id="proposal-2", later_population_id=None, change_type="RepealOrSupersession")
+    second = replace(first, proposal_id="proposal-2", later_population_id=None, change_type="Amendment")
 
-    with pytest.raises(ValueError, match="must not change one earlier rule more than once"):
-        finalize_legal_changes(records, (first, second))
+    canonical, events = finalize_legal_changes(records, (first, second))
+
+    assert canonical[0].valid_to == date(2026, 8, 15)
+    assert canonical[1].valid_from == date(2026, 8, 15)
+    assert len(events) == 2
+    assert {event.earlier_population_id for event in events} == {canonical[0].population_id}

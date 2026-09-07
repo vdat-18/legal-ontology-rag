@@ -67,6 +67,8 @@ def build_change_candidates(corpus: ChangeCorpus, settings: ChangeResolutionSett
                     "document_id": document.document_id,
                     "order_index": document.order_index,
                     "document_number": document.metadata.document_number,
+                    "valid_from": (document.metadata.valid_from.isoformat() if document.metadata.valid_from else None),
+                    "valid_to": document.metadata.valid_to.isoformat() if document.metadata.valid_to else None,
                     "comparison_document_ids": document.comparison_document_ids,
                     "chunks": sorted(chunk.chunk_id for chunk in document.chunks),
                     "records": sorted(record.population_id for record in document.records),

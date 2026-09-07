@@ -99,6 +99,7 @@ def test_proposal_preserves_rule_semantics_and_binds_exact_change_evidence(
     assert first == second
     assert first[0].effective_on.isoformat() == "2026-08-15"
     assert first[0].evidence[0].exact_text == change_evidence_text
+    assert client.inputs[0].later_document_valid_from == "2026-08-15"
     assert client.inputs[0].earlier_records[0].consequences[0].minimum_amount == "3000000"
     assert client.inputs[0].later_records[0].consequences[0].maximum_amount == "6000000"
     assert "evidence" not in client.inputs[0].earlier_records[0].model_dump()

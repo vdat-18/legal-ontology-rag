@@ -65,18 +65,12 @@ def _validate_proposal_members(
     proposals: Sequence[LegalChangeProposal],
     records_by_id: dict[str, OntologyPopulationRecord],
 ) -> None:
-    """Reject unknown or multiply changed canonical rule versions."""
+    """Reject legal-change references outside the canonical corpus."""
     earlier_ids = [proposal.earlier_population_id for proposal in proposals]
     later_ids = [proposal.later_population_id for proposal in proposals if proposal.later_population_id is not None]
     referenced = set(earlier_ids) | set(later_ids)
     if not referenced <= set(records_by_id):
         msg = "Legal changes must reference current canonical population records"
-        raise ValueError(msg)
-    if len(earlier_ids) != len(set(earlier_ids)):
-        msg = "Legal changes must not change one earlier rule more than once"
-        raise ValueError(msg)
-    if len(later_ids) != len(set(later_ids)):
-        msg = "Legal changes must not produce one later rule more than once"
         raise ValueError(msg)
 
 

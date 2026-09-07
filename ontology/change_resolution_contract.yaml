@@ -2,7 +2,7 @@ schema_version: "0.2.0"
 candidates:
   max_source_chunks_per_window: 6
   max_earlier_records_per_window: 32
-  max_later_records_per_window: 32
+  max_later_records_per_window: 128
   max_total_windows: 10000
 llm:
   batch_size: 1

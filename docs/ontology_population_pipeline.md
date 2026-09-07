@@ -144,8 +144,13 @@ không chấm điểm similarity. Later records chỉ đi cùng nhóm source chu
 source chunk của văn bản sau. Rule summaries giữ đủ semantics nhưng không lặp evidence vì authoritative change evidence
 đã được cung cấp riêng. Mỗi document có thể khai báo `comparison_document_ids`; danh sách rỗng giữ văn bản độc lập trong
 canonical output nhưng không tạo candidate, còn khi bỏ field này thì vẫn so với mọi văn bản đứng trước để tương thích.
+Ngày hiệu lực mặc định từ document metadata được đưa vào mọi window; ngày riêng trong source của provision được ưu tiên.
 LLM đề xuất `Amendment`, `Replacement` hoặc `RepealOrSupersession` chỉ khi nguồn nêu trực tiếp.
-Finalizer ràng buộc rule IDs vào corpus và cập nhật validity của các rule version mà không đánh giá lại nội dung thay đổi.
+Locator được đối chiếu trước semantics để không ghép các rule giống nội dung nhưng khác điều khoản. Repeal phải khớp đúng
+Điều/Khoản/Điểm. Việc chuyển leaf giữa hai Điểm chỉ được suy ra trong cùng Điều/Khoản khi source trực tiếp viết lại cả hai
+Điểm. Records khác Điều/Khoản không được liên kết vì quy định cùng hành vi tại locator khác có thể tồn tại đồng thời. Một
+rule version có thể tham gia nhiều link khi source thực sự tách hoặc nhập các leaf. Finalizer ràng buộc rule IDs vào corpus
+và cập nhật validity của các rule version mà không đánh giá lại nội dung thay đổi.
 
 ```powershell
 uv run --extra dev legal-resolve-ontology-changes `

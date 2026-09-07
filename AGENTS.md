@@ -50,6 +50,7 @@ This file defines the default working agreements for Python repositories. More s
 - Run the smallest relevant checks first, then broader formatting, linting, typing, build, and test checks when appropriate.
 - Do not remove, skip, or weaken tests and checks merely to make them pass.
 - Preserve the user's uncommitted and unrelated changes. Do not revert or overwrite work you did not create.
+- **Do not commit changes.** Instead, provide a suggested commit message summarizing the changes for user review.
 - Do not use destructive Git or filesystem commands, and do not amend commits, unless explicitly requested.
 - Review the final diff, summarize what changed and why, list the checks run, and identify anything that could not be verified.
 - Do not claim success without evidence from the relevant checks.
