@@ -54,7 +54,7 @@ def exception_corpus(exception_text: str) -> ChangeCorpus:
         target_chunk,
         metadata.document_number,
         "Không chấp hành đèn tín hiệu",
-        "Điều 3",
+        "Chương II > Điều 3 > Khoản 1",
         Decimal("4000000"),
         Decimal("6000000"),
     )

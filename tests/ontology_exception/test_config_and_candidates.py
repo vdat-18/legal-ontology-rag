@@ -6,8 +6,6 @@ import tomllib
 from dataclasses import replace
 from pathlib import Path
 
-import pytest
-
 from legal_rag.ontology_change.corpus import ChangeCorpus
 from legal_rag.ontology_exception.candidates import build_exception_candidates
 from legal_rag.ontology_exception.config import ExceptionResolutionSettings
@@ -22,8 +20,8 @@ def test_exception_contract_and_console_scripts_are_packaged() -> None:
     settings = ExceptionResolutionSettings.from_path(PROJECT_ROOT / "ontology" / "exception_resolution_contract.yaml")
     project = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
 
-    assert settings.max_target_rules_per_window == 64
-    assert settings.max_total_windows == 10_000
+    assert settings.max_source_chunks_per_window == 6
+    assert settings.max_general_rules_per_window == 6
     assert settings.batch_size == 1
     assert set(load_yaml(PROJECT_ROOT / "ontology" / "exception_resolution_contract.yaml")) == {
         "schema_version",
@@ -35,34 +33,46 @@ def test_exception_contract_and_console_scripts_are_packaged() -> None:
     assert project["scripts"]["legal-finalize-legal-exceptions"] == "legal_rag.ontology_exception_finalize_cli:main"
 
 
-def test_exception_candidates_are_deterministic_bounded_and_persistent(
+def test_exception_candidates_are_deterministic_source_local_and_persistent(
     tmp_path: Path,
     exception_corpus: ChangeCorpus,
 ) -> None:
-    """Candidate windows preserve source/general/target membership without semantic classification."""
-    settings = ExceptionResolutionSettings.from_path(PROJECT_ROOT / "ontology" / "exception_resolution_contract.yaml")
+    """Candidate windows pair each rule only with the source batch that contains it."""
+    settings = replace(
+        ExceptionResolutionSettings.from_path(PROJECT_ROOT / "ontology" / "exception_resolution_contract.yaml"),
+        max_source_chunks_per_window=1,
+    )
     first = build_exception_candidates(exception_corpus, settings)
     second = build_exception_candidates(exception_corpus, settings)
     output_path = tmp_path / "candidates.json"
     write_exception_candidates(output_path, first)
 
     assert first == second
-    assert len(first.windows) == 1
-    assert first.windows[0].general_population_ids == ("general-population", "target-population")
-    assert first.windows[0].target_population_ids == ("general-population", "target-population")
-    assert first.windows[0].source_chunk_ids == ("general-chunk", "target-chunk")
+    assert len(first.windows) == 2
+    memberships = {(window.general_population_ids, window.source_chunk_ids) for window in first.windows}
+    assert memberships == {
+        (("general-population",), ("general-chunk",)),
+        (("target-population",), ("target-chunk",)),
+    }
     assert read_exception_candidates(output_path) == first
 
 
-def test_exception_candidates_enforce_total_window_bound(exception_corpus: ChangeCorpus) -> None:
-    """Exhaustive structural retrieval stops before creating an unbounded workload."""
+def test_unrelated_source_batches_do_not_multiply_general_rules(exception_corpus: ChangeCorpus) -> None:
+    """Each rule appears once when source and general bounds both hold it."""
     settings = replace(
         ExceptionResolutionSettings.from_path(PROJECT_ROOT / "ontology" / "exception_resolution_contract.yaml"),
-        max_total_windows=0,
+        max_source_chunks_per_window=1,
+        max_general_rules_per_window=1,
     )
 
-    with pytest.raises(ValueError, match="exceeds the configured bound"):
-        build_exception_candidates(exception_corpus, settings)
+    candidates = build_exception_candidates(exception_corpus, settings)
+
+    assert sorted(
+        population_id for window in candidates.windows for population_id in window.general_population_ids
+    ) == [
+        "general-population",
+        "target-population",
+    ]
 
 
 def test_empty_corpus_has_no_exception_candidates() -> None:

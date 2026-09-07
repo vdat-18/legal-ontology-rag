@@ -1,67 +1,129 @@
-class ExceptionCitationProposalEntry {
-  citation OntologyEvidenceReference @description(#"Evidence chứa citation wording, không phải locator chuẩn hóa."#)
-  target_population_ids string[] @description(#"
-    Một hoặc nhiều rule-version ID trong target_records mà citation trỏ tới.
+class ExceptionCitationDiscoveryEntry {
+  citation OntologyEvidenceReference @description(#"Evidence chứa nguyên văn dẫn chiếu."#)
+  target_document_number string @description(#"Số văn bản đích đã chuẩn hóa; dùng văn bản nguồn nếu dẫn chiếu nội bộ."#)
+  target_provision_paths string[] @description(#"
+    Các locator đích tuyệt đối theo thứ tự `Điều > Khoản > Điểm`, không chứa Chương/Mục.
   "#)
 }
 
-class LegalExceptionProposalEntry {
+class LegalExceptionDiscoveryEntry {
   general_population_id string @description(#"Một rule ID trong general_records."#)
   exception_provision_path string @description(#"Đường dẫn đầy đủ nhất của quy định ngoại lệ."#)
   evidence OntologyEvidenceReference[] @description(#"Evidence trực tiếp nêu đầy đủ ngoại lệ."#)
-  citations ExceptionCitationProposalEntry[] @description(#"Citation đã resolve tới target rule versions."#)
-  rationale_vi string @description(#"Lý do ngắn gọn cho ngoại lệ và từng target."#)
+  citations ExceptionCitationDiscoveryEntry[] @description(#"Các dẫn chiếu tạo nên phạm vi ngoại lệ."#)
+  rationale_vi string @description(#"Lý do ngắn gọn cho quan hệ ngoại lệ."#)
 }
 
-class ExceptionResolutionWindowInput {
+class ExceptionDiscoveryWindowInput {
   candidate_id string
   source_document_number string
+  corpus_document_numbers string[]
   general_records OntologyPopulationSummary[]
-  target_records OntologyPopulationSummary[]
   source_evidence_sources OntologyEvidenceSource[]
 }
 
-class ExceptionResolutionWindowResult {
+class ExceptionDiscoveryWindowResult {
   candidate_id string
-  proposals LegalExceptionProposalEntry[]
+  discoveries LegalExceptionDiscoveryEntry[]
 }
 
-function ProposeLegalExceptionResolutions(windows: ExceptionResolutionWindowInput[]) -> ExceptionResolutionWindowResult[] {
+class ExceptionTargetCandidateInput {
+  proposal_index int
+  citation_index int
+  general_record OntologyPopulationSummary
+  exception_provision_path string
+  citation_text string
+  target_document_number string
+  target_provision_paths string[]
+  target_records OntologyPopulationSummary[]
+}
+
+class ExceptionTargetResolutionWindowInput {
+  candidate_id string
+  candidates ExceptionTargetCandidateInput[]
+}
+
+class ExceptionTargetResolutionEntry {
+  proposal_index int
+  citation_index int
+  target_population_ids string[] @description(#"Các rule-version ID phù hợp trong target_records."#)
+}
+
+class ExceptionTargetResolutionWindowResult {
+  candidate_id string
+  resolutions ExceptionTargetResolutionEntry[]
+}
+
+function DiscoverLegalExceptions(windows: ExceptionDiscoveryWindowInput[]) -> ExceptionDiscoveryWindowResult[] {
   client OpenAICompatibleProvider
   prompt #"
     {{ _.role("system") }}
 
-    Bối cảnh: xây dựng ontology có bằng chứng chỉ cho quy định xử phạt vi phạm
-    hành chính về giao thông đường bộ Việt Nam; không dùng cho vụ việc hoặc domain
-    khác.
+    Bối cảnh: xây dựng ontology có bằng chứng cho quy định xử phạt vi phạm hành
+    chính về giao thông đường bộ Việt Nam.
 
-    Mục đích bước 5/6: nối general rule với ngoại lệ/citation mà không biến
-    citation thành rule identity.
+    Nhiệm vụ: phát hiện quan hệ ngoại lệ được nguồn nêu trực tiếp cho các rule
+    versions trong từng window và chuẩn hóa mọi dẫn chiếu pháp lý.
 
-    Nhiệm vụ: xác định LegalException và ProvisionCitation cho rule versions trong
-    từng candidate window.
-
-    - Chỉ đề xuất khi ngữ cảnh trực tiếp chứng minh điều kiện loại trừ hoặc rule
-      chuyên biệt làm hẹp general rule; không dùng keyword hoặc similarity.
-    - Citation, danh sách điều khoản cùng hậu quả, hậu quả cộng dồn và LegalChange
-      không tự tạo ngoại lệ.
-    - General ID thuộc general_records. Citation chỉ dùng source evidence đã cấp;
-      target IDs thuộc target_records và phù hợp locator.
-    - Giữ citation, provision và target rule riêng; resolve target bằng locator và
-      phạm vi pháp lý, không redirect theo similarity, thứ tự hoặc lịch sử văn bản.
-    - Provision path cần source support. Không đánh giá priority hoặc vụ việc;
-      thiếu căn cứ thì không đề xuất.
-    - Trả một result cho mỗi candidate_id; không lặp exception.
+    - Chỉ đề xuất khi nguồn trực tiếp loại trừ một trường hợp hoặc chỉ ra quy định
+      chuyên biệt làm hẹp general rule. Citation đơn thuần, hậu quả cộng dồn và
+      LegalChange không tự tạo ngoại lệ.
+    - General ID phải thuộc general_records. Evidence và citation chỉ lấy từ
+      source_evidence_sources; không diễn giải lại nguyên văn evidence.
+    - Với dẫn chiếu nội bộ, target_document_number là source_document_number.
+      Với dẫn chiếu sang văn bản khác, chuẩn hóa theo corpus_document_numbers nếu
+      nguồn đủ căn cứ; không dùng kiến thức ngoài.
+    - Chuyển dẫn chiếu tương đối như `khoản 2 Điều này` thành locator tuyệt đối từ
+      source/general context. Mỗi target_provision_path chỉ gồm locator cần thiết
+      theo thứ tự `Điều > Khoản > Điểm`, không chứa Chương/Mục.
+    - Không chọn target rule ID ở bước này. Thiếu căn cứ thì không đề xuất hoặc để
+      danh sách locator rỗng; không suy đoán.
+    - Trả đúng một result cho mỗi candidate_id và không lặp exception.
 
     {{ _.role("user") }}
 
-    Các candidate window cần đánh giá:
+    Các discovery window cần đánh giá:
     {% for window in windows %}
     === candidate_id={{ window.candidate_id }} ===
     source_document={{ window.source_document_number }}
+    corpus_documents={{ window.corpus_document_numbers }}
     general_records={{ window.general_records }}
-    target_records={{ window.target_records }}
     source_evidence_sources={{ window.source_evidence_sources }}
+    === end candidate_id={{ window.candidate_id }} ===
+    {% endfor %}
+
+    {{ ctx.output_format }}
+  "#
+}
+
+function ResolveLegalExceptionTargets(
+  windows: ExceptionTargetResolutionWindowInput[]
+) -> ExceptionTargetResolutionWindowResult[] {
+  client OpenAICompatibleProvider
+  prompt #"
+    {{ _.role("system") }}
+
+    Bối cảnh: bước phát hiện đã xác định ngoại lệ và locator dẫn chiếu trong
+    ontology xử phạt vi phạm giao thông đường bộ Việt Nam. target_records chỉ gồm
+    các rule versions được tra cứu cấu trúc tại đúng văn bản và locator đó.
+
+    Nhiệm vụ: với mỗi candidate, chọn toàn bộ target_population_ids thực sự thuộc
+    phạm vi pháp lý của dẫn chiếu.
+
+    - Đánh giá đúng chủ thể, hành vi, điều kiện và phạm vi của general rule,
+      exception và từng target record; không chọn theo từ khóa, độ giống, thứ tự
+      hay mức phạt.
+    - Chỉ dùng ID trong target_records. Có thể chọn nhiều ID khi dẫn chiếu bao phủ
+      nhiều rule versions; trả rỗng nếu không record nào phù hợp.
+    - Không thay đổi proposal_index, citation_index, locator hoặc nội dung đã phát
+      hiện. Trả đúng một resolution cho mỗi candidate đầu vào.
+
+    {{ _.role("user") }}
+
+    Các target window cần resolve:
+    {% for window in windows %}
+    === candidate_id={{ window.candidate_id }} ===
+    candidates={{ window.candidates }}
     === end candidate_id={{ window.candidate_id }} ===
     {% endfor %}
 

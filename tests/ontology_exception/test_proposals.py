@@ -1,4 +1,4 @@
-"""Tests for typed, exact-evidenced exception proposals."""
+"""Tests for two-phase, exact-evidenced exception proposals."""
 
 from __future__ import annotations
 
@@ -9,10 +9,13 @@ from pathlib import Path
 import pytest
 
 from legal_rag.baml_client.types import (
-    ExceptionCitationProposalEntry,
-    ExceptionResolutionWindowInput,
-    ExceptionResolutionWindowResult,
-    LegalExceptionProposalEntry,
+    ExceptionCitationDiscoveryEntry,
+    ExceptionDiscoveryWindowInput,
+    ExceptionDiscoveryWindowResult,
+    ExceptionTargetResolutionEntry,
+    ExceptionTargetResolutionWindowInput,
+    ExceptionTargetResolutionWindowResult,
+    LegalExceptionDiscoveryEntry,
     OntologyEvidenceReference,
 )
 from legal_rag.benchmark_synthesis.llm_execution import LlmTaskExhaustedError
@@ -26,7 +29,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class _ExceptionClient:
-    """Return configurable typed exception results without an external model."""
+    """Return configurable discovery and resolution results without an external model."""
 
     model = "test-model"
 
@@ -37,26 +40,32 @@ class _ExceptionClient:
         general_id: str = "general-population",
         target_id: str = "target-population",
         citation_text: str = "Điều 3",
+        target_path: str = "Điều 3",
         empty: bool = False,
     ) -> None:
         self._exception_text = exception_text
         self._general_id = general_id
         self._target_id = target_id
         self._citation_text = citation_text
+        self._target_path = target_path
         self._empty = empty
-        self.inputs: tuple[ExceptionResolutionWindowInput, ...] = ()
+        self.discovery_inputs: tuple[ExceptionDiscoveryWindowInput, ...] = ()
+        self.resolution_inputs: tuple[ExceptionTargetResolutionWindowInput, ...] = ()
 
-    def propose_batch(
-        self, windows: Sequence[ExceptionResolutionWindowInput]
-    ) -> Sequence[ExceptionResolutionWindowResult]:
-        """Capture complete windows and return one typed result per candidate."""
-        self.inputs = tuple(windows)
+    def discover_batch(
+        self, windows: Sequence[ExceptionDiscoveryWindowInput]
+    ) -> Sequence[ExceptionDiscoveryWindowResult]:
+        """Capture source-local windows and return typed discoveries."""
+        self.discovery_inputs = tuple(windows)
         results = []
         for window in windows:
             exception_source = next(
                 (item for item in window.source_evidence_sources if self._exception_text in item.text),
                 None,
             )
+            if self._empty:
+                results.append(ExceptionDiscoveryWindowResult(candidate_id=window.candidate_id, discoveries=[]))
+                continue
             citation_source = next(
                 (item for item in window.source_evidence_sources if self._citation_text in item.text),
                 None,
@@ -74,27 +83,46 @@ class _ExceptionClient:
             else:
                 citation_reference = OntologyEvidenceReference(evidence_id="ev_unknown")
             results.append(
-                ExceptionResolutionWindowResult(
+                ExceptionDiscoveryWindowResult(
                     candidate_id=window.candidate_id,
-                    proposals=[]
-                    if self._empty
-                    else [
-                        LegalExceptionProposalEntry(
+                    discoveries=[
+                        LegalExceptionDiscoveryEntry(
                             general_population_id=self._general_id,
-                            exception_provision_path="Điều 6 khoản 1 điểm a",
+                            exception_provision_path="Điều 6 > Khoản 1 > Điểm a",
                             evidence=[exception_reference],
                             citations=[
-                                ExceptionCitationProposalEntry(
+                                ExceptionCitationDiscoveryEntry(
                                     citation=citation_reference,
-                                    target_population_ids=[self._target_id],
+                                    target_document_number="168/2024/NĐ-CP",
+                                    target_provision_paths=[self._target_path],
                                 )
                             ],
-                            rationale_vi="Source trực tiếp loại trừ trường hợp thuộc Điều 3.",
+                            rationale_vi="Nguồn trực tiếp loại trừ trường hợp thuộc Điều 3.",
                         )
                     ],
                 )
             )
         return tuple(results)
+
+    def resolve_batch(
+        self, windows: Sequence[ExceptionTargetResolutionWindowInput]
+    ) -> Sequence[ExceptionTargetResolutionWindowResult]:
+        """Capture locator-filtered records and select a configurable target."""
+        self.resolution_inputs = tuple(windows)
+        return tuple(
+            ExceptionTargetResolutionWindowResult(
+                candidate_id=window.candidate_id,
+                resolutions=[
+                    ExceptionTargetResolutionEntry(
+                        proposal_index=candidate.proposal_index,
+                        citation_index=candidate.citation_index,
+                        target_population_ids=[self._target_id],
+                    )
+                    for candidate in window.candidates
+                ],
+            )
+            for window in windows
+        )
 
 
 def _propose(corpus: ChangeCorpus, client: _ExceptionClient) -> tuple[LegalExceptionProposal, ...]:
@@ -108,11 +136,11 @@ def _propose(corpus: ChangeCorpus, client: _ExceptionClient) -> tuple[LegalExcep
     return propose_legal_exceptions(candidates.windows, corpus, client, settings, run_id="exception-run")
 
 
-def test_proposal_preserves_rules_and_binds_exception_and_citation_exactly(
+def test_proposal_discovers_locally_then_resolves_only_structural_targets(
     exception_corpus: ChangeCorpus,
     exception_text: str,
 ) -> None:
-    """The model sees complete rule versions and all accepted source wording is exact-bound."""
+    """Discovery excludes the target corpus and resolution sees only locator matches."""
     client = _ExceptionClient(exception_text)
     first = _propose(exception_corpus, client)
     second = _propose(exception_corpus, client)
@@ -121,21 +149,34 @@ def test_proposal_preserves_rules_and_binds_exception_and_citation_exactly(
     assert first[0].evidence[0].exact_text == exception_text
     assert first[0].citations[0].citation_text == "Điều 3"
     assert first[0].citations[0].target_population_ids == ("target-population",)
-    assert client.inputs[0].general_records[0].conduct_label_vi == "Không chấp hành biển báo"
-    assert client.inputs[0].target_records[1].provision_path == "Điều 3"
+    assert not hasattr(client.discovery_inputs[0], "target_records")
+
+
+def test_resolution_input_contains_only_the_cited_locator(
+    exception_corpus: ChangeCorpus,
+    exception_text: str,
+) -> None:
+    """Structural lookup excludes unrelated rules before semantic target selection."""
+    client = _ExceptionClient(exception_text)
+
+    _propose(exception_corpus, client)
+
+    assert client.discovery_inputs[0].general_records[0].conduct_label_vi == "Không chấp hành biển báo"
+    target_records = client.resolution_inputs[0].candidates[0].target_records
+    assert [record.population_id for record in target_records] == ["target-population"]
 
 
 @pytest.mark.parametrize(
     ("general_id", "target_id"),
     [("unknown", "target-population"), ("general-population", "unknown")],
 )
-def test_proposal_rejects_rules_outside_the_candidate_window(
+def test_proposal_rejects_ids_outside_discovery_or_structural_lookup(
     general_id: str,
     target_id: str,
     exception_corpus: ChangeCorpus,
     exception_text: str,
 ) -> None:
-    """The model cannot choose arbitrary general or redirect rule identities."""
+    """The model cannot choose arbitrary general or target rule identities."""
     with pytest.raises(LlmTaskExhaustedError):
         _propose(
             exception_corpus,
@@ -158,6 +199,19 @@ def test_proposal_rejects_paraphrased_exception_or_citation(
             exception_corpus,
             _ExceptionClient(exception_value, citation_text=citation_value),
         )
+
+
+def test_unresolved_locator_preserves_citation_without_hallucinated_target(
+    exception_corpus: ChangeCorpus,
+    exception_text: str,
+) -> None:
+    """A citation remains useful when its normalized locator is absent from the corpus."""
+    client = _ExceptionClient(exception_text, target_path="Điều 999")
+
+    proposals = _propose(exception_corpus, client)
+
+    assert proposals[0].citations[0].target_population_ids == ()
+    assert client.resolution_inputs == ()
 
 
 def test_empty_exception_result_is_valid_and_checkpointed(

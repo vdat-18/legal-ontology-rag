@@ -1,9 +1,7 @@
-schema_version: "0.2.0"
+schema_version: "0.3.0"
 candidates:
   max_source_chunks_per_window: 6
   max_general_rules_per_window: 6
-  max_target_rules_per_window: 64
-  max_total_windows: 10000
 llm:
   batch_size: 1
   max_output_tokens: 32768

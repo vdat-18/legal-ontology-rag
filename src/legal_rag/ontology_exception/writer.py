@@ -42,7 +42,6 @@ def read_exception_candidates(path: Path) -> ExceptionCandidateSet:
                 candidate_id=item["candidate_id"],
                 source_document_id=item["source_document_id"],
                 general_population_ids=tuple(item["general_population_ids"]),
-                target_population_ids=tuple(item["target_population_ids"]),
                 source_chunk_ids=tuple(item["source_chunk_ids"]),
             )
             for item in payload["windows"]

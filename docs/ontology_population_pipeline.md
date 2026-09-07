@@ -161,9 +161,13 @@ uv run --extra dev legal-resolve-ontology-changes `
 
 ## 5. Legal exception và citation
 
-Candidate builder cung cấp source chunks, general rules và target rules. LLM xác định ngoại lệ, citation và redirect;
-code không nhận diện ngoại lệ bằng từ khóa. Finalizer ràng buộc general/target IDs vào corpus và gộp các fragment cùng
-một ngoại lệ mà không đánh giá lại nội dung pháp lý.
+Candidate builder chỉ ghép source chunks với các general rules phát sinh từ chính các chunks đó. LLM thứ nhất phát hiện
+ngoại lệ và chuẩn hóa citation thành số văn bản cùng locator tuyệt đối. Code tra cứu cấu trúc đúng document/locator,
+sau đó LLM thứ hai chọn rule versions thực sự thuộc phạm vi citation trong tập nhỏ này; không dùng từ khóa, regex hay
+similarity để quyết định ngữ nghĩa. Finalizer gộp các fragment cùng một ngoại lệ mà không đánh giá lại nội dung pháp lý.
+
+Candidate schema `0.2.0` không còn nhúng toàn bộ target IDs. Artifact candidate cũ phải được tạo lại bằng candidate
+builder hoặc command tích hợp trước khi resume Step 5.
 
 ```powershell
 uv run --extra dev legal-resolve-ontology-exceptions `

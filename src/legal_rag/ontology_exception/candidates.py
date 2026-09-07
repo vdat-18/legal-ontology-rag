@@ -1,4 +1,4 @@
-"""Build exhaustive bounded windows for downstream exception confirmation."""
+"""Build source-local windows for downstream exception discovery."""
 
 from __future__ import annotations
 
@@ -18,35 +18,21 @@ def build_exception_candidates(
     corpus: ChangeCorpus,
     settings: ExceptionResolutionSettings,
 ) -> ExceptionCandidateSet:
-    """Build exhaustive structural windows without classifying exception semantics."""
-    all_targets = tuple(
-        record for document in corpus.documents for record in _ordered_records(document.records, document.chunks)
-    )
-    target_batches = _batches(all_targets, settings.max_target_rules_per_window)
+    """Build deterministic windows containing only source-local general rules."""
     windows = []
     for document in corpus.documents:
-        source_batches = _batches(
-            tuple(sorted(document.chunks, key=lambda item: (item.scope_id, item.chunk_index, item.chunk_id))),
-            settings.max_source_chunks_per_window,
+        ordered_chunks = tuple(
+            sorted(document.chunks, key=lambda item: (item.scope_id, item.chunk_index, item.chunk_id))
         )
-        general_batches = _batches(
-            _ordered_records(document.records, document.chunks),
-            settings.max_general_rules_per_window,
-        )
-        for source_batch in source_batches:
-            for general_batch in general_batches:
-                for target_batch in target_batches:
-                    windows.append(
-                        _candidate_window(
-                            document.document_id,
-                            general_batch,
-                            target_batch,
-                            tuple(chunk.chunk_id for chunk in source_batch),
-                        )
-                    )
-                    if len(windows) > settings.max_total_windows:
-                        msg = "Exception candidate count exceeds the configured bound"
-                        raise ValueError(msg)
+        ordered_records = _ordered_records(document.records, document.chunks)
+        for source_batch in _batches(ordered_chunks, settings.max_source_chunks_per_window):
+            source_chunk_ids = tuple(chunk.chunk_id for chunk in source_batch)
+            source_chunk_id_set = set(source_chunk_ids)
+            local_records = tuple(record for record in ordered_records if record.source_chunk_id in source_chunk_id_set)
+            windows.extend(
+                _candidate_window(document.document_id, general_batch, source_chunk_ids)
+                for general_batch in _batches(local_records, settings.max_general_rules_per_window)
+            )
 
     ordered_windows = tuple(sorted(windows, key=lambda window: window.candidate_id))
     run_id = population_identity(
@@ -54,7 +40,6 @@ def build_exception_candidates(
             "bounds": {
                 "source_chunks": settings.max_source_chunks_per_window,
                 "general_rules": settings.max_general_rules_per_window,
-                "target_rules": settings.max_target_rules_per_window,
             },
             "documents": [
                 {
@@ -73,21 +58,18 @@ def build_exception_candidates(
 def _candidate_window(
     source_document_id: str,
     general_records: Sequence[OntologyPopulationRecord],
-    target_records: Sequence[OntologyPopulationRecord],
     source_chunk_ids: tuple[str, ...],
 ) -> ExceptionCandidateWindow:
-    """Build one stable structural exception window."""
+    """Build one stable source-local exception window."""
     identity = {
         "source_document_id": source_document_id,
         "general_population_ids": tuple(record.population_id for record in general_records),
-        "target_population_ids": tuple(record.population_id for record in target_records),
         "source_chunk_ids": source_chunk_ids,
     }
     return ExceptionCandidateWindow(
         candidate_id=population_identity(identity),
         source_document_id=source_document_id,
         general_population_ids=identity["general_population_ids"],
-        target_population_ids=identity["target_population_ids"],
         source_chunk_ids=source_chunk_ids,
     )
 

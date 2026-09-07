@@ -169,7 +169,7 @@ def changes_main() -> None:
 def _exception_parser() -> argparse.ArgumentParser:
     """Build the integrated legal-exception parser."""
     parser = argparse.ArgumentParser(
-        description="Build candidates, run one exception LLM task, and finalize legal exceptions."
+        description="Build candidates, discover and resolve exceptions with LLMs, then finalize them."
     )
     parser.add_argument("corpus_manifest_path", type=Path)
     parser.add_argument("canonical_records_path", type=Path)

@@ -15,10 +15,13 @@ from legal_rag import (
     ontology_exception_proposals_cli,
 )
 from legal_rag.baml_client.types import (
-    ExceptionCitationProposalEntry,
-    ExceptionResolutionWindowInput,
-    ExceptionResolutionWindowResult,
-    LegalExceptionProposalEntry,
+    ExceptionCitationDiscoveryEntry,
+    ExceptionDiscoveryWindowInput,
+    ExceptionDiscoveryWindowResult,
+    ExceptionTargetResolutionEntry,
+    ExceptionTargetResolutionWindowInput,
+    ExceptionTargetResolutionWindowResult,
+    LegalExceptionDiscoveryEntry,
     OntologyEvidenceReference,
 )
 from legal_rag.ontology_change.corpus import ChangeCorpus
@@ -43,10 +46,10 @@ class _CliExceptionClient:
     def __init__(self, *_: object) -> None:
         """Accept the production client's constructor arguments."""
 
-    def propose_batch(
-        self, windows: Sequence[ExceptionResolutionWindowInput]
-    ) -> Sequence[ExceptionResolutionWindowResult]:
-        """Return one exact-evidenced exception for each fixture window."""
+    def discover_batch(
+        self, windows: Sequence[ExceptionDiscoveryWindowInput]
+    ) -> Sequence[ExceptionDiscoveryWindowResult]:
+        """Return one exact-evidenced discovery for each fixture window."""
         type(self).calls += 1
         results = []
         for window in windows:
@@ -56,21 +59,22 @@ class _CliExceptionClient:
             citation_text = "Điều 3"
             citation_start = source.text.index(citation_text)
             results.append(
-                ExceptionResolutionWindowResult(
+                ExceptionDiscoveryWindowResult(
                     candidate_id=window.candidate_id,
-                    proposals=[
-                        LegalExceptionProposalEntry(
+                    discoveries=[
+                        LegalExceptionDiscoveryEntry(
                             general_population_id="general-population",
                             exception_provision_path="Điều 6 khoản 1 điểm a",
                             evidence=[OntologyEvidenceReference(evidence_id=source.evidence_id)],
                             citations=[
-                                ExceptionCitationProposalEntry(
+                                ExceptionCitationDiscoveryEntry(
                                     citation=OntologyEvidenceReference(
                                         evidence_id=source.evidence_id,
                                         start_char=citation_start,
                                         end_char=citation_start + len(citation_text),
                                     ),
-                                    target_population_ids=["target-population"],
+                                    target_document_number="168/2024/NĐ-CP",
+                                    target_provision_paths=["Điều 3"],
                                 )
                             ],
                             rationale_vi="Source trực tiếp loại trừ và dẫn tới Điều 3.",
@@ -79,6 +83,25 @@ class _CliExceptionClient:
                 )
             )
         return tuple(results)
+
+    def resolve_batch(
+        self, windows: Sequence[ExceptionTargetResolutionWindowInput]
+    ) -> Sequence[ExceptionTargetResolutionWindowResult]:
+        """Resolve each structurally retrieved target candidate."""
+        return tuple(
+            ExceptionTargetResolutionWindowResult(
+                candidate_id=window.candidate_id,
+                resolutions=[
+                    ExceptionTargetResolutionEntry(
+                        proposal_index=candidate.proposal_index,
+                        citation_index=candidate.citation_index,
+                        target_population_ids=["target-population"],
+                    )
+                    for candidate in window.candidates
+                ],
+            )
+            for window in windows
+        )
 
 
 class _EmptyExceptionClient:
@@ -89,13 +112,19 @@ class _EmptyExceptionClient:
     def __init__(self, *_: object) -> None:
         """Accept production constructor arguments."""
 
-    def propose_batch(
-        self, windows: Sequence[ExceptionResolutionWindowInput]
-    ) -> Sequence[ExceptionResolutionWindowResult]:
+    def discover_batch(
+        self, windows: Sequence[ExceptionDiscoveryWindowInput]
+    ) -> Sequence[ExceptionDiscoveryWindowResult]:
         """Return an explicit no-proposal result for every replayed window."""
         return tuple(
-            ExceptionResolutionWindowResult(candidate_id=window.candidate_id, proposals=[]) for window in windows
+            ExceptionDiscoveryWindowResult(candidate_id=window.candidate_id, discoveries=[]) for window in windows
         )
+
+    def resolve_batch(
+        self, windows: Sequence[ExceptionTargetResolutionWindowInput]
+    ) -> Sequence[ExceptionTargetResolutionWindowResult]:
+        """No target resolution is expected for empty discoveries."""
+        raise AssertionError(windows)
 
 
 def test_cli_runs_candidate_proposal_and_offline_exception_finalization(

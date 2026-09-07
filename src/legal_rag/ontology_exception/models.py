@@ -7,7 +7,7 @@ from typing import Any
 
 from legal_rag.ontology_population.models import PopulationEvidence
 
-EXCEPTION_CANDIDATE_SCHEMA_VERSION = "0.1.0"
+EXCEPTION_CANDIDATE_SCHEMA_VERSION = "0.2.0"
 LEGACY_EXCEPTION_PROPOSAL_SCHEMA_VERSION = "0.1.0"
 EXCEPTION_PROPOSAL_SCHEMA_VERSION = "0.2.0"
 EXCEPTION_PROGRESS_SCHEMA_VERSION = "0.1.0"
@@ -22,7 +22,6 @@ class ExceptionCandidateWindow:
     candidate_id: str
     source_document_id: str
     general_population_ids: tuple[str, ...]
-    target_population_ids: tuple[str, ...]
     source_chunk_ids: tuple[str, ...]
 
     def to_dict(self) -> dict[str, object]:
@@ -31,7 +30,6 @@ class ExceptionCandidateWindow:
             "candidate_id": self.candidate_id,
             "source_document_id": self.source_document_id,
             "general_population_ids": list(self.general_population_ids),
-            "target_population_ids": list(self.target_population_ids),
             "source_chunk_ids": list(self.source_chunk_ids),
         }
 

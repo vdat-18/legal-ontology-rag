@@ -7,7 +7,7 @@ from pathlib import Path
 
 from legal_rag.ontology_validation.loader import load_yaml
 
-EXCEPTION_RESOLUTION_CONTRACT_SCHEMA_VERSION = "0.2.0"
+EXCEPTION_RESOLUTION_CONTRACT_SCHEMA_VERSION = "0.3.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,8 +16,6 @@ class ExceptionResolutionSettings:
 
     max_source_chunks_per_window: int
     max_general_rules_per_window: int
-    max_target_rules_per_window: int
-    max_total_windows: int
     batch_size: int
     max_output_tokens: int
     temperature: float
@@ -37,8 +35,6 @@ class ExceptionResolutionSettings:
         return cls(
             max_source_chunks_per_window=candidates["max_source_chunks_per_window"],
             max_general_rules_per_window=candidates["max_general_rules_per_window"],
-            max_target_rules_per_window=candidates["max_target_rules_per_window"],
-            max_total_windows=candidates["max_total_windows"],
             batch_size=llm["batch_size"],
             max_output_tokens=llm["max_output_tokens"],
             temperature=llm["temperature"],
