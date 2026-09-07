@@ -24,6 +24,7 @@ from legal_rag.ontology_exception.candidates import build_exception_candidates
 from legal_rag.ontology_exception.config import ExceptionResolutionSettings
 from legal_rag.ontology_exception.models import LegalExceptionProposal
 from legal_rag.ontology_exception.proposals import propose_legal_exceptions
+from legal_rag.ontology_population.models import PopulationEvidence
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -42,6 +43,7 @@ class _ExceptionClient:
         citation_text: str = "Điều 3",
         target_path: str = "Điều 3",
         empty: bool = False,
+        use_general_evidence: bool = False,
     ) -> None:
         self._exception_text = exception_text
         self._general_id = general_id
@@ -49,6 +51,7 @@ class _ExceptionClient:
         self._citation_text = citation_text
         self._target_path = target_path
         self._empty = empty
+        self._use_general_evidence = use_general_evidence
         self.discovery_inputs: tuple[ExceptionDiscoveryWindowInput, ...] = ()
         self.resolution_inputs: tuple[ExceptionTargetResolutionWindowInput, ...] = ()
 
@@ -59,15 +62,17 @@ class _ExceptionClient:
         self.discovery_inputs = tuple(windows)
         results = []
         for window in windows:
-            exception_source = next(
-                (item for item in window.source_evidence_sources if self._exception_text in item.text),
-                None,
+            evidence_sources = (
+                tuple(source for record in window.general_records for source in record.evidence)
+                if self._use_general_evidence
+                else tuple(window.source_evidence_sources)
             )
+            exception_source = next((item for item in evidence_sources if self._exception_text in item.text), None)
             if self._empty:
                 results.append(ExceptionDiscoveryWindowResult(candidate_id=window.candidate_id, discoveries=[]))
                 continue
             citation_source = next(
-                (item for item in window.source_evidence_sources if self._citation_text in item.text),
+                (item for item in evidence_sources if self._citation_text in item.text),
                 None,
             )
             exception_reference = OntologyEvidenceReference(
@@ -212,6 +217,24 @@ def test_unresolved_locator_preserves_citation_without_hallucinated_target(
 
     assert proposals[0].citations[0].target_population_ids == ()
     assert client.resolution_inputs == ()
+
+
+def test_general_record_evidence_outside_source_window_remains_bindable(
+    exception_corpus: ChangeCorpus,
+    exception_text: str,
+) -> None:
+    """Evidence exposed by a general rule remains valid when its chunk is outside the source window."""
+    document = exception_corpus.documents[0]
+    general, target = document.records
+    external_evidence = PopulationEvidence(chunk_id="outside-source-window", exact_text=exception_text)
+    corpus = ChangeCorpus(
+        documents=(replace(document, records=(replace(general, evidence=(external_evidence,)), target)),)
+    )
+
+    proposals = _propose(corpus, _ExceptionClient(exception_text, use_general_evidence=True))
+
+    assert proposals[0].evidence == (external_evidence,)
+    assert proposals[0].citations[0].source_chunk_id == "outside-source-window"
 
 
 def test_empty_exception_result_is_valid_and_checkpointed(

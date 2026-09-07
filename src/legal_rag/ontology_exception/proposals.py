@@ -17,6 +17,7 @@ from legal_rag.baml_client.types import (
     ExceptionTargetResolutionWindowResult,
     LegalExceptionDiscoveryEntry,
     OntologyEvidenceSource,
+    OntologyPopulationSummary,
 )
 from legal_rag.baml_transport import BamlCaller
 from legal_rag.ontology_change.corpus import ChangeCorpus, ChangeCorpusDocument
@@ -184,7 +185,7 @@ def _build_batch_proposals(
     discoveries_by_id = {
         candidate_id: _bind_discoveries(
             results_by_id[candidate_id].discoveries,
-            inputs_by_id[candidate_id].source_evidence_sources,
+            _available_evidence_sources(inputs_by_id[candidate_id]),
             windows_by_id[candidate_id],
             corpus,
         )
@@ -251,6 +252,30 @@ def _bind_discoveries(
             )
         )
     return tuple(discoveries)
+
+
+def _available_evidence_sources(window: ExceptionDiscoveryWindowInput) -> tuple[OntologyEvidenceSource, ...]:
+    """Collect every evidence source visibly supplied in one discovery window."""
+    sources = list(window.source_evidence_sources)
+    for record in window.general_records:
+        sources.extend(_summary_evidence_sources(record))
+    sources_by_id: dict[str, OntologyEvidenceSource] = {}
+    for source in sources:
+        existing = sources_by_id.get(source.evidence_id)
+        if existing is not None and (existing.chunk_id, existing.text) != (source.chunk_id, source.text):
+            msg = f"Evidence source ID collision: {source.evidence_id}"
+            raise ValueError(msg)
+        sources_by_id[source.evidence_id] = source
+    return tuple(sources_by_id.values())
+
+
+def _summary_evidence_sources(record: OntologyPopulationSummary) -> tuple[OntologyEvidenceSource, ...]:
+    """Return top-level and nested evidence exposed by one canonical rule summary."""
+    return (
+        *record.evidence,
+        *(source for condition in record.conditions for source in condition.evidence),
+        *(source for consequence in record.consequences for source in consequence.evidence),
+    )
 
 
 def _resolution_input(
