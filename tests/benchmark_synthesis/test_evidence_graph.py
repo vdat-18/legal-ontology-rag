@@ -24,6 +24,7 @@ from legal_rag.benchmark_synthesis.evidence_graph import (
 )
 from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
 from legal_rag.embedding.profiles import load_configured_embedding_profile
+from legal_rag.retrieval.vietnamese_bm25 import lexical_units, vietnamese_legal_tokens
 from legal_rag.settings import Settings
 
 _EVIDENCE_RELATION_PROMPT_PATH = Path(__file__).resolve().parents[2] / "baml_src" / "evidence_relations.baml"
@@ -84,12 +85,12 @@ class _FakeWordSegmenter:
 
     def segment(self, texts: Sequence[str]) -> tuple[tuple[str, ...], ...]:
         """Split each test text into plain alphanumeric units."""
-        return tuple(tuple(evidence_graph._lexical_units(text)) for text in texts)
+        return tuple(tuple(lexical_units(text)) for text in texts)
 
 
 def test_vietnamese_legal_tokens_use_segmented_words_and_bigrams() -> None:
     """BM25 indexes normalized Vietnamese words and adjacent phrase bigrams without syllable duplication."""
-    tokens = evidence_graph._vietnamese_legal_tokens(
+    tokens = vietnamese_legal_tokens(
         ("Không", "chấp_hành", "quyết_định", "xử_phạt"),
     )
 
@@ -104,7 +105,7 @@ def test_vietnamese_legal_tokens_use_segmented_words_and_bigrams() -> None:
 def test_vietnamese_legal_tokens_normalize_unicode_and_stop_bigrams_at_punctuation() -> None:
     """Equivalent Unicode forms match, and phrase features never cross sentence punctuation."""
     decomposed = normalize("NFD", "Không chấp hành. Ô tô")
-    tokens = evidence_graph._vietnamese_legal_tokens(
+    tokens = vietnamese_legal_tokens(
         (decomposed.split()[0], "chấp_hành", ".", "Ô_tô"),
     )
 

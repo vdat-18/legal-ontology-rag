@@ -30,7 +30,7 @@ from legal_rag.ontology_population.models import OntologyPopulationRecord, popul
 from legal_rag.ontology_proposal_execution import execute_proposal_batches
 from legal_rag.settings import Settings
 
-ONTOLOGY_CHANGE_PROMPT_VERSION = "1.0.0"
+ONTOLOGY_CHANGE_PROMPT_VERSION = "1.1.0"
 
 
 class ChangeProposalClient(Protocol):
@@ -79,6 +79,16 @@ def build_change_proposal_run_id(
             "llm_base_url": settings.llm_base_url,
             "llm_model": settings.llm_model,
             "llm_extra_request_body": dict(settings.llm_extra_request_body),
+        }
+    )
+
+
+def build_change_proposal_rerun_id(base_run_id: str, candidate_ids: Sequence[str]) -> str:
+    """Fingerprint one reviewed subset replay without invalidating retained decisions."""
+    return population_identity(
+        {
+            "base_run_id": base_run_id,
+            "candidate_ids": sorted(candidate_ids),
         }
     )
 

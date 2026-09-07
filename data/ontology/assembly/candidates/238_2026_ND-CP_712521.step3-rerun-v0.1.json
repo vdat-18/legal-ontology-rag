@@ -1,0 +1,732 @@
+{
+  "run_id": "cc8db38ecaeb2be024f23efe81fdc32d358b7c3fc1627e792c7280af5c5e42a2",
+  "schema_version": "0.1.0",
+  "windows": [
+    {
+      "candidate_id": "10d5569be2a218536a8c26265d6280002fe47f60c7c4bd6a1438b62ff3f11d87",
+      "population_ids": [
+        "773afc139ff5e6c422d16761e3e945b21134b4a535b099fd46e65931b88c5f8b",
+        "789738ca81e4741c67ccd216349311d452df1040539938faaab41bafef4dd019",
+        "9556a8d00d034d318e981f81b06c8a62fa33834cdb617fd3d9c08a334e4cf0e3",
+        "9d1b89c23e4f08a5022718d367a790bc72b7cd9ad8eeff4bcf6040351df75803",
+        "bcf925ed4c98fb4c648a5e95be884a4c43011baff79669e038d5c3277192161e",
+        "bd5974b5a8aa451d99e5034f575f282d11ff274d36718bd2db291dc0f2f20b07",
+        "be818de0161f34008e7430eee07686f3dfb1de12395f134d1f2be26156448fc0",
+        "ced1cca3085e29274be4807c87e8014e0d21950600ecb77b2dc7a63a66682733"
+      ],
+      "provision_paths": [
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e"
+      ],
+      "source_chunk_ids": [
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82"
+      ]
+    },
+    {
+      "candidate_id": "1e0af659215c5aa4a5bc6359852b56570390b8b620019b29e485f8a2d41d3a1c",
+      "population_ids": [
+        "e1879f8454390dabae7334334db6902298a855e71dc2da8c199576baa50d66ba",
+        "e88ef501552389039308d39db5d16b2f1c37419b3286c58b7cf7f99499a3b7cf",
+        "f4576f29ffea9924a19d9afe7816004844b4affa773b52eff707e40e3b89da0e",
+        "f5f6036f1658dcf1e2e0f7fdedffbea98cb94e62f71f27daab793400f7ab8d38",
+        "1985ce89d385a5b410204af3934a3408c2a318c294a41b36c85386ab71c51939",
+        "3771bb7ca391b13be43397c034c51a47e580f47fcd60faa34a682f432053c61b",
+        "3c28babaeb12604be87c2480ea33642ce7665a6920ce9405b11251a24da4ab66",
+        "3f1419f4419f81775cf1c5fa03d4cd79833849be934fd153e1b00baa5cc83baa"
+      ],
+      "provision_paths": [
+        "Điều 21 > Khoản 5 > Điểm c",
+        "Điều 20 > Khoản 8a",
+        "Điều 20 > Khoản 8a",
+        "Điều 21 > Khoản 2 > Điểm b",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 7 > Điểm e"
+      ],
+      "source_chunk_ids": [
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82"
+      ]
+    },
+    {
+      "candidate_id": "490252a9699ec68c971f552d780d50caf593e4fee7d51bd17ed5cc06cd50be5d",
+      "population_ids": [
+        "8d35762111264bfd3309b466066240172834805a566799fd7d99ed8d88162fe2",
+        "d74b15307fcf6776c609403f61b0b6f89708b9b3df178aa042c6473f5c39bac4",
+        "e1879f8454390dabae7334334db6902298a855e71dc2da8c199576baa50d66ba",
+        "e88ef501552389039308d39db5d16b2f1c37419b3286c58b7cf7f99499a3b7cf",
+        "f4576f29ffea9924a19d9afe7816004844b4affa773b52eff707e40e3b89da0e",
+        "f5f6036f1658dcf1e2e0f7fdedffbea98cb94e62f71f27daab793400f7ab8d38",
+        "1985ce89d385a5b410204af3934a3408c2a318c294a41b36c85386ab71c51939",
+        "3771bb7ca391b13be43397c034c51a47e580f47fcd60faa34a682f432053c61b"
+      ],
+      "provision_paths": [
+        "Điều 21 > Khoản 3 > Điểm b",
+        "Điều 21 > Khoản 3 > Điểm b",
+        "Điều 21 > Khoản 5 > Điểm c",
+        "Điều 20 > Khoản 8a",
+        "Điều 20 > Khoản 8a",
+        "Điều 21 > Khoản 2 > Điểm b",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm đ"
+      ],
+      "source_chunk_ids": [
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82"
+      ]
+    },
+    {
+      "candidate_id": "497a88d376fc7b3e3ebcd985bc9188b24dde32b35ff51d85fbe6800e5e7ea0a8",
+      "population_ids": [
+        "789738ca81e4741c67ccd216349311d452df1040539938faaab41bafef4dd019",
+        "9556a8d00d034d318e981f81b06c8a62fa33834cdb617fd3d9c08a334e4cf0e3",
+        "9d1b89c23e4f08a5022718d367a790bc72b7cd9ad8eeff4bcf6040351df75803",
+        "bcf925ed4c98fb4c648a5e95be884a4c43011baff79669e038d5c3277192161e",
+        "bd5974b5a8aa451d99e5034f575f282d11ff274d36718bd2db291dc0f2f20b07",
+        "be818de0161f34008e7430eee07686f3dfb1de12395f134d1f2be26156448fc0",
+        "ced1cca3085e29274be4807c87e8014e0d21950600ecb77b2dc7a63a66682733",
+        "dcae0564eafb66109c9d5bb692a00f33e2a1f49af49c10f894d5368f6c1cce15"
+      ],
+      "provision_paths": [
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e"
+      ],
+      "source_chunk_ids": [
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82"
+      ]
+    },
+    {
+      "candidate_id": "541d624fd90c2a96727633d245bd08cb49d32f71fda4fa312b90ebbd6bbf04a4",
+      "population_ids": [
+        "1985ce89d385a5b410204af3934a3408c2a318c294a41b36c85386ab71c51939",
+        "3771bb7ca391b13be43397c034c51a47e580f47fcd60faa34a682f432053c61b",
+        "3c28babaeb12604be87c2480ea33642ce7665a6920ce9405b11251a24da4ab66",
+        "3f1419f4419f81775cf1c5fa03d4cd79833849be934fd153e1b00baa5cc83baa",
+        "554c3efc4392656a089268774221024f859a9a575ed3017650fcc0084336e8b4",
+        "773afc139ff5e6c422d16761e3e945b21134b4a535b099fd46e65931b88c5f8b",
+        "789738ca81e4741c67ccd216349311d452df1040539938faaab41bafef4dd019",
+        "9556a8d00d034d318e981f81b06c8a62fa33834cdb617fd3d9c08a334e4cf0e3"
+      ],
+      "provision_paths": [
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e"
+      ],
+      "source_chunk_ids": [
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82"
+      ]
+    },
+    {
+      "candidate_id": "5b5b959592e548341789bb79ced33fb4741483087e69fc8f460f4bcdb49e5984",
+      "population_ids": [
+        "f5f6036f1658dcf1e2e0f7fdedffbea98cb94e62f71f27daab793400f7ab8d38",
+        "1985ce89d385a5b410204af3934a3408c2a318c294a41b36c85386ab71c51939",
+        "3771bb7ca391b13be43397c034c51a47e580f47fcd60faa34a682f432053c61b",
+        "3c28babaeb12604be87c2480ea33642ce7665a6920ce9405b11251a24da4ab66",
+        "3f1419f4419f81775cf1c5fa03d4cd79833849be934fd153e1b00baa5cc83baa",
+        "554c3efc4392656a089268774221024f859a9a575ed3017650fcc0084336e8b4",
+        "773afc139ff5e6c422d16761e3e945b21134b4a535b099fd46e65931b88c5f8b",
+        "789738ca81e4741c67ccd216349311d452df1040539938faaab41bafef4dd019"
+      ],
+      "provision_paths": [
+        "Điều 21 > Khoản 2 > Điểm b",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e"
+      ],
+      "source_chunk_ids": [
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82"
+      ]
+    },
+    {
+      "candidate_id": "631c25e8f06f8bdfb8c74dd4e68041388b21b808830b9ad3fcdd94d17662e9cb",
+      "population_ids": [
+        "3c28babaeb12604be87c2480ea33642ce7665a6920ce9405b11251a24da4ab66",
+        "3f1419f4419f81775cf1c5fa03d4cd79833849be934fd153e1b00baa5cc83baa",
+        "554c3efc4392656a089268774221024f859a9a575ed3017650fcc0084336e8b4",
+        "773afc139ff5e6c422d16761e3e945b21134b4a535b099fd46e65931b88c5f8b",
+        "789738ca81e4741c67ccd216349311d452df1040539938faaab41bafef4dd019",
+        "9556a8d00d034d318e981f81b06c8a62fa33834cdb617fd3d9c08a334e4cf0e3",
+        "9d1b89c23e4f08a5022718d367a790bc72b7cd9ad8eeff4bcf6040351df75803",
+        "bcf925ed4c98fb4c648a5e95be884a4c43011baff79669e038d5c3277192161e"
+      ],
+      "provision_paths": [
+        "Điều 21 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm đ"
+      ],
+      "source_chunk_ids": [
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82"
+      ]
+    },
+    {
+      "candidate_id": "6acad6e4cbe7d0f682f3bf962bc7b6be6edc4be0bff927a0823b08b48296ad4c",
+      "population_ids": [
+        "9556a8d00d034d318e981f81b06c8a62fa33834cdb617fd3d9c08a334e4cf0e3",
+        "9d1b89c23e4f08a5022718d367a790bc72b7cd9ad8eeff4bcf6040351df75803",
+        "bcf925ed4c98fb4c648a5e95be884a4c43011baff79669e038d5c3277192161e",
+        "bd5974b5a8aa451d99e5034f575f282d11ff274d36718bd2db291dc0f2f20b07",
+        "be818de0161f34008e7430eee07686f3dfb1de12395f134d1f2be26156448fc0",
+        "ced1cca3085e29274be4807c87e8014e0d21950600ecb77b2dc7a63a66682733",
+        "dcae0564eafb66109c9d5bb692a00f33e2a1f49af49c10f894d5368f6c1cce15",
+        "f5a4dd2f98af57b66708c03b9616cbcdac9e04e62b9e8c6355b5d0a21d11227f"
+      ],
+      "provision_paths": [
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm d"
+      ],
+      "source_chunk_ids": [
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82"
+      ]
+    },
+    {
+      "candidate_id": "763bf0d88e90c4411471e5946b4fb212636daf6c044ecc79c5f1a459836806e4",
+      "population_ids": [
+        "3771bb7ca391b13be43397c034c51a47e580f47fcd60faa34a682f432053c61b",
+        "3c28babaeb12604be87c2480ea33642ce7665a6920ce9405b11251a24da4ab66",
+        "3f1419f4419f81775cf1c5fa03d4cd79833849be934fd153e1b00baa5cc83baa",
+        "554c3efc4392656a089268774221024f859a9a575ed3017650fcc0084336e8b4",
+        "773afc139ff5e6c422d16761e3e945b21134b4a535b099fd46e65931b88c5f8b",
+        "789738ca81e4741c67ccd216349311d452df1040539938faaab41bafef4dd019",
+        "9556a8d00d034d318e981f81b06c8a62fa33834cdb617fd3d9c08a334e4cf0e3",
+        "9d1b89c23e4f08a5022718d367a790bc72b7cd9ad8eeff4bcf6040351df75803"
+      ],
+      "provision_paths": [
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e"
+      ],
+      "source_chunk_ids": [
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82"
+      ]
+    },
+    {
+      "candidate_id": "7b106128977eb21e8fa638d77be71ce7851bd4d905e1c4407b31937716672ec8",
+      "population_ids": [
+        "bd5974b5a8aa451d99e5034f575f282d11ff274d36718bd2db291dc0f2f20b07",
+        "be818de0161f34008e7430eee07686f3dfb1de12395f134d1f2be26156448fc0",
+        "ced1cca3085e29274be4807c87e8014e0d21950600ecb77b2dc7a63a66682733",
+        "dcae0564eafb66109c9d5bb692a00f33e2a1f49af49c10f894d5368f6c1cce15",
+        "f5a4dd2f98af57b66708c03b9616cbcdac9e04e62b9e8c6355b5d0a21d11227f",
+        "1201719124565a32e88ed0a31c56aafec2e90cab6bc09cd4dbdfcfcbeb334517",
+        "1fcafa680dd797ec8012c0601ce4bf6d6961d86e7e4a9fbbdcaeaa795932da79",
+        "23990d30d17a69e49ebf7991165f1f556295e5a5b267893ce8d6f66e49f44f34"
+      ],
+      "provision_paths": [
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 7 > Điểm k",
+        "Điều 26 > Khoản 7 > Điểm l"
+      ],
+      "source_chunk_ids": [
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591"
+      ]
+    },
+    {
+      "candidate_id": "7f71f20e6d0c02633d5ffeabb4059baf118f44f33fa21a736ca0f73d83b3765d",
+      "population_ids": [
+        "554c3efc4392656a089268774221024f859a9a575ed3017650fcc0084336e8b4",
+        "773afc139ff5e6c422d16761e3e945b21134b4a535b099fd46e65931b88c5f8b",
+        "789738ca81e4741c67ccd216349311d452df1040539938faaab41bafef4dd019",
+        "9556a8d00d034d318e981f81b06c8a62fa33834cdb617fd3d9c08a334e4cf0e3",
+        "9d1b89c23e4f08a5022718d367a790bc72b7cd9ad8eeff4bcf6040351df75803",
+        "bcf925ed4c98fb4c648a5e95be884a4c43011baff79669e038d5c3277192161e",
+        "bd5974b5a8aa451d99e5034f575f282d11ff274d36718bd2db291dc0f2f20b07",
+        "be818de0161f34008e7430eee07686f3dfb1de12395f134d1f2be26156448fc0"
+      ],
+      "provision_paths": [
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm e"
+      ],
+      "source_chunk_ids": [
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82"
+      ]
+    },
+    {
+      "candidate_id": "8aebd65d96d0652554c0dea449fb7f135b62b52dcfefa8a5f9f4022fdbcf4cc2",
+      "population_ids": [
+        "8cbf47c565fa196c6ccd1617325bc67da49f4a35aaf5a479ffd34ca8235b84ce",
+        "8d35762111264bfd3309b466066240172834805a566799fd7d99ed8d88162fe2",
+        "d74b15307fcf6776c609403f61b0b6f89708b9b3df178aa042c6473f5c39bac4",
+        "e1879f8454390dabae7334334db6902298a855e71dc2da8c199576baa50d66ba",
+        "e88ef501552389039308d39db5d16b2f1c37419b3286c58b7cf7f99499a3b7cf",
+        "f4576f29ffea9924a19d9afe7816004844b4affa773b52eff707e40e3b89da0e",
+        "f5f6036f1658dcf1e2e0f7fdedffbea98cb94e62f71f27daab793400f7ab8d38",
+        "1985ce89d385a5b410204af3934a3408c2a318c294a41b36c85386ab71c51939"
+      ],
+      "provision_paths": [
+        "Điều 21 > Khoản 2 > Điểm b",
+        "Điều 21 > Khoản 3 > Điểm b",
+        "Điều 21 > Khoản 3 > Điểm b",
+        "Điều 21 > Khoản 5 > Điểm c",
+        "Điều 20 > Khoản 8a",
+        "Điều 20 > Khoản 8a",
+        "Điều 21 > Khoản 2 > Điểm b",
+        "Điều 26 > Khoản 7 > Điểm e"
+      ],
+      "source_chunk_ids": [
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82"
+      ]
+    },
+    {
+      "candidate_id": "a7e138f251297bc1e2b705b24afeb5374024797998cef65763ccd1ba52c25008",
+      "population_ids": [
+        "bcf925ed4c98fb4c648a5e95be884a4c43011baff79669e038d5c3277192161e",
+        "bd5974b5a8aa451d99e5034f575f282d11ff274d36718bd2db291dc0f2f20b07",
+        "be818de0161f34008e7430eee07686f3dfb1de12395f134d1f2be26156448fc0",
+        "ced1cca3085e29274be4807c87e8014e0d21950600ecb77b2dc7a63a66682733",
+        "dcae0564eafb66109c9d5bb692a00f33e2a1f49af49c10f894d5368f6c1cce15",
+        "f5a4dd2f98af57b66708c03b9616cbcdac9e04e62b9e8c6355b5d0a21d11227f",
+        "1201719124565a32e88ed0a31c56aafec2e90cab6bc09cd4dbdfcfcbeb334517",
+        "1fcafa680dd797ec8012c0601ce4bf6d6961d86e7e4a9fbbdcaeaa795932da79"
+      ],
+      "provision_paths": [
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 7 > Điểm k"
+      ],
+      "source_chunk_ids": [
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591"
+      ]
+    },
+    {
+      "candidate_id": "b045d2b934d2b47f09ecc6255cc02cc738dac528c2345cf7147a87188e59f948",
+      "population_ids": [
+        "9d1b89c23e4f08a5022718d367a790bc72b7cd9ad8eeff4bcf6040351df75803",
+        "bcf925ed4c98fb4c648a5e95be884a4c43011baff79669e038d5c3277192161e",
+        "bd5974b5a8aa451d99e5034f575f282d11ff274d36718bd2db291dc0f2f20b07",
+        "be818de0161f34008e7430eee07686f3dfb1de12395f134d1f2be26156448fc0",
+        "ced1cca3085e29274be4807c87e8014e0d21950600ecb77b2dc7a63a66682733",
+        "dcae0564eafb66109c9d5bb692a00f33e2a1f49af49c10f894d5368f6c1cce15",
+        "f5a4dd2f98af57b66708c03b9616cbcdac9e04e62b9e8c6355b5d0a21d11227f",
+        "1201719124565a32e88ed0a31c56aafec2e90cab6bc09cd4dbdfcfcbeb334517"
+      ],
+      "provision_paths": [
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 8 > Điểm d"
+      ],
+      "source_chunk_ids": [
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591"
+      ]
+    },
+    {
+      "candidate_id": "b43d39e6e6e397b39d244d163b373d012578c50448f5bdc0010a69a4b45f005e",
+      "population_ids": [
+        "f5a4dd2f98af57b66708c03b9616cbcdac9e04e62b9e8c6355b5d0a21d11227f",
+        "1201719124565a32e88ed0a31c56aafec2e90cab6bc09cd4dbdfcfcbeb334517",
+        "1fcafa680dd797ec8012c0601ce4bf6d6961d86e7e4a9fbbdcaeaa795932da79",
+        "23990d30d17a69e49ebf7991165f1f556295e5a5b267893ce8d6f66e49f44f34",
+        "2912be74946416e9e0337590e021261273df7c6456d31cac8222d930fe8c5a16",
+        "2e576e55224b6d612b6978d89e149beab413ebdc114cb4a08bb27991ecd68659",
+        "36b8e89135352fc8adc835996e6dde845d99fb5dcb4df7895c57084474bdd966",
+        "588bc275cf3cc98df07ff560228c8ae121f41aee29b887a9835e120bf14a79a4"
+      ],
+      "provision_paths": [
+        "Điều 21 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 7 > Điểm k",
+        "Điều 26 > Khoản 7 > Điểm l",
+        "Điều 26 > Khoản 7 > Điểm l",
+        "Điều 26 > Khoản 7 > Điểm l",
+        "Điều 26 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 7 > Điểm k"
+      ],
+      "source_chunk_ids": [
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591"
+      ]
+    },
+    {
+      "candidate_id": "bbe088f68589536647b7ec5afb5095fc02039e9fb88065f0d64863d122dc9452",
+      "population_ids": [
+        "d74b15307fcf6776c609403f61b0b6f89708b9b3df178aa042c6473f5c39bac4",
+        "e1879f8454390dabae7334334db6902298a855e71dc2da8c199576baa50d66ba",
+        "e88ef501552389039308d39db5d16b2f1c37419b3286c58b7cf7f99499a3b7cf",
+        "f4576f29ffea9924a19d9afe7816004844b4affa773b52eff707e40e3b89da0e",
+        "f5f6036f1658dcf1e2e0f7fdedffbea98cb94e62f71f27daab793400f7ab8d38",
+        "1985ce89d385a5b410204af3934a3408c2a318c294a41b36c85386ab71c51939",
+        "3771bb7ca391b13be43397c034c51a47e580f47fcd60faa34a682f432053c61b",
+        "3c28babaeb12604be87c2480ea33642ce7665a6920ce9405b11251a24da4ab66"
+      ],
+      "provision_paths": [
+        "Điều 21 > Khoản 3 > Điểm b",
+        "Điều 21 > Khoản 5 > Điểm c",
+        "Điều 20 > Khoản 8a",
+        "Điều 20 > Khoản 8a",
+        "Điều 21 > Khoản 2 > Điểm b",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm d"
+      ],
+      "source_chunk_ids": [
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82"
+      ]
+    },
+    {
+      "candidate_id": "c1f37c75adad5217646975863319dc7eb78ba7cc7d29fb22c2d585bd9297dbfb",
+      "population_ids": [
+        "be818de0161f34008e7430eee07686f3dfb1de12395f134d1f2be26156448fc0",
+        "ced1cca3085e29274be4807c87e8014e0d21950600ecb77b2dc7a63a66682733",
+        "dcae0564eafb66109c9d5bb692a00f33e2a1f49af49c10f894d5368f6c1cce15",
+        "f5a4dd2f98af57b66708c03b9616cbcdac9e04e62b9e8c6355b5d0a21d11227f",
+        "1201719124565a32e88ed0a31c56aafec2e90cab6bc09cd4dbdfcfcbeb334517",
+        "1fcafa680dd797ec8012c0601ce4bf6d6961d86e7e4a9fbbdcaeaa795932da79",
+        "23990d30d17a69e49ebf7991165f1f556295e5a5b267893ce8d6f66e49f44f34",
+        "2912be74946416e9e0337590e021261273df7c6456d31cac8222d930fe8c5a16"
+      ],
+      "provision_paths": [
+        "Điều 21 > Khoản 8 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 7 > Điểm k",
+        "Điều 26 > Khoản 7 > Điểm l",
+        "Điều 26 > Khoản 7 > Điểm l"
+      ],
+      "source_chunk_ids": [
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591"
+      ]
+    },
+    {
+      "candidate_id": "c31808f4d97f7fd2e30e7731e5a305e9bc3d7ac185bc834f227665517e21cce3",
+      "population_ids": [
+        "ced1cca3085e29274be4807c87e8014e0d21950600ecb77b2dc7a63a66682733",
+        "dcae0564eafb66109c9d5bb692a00f33e2a1f49af49c10f894d5368f6c1cce15",
+        "f5a4dd2f98af57b66708c03b9616cbcdac9e04e62b9e8c6355b5d0a21d11227f",
+        "1201719124565a32e88ed0a31c56aafec2e90cab6bc09cd4dbdfcfcbeb334517",
+        "1fcafa680dd797ec8012c0601ce4bf6d6961d86e7e4a9fbbdcaeaa795932da79",
+        "23990d30d17a69e49ebf7991165f1f556295e5a5b267893ce8d6f66e49f44f34",
+        "2912be74946416e9e0337590e021261273df7c6456d31cac8222d930fe8c5a16",
+        "2e576e55224b6d612b6978d89e149beab413ebdc114cb4a08bb27991ecd68659"
+      ],
+      "provision_paths": [
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 7 > Điểm k",
+        "Điều 26 > Khoản 7 > Điểm l",
+        "Điều 26 > Khoản 7 > Điểm l",
+        "Điều 26 > Khoản 7 > Điểm l"
+      ],
+      "source_chunk_ids": [
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591"
+      ]
+    },
+    {
+      "candidate_id": "c544986e34d6d7203a773fbf4274b05a0bb7e33d3b88913434657151be194f21",
+      "population_ids": [
+        "dcae0564eafb66109c9d5bb692a00f33e2a1f49af49c10f894d5368f6c1cce15",
+        "f5a4dd2f98af57b66708c03b9616cbcdac9e04e62b9e8c6355b5d0a21d11227f",
+        "1201719124565a32e88ed0a31c56aafec2e90cab6bc09cd4dbdfcfcbeb334517",
+        "1fcafa680dd797ec8012c0601ce4bf6d6961d86e7e4a9fbbdcaeaa795932da79",
+        "23990d30d17a69e49ebf7991165f1f556295e5a5b267893ce8d6f66e49f44f34",
+        "2912be74946416e9e0337590e021261273df7c6456d31cac8222d930fe8c5a16",
+        "2e576e55224b6d612b6978d89e149beab413ebdc114cb4a08bb27991ecd68659",
+        "36b8e89135352fc8adc835996e6dde845d99fb5dcb4df7895c57084474bdd966"
+      ],
+      "provision_paths": [
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 7 > Điểm k",
+        "Điều 26 > Khoản 7 > Điểm l",
+        "Điều 26 > Khoản 7 > Điểm l",
+        "Điều 26 > Khoản 7 > Điểm l",
+        "Điều 26 > Khoản 8 > Điểm d"
+      ],
+      "source_chunk_ids": [
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591",
+        "017fff4f2db9d3f670ab6c4d31ebf5a96f8ac68e410d4990220a80d1d5405591"
+      ]
+    },
+    {
+      "candidate_id": "d954d42a33c3b519ac30b38a7872dd797b43c4dd5143f2da8cd4dab0a9f0ee35",
+      "population_ids": [
+        "f4576f29ffea9924a19d9afe7816004844b4affa773b52eff707e40e3b89da0e",
+        "f5f6036f1658dcf1e2e0f7fdedffbea98cb94e62f71f27daab793400f7ab8d38",
+        "1985ce89d385a5b410204af3934a3408c2a318c294a41b36c85386ab71c51939",
+        "3771bb7ca391b13be43397c034c51a47e580f47fcd60faa34a682f432053c61b",
+        "3c28babaeb12604be87c2480ea33642ce7665a6920ce9405b11251a24da4ab66",
+        "3f1419f4419f81775cf1c5fa03d4cd79833849be934fd153e1b00baa5cc83baa",
+        "554c3efc4392656a089268774221024f859a9a575ed3017650fcc0084336e8b4",
+        "773afc139ff5e6c422d16761e3e945b21134b4a535b099fd46e65931b88c5f8b"
+      ],
+      "provision_paths": [
+        "Điều 20 > Khoản 8a",
+        "Điều 21 > Khoản 2 > Điểm b",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e"
+      ],
+      "source_chunk_ids": [
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82"
+      ]
+    },
+    {
+      "candidate_id": "f58f7209839286fceecfefa099d8d3534755e7d3324a437cadd5788d3f0d5220",
+      "population_ids": [
+        "e88ef501552389039308d39db5d16b2f1c37419b3286c58b7cf7f99499a3b7cf",
+        "f4576f29ffea9924a19d9afe7816004844b4affa773b52eff707e40e3b89da0e",
+        "f5f6036f1658dcf1e2e0f7fdedffbea98cb94e62f71f27daab793400f7ab8d38",
+        "1985ce89d385a5b410204af3934a3408c2a318c294a41b36c85386ab71c51939",
+        "3771bb7ca391b13be43397c034c51a47e580f47fcd60faa34a682f432053c61b",
+        "3c28babaeb12604be87c2480ea33642ce7665a6920ce9405b11251a24da4ab66",
+        "3f1419f4419f81775cf1c5fa03d4cd79833849be934fd153e1b00baa5cc83baa",
+        "554c3efc4392656a089268774221024f859a9a575ed3017650fcc0084336e8b4"
+      ],
+      "provision_paths": [
+        "Điều 20 > Khoản 8a",
+        "Điều 20 > Khoản 8a",
+        "Điều 21 > Khoản 2 > Điểm b",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm d",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e"
+      ],
+      "source_chunk_ids": [
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "d6ad8ad85c6e89cd3a1e9f05ff667705a06c886eafcdbc27e3b49c0faf23a68f",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82"
+      ]
+    },
+    {
+      "candidate_id": "fd9eb1b04bcd93dc2b165795e4e47ec2ef3337d30997e216032daebdfb791947",
+      "population_ids": [
+        "3f1419f4419f81775cf1c5fa03d4cd79833849be934fd153e1b00baa5cc83baa",
+        "554c3efc4392656a089268774221024f859a9a575ed3017650fcc0084336e8b4",
+        "773afc139ff5e6c422d16761e3e945b21134b4a535b099fd46e65931b88c5f8b",
+        "789738ca81e4741c67ccd216349311d452df1040539938faaab41bafef4dd019",
+        "9556a8d00d034d318e981f81b06c8a62fa33834cdb617fd3d9c08a334e4cf0e3",
+        "9d1b89c23e4f08a5022718d367a790bc72b7cd9ad8eeff4bcf6040351df75803",
+        "bcf925ed4c98fb4c648a5e95be884a4c43011baff79669e038d5c3277192161e",
+        "bd5974b5a8aa451d99e5034f575f282d11ff274d36718bd2db291dc0f2f20b07"
+      ],
+      "provision_paths": [
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 26 > Khoản 7 > Điểm e",
+        "Điều 21 > Khoản 8 > Điểm đ",
+        "Điều 21 > Khoản 8 > Điểm đ"
+      ],
+      "source_chunk_ids": [
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82",
+        "2bfa4a0dd4c8543e10224a03023cbd19ff93836bc84c08895f3822b547e7cb82"
+      ]
+    }
+  ]
+}

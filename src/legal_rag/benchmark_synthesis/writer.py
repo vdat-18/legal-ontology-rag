@@ -26,6 +26,11 @@ from legal_rag.benchmark_synthesis.chunk_screening import (
     LEGACY_CHUNK_SCREENING_SCHEMA_VERSION,
     ChunkScreeningRecord,
 )
+from legal_rag.benchmark_synthesis.conversation_scenario_sampling import (
+    CONVERSATION_SCENARIO_SCHEMA_VERSION,
+    ConversationScenario,
+    TurnSpec,
+)
 from legal_rag.benchmark_synthesis.document_metadata import (
     DOCUMENT_METADATA_SCHEMA_VERSION,
     LEGACY_DOCUMENT_METADATA_SCHEMA_VERSION,
@@ -74,6 +79,13 @@ from legal_rag.benchmark_synthesis.multi_hop_5 import (
     MultiHop5Candidate,
     MultiHop5CandidateSet,
     MultiHop5ProgressRecord,
+)
+from legal_rag.benchmark_synthesis.multi_turn_candidate_generation import (
+    MULTI_TURN_CANDIDATE_SCHEMA_VERSION,
+    MULTI_TURN_PROGRESS_SCHEMA_VERSION,
+    ConversationTurnDraft,
+    MultiTurnCandidateDraft,
+    MultiTurnProgressRecord,
 )
 from legal_rag.benchmark_synthesis.scenario_sampling import SCENARIO_SCHEMA_VERSION, Scenario
 from legal_rag.io_utils import write_json_atomic, write_jsonl_atomic
@@ -284,6 +296,127 @@ def read_evidence_relation_progress(input_path: Path) -> tuple[EvidenceRelationP
 def write_scenarios(output_path: Path, scenarios: Sequence[Scenario]) -> None:
     """Atomically replace one UTF-8 JSONL output with scenario records."""
     write_jsonl_atomic(output_path, (scenario.to_dict() for scenario in scenarios))
+
+
+def write_conversation_scenarios(
+    output_path: Path, conversations: Sequence[ConversationScenario]
+) -> None:
+    """Atomically replace one UTF-8 JSONL output with conversation-scenario records."""
+    write_jsonl_atomic(output_path, (conversation.to_dict() for conversation in conversations))
+
+
+def read_conversation_scenarios(input_path: Path) -> tuple[ConversationScenario, ...]:
+    """Read a conversation-scenarios JSONL file back into typed records."""
+    conversations: list[ConversationScenario] = []
+    with input_path.open(encoding="utf-8") as source_file:
+        for line in source_file:
+            payload = json.loads(line)
+            if payload["schema_version"] != CONVERSATION_SCENARIO_SCHEMA_VERSION:
+                msg = f"Unsupported conversation-scenario schema: {payload['schema_version']}"
+                raise ValueError(msg)
+            conversations.append(
+                ConversationScenario(
+                    conversation_scenario_id=payload["conversation_scenario_id"],
+                    persona=payload["persona"],
+                    conversation_length=payload["conversation_length"],
+                    turns=tuple(_parse_turn_spec(turn) for turn in payload["turns"]),
+                    gold_chunk_ids=tuple(payload["gold_chunk_ids"]),
+                )
+            )
+    return tuple(conversations)
+
+
+def _parse_turn_spec(payload: dict[str, object]) -> TurnSpec:
+    """Parse the TurnSpec portion of one conversation-scenario record."""
+    return TurnSpec(
+        turn_number=payload["turn_number"],
+        dialogue_act=payload["dialogue_act"],
+        context_dependency=payload["context_dependency"],
+        answerability=payload["answerability"],
+        anchor_scenario_id=payload["anchor_scenario_id"],
+        fact_ids=tuple(payload["fact_ids"]),
+        gold_chunk_ids=tuple(payload["gold_chunk_ids"]),
+    )
+
+
+def write_multi_turn_candidates(
+    output_path: Path, conversations: Sequence[MultiTurnCandidateDraft]
+) -> None:
+    """Atomically replace one UTF-8 JSONL output with multi-turn candidate records."""
+    write_jsonl_atomic(output_path, (conversation.to_dict() for conversation in conversations))
+
+
+def read_multi_turn_candidates(input_path: Path) -> tuple[MultiTurnCandidateDraft, ...]:
+    """Read a multi-turn candidates JSONL file back into typed records."""
+    conversations: list[MultiTurnCandidateDraft] = []
+    with input_path.open(encoding="utf-8") as source_file:
+        for line in source_file:
+            payload = json.loads(line)
+            if payload["schema_version"] != MULTI_TURN_CANDIDATE_SCHEMA_VERSION:
+                msg = f"Unsupported multi-turn candidate schema: {payload['schema_version']}"
+                raise ValueError(msg)
+            conversations.append(
+                MultiTurnCandidateDraft(
+                    conversation_id=payload["conversation_id"],
+                    persona=payload["persona"],
+                    conversation_length=payload["conversation_length"],
+                    turns=tuple(_parse_conversation_turn(turn) for turn in payload["turns"]),
+                    gold_chunk_ids=tuple(payload["gold_chunk_ids"]),
+                    generator_model=payload["generator_model"],
+                    prompt_version=payload["prompt_version"],
+                )
+            )
+    return tuple(conversations)
+
+
+def write_multi_turn_progress(output_path: Path, records: Sequence[MultiTurnProgressRecord]) -> None:
+    """Atomically replace one UTF-8 JSONL output with multi-turn progress records."""
+    write_jsonl_atomic(output_path, (record.to_dict() for record in records))
+
+
+def read_multi_turn_progress(input_path: Path) -> tuple[MultiTurnProgressRecord, ...]:
+    """Read a multi-turn progress JSONL file back into typed records."""
+    records: list[MultiTurnProgressRecord] = []
+    with input_path.open(encoding="utf-8") as source_file:
+        for line in source_file:
+            payload = json.loads(line)
+            if payload["schema_version"] != MULTI_TURN_PROGRESS_SCHEMA_VERSION:
+                msg = f"Unsupported multi-turn progress schema: {payload['schema_version']}"
+                raise ValueError(msg)
+            records.append(
+                MultiTurnProgressRecord(
+                    task_id=payload["task_id"],
+                    conversation_id=payload["conversation_id"],
+                    turn_number=payload["turn_number"],
+                    stage=payload["stage"],
+                    draft=_parse_conversation_turn(payload["draft"]),
+                )
+            )
+    return tuple(records)
+
+
+def _parse_conversation_turn(payload: dict[str, object]) -> ConversationTurnDraft:
+    """Parse the ConversationTurnDraft portion of one multi-turn record."""
+    return ConversationTurnDraft(
+        turn_number=payload["turn_number"],
+        dialogue_act=payload["dialogue_act"],
+        context_dependency=payload["context_dependency"],
+        answerability=payload["answerability"],
+        anchor_scenario_id=payload["anchor_scenario_id"],
+        query=payload["query"],
+        reference_answer=payload["reference_answer"],
+        reasoning=payload["reasoning"],
+        required_claims=tuple(
+            RequiredClaim(
+                claim=claim["claim"],
+                fact_id=claim["fact_id"],
+                evidence=tuple(ClaimEvidence(chunk_id=entry["chunk_id"]) for entry in claim["evidence"]),
+            )
+            for claim in payload["required_claims"]
+        ),
+        gold_chunk_ids=tuple(payload["gold_chunk_ids"]),
+        source_fact_ids=tuple(payload["source_fact_ids"]),
+    )
 
 
 def write_bundle_scope_records(output_path: Path, records: Sequence[BundleScopeRecord]) -> None:

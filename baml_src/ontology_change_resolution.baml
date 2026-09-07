@@ -102,6 +102,12 @@ function ProposeCrossDocumentLegalChanges(windows: CrossDocumentChangeWindowInpu
       điều kiện. Không ghép một earlier leaf với later sibling khác hành động. Một
       rule có thể tách thành nhiều leaf hoặc nhiều leaf có thể nhập lại chỉ khi
       chính source và semantics của từng leaf hỗ trợ mọi liên kết đó.
+    - Khi source trực tiếp viết lại toàn bộ một Điều/Khoản/Điểm, audit mọi earlier
+      rule tại đúng locator đó, kể cả các variant khác điều kiện hoặc hậu quả. Không
+      để variant cũ tiếp tục hiệu lực chỉ vì later rule không lặp lại điều kiện/hậu
+      quả của nó. Liên kết variant có successor phù hợp; nếu không có successor cho
+      chính variant đó thì dùng RepealOrSupersession với later null, dù window vẫn
+      có later sibling khác tại cùng locator.
     - later_records chỉ gồm rule có provenance từ chính nhóm source chunks đang
       đọc. Danh sách rỗng là hợp lệ đối với bãi bỏ hoặc source không tạo rule mới.
       Không yêu cầu ghép một later rule khi source chỉ chứng minh bãi bỏ.
@@ -112,8 +118,12 @@ function ProposeCrossDocumentLegalChanges(windows: CrossDocumentChangeWindowInpu
       yêu cầu ngày mặc định phải được lặp lại trong source batch hiện tại.
     - earlier ID thuộc earlier_records; later ID nếu có thuộc later_records. Không
       lặp lại đúng cùng một cặp earlier/later và change type.
-    - Amendment/Replacement cần later rule. RepealOrSupersession chỉ để later null
-      khi source trực tiếp chứng minh không có later rule trong window.
+    - Amendment/Replacement cần later rule. RepealOrSupersession để later null khi
+      source trực tiếp bãi bỏ target hoặc viết lại toàn bộ locator nhưng không có
+      later rule kế thừa chính earlier variant đang xét.
+    - change_provision_path là locator pháp lý đích đầy đủ nhất, thí dụ
+      `Điều 14 > Khoản 3 > Điểm b`. Không đưa Điều chứa lệnh sửa đổi, câu
+      "Sửa đổi, bổ sung..." hoặc văn xuôi nguồn vào locator.
     - Chỉ dùng evidence_id, effective_on và provision path được source hỗ trợ;
       không tạo identity, exception hoặc concept relation.
     - Thiếu evidence thì không đề xuất. Trả đúng một result cho mỗi candidate_id.

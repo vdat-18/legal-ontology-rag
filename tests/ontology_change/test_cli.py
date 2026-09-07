@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -155,6 +156,26 @@ def test_cli_runs_candidate_proposal_and_offline_change_finalization(
     assert len(read_population_records(canonical_path)) == 2
     assert len(read_legal_change_events(events_path)) == 1
     assert len(Graph().parse(graph_path, format="turtle")) > 0
+
+    selection_path = tmp_path / "rerun.json"
+    selection_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "0.1.0",
+                "candidate_ids": [read_change_proposals(proposals_path)[0].candidate_id],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(change_proposals, "BamlChangeProposalClient", _EmptyChangeClient)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [*proposal_argv, "--rerun-candidate-ids-path", str(selection_path)],
+    )
+    ontology_change_proposals_cli.main()
+
+    assert read_change_proposals(proposals_path) == ()
 
     progress_path.unlink()
     monkeypatch.setattr(change_proposals, "BamlChangeProposalClient", _EmptyChangeClient)

@@ -122,6 +122,7 @@ def _change_parser() -> argparse.ArgumentParser:
     parser.add_argument("canonical_records_output_path", type=Path)
     parser.add_argument("change_events_output_path", type=Path)
     parser.add_argument("graph_output_path", type=Path)
+    parser.add_argument("--rerun-candidate-ids-path", type=Path)
     parser.add_argument("--max-concurrency", type=int, default=DEFAULT_ONTOLOGY_MAX_CONCURRENCY)
     return parser
 
@@ -129,6 +130,21 @@ def _change_parser() -> argparse.ArgumentParser:
 def changes_main() -> None:
     """Run the complete cross-document legal-change step."""
     arguments = _change_parser().parse_args()
+    proposal_arguments = (
+        arguments.corpus_manifest_path,
+        arguments.candidates_output_path,
+        arguments.change_contract_path,
+        arguments.proposals_output_path,
+        arguments.progress_output_path,
+        "--max-concurrency",
+        str(arguments.max_concurrency),
+    )
+    if arguments.rerun_candidate_ids_path is not None:
+        proposal_arguments = (
+            *proposal_arguments,
+            "--rerun-candidate-ids-path",
+            arguments.rerun_candidate_ids_path,
+        )
     _run_modules(
         (
             (
@@ -141,15 +157,7 @@ def changes_main() -> None:
             ),
             (
                 "legal_rag.ontology_change_proposals_cli",
-                (
-                    arguments.corpus_manifest_path,
-                    arguments.candidates_output_path,
-                    arguments.change_contract_path,
-                    arguments.proposals_output_path,
-                    arguments.progress_output_path,
-                    "--max-concurrency",
-                    str(arguments.max_concurrency),
-                ),
+                proposal_arguments,
             ),
             (
                 "legal_rag.ontology_change_finalize_cli",

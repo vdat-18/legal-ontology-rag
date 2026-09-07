@@ -25,6 +25,7 @@ from legal_rag.benchmark_synthesis.writer import (
     write_legal_facts,
 )
 from legal_rag.embedding.profiles import load_configured_embedding_profile
+from legal_rag.retrieval.vietnamese_bm25 import lexical_units
 
 _REPO_CONFIG_DIR = Path(__file__).resolve().parent.parent / "data" / "config" / "groundtruth"
 
@@ -81,7 +82,7 @@ class _FakeVnCoreNlpWordSegmenter:
 
     def segment(self, texts: list[str]) -> tuple[tuple[str, ...], ...]:
         """Split every text into alphanumeric lexical units."""
-        return tuple(tuple(evidence_graph._lexical_units(text)) for text in texts)
+        return tuple(tuple(lexical_units(text)) for text in texts)
 
 
 def _configure_cli(

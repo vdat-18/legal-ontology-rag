@@ -165,6 +165,10 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
       nếu nó tiếp nối Điểm/Khoản/danh sách, Locator context được xác nhận tiêu đề xử
       phạt/cấu trúc chi phối. Không bỏ đoạn mở đầu vì phía sau có heading mới;
       conduct/evidence vẫn chỉ từ Target.
+    - Chia Target theo từng heading xuất hiện trong chính Target. Heading mới chỉ
+      chi phối nội dung đứng sau nó, không được áp dụng ngược cho đoạn mở đầu.
+      Đoạn mở đầu chưa có heading riêng phải kế thừa locator đang còn hiệu lực ở
+      cuối Locator context, cho tới đúng vị trí heading mới bắt đầu.
     - Audit từng Điểm/nhánh, không xuất audit: đánh dấu mọi hành động, không hành
       động, trạng thái vi phạm; mỗi đoạn mở đầu, Điểm và nhánh trực tiếp bị xử phạt
       phải có conduct tương ứng hoặc được loại theo cổng bằng căn cứ rõ ràng. Kiểm
