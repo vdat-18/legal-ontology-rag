@@ -177,8 +177,13 @@ uv run --extra dev legal-resolve-ontology-concepts `
   <corpus-manifest.json> <canonical-population.jsonl> <change-events.jsonl> <legal-exceptions.jsonl> `
   ontology/population_contract.yaml ontology/concept_resolution_contract.yaml `
   <concept-candidates.json> <concept-proposals.jsonl> <concept-progress.jsonl> `
-  <canonical-concepts.jsonl> <concept-relations.jsonl> <canonical.ttl> --max-concurrency 30
+  <canonical-concepts.jsonl> <concept-relations.jsonl> <canonical.ttl> `
+  --max-concurrency 30
 ```
+
+Step 6 builds one global inventory for each reusable controlled-vocabulary kind. After a complete run, add
+`--rerun-candidate-ids-path <rerun-selection.json>` to replace only a reviewed inventory while preserving the other
+concept proposals.
 
 Omit pilot-selection options for the full document. Re-running a step resumes from compatible conduct/proposal progress
 instead of repeating completed LLM work. The lower-level candidate, proposal, and finalize commands remain available for

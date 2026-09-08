@@ -4,14 +4,36 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
+from itertools import pairwise
 
 from legal_rag.ontology_concept.models import (
     CanonicalConceptRecord,
     CanonicalConceptRelationRecord,
+    ConceptCandidateInventory,
     ConceptOccurrence,
     ConceptRelationProposal,
 )
 from legal_rag.ontology_population.models import population_identity
+
+
+def validate_concept_proposal_candidates(
+    inventories: Sequence[ConceptCandidateInventory],
+    proposals: Sequence[ConceptRelationProposal],
+) -> None:
+    """Require persisted proposals to remain inside their source inventory."""
+    occurrence_ids_by_candidate = {inventory.candidate_id: set(inventory.occurrence_ids) for inventory in inventories}
+    for proposal in proposals:
+        allowed_ids = occurrence_ids_by_candidate.get(proposal.candidate_id)
+        if (
+            allowed_ids is None
+            or not {
+                proposal.left_occurrence_id,
+                proposal.right_occurrence_id,
+            }
+            <= allowed_ids
+        ):
+            msg = "Concept proposals must remain inside their source candidate inventory"
+            raise ValueError(msg)
 
 
 def finalize_concept_resolution(
@@ -72,14 +94,29 @@ def _same_concept_roots(
             occurrence_id = parent[occurrence_id]
         return occurrence_id
 
-    for proposal in proposals:
-        if proposal.relation != "SameConcept":
-            continue
-        left_root = find(proposal.left_occurrence_id)
-        right_root = find(proposal.right_occurrence_id)
+    occurrences_by_label: dict[tuple[str, str], list[str]] = defaultdict(list)
+    for occurrence in occurrences_by_id.values():
+        occurrences_by_label[(occurrence.kind, occurrence.label_vi)].append(occurrence.occurrence_id)
+    same_pairs = [pair for occurrence_ids in occurrences_by_label.values() for pair in pairwise(occurrence_ids)]
+    same_pairs.extend(
+        (proposal.left_occurrence_id, proposal.right_occurrence_id)
+        for proposal in proposals
+        if proposal.relation == "SameConcept"
+    )
+    for left_occurrence_id, right_occurrence_id in same_pairs:
+        left_root = find(left_occurrence_id)
+        right_root = find(right_occurrence_id)
         if left_root != right_root:
             parent[max(left_root, right_root)] = min(left_root, right_root)
-    return {occurrence_id: find(occurrence_id) for occurrence_id in occurrences_by_id}
+    roots = {occurrence_id: find(occurrence_id) for occurrence_id in occurrences_by_id}
+    for proposal in proposals:
+        if (
+            proposal.relation != "SameConcept"
+            and roots[proposal.left_occurrence_id] == roots[proposal.right_occurrence_id]
+        ):
+            msg = "Concept relations conflict with a same-concept component"
+            raise ValueError(msg)
+    return roots
 
 
 def _canonical_concepts(
@@ -105,6 +142,12 @@ def _canonical_concepts(
             for proposal in sorted(fragments, key=lambda item: item.proposal_id)
             if proposal.preferred_label_vi
         ]
+        if any(label not in labels for label in selected_labels):
+            msg = "Canonical preferred labels must come from source occurrences"
+            raise ValueError(msg)
+        if len(set(selected_labels)) > 1:
+            msg = "One same-concept component must use one preferred label"
+            raise ValueError(msg)
         preferred_label = selected_labels[0] if selected_labels else min(labels)
         occurrence_ids = tuple(sorted(item.occurrence_id for item in members))
         kind = members[0].kind
@@ -132,7 +175,7 @@ def _canonical_relations(
     """Project non-equivalence decisions onto canonical identities."""
     grouped: set[tuple[str, str, str]] = set()
     for proposal in proposals:
-        if proposal.relation == "SameConcept":
+        if proposal.relation in {"SameConcept", "Distinct"}:
             continue
         left = concept_id_by_occurrence[proposal.left_occurrence_id]
         right = concept_id_by_occurrence[proposal.right_occurrence_id]
@@ -151,7 +194,33 @@ def _canonical_relations(
                 relation=relation,
             )
         )
+    _validate_relation_graph(records)
     return tuple(records)
+
+
+def _validate_relation_graph(relations: Sequence[CanonicalConceptRelationRecord]) -> None:
+    """Reject contradictory pairs and cycles in the canonical broader graph."""
+    relation_by_pair: dict[frozenset[str], str] = {}
+    broader_targets: dict[str, set[str]] = defaultdict(set)
+    for relation in relations:
+        pair = frozenset((relation.source_concept_id, relation.target_concept_id))
+        previous = relation_by_pair.setdefault(pair, relation.relation)
+        if previous != relation.relation:
+            msg = "Canonical concepts cannot have contradictory semantic relations"
+            raise ValueError(msg)
+        if relation.relation == "Broader":
+            broader_targets[relation.source_concept_id].add(relation.target_concept_id)
+
+    def visit(concept_id: str, path: set[str]) -> None:
+        if concept_id in path:
+            msg = "Canonical broader relations must be acyclic"
+            raise ValueError(msg)
+        next_path = {*path, concept_id}
+        for target_id in broader_targets[concept_id]:
+            visit(target_id, next_path)
+
+    for concept_id in tuple(broader_targets):
+        visit(concept_id, set())
 
 
 def _canonical_relation_direction(

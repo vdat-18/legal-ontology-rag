@@ -11,7 +11,10 @@ from rdflib import SKOS
 from legal_rag.ontology_change.corpus import ChangeCorpus
 from legal_rag.ontology_concept.candidates import build_concept_candidates
 from legal_rag.ontology_concept.config import ConceptResolutionSettings
-from legal_rag.ontology_concept.finalization import finalize_concept_resolution
+from legal_rag.ontology_concept.finalization import (
+    finalize_concept_resolution,
+    validate_concept_proposal_candidates,
+)
 from legal_rag.ontology_concept.materializer import canonical_concept_iri, materialize_concept_resolution_graph
 from legal_rag.ontology_concept.models import ConceptCandidateSet, ConceptRelationProposal
 from legal_rag.ontology_concept.writer import (
@@ -31,13 +34,12 @@ def _role_proposal(exception_corpus: ChangeCorpus) -> tuple[ConceptCandidateSet,
     """Return candidates and one source-grounded role equivalence proposal."""
     settings = ConceptResolutionSettings.from_path(PROJECT_ROOT / "ontology" / "concept_resolution_contract.yaml")
     candidates = build_concept_candidates(exception_corpus.documents[0].records, settings)
-    occurrences = {item.occurrence_id: item for item in candidates.occurrences}
-    pair = next(item for item in candidates.pairs if occurrences[item.left_occurrence_id].kind == "LegalSubjectRole")
-    left = occurrences[pair.left_occurrence_id]
-    right = occurrences[pair.right_occurrence_id]
+    roles = [item for item in candidates.occurrences if item.kind == "LegalSubjectRole"]
+    left, right = roles
+    inventory = next(item for item in candidates.inventories if item.kind == "LegalSubjectRole")
     return candidates, ConceptRelationProposal(
         proposal_id="proposal-role",
-        candidate_id=pair.candidate_id,
+        candidate_id=inventory.candidate_id,
         left_occurrence_id=left.occurrence_id,
         right_occurrence_id=right.occurrence_id,
         relation="SameConcept",
@@ -84,12 +86,12 @@ def test_validated_equivalence_remaps_rules_and_passes_shacl(
     assert read_canonical_relations(relations_path) == relations
 
 
-def test_no_proposals_keep_occurrences_as_separate_concepts(exception_corpus: ChangeCorpus) -> None:
-    """Without a semantic relation, every occurrence remains a separate concept."""
+def test_no_proposals_merge_only_identical_controlled_labels(exception_corpus: ChangeCorpus) -> None:
+    """Exact controlled labels share identity without inventing cross-label relations."""
     candidates, _ = _role_proposal(exception_corpus)
     concepts, relations = finalize_concept_resolution(candidates.occurrences, ())
 
-    assert len(concepts) == len(candidates.occurrences)
+    assert len(concepts) == 2
     assert relations == ()
 
 
@@ -97,13 +99,14 @@ def test_broader_relation_materializes_as_skos_without_merging(exception_corpus:
     """A valid hierarchy keeps distinct identities and emits inverse SKOS projections."""
     settings = ConceptResolutionSettings.from_path(PROJECT_ROOT / "ontology" / "concept_resolution_contract.yaml")
     candidates = build_concept_candidates(exception_corpus.documents[0].records, settings)
-    occurrences = {item.occurrence_id: item for item in candidates.occurrences}
-    pair = next(item for item in candidates.pairs if occurrences[item.left_occurrence_id].kind == "RegulatedConduct")
-    left = occurrences[pair.left_occurrence_id]
-    right = occurrences[pair.right_occurrence_id]
+    vehicles = [item for item in candidates.occurrences if item.kind == "VehicleCategory"]
+    left = replace(vehicles[0], label_vi="Phương tiện giao thông")
+    right = replace(vehicles[1], label_vi="Xe mô tô")
+    occurrences = (*[item for item in candidates.occurrences if item.kind != "VehicleCategory"], left, right)
+    inventory = next(item for item in candidates.inventories if item.kind == "VehicleCategory")
     proposal = ConceptRelationProposal(
         proposal_id="proposal-hierarchy",
-        candidate_id=pair.candidate_id,
+        candidate_id=inventory.candidate_id,
         left_occurrence_id=left.occurrence_id,
         right_occurrence_id=right.occurrence_id,
         relation="LeftBroaderThanRight",
@@ -113,14 +116,14 @@ def test_broader_relation_materializes_as_skos_without_merging(exception_corpus:
         rationale_vi="Khái niệm bên trái rộng hơn theo nguồn.",
         run_id="run-1",
     )
-    concepts, relations = finalize_concept_resolution(candidates.occurrences, (proposal,))
+    concepts, relations = finalize_concept_resolution(occurrences, (proposal,))
     population_settings = PopulationSettings.from_path(PROJECT_ROOT / "ontology" / "population_contract.yaml")
     graph = materialize_concept_resolution_graph(
         exception_corpus,
         exception_corpus.documents[0].records,
         (),
         (),
-        candidates.occurrences,
+        occurrences,
         concepts,
         relations,
         population_settings.instance_namespace,
@@ -158,3 +161,99 @@ def test_unknown_occurrences_are_rejected(exception_corpus: ChangeCorpus) -> Non
             candidates.occurrences,
             (replace(proposal, left_occurrence_id="unknown"),),
         )
+
+
+def test_proposal_must_belong_to_its_candidate_inventory(exception_corpus: ChangeCorpus) -> None:
+    """Persisted proposals cannot cross the typed candidate boundary."""
+    candidates, proposal = _role_proposal(exception_corpus)
+
+    with pytest.raises(ValueError, match="source candidate inventory"):
+        validate_concept_proposal_candidates(
+            candidates.inventories,
+            (replace(proposal, candidate_id="unknown"),),
+        )
+
+
+def test_transitive_same_concept_conflict_is_rejected(exception_corpus: ChangeCorpus) -> None:
+    """A non-equivalence relation cannot survive inside one transitive identity component."""
+    candidates, template = _role_proposal(exception_corpus)
+    first, second = [item for item in candidates.occurrences if item.kind == "LegalSubjectRole"]
+    third = replace(second, occurrence_id="role-third", label_vi="Người lái xe")
+    proposals = (
+        replace(
+            template,
+            proposal_id="same-1",
+            left_occurrence_id=first.occurrence_id,
+            right_occurrence_id=third.occurrence_id,
+        ),
+        replace(
+            template,
+            proposal_id="same-2",
+            left_occurrence_id=third.occurrence_id,
+            right_occurrence_id=second.occurrence_id,
+        ),
+        replace(
+            template,
+            proposal_id="related",
+            left_occurrence_id=first.occurrence_id,
+            right_occurrence_id=second.occurrence_id,
+            relation="Related",
+            preferred_label_vi="",
+        ),
+    )
+
+    with pytest.raises(ValueError, match="conflict with a same-concept component"):
+        finalize_concept_resolution((*candidates.occurrences, third), proposals)
+
+
+def test_broader_cycle_is_rejected(exception_corpus: ChangeCorpus) -> None:
+    """Canonical broader relations must form an acyclic taxonomy."""
+    candidates, template = _role_proposal(exception_corpus)
+    source = next(item for item in candidates.occurrences if item.kind == "LegalSubjectRole")
+    occurrences = (
+        replace(source, occurrence_id="role-a", label_vi="Vai trò A"),
+        replace(source, occurrence_id="role-b", label_vi="Vai trò B"),
+        replace(source, occurrence_id="role-c", label_vi="Vai trò C"),
+    )
+    proposals = tuple(
+        replace(
+            template,
+            proposal_id=f"broader-{index}",
+            left_occurrence_id=left.occurrence_id,
+            right_occurrence_id=right.occurrence_id,
+            relation="LeftNarrowerThanRight",
+            preferred_label_vi="",
+        )
+        for index, (left, right) in enumerate(
+            ((occurrences[0], occurrences[1]), (occurrences[1], occurrences[2]), (occurrences[2], occurrences[0]))
+        )
+    )
+
+    with pytest.raises(ValueError, match="must be acyclic"):
+        finalize_concept_resolution(occurrences, proposals)
+
+
+def test_same_component_requires_one_preferred_label(exception_corpus: ChangeCorpus) -> None:
+    """A transitive equivalence component cannot choose competing canonical labels."""
+    candidates, template = _role_proposal(exception_corpus)
+    first, second = [item for item in candidates.occurrences if item.kind == "LegalSubjectRole"]
+    third = replace(second, occurrence_id="role-third", label_vi="Người lái xe")
+    proposals = (
+        replace(
+            template,
+            proposal_id="same-1",
+            left_occurrence_id=first.occurrence_id,
+            right_occurrence_id=third.occurrence_id,
+            preferred_label_vi=first.label_vi,
+        ),
+        replace(
+            template,
+            proposal_id="same-2",
+            left_occurrence_id=third.occurrence_id,
+            right_occurrence_id=second.occurrence_id,
+            preferred_label_vi=third.label_vi,
+        ),
+    )
+
+    with pytest.raises(ValueError, match="must use one preferred label"):
+        finalize_concept_resolution((*candidates.occurrences, third), proposals)

@@ -31,7 +31,10 @@ def main() -> None:
     from legal_rag.ontology_change.writer import read_legal_change_events
     from legal_rag.ontology_concept.candidates import extract_concept_occurrences
     from legal_rag.ontology_concept.config import ConceptResolutionSettings
-    from legal_rag.ontology_concept.finalization import finalize_concept_resolution
+    from legal_rag.ontology_concept.finalization import (
+        finalize_concept_resolution,
+        validate_concept_proposal_candidates,
+    )
     from legal_rag.ontology_concept.materializer import materialize_concept_resolution_graph
     from legal_rag.ontology_concept.writer import (
         read_concept_candidates,
@@ -57,6 +60,7 @@ def main() -> None:
     change_events = read_legal_change_events(arguments.change_events_path)
     exceptions = read_legal_exception_records(arguments.exception_records_path)
     proposals = read_concept_proposals(arguments.proposals_path)
+    validate_concept_proposal_candidates(candidates.inventories, proposals)
     concepts, relations = finalize_concept_resolution(
         candidates.occurrences,
         proposals,

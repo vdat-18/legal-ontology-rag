@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -15,17 +16,15 @@ from legal_rag import (
     ontology_concept_proposals_cli,
 )
 from legal_rag.baml_client.types import (
-    ConceptRelationProposalEntry,
-    ConceptResolutionPairInput,
-    ConceptResolutionPairResult,
-    OntologyConceptRelation,
-    OntologyEvidenceReference,
+    ConceptResolutionInventoryInput,
+    ConceptResolutionInventoryResult,
 )
 from legal_rag.ontology_change.corpus import ChangeCorpus
 from legal_rag.ontology_change.writer import write_legal_change_events
 from legal_rag.ontology_concept import proposals as concept_proposals
 from legal_rag.ontology_concept.writer import (
     read_canonical_concepts,
+    read_concept_candidates,
     read_concept_proposals,
 )
 from legal_rag.ontology_exception.writer import write_legal_exception_records
@@ -36,7 +35,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class _CliConceptClient:
-    """Return one typed role merge and track resumable LLM calls."""
+    """Return empty typed inventories and track resumable LLM calls."""
 
     calls = 0
     model = "test-model"
@@ -44,27 +43,18 @@ class _CliConceptClient:
     def __init__(self, *_: object) -> None:
         """Accept the production client's constructor arguments."""
 
-    def propose_batch(self, pairs: Sequence[ConceptResolutionPairInput]) -> Sequence[ConceptResolutionPairResult]:
-        """Propose equality only for the two fixture role occurrences."""
+    def propose_batch(
+        self,
+        inventories: Sequence[ConceptResolutionInventoryInput],
+    ) -> Sequence[ConceptResolutionInventoryResult]:
+        """Complete each inventory without fabricating a semantic relation."""
         type(self).calls += 1
         return tuple(
-            ConceptResolutionPairResult(
-                candidate_id=pair.candidate_id,
-                proposal=ConceptRelationProposalEntry(
-                    relation=OntologyConceptRelation.SameConcept,
-                    preferred_label_vi=pair.left.label_vi,
-                    left_evidence=[
-                        OntologyEvidenceReference(evidence_id=source.evidence_id) for source in pair.left.evidence
-                    ],
-                    right_evidence=[
-                        OntologyEvidenceReference(evidence_id=source.evidence_id) for source in pair.right.evidence
-                    ],
-                    rationale_vi="Hai occurrence biểu đạt cùng vai trò pháp lý.",
-                )
-                if pair.left.kind.value == "LegalSubjectRole"
-                else None,
+            ConceptResolutionInventoryResult(
+                candidate_id=inventory.candidate_id,
+                proposals=[],
             )
-            for pair in pairs
+            for inventory in inventories
         )
 
 
@@ -76,9 +66,15 @@ class _EmptyConceptClient:
     def __init__(self, *_: object) -> None:
         """Accept production constructor arguments."""
 
-    def propose_batch(self, pairs: Sequence[ConceptResolutionPairInput]) -> Sequence[ConceptResolutionPairResult]:
-        """Return an explicit no-proposal result for every replayed pair."""
-        return tuple(ConceptResolutionPairResult(candidate_id=pair.candidate_id, proposal=None) for pair in pairs)
+    def propose_batch(
+        self,
+        inventories: Sequence[ConceptResolutionInventoryInput],
+    ) -> Sequence[ConceptResolutionInventoryResult]:
+        """Return an explicit no-proposal result for every replayed inventory."""
+        return tuple(
+            ConceptResolutionInventoryResult(candidate_id=inventory.candidate_id, proposals=[])
+            for inventory in inventories
+        )
 
 
 def test_cli_runs_resumable_proposal_and_offline_finalization(
@@ -86,7 +82,7 @@ def test_cli_runs_resumable_proposal_and_offline_finalization(
     tmp_path: Path,
     exception_corpus: ChangeCorpus,
 ) -> None:
-    """The three commands call the fake model once per pair and resume completed work."""
+    """The three commands call the fake model once per inventory and resume completed work."""
     manifest_path = tmp_path / "corpus.json"
     canonical_path = write_exception_manifest(manifest_path, exception_corpus)
     change_events_path = tmp_path / "change-events.jsonl"
@@ -132,8 +128,8 @@ def test_cli_runs_resumable_proposal_and_offline_finalization(
     ontology_concept_proposals_cli.main()
     ontology_concept_proposals_cli.main()
 
-    assert len(read_concept_proposals(proposals_path)) == 1
-    assert _CliConceptClient.calls == 3
+    assert read_concept_proposals(proposals_path) == ()
+    assert _CliConceptClient.calls == 2
     finalize_argv = [
         "legal-finalize-concept-resolution",
         str(manifest_path),
@@ -151,8 +147,23 @@ def test_cli_runs_resumable_proposal_and_offline_finalization(
     monkeypatch.setattr(sys, "argv", finalize_argv)
     ontology_concept_finalize_cli.main()
 
-    assert len(read_canonical_concepts(concepts_path)) == 5
+    assert len(read_canonical_concepts(concepts_path)) == 2
     assert len(Graph().parse(graph_path, format="turtle")) > 0
+
+    selection_path = tmp_path / "concept-rerun.json"
+    selected_id = read_concept_candidates(candidates_path).inventories[0].candidate_id
+    selection_path.write_text(
+        json.dumps({"schema_version": "0.1.0", "candidate_ids": [selected_id]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [*proposal_argv, "--rerun-candidate-ids-path", str(selection_path)],
+    )
+    ontology_concept_proposals_cli.main()
+
+    assert _CliConceptClient.calls == 3
 
     progress_path.unlink()
     monkeypatch.setattr(concept_proposals, "BamlConceptProposalClient", _EmptyConceptClient)

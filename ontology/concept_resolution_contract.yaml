@@ -1,10 +1,9 @@
-schema_version: "0.2.0"
+schema_version: "0.3.0"
 candidates:
   included_kinds:
-    - RegulatedConduct
     - LegalSubjectRole
     - VehicleCategory
-  max_total_pairs: 100000
+  max_occurrences_per_inventory: 10000
 llm:
   batch_size: 1
   max_output_tokens: 32768

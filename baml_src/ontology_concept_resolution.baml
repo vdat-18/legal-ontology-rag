@@ -9,7 +9,6 @@ enum OntologyConceptRelation {
   LeftBroaderThanRight
   LeftNarrowerThanRight
   Related
-  Distinct
 }
 
 class OntologyConceptOccurrenceInput {
@@ -22,13 +21,15 @@ class OntologyConceptOccurrenceInput {
   evidence OntologyEvidenceSource[]
 }
 
-class ConceptResolutionPairInput {
+class ConceptResolutionInventoryInput {
   candidate_id string
-  left OntologyConceptOccurrenceInput
-  right OntologyConceptOccurrenceInput
+  kind OntologyConceptKind
+  occurrences OntologyConceptOccurrenceInput[]
 }
 
 class ConceptRelationProposalEntry {
+  left_occurrence_id string
+  right_occurrence_id string
   relation OntologyConceptRelation
   preferred_label_vi string @description(#"
     SameConcept: chọn nguyên một label tiếng Việt đã cấp; quan hệ khác: chuỗi rỗng.
@@ -38,12 +39,12 @@ class ConceptRelationProposalEntry {
   rationale_vi string @description(#"Lý do ngắn gọn dựa trên ý nghĩa pháp lý."#)
 }
 
-class ConceptResolutionPairResult {
+class ConceptResolutionInventoryResult {
   candidate_id string
-  proposal ConceptRelationProposalEntry?
+  proposals ConceptRelationProposalEntry[]
 }
 
-function ProposeOntologyConceptRelations(pairs: ConceptResolutionPairInput[]) -> ConceptResolutionPairResult[] {
+function ProposeOntologyConceptRelations(inventories: ConceptResolutionInventoryInput[]) -> ConceptResolutionInventoryResult[] {
   client OpenAICompatibleProvider
   prompt #"
     {{ _.role("system") }}
@@ -55,29 +56,33 @@ function ProposeOntologyConceptRelations(pairs: ConceptResolutionPairInput[]) ->
     Mục đích bước 6/6: chuẩn hóa concept occurrences thành identity hoặc taxonomy
     dùng chung mà không làm mất khác biệt về nghĩa pháp lý.
 
-    Nhiệm vụ: xác định quan hệ giữa hai concept occurrences cùng loại.
+    Nhiệm vụ: chuẩn hóa toàn bộ nhãn trong mỗi inventory cùng loại và chỉ trả
+    các quan hệ có giá trị cho controlled vocabulary dùng chung.
 
-    - Chỉ dùng evidence hai phía; không quyết định bằng keyword, lexical overlap,
-      cùng locator, mức phạt hoặc loại rule.
+    - Xem xét toàn cục mọi occurrence trong inventory. Chỉ dùng meaning và
+      evidence hai phía; không quyết định chỉ bằng lexical overlap, cùng locator,
+      mức phạt hoặc loại rule.
     - SameConcept chỉ khi hai occurrence có cùng nghĩa pháp lý. Khác ngưỡng, mức
       độ, địa điểm, loại đường, phương tiện, chủ thể, tái phạm, gây tai nạn hoặc
       qualifier làm đổi phạm vi xử phạt thì không merge.
     - Broader/Narrower chỉ khi một nghĩa pháp lý bao hàm nghĩa kia;
-      Related và Distinct luôn giữ identity riêng.
-    - Thiếu căn cứ hoặc không có quan hệ đáng lưu thì proposal=null. SameConcept
-      chọn nguyên một label đã cấp; quan hệ khác để chuỗi rỗng.
-    - Evidence dùng ID đúng occurrence. Không tạo axiom, rule identity,
-      applicability hoặc legal priority.
-    - Trả một result cho mỗi candidate_id.
+      Related luôn giữ identity riêng; cặp phân biệt hoặc không liên quan thì bỏ.
+    - Chỉ xuất SameConcept, Broader/Narrower hoặc Related khi có căn cứ rõ.
+      Không xuất Distinct và không xuất pair không có quan hệ đáng lưu.
+      SameConcept chọn nguyên một label đã cấp; quan hệ khác để chuỗi rỗng.
+      Mọi SameConcept trong cùng một nhóm bắc cầu phải chọn cùng preferred label.
+    - Mỗi unordered pair xuất tối đa một lần. Evidence và occurrence ID phải
+      thuộc đúng inventory. Không tạo axiom, rule identity, applicability hoặc
+      legal priority.
+    - Trả một result cho mỗi candidate_id, với proposals=[] nếu không có quan hệ.
 
     {{ _.role("user") }}
 
-    Các candidate pair cần đánh giá:
-    {% for pair in pairs %}
-    === candidate_id={{ pair.candidate_id }} ===
-    left={{ pair.left }}
-    right={{ pair.right }}
-    === end candidate_id={{ pair.candidate_id }} ===
+    Các controlled-vocabulary inventory cần đánh giá:
+    {% for inventory in inventories %}
+    === candidate_id={{ inventory.candidate_id }} kind={{ inventory.kind }} ===
+    occurrences={{ inventory.occurrences }}
+    === end candidate_id={{ inventory.candidate_id }} ===
     {% endfor %}
 
     {{ ctx.output_format }}

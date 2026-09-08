@@ -18,7 +18,7 @@ from legal_rag.ontology_concept.models import (
     LEGACY_CONCEPT_PROPOSAL_SCHEMA_VERSION,
     CanonicalConceptRecord,
     CanonicalConceptRelationRecord,
-    ConceptCandidatePair,
+    ConceptCandidateInventory,
     ConceptCandidateSet,
     ConceptOccurrence,
     ConceptProposalProgress,
@@ -55,13 +55,13 @@ def read_concept_candidates(path: Path) -> ConceptCandidateSet:
             )
             for item in payload["occurrences"]
         ),
-        pairs=tuple(
-            ConceptCandidatePair(
+        inventories=tuple(
+            ConceptCandidateInventory(
                 candidate_id=item["candidate_id"],
-                left_occurrence_id=item["left_occurrence_id"],
-                right_occurrence_id=item["right_occurrence_id"],
+                kind=item["kind"],
+                occurrence_ids=tuple(item["occurrence_ids"]),
             )
-            for item in payload["pairs"]
+            for item in payload["inventories"]
         ),
     )
 

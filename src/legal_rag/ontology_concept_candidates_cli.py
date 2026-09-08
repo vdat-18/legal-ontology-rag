@@ -1,4 +1,4 @@
-"""Command-line interface for exhaustive ontology concept candidates."""
+"""Command-line interface for ontology concept inventories."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from loguru import logger
 def _parser() -> argparse.ArgumentParser:
     """Build the concept-candidate command-line parser."""
     parser = argparse.ArgumentParser(
-        description="Build exhaustive same-kind concept pairs without semantic matching or scoring."
+        description="Build same-kind concept inventories without semantic matching or scoring."
     )
     parser.add_argument("canonical_records_path", type=Path, help="Canonical multi-document population JSONL path")
     parser.add_argument("concept_contract_path", type=Path, help="Versioned concept-resolution contract YAML")
@@ -32,9 +32,9 @@ def main() -> None:
     candidates = build_concept_candidates(records, settings)
     write_concept_candidates(arguments.output_path, candidates)
     logger.info(
-        "Wrote {} concept occurrences and {} exhaustive candidate pairs with run id {} to {}",
+        "Wrote {} concept occurrences and {} candidate inventories with run id {} to {}",
         len(candidates.occurrences),
-        len(candidates.pairs),
+        len(candidates.inventories),
         candidates.run_id,
         arguments.output_path,
     )

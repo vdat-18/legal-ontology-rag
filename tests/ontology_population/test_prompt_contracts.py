@@ -90,7 +90,7 @@ PROMPT_CASES = (
             "Mục đích bước 6/6",
             "SameConcept chỉ khi hai occurrence có cùng nghĩa pháp lý",
             "Broader/Narrower chỉ khi một nghĩa pháp lý bao hàm nghĩa kia",
-            "proposal=null",
+            "proposals=[]",
         ),
     ),
 )

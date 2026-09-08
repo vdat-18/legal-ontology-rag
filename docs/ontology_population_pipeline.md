@@ -183,10 +183,18 @@ uv run --extra dev legal-resolve-ontology-exceptions `
 
 ## 6. Chuẩn hóa concept
 
-Population ban đầu giữ concept theo từng rule để tránh merge sai. Candidate builder liệt kê mọi cặp cùng loại trong ba
-nhóm `RegulatedConduct`, `LegalSubjectRole` và `VehicleCategory`. LLM đề xuất `SameConcept`, broader/narrower, `Related`
-hoặc `Distinct`. Finalizer dùng trực tiếp typed decision để tạo canonical concepts và SKOS relations; conflict/cycle QA
-nếu cần được chạy riêng ngoài runtime.
+Population ban đầu giữ concept theo từng rule để tránh merge sai. Step 6 chỉ chuẩn hóa hai controlled vocabulary tái sử
+dụng là `LegalSubjectRole` và `VehicleCategory`; `RegulatedConduct` vẫn gắn với canonical rule vì đó là mô tả hành vi đầy
+đủ, không phải thuật ngữ nguyên tử. Candidate builder tạo một inventory toàn cục cho mỗi loại, dùng một occurrence có
+bằng chứng làm đại diện cho mỗi label nguyên văn. Nhờ vậy batch size 1 tương ứng một inventory LLM task, thay vì tạo mọi
+cặp occurrence. LLM chỉ đề xuất `SameConcept`, broader/narrower hoặc `Related` khi có căn cứ; cặp không liên quan bị bỏ.
+Finalizer hợp nhất các occurrence có cùng loại và cùng label nguyên văn, áp dụng quyết định semantic, đồng thời chặn quan
+hệ xung đột và chu trình broader trước khi tạo canonical concepts và SKOS relations.
+
+Contract schema `0.3.0` và candidate schema `0.2.0` dùng `inventories` thay cho exhaustive `pairs`; artifact Step 6 cũ
+phải được tạo lại. Sau một
+lần chạy đầy đủ, có thể selective rerun một inventory bằng selection JSON
+`{"schema_version":"0.1.0","candidate_ids":[...]}` và `--rerun-candidate-ids-path`.
 
 ```powershell
 uv run --extra dev legal-resolve-ontology-concepts `

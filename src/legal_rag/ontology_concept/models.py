@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from legal_rag.ontology_population.models import PopulationEvidence
 
-CONCEPT_CANDIDATE_SCHEMA_VERSION = "0.1.0"
+CONCEPT_CANDIDATE_SCHEMA_VERSION = "0.2.0"
 LEGACY_CONCEPT_PROPOSAL_SCHEMA_VERSION = "0.1.0"
 CONCEPT_PROPOSAL_SCHEMA_VERSION = "0.2.0"
 CONCEPT_PROGRESS_SCHEMA_VERSION = "0.1.0"
@@ -47,29 +47,29 @@ class ConceptOccurrence:
 
 
 @dataclass(frozen=True, slots=True)
-class ConceptCandidatePair:
-    """One same-kind pair requiring semantic relation confirmation."""
+class ConceptCandidateInventory:
+    """One same-kind controlled vocabulary requiring global semantic resolution."""
 
     candidate_id: str
-    left_occurrence_id: str
-    right_occurrence_id: str
+    kind: ConceptKind
+    occurrence_ids: tuple[str, ...]
 
-    def to_dict(self) -> dict[str, str]:
-        """Return a JSON-serializable candidate pair."""
+    def to_dict(self) -> dict[str, object]:
+        """Return a JSON-serializable candidate inventory."""
         return {
             "candidate_id": self.candidate_id,
-            "left_occurrence_id": self.left_occurrence_id,
-            "right_occurrence_id": self.right_occurrence_id,
+            "kind": self.kind,
+            "occurrence_ids": list(self.occurrence_ids),
         }
 
 
 @dataclass(frozen=True, slots=True)
 class ConceptCandidateSet:
-    """One fingerprinted exhaustive set of same-kind concept pairs."""
+    """One fingerprinted set of same-kind concept inventories."""
 
     run_id: str
     occurrences: tuple[ConceptOccurrence, ...]
-    pairs: tuple[ConceptCandidatePair, ...]
+    inventories: tuple[ConceptCandidateInventory, ...]
 
     def to_dict(self) -> dict[str, object]:
         """Return the stable candidate-set schema."""
@@ -77,7 +77,7 @@ class ConceptCandidateSet:
             "schema_version": CONCEPT_CANDIDATE_SCHEMA_VERSION,
             "run_id": self.run_id,
             "occurrences": [item.to_dict() for item in self.occurrences],
-            "pairs": [item.to_dict() for item in self.pairs],
+            "inventories": [item.to_dict() for item in self.inventories],
         }
 
 

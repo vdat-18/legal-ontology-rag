@@ -10,8 +10,8 @@ import pytest
 
 from legal_rag.baml_client.types import (
     ConceptRelationProposalEntry,
-    ConceptResolutionPairInput,
-    ConceptResolutionPairResult,
+    ConceptResolutionInventoryInput,
+    ConceptResolutionInventoryResult,
     OntologyConceptRelation,
     OntologyEvidenceReference,
 )
@@ -33,30 +33,36 @@ class _ConceptClient:
         self._paraphrase = paraphrase
         self._invalid_label = invalid_label
         self._empty = empty
-        self.inputs: tuple[ConceptResolutionPairInput, ...] = ()
+        self.inputs: tuple[ConceptResolutionInventoryInput, ...] = ()
 
-    def propose_batch(self, pairs: Sequence[ConceptResolutionPairInput]) -> Sequence[ConceptResolutionPairResult]:
-        """Capture complete typed pairs and propose equivalence only for roles."""
-        self.inputs += tuple(pairs)
+    def propose_batch(
+        self,
+        inventories: Sequence[ConceptResolutionInventoryInput],
+    ) -> Sequence[ConceptResolutionInventoryResult]:
+        """Capture complete inventories and propose one role equivalence."""
+        self.inputs += tuple(inventories)
         results = []
-        for pair in pairs:
-            proposal = None
-            if not self._empty and pair.left.kind.value == "LegalSubjectRole":
-                left_evidence = [
-                    OntologyEvidenceReference(evidence_id=source.evidence_id) for source in pair.left.evidence
-                ]
+        for inventory in inventories:
+            proposals = []
+            if not self._empty and inventory.kind.value == "LegalSubjectRole":
+                left, right = inventory.occurrences
+                left_evidence = [OntologyEvidenceReference(evidence_id=source.evidence_id) for source in left.evidence]
                 if self._paraphrase:
                     left_evidence = [OntologyEvidenceReference(evidence_id="ev_unknown")]
-                proposal = ConceptRelationProposalEntry(
-                    relation=OntologyConceptRelation.SameConcept,
-                    preferred_label_vi="Nhãn không thuộc pair" if self._invalid_label else pair.left.label_vi,
-                    left_evidence=left_evidence,
-                    right_evidence=[
-                        OntologyEvidenceReference(evidence_id=source.evidence_id) for source in pair.right.evidence
-                    ],
-                    rationale_vi="Hai occurrence biểu đạt cùng vai trò pháp lý trong source.",
+                proposals.append(
+                    ConceptRelationProposalEntry(
+                        left_occurrence_id=left.occurrence_id,
+                        right_occurrence_id=right.occurrence_id,
+                        relation=OntologyConceptRelation.SameConcept,
+                        preferred_label_vi="Nhãn không thuộc inventory" if self._invalid_label else left.label_vi,
+                        left_evidence=left_evidence,
+                        right_evidence=[
+                            OntologyEvidenceReference(evidence_id=source.evidence_id) for source in right.evidence
+                        ],
+                        rationale_vi="Hai occurrence biểu đạt cùng vai trò pháp lý trong source.",
+                    )
                 )
-            results.append(ConceptResolutionPairResult(candidate_id=pair.candidate_id, proposal=proposal))
+            results.append(ConceptResolutionInventoryResult(candidate_id=inventory.candidate_id, proposals=proposals))
         return tuple(results)
 
 
@@ -67,9 +73,11 @@ def _propose(corpus: ChangeCorpus, client: _ConceptClient):
         max_retries=0,
         retry_delay_seconds=0,
     )
-    candidates = build_concept_candidates(corpus.documents[0].records, settings)
+    target = replace(corpus.documents[0].records[1], role_labels_vi=("Người lái xe",))
+    records = (corpus.documents[0].records[0], target)
+    candidates = build_concept_candidates(records, settings)
     return propose_concept_relations(
-        candidates.pairs,
+        candidates.inventories,
         candidates.occurrences,
         client,
         settings,
@@ -84,15 +92,15 @@ def test_proposal_preserves_context_and_binds_both_sides_exactly(exception_corpu
 
     assert len(proposals) == 1
     assert proposals[0].relation == "SameConcept"
-    assert proposals[0].preferred_label_vi == "Người điều khiển"
+    assert proposals[0].preferred_label_vi in {"Người điều khiển", "Người lái xe"}
     assert proposals[0].left_evidence
     assert proposals[0].right_evidence
-    assert all(pair.left.document_number == "168/2024/NĐ-CP" for pair in client.inputs)
-    assert {pair.left.kind.value for pair in client.inputs} == {
-        "RegulatedConduct",
-        "LegalSubjectRole",
-        "VehicleCategory",
-    }
+    assert all(
+        occurrence.document_number == "168/2024/NĐ-CP"
+        for inventory in client.inputs
+        for occurrence in inventory.occurrences
+    )
+    assert {inventory.kind.value for inventory in client.inputs} == {"LegalSubjectRole", "VehicleCategory"}
 
 
 def test_proposal_rejects_unknown_evidence_reference(exception_corpus: ChangeCorpus) -> None:
@@ -101,11 +109,10 @@ def test_proposal_rejects_unknown_evidence_reference(exception_corpus: ChangeCor
         _propose(exception_corpus, _ConceptClient(paraphrase=True))
 
 
-def test_proposal_accepts_model_selected_preferred_label(exception_corpus: ChangeCorpus) -> None:
-    """Canonical wording is trusted as semantic model output."""
-    proposals = _propose(exception_corpus, _ConceptClient(invalid_label=True))
-
-    assert proposals[0].preferred_label_vi == "Nhãn không thuộc pair"
+def test_proposal_rejects_preferred_label_outside_inventory(exception_corpus: ChangeCorpus) -> None:
+    """Canonical wording must remain grounded in one supplied source label."""
+    with pytest.raises(LlmTaskExhaustedError):
+        _propose(exception_corpus, _ConceptClient(invalid_label=True))
 
 
 def test_zero_proposal_results_are_valid_and_checkpointable(exception_corpus: ChangeCorpus) -> None:
@@ -116,9 +123,11 @@ def test_zero_proposal_results_are_valid_and_checkpointable(exception_corpus: Ch
         max_retries=0,
         retry_delay_seconds=0,
     )
-    candidates = build_concept_candidates(exception_corpus.documents[0].records, settings)
+    target = replace(exception_corpus.documents[0].records[1], role_labels_vi=("Người lái xe",))
+    records = (exception_corpus.documents[0].records[0], target)
+    candidates = build_concept_candidates(records, settings)
     proposals = propose_concept_relations(
-        candidates.pairs,
+        candidates.inventories,
         candidates.occurrences,
         _ConceptClient(empty=True),
         settings,
@@ -127,4 +136,4 @@ def test_zero_proposal_results_are_valid_and_checkpointable(exception_corpus: Ch
     )
 
     assert proposals == ()
-    assert {candidate_id for candidate_id, _ in processed} == {item.candidate_id for item in candidates.pairs}
+    assert {candidate_id for candidate_id, _ in processed} == {item.candidate_id for item in candidates.inventories}
