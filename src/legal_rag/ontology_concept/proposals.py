@@ -12,8 +12,10 @@ from legal_rag.baml_client.types import (
     ConceptRelationProposalEntry,
     ConceptResolutionInventoryInput,
     ConceptResolutionInventoryResult,
+    ExistingConceptRelationInput,
     OntologyConceptKind,
     OntologyConceptOccurrenceInput,
+    OntologyConceptRelation,
     OntologyEvidenceSource,
 )
 from legal_rag.baml_transport import BamlCaller
@@ -29,12 +31,19 @@ from legal_rag.ontology_population.models import population_identity
 from legal_rag.ontology_proposal_execution import execute_proposal_batches
 from legal_rag.settings import Settings
 
-ONTOLOGY_CONCEPT_PROMPT_VERSION = "0.5.0"
+ONTOLOGY_CONCEPT_PROMPT_VERSION = "0.6.7"
 
 KIND_VALUES = {
     "RegulatedConduct": OntologyConceptKind.RegulatedConduct,
     "LegalSubjectRole": OntologyConceptKind.LegalSubjectRole,
     "VehicleCategory": OntologyConceptKind.VehicleCategory,
+}
+
+RELATION_VALUES = {
+    "SameConcept": OntologyConceptRelation.SameConcept,
+    "LeftBroaderThanRight": OntologyConceptRelation.LeftBroaderThanRight,
+    "LeftNarrowerThanRight": OntologyConceptRelation.LeftNarrowerThanRight,
+    "Related": OntologyConceptRelation.Related,
 }
 
 
@@ -102,15 +111,26 @@ def propose_concept_relations(
     settings: ConceptResolutionSettings,
     *,
     run_id: str,
+    existing_proposals: Sequence[ConceptRelationProposal] = (),
     max_concurrency: int = 1,
     on_batch_processed: Callable[[Sequence[tuple[str, tuple[ConceptRelationProposal, ...]]]], None] | None = None,
 ) -> tuple[ConceptRelationProposal, ...]:
     """Generate exact-evidenced concept proposals in concurrent inventory batches."""
     occurrences_by_id = {item.occurrence_id: item for item in occurrences}
+    existing_by_candidate: dict[str, list[ConceptRelationProposal]] = {}
+    for proposal in existing_proposals:
+        existing_by_candidate.setdefault(proposal.candidate_id, []).append(proposal)
     tasks = []
     for start in range(0, len(inventories), settings.batch_size):
         batch = inventories[start : start + settings.batch_size]
-        inputs = tuple(_inventory_input(inventory, occurrences_by_id) for inventory in batch)
+        inputs = tuple(
+            _inventory_input(
+                inventory,
+                occurrences_by_id,
+                existing_by_candidate.get(inventory.candidate_id, ()),
+            )
+            for inventory in batch
+        )
         tasks.append(
             (
                 _batch_task_key(inputs, run_id),
@@ -177,12 +197,16 @@ def _build_batch_proposals(
             if raw.relation.value == "Distinct":
                 msg = "Concept inventory responses must omit unrelated or distinct pairs"
                 raise ValueError(msg)
-            if raw.relation.value == "SameConcept" and raw.preferred_label_vi not in {
-                left.label_vi,
-                right.label_vi,
-            }:
-                msg = "Same-concept preferred label must be copied from one source occurrence"
-                raise ValueError(msg)
+        _validate_same_concept_preferences(
+            results_by_id[candidate_id].proposals,
+            set(inventory_occurrences),
+        )
+        for raw in results_by_id[candidate_id].proposals:
+            left = occurrences_by_id[raw.left_occurrence_id]
+            right = occurrences_by_id[raw.right_occurrence_id]
+            preferred_label_vi = ""
+            if raw.relation.value == "SameConcept":
+                preferred_label_vi = occurrences_by_id[raw.preferred_occurrence_id].label_vi
             left_evidence = _bind_occurrence_evidence(
                 raw,
                 inventory_occurrences[raw.left_occurrence_id].evidence,
@@ -201,7 +225,7 @@ def _build_batch_proposals(
                     "left_occurrence_id": left.occurrence_id,
                     "right_occurrence_id": right.occurrence_id,
                     "relation": relation,
-                    "preferred_label_vi": raw.preferred_label_vi,
+                    "preferred_label_vi": preferred_label_vi,
                     "left_evidence": [item.to_dict() for item in left_evidence],
                     "right_evidence": [item.to_dict() for item in right_evidence],
                 }
@@ -213,7 +237,7 @@ def _build_batch_proposals(
                     left_occurrence_id=left.occurrence_id,
                     right_occurrence_id=right.occurrence_id,
                     relation=relation,
-                    preferred_label_vi=raw.preferred_label_vi,
+                    preferred_label_vi=preferred_label_vi,
                     left_evidence=left_evidence,
                     right_evidence=right_evidence,
                     rationale_vi=raw.rationale_vi,
@@ -222,6 +246,42 @@ def _build_batch_proposals(
             )
         translated.append((candidate_id, tuple(proposals)))
     return tuple(translated)
+
+
+def _validate_same_concept_preferences(
+    proposals: Sequence[ConceptRelationProposalEntry],
+    occurrence_ids: set[str],
+) -> None:
+    """Require one in-component preferred occurrence per equivalence component."""
+    parent = {occurrence_id: occurrence_id for occurrence_id in occurrence_ids}
+
+    def find(occurrence_id: str) -> str:
+        while parent[occurrence_id] != occurrence_id:
+            parent[occurrence_id] = parent[parent[occurrence_id]]
+            occurrence_id = parent[occurrence_id]
+        return occurrence_id
+
+    same_concept = tuple(proposal for proposal in proposals if proposal.relation.value == "SameConcept")
+    for proposal in same_concept:
+        preferred = proposal.preferred_occurrence_id
+        if preferred not in occurrence_ids:
+            msg = "Same-concept preferred occurrence must belong to the requested inventory"
+            raise ValueError(msg)
+        left_root = find(proposal.left_occurrence_id)
+        right_root = find(proposal.right_occurrence_id)
+        if left_root != right_root:
+            parent[max(left_root, right_root)] = min(left_root, right_root)
+
+    preferred_by_root: dict[str, set[str]] = {}
+    for proposal in same_concept:
+        root = find(proposal.left_occurrence_id)
+        if find(proposal.preferred_occurrence_id) != root:
+            msg = "Same-concept preferred occurrence must belong to its equivalence component"
+            raise ValueError(msg)
+        preferred_by_root.setdefault(root, set()).add(proposal.preferred_occurrence_id)
+    if any(len(preferred) != 1 for preferred in preferred_by_root.values()):
+        msg = "One same-concept component must use one preferred occurrence"
+        raise ValueError(msg)
 
 
 def _bind_occurrence_evidence(
@@ -238,12 +298,45 @@ def _bind_occurrence_evidence(
 def _inventory_input(
     inventory: ConceptCandidateInventory,
     occurrences_by_id: Mapping[str, ConceptOccurrence],
+    existing_proposals: Sequence[ConceptRelationProposal],
 ) -> ConceptResolutionInventoryInput:
     """Build one complete typed BAML controlled-vocabulary inventory."""
     return ConceptResolutionInventoryInput(
         candidate_id=inventory.candidate_id,
         kind=KIND_VALUES[inventory.kind],
         occurrences=[_occurrence_input(occurrences_by_id[item]) for item in inventory.occurrence_ids],
+        existing_proposals=[
+            _existing_proposal_input(proposal, inventory, occurrences_by_id) for proposal in existing_proposals
+        ],
+    )
+
+
+def _existing_proposal_input(
+    proposal: ConceptRelationProposal,
+    inventory: ConceptCandidateInventory,
+    occurrences_by_id: Mapping[str, ConceptOccurrence],
+) -> ExistingConceptRelationInput:
+    """Translate one persisted proposal into compact revision context."""
+    preferred_occurrence_id = ""
+    if proposal.relation == "SameConcept":
+        preferred = next(
+            (
+                occurrence_id
+                for occurrence_id in inventory.occurrence_ids
+                if occurrences_by_id[occurrence_id].label_vi == proposal.preferred_label_vi
+            ),
+            None,
+        )
+        if preferred is None:
+            msg = "Existing same-concept preferred label must belong to its candidate inventory"
+            raise ValueError(msg)
+        preferred_occurrence_id = preferred
+    return ExistingConceptRelationInput(
+        left_occurrence_id=proposal.left_occurrence_id,
+        right_occurrence_id=proposal.right_occurrence_id,
+        relation=RELATION_VALUES[proposal.relation],
+        preferred_occurrence_id=preferred_occurrence_id,
+        rationale_vi=proposal.rationale_vi,
     )
 
 

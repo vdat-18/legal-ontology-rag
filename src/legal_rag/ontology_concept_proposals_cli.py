@@ -142,6 +142,7 @@ def main() -> None:
             client,
             concept_settings,
             run_id=run_id,
+            existing_proposals=existing_proposals,
             max_concurrency=arguments.max_concurrency,
             on_batch_processed=persist_batch,
         )

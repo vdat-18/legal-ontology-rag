@@ -133,6 +133,7 @@ def test_cli_writes_typed_records_progress_and_graph_without_runtime_shacl(
                 "LLM_API_KEY=dotenv-key",
                 "LLM_MODEL=dotenv-model",
                 "LLM_TIMEOUT_SECONDS=45",
+                'LLM_EXTRA_REQUEST_BODY={"reasoning_effort":"medium"}',
             )
         ),
         encoding="utf-8",
@@ -154,6 +155,7 @@ def test_cli_writes_typed_records_progress_and_graph_without_runtime_shacl(
     monkeypatch.setenv("LLM_API_KEY", "stale-key")
     monkeypatch.setenv("LLM_MODEL", "stale-model")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
+    monkeypatch.setenv("LLM_EXTRA_REQUEST_BODY", '{"reasoning_effort":"low"}')
     monkeypatch.setattr(
         sys,
         "argv",
@@ -208,6 +210,7 @@ def test_cli_writes_typed_records_progress_and_graph_without_runtime_shacl(
         llm_api_key="dotenv-key",
         llm_model="dotenv-model",
         llm_timeout_seconds=45,
+        llm_extra_request_body={"reasoning_effort": "medium"},
     )
 
     dotenv_path.write_text(

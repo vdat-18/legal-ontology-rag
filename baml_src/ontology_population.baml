@@ -380,6 +380,13 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
       không có từ "cá nhân"; vai trò chỉ một pháp nhân/tổ chức thực hiện được là
       Organization. Nếu tiêu đề xác định người điều khiển và loại xe, không để
       subject_kind null; giữ role và vehicle category tương ứng.
+      Mỗi role_labels_vi phải tự gọi tên đúng chủ thể chịu xử phạt của variant.
+      Không được dùng riêng một hoạt động, dịch vụ, hành vi, đối tượng, phương tiện
+      hoặc cụm vị ngữ làm vai trò pháp lý. Với câu phạt có các nhánh chủ thể song
+      song, giữ chủ thể được nêu trong chính nhánh tương ứng; NaturalPerson phải
+      giữ người/cá nhân chịu phạt, không được lấy phần mô tả của nhánh Organization
+      làm role. Nếu source chỉ nêu chủ thể chung mà không có vai trò chuyên biệt,
+      dùng chính tên loại chủ thể được source nêu thay vì tự tạo một nghề/vai trò.
       Xét tính khả thi riêng cho từng conduct lá, không sao chép máy móc mọi loại
       chủ thể từ câu dẫn chung. Nhánh yêu cầu chính chủ thể trực tiếp điều khiển,
       lái hoặc thực hiện hành động thể chất của con người chỉ có NaturalPerson;
