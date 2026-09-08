@@ -62,8 +62,18 @@ def test_population_prompt_preserves_vietnamese_legal_structure() -> None:
     assert "danh mục đóng" in compact_prompt
     assert "mọi vị ngữ độc lập" in compact_prompt
     assert "P không đúng A, không đúng B" in compact_prompt
+    assert "không được bỏ qua mục nằm giữa hai mục đã xử lý" in compact_prompt
+    assert "tuyệt đối không tạo conduct hoặc đưa nó vào danh sách coverage hiện tại" in compact_prompt
+    assert "không V hoặc V không đầy đủ/không đúng" in compact_prompt
+    assert "danh sách các yêu cầu pháp lý độc lập" in compact_prompt
+    assert "không chỉ giữ C ở nhánh gần nhất" in compact_prompt
+    assert "bước sau sẽ cấu trúc hóa điều kiện" in compact_prompt
     assert "Hai đối tượng pháp lý độc lập nối bằng `hoặc`" in compact_prompt
     assert "Nhánh rút gọn phải tự đủ nghĩa" in compact_prompt
+    assert "Không kéo O ngược tới V1/V2" in compact_prompt
+    assert "không biến V4 thành `V3 V4 O`" in compact_prompt
+    assert "danh sách mục đích `để được V1, V2, V3-Q, V4 O`" in compact_prompt
+    assert "V3-Q là một hành động ghép không được tách Q" in compact_prompt
     assert "Chủ thể label là chủ thể chịu xử phạt" in compact_prompt
     assert "Mọi label phải giữ nguyên chủ thể đó và đủ loại phương tiện/phạm vi" in compact_prompt
     assert "không đổi nhánh thứ hai thành `T V`" in compact_prompt
@@ -75,6 +85,8 @@ def test_population_prompt_preserves_vietnamese_legal_structure() -> None:
     assert "provision_path chỉ gồm mã locator" in compact_prompt
     assert "không kèm tên/tiêu đề Chương, Mục, Điều" in compact_prompt
     assert "Không dùng kiến thức ngoài" in compact_prompt
+    assert "không dùng ID của block kế trước, kế sau hoặc quay vòng" in compact_prompt
+    assert "không cắt ngắn, sửa prefix, suffix" in compact_prompt
     assert "Bối cảnh: xây dựng ontology" in compact_prompt
     assert '{{ _.role("system") }}' in prompt
     assert '{{ _.role("user") }}' in prompt

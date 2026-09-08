@@ -169,10 +169,15 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
       chi phối nội dung đứng sau nó, không được áp dụng ngược cho đoạn mở đầu.
       Đoạn mở đầu chưa có heading riêng phải kế thừa locator đang còn hiệu lực ở
       cuối Locator context, cho tới đúng vị trí heading mới bắt đầu.
-    - Audit từng Điểm/nhánh, không xuất audit: đánh dấu mọi hành động, không hành
-      động, trạng thái vi phạm; mỗi đoạn mở đầu, Điểm và nhánh trực tiếp bị xử phạt
-      phải có conduct tương ứng hoặc được loại theo cổng bằng căn cứ rõ ràng. Kiểm
-      tra lại coverage sau khi phân rã; không bỏ sót khi Target chuyển Khoản/Điều.
+    - Audit từng Điểm/nhánh, không xuất audit: chỉ lập danh sách theo đúng thứ tự
+      mọi đoạn mở đầu, ký hiệu Điểm và nhánh xuất hiện trong các block Evidence của
+      Target; đánh dấu mọi hành động, không hành động và trạng thái vi phạm. Mỗi
+      mục phải có conduct tương ứng hoặc được loại theo cổng bằng căn cứ rõ ràng.
+      Trước khi trả kết quả, đối chiếu lại danh sách Evidence với provision_path
+      đầu ra, kể cả khi ký hiệu Điểm không liên tục hoặc Target chuyển Khoản/Điều;
+      không được bỏ qua mục nằm giữa hai mục đã xử lý. Nội dung giống conduct trong
+      Locator context thuộc target khác: chỉ dùng nó để xác định locator đang tiếp
+      diễn, tuyệt đối không tạo conduct hoặc đưa nó vào danh sách coverage hiện tại.
     - Trước khi phân rã, xác định chủ thể chịu xử phạt từ câu dẫn mức phạt/cấu trúc
       chi phối. Mọi label phải giữ nguyên chủ thể đó và đủ loại phương tiện/phạm vi;
       không lấy công cụ, phần mềm, giấy tờ, phương tiện hoặc người thực hiện hành
@@ -182,9 +187,21 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
       `S V1, V2 O` -> `S V1 O`, `S V2 O`, `O V1, V2 trái quy định` -> hai lá;
       (2) các bổ ngữ lựa chọn độc lập cùng một vị ngữ: `S V O1 hoặc O2` ->
       `S V O1`, `S V O2` nếu thay lần lượt O1/O2 đều tạo câu vi phạm tự đủ.
-      `P không đúng A, không đúng B` cũng thành hai lá.
+      `P không đúng A, không đúng B` cũng thành hai lá. Hai trạng thái vi phạm đối
+      ứng như `không V hoặc V không đầy đủ/không đúng` phải thành hai lá, không
+      được bỏ một trạng thái. Khi một vị ngữ phủ định chi phối danh sách các yêu
+      cầu pháp lý độc lập, tách từng yêu cầu nếu việc không đáp ứng riêng từng yêu
+      cầu đã đủ cấu thành vi phạm; ví dụ tổng quát `S không đáp ứng điều kiện A, B`
+      -> `S không đáp ứng điều kiện A`, `S không đáp ứng điều kiện B`. Không tách
+      nếu A, B chỉ là các thành phần cùng mô tả một yêu cầu không thể áp dụng riêng.
+      Nếu qualifier cuối chi phối cả danh sách, phải lặp qualifier cho từng lá:
+      `S không đáp ứng A, B tương ứng với C` -> `S không đáp ứng A tương ứng với C`
+      và `S không đáp ứng B tương ứng với C`; không chỉ giữ C ở nhánh gần nhất.
       Label chỉ mô tả conduct; không nối hình thức xử phạt, biện pháp khắc phục hay
       cụm hậu quả như `bị phạt`, `bị tước`, `bị buộc` vào conduct_label_vi.
+      Điều kiện hoặc ngoại lệ trực tiếp giới hạn conduct như `khi`, `nếu`, `trừ`
+      phải được giữ trong label của từng lá chịu giới hạn; bước sau sẽ cấu trúc hóa
+      điều kiện nhưng không được phục hồi phần phạm vi đã bị bước này xóa.
     - Giữ chung danh sách dấu phẩy sau một lần xuất hiện của vị ngữ khi source không
       lặp vị ngữ và không dùng liên từ lựa chọn để tạo nhánh: `V tại A, B`,
       `làm thay đổi A, B`, `P bằng A/B/C` là một lá. Danh sách có thể gồm thành phần,
@@ -215,6 +232,14 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
       lặp lại V trong label, không đổi `S V O` thành `S O` hay hành động khác của S.
       Với `S V1 hoặc V2 C`, nếu C là bổ ngữ dùng chung thì tạo `S V1 C` và
       `S V2 C`; không trả nhánh cụt chỉ có `S V1` hoặc `S V2`.
+      Chỉ khôi phục thành phần thực sự dùng chung theo cú pháp và nghĩa nguồn.
+      Với danh sách mục đích `để được V1, V2, V3-Q, V4 O`, nếu mỗi mục đích tự đủ
+      bị phạt thì tạo đúng bốn lá: giữ V1 và V2 ngắn khi chúng tự đủ; V3-Q là một
+      hành động ghép không được tách Q thành mục đích mới; giữ O cho V3-Q và V4 khi
+      source cho thấy đó là bổ ngữ của hai nhánh liền kề. Không kéo O ngược tới
+      V1/V2 và không biến V4 thành `V3 V4 O`. Khi quan hệ cú pháp không chắc chắn,
+      giữ đúng nhánh ngắn được source phát biểu thay vì thêm từ làm thay đổi hành
+      động hay đối tượng pháp lý.
     - Bảo toàn toàn bộ điều kiện xác định đối tượng, kể cả phần trong ngoặc hoặc
       mệnh đề cuối áp dụng cho nhiều nhánh; ưu tiên đủ nghĩa hơn label ngắn. Với cụm
       danh từ pháp lý được lặp lại hoặc rút gọn, mỗi lá giữ đủ giấy tờ, loại xe, bên
@@ -238,9 +263,14 @@ function ExtractOntologyTargetConductBatch(items: OntologyTargetConductInput[]) 
       provision_path chỉ gồm mã locator theo `Chương > Mục > Điều > Khoản > Điểm`,
       đúng dấu ` > `; không kèm tên/tiêu đề Chương, Mục, Điều và không đoán/lặp
       locator. Context không cấp evidence hay conduct.
-    - Mỗi conduct phải dẫn ít nhất một evidence_id được liệt kê trong đúng mục
-      Evidence của target_chunk_id hiện tại. Không tự tạo, ghi nhớ hoặc tái sử dụng
-      evidence_id từ target hay lần chạy khác; chỉ trả ID nguyên văn đã được cấp.
+    - Xử lý từng block Evidence độc lập: khóa evidence_id trước khi trích các conduct
+      từ chính text của block đó. Mỗi reference phải trỏ lại block trực tiếp phát
+      biểu conduct; không dùng ID của block kế trước, kế sau hoặc quay vòng sang
+      đầu danh sách dù locator gần nhau. Trước khi trả, đọc text ứng với từng ID và
+      xác nhận nó chứa đúng chủ thể, hành động và Điểm của label. Mỗi conduct phải
+      dẫn ít nhất một evidence_id trong Target; không tự tạo hoặc tái sử dụng ID từ
+      target hay lần chạy khác, chỉ sao chép nguyên văn toàn bộ ID đã được cấp;
+      không cắt ngắn, sửa prefix, suffix hoặc bất kỳ ký tự nào.
     {{ _.role("user") }}
 
     {% for item in items %}
