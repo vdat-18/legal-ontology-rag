@@ -1,5 +1,5 @@
 {
-  "accepted_chunk_count": 153,
+  "accepted_chunk_count": 154,
   "artifacts": [
     {
       "artifact_type": "chunks",
@@ -10,8 +10,8 @@
     {
       "artifact_type": "screening",
       "path": "C:\\Users\\CUONG DAT PHAT\\Desktop\\legal-ontology-rag\\data\\processed\\groundtruth\\168_2024_ND-CP_619502.chunk_screening.jsonl",
-      "sha256": "8f9b599608c46277d18b7b5b61cfa69f4f38808217e84c15abbb9a8546cd9624",
-      "size_bytes": 79872
+      "sha256": "eef24d5dda3315a877a50f13c4aa9ea25b3daf26e0fbedaf71524709ed5b4361",
+      "size_bytes": 79891
     },
     {
       "artifact_type": "metadata",
@@ -26,7 +26,7 @@
       "size_bytes": 410
     }
   ],
-  "checked_at": "2026-09-06T15:41:15.367916+00:00",
+  "checked_at": "2026-09-08T01:56:37.030076+00:00",
   "checks": [
     {
       "check_id": "PF-CHUNKS-001",
@@ -51,7 +51,7 @@
     {
       "check_id": "PF-TARGETS-001",
       "status": "passed",
-      "summary": "Selected 153 of 153 accepted chunks for this run."
+      "summary": "Selected 154 of 154 accepted chunks for this run."
     },
     {
       "check_id": "PF-METADATA-001",
@@ -61,10 +61,10 @@
   ],
   "chunk_count": 166,
   "document_number": "168/2024/NĐ-CP",
-  "estimated_llm_batches": 153,
+  "estimated_llm_batches": 154,
   "ontology_semantic_sha256": "a0496dc220b2809cf1b533fd62845356a5a43edd66d9c6388dce903c60c97460",
   "overall_status": "ready",
-  "pilot_run_id": "a948742af7ff6a6f41d77c95eca85abce2e1ad94da1e4c70b673bf58f5fb9264",
+  "pilot_run_id": "24bd0c8d2eb6c1a2a237ef4e5ad34047d911a73bf87fef76e8dc2a261a9c213b",
   "schema_version": "0.2.0",
   "screening_count": 166,
   "selected_target_ids": [
@@ -184,6 +184,7 @@
     "16c3e5e01e22856246507d4c64dbdd55b2a4d38fe0395bf3ecca3f860699fb8e",
     "25722e31546c21cdc04bf1e81a3abba1de88d8f39aa4715c9f707bd9eb077f63",
     "d2280ec7290602e347333ca56d1942090a539ad2c2be718638e4f655a315e307",
+    "deb4ceecc31f8693f777133046bb6a44404319e9ceba63a31def82b43e591c1b",
     "3fcc50e6309bbf89a7bc7fac6cab506e693ada6f9dc5593f669ac9d6b4bb7a4d",
     "ef3c9361ab3fa95299e517d2be30964dd7d57560910fe4de5712d2bbe7d353d8",
     "45d162e3bd2fbb62ee44331240e31debf4085458959d88498010863bc29a1000",

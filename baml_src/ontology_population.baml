@@ -354,6 +354,14 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
       chỉ gồm clause phát biểu condition. Nếu consequence kế thừa loại pháp lý từ
       câu dẫn chung, evidence có thể gồm câu dẫn đó và chính clause consequence;
       không thêm các Điểm/câu sibling nằm giữa chúng.
+    - Conduct đã khóa có thể giữ qualifier trực tiếp xác định phạm vi như `khi`,
+      `nếu`, `trừ`, `chưa đến mức` hoặc cách diễn đạt tương đương. Phải đối chiếu
+      label với evidence nguồn và cấu trúc hóa mọi qualifier làm thay đổi khả năng
+      áp dụng thành conditions; không được chỉ để qualifier trong conduct_label_vi.
+      Với `trừ X`, tạo Atomic X làm toán hạng của Not. Với điều kiện phủ định được
+      phát biểu nguyên khối như `chưa đạt/chưa đến X`, có thể giữ nguyên câu phủ
+      định trong một Atomic. Mọi rule tách ra cho các hậu quả khác nhau của cùng
+      conduct phải lặp đúng cùng cây điều kiện và evidence điều kiện đó.
     - Cụm `nếu có`, `nếu đã được cấp` hoặc tương đương không cho phép bỏ hậu quả;
       tạo rule hậu quả với điều kiện có/đã được cấp đối tượng chịu tác động. Điều
       kiện này phải nằm trong cây conditions, không chỉ được giữ như phần mô tả
@@ -402,6 +410,12 @@ function BindOntologyPopulationBatch(items: OntologyPopulationBindingItem[]) -> 
       locator rồi mô tả giấy tờ, phương tiện hoặc trạng thái cụ thể, đối chiếu nội
       dung từng conduct: giữ clause cùng điều kiện cho mọi conduct có thể thỏa mô
       tả đó, thay vì bỏ toàn bộ hoặc áp dụng cho nhánh không liên quan.
+    - Chuẩn hóa target_label_vi theo chính cụm đối tượng hoặc hoạt động bị động từ
+      hậu quả tác động trong source, không diễn giải rộng thêm chủ thể hay sở hữu.
+      Một clause hậu quả áp dụng cho nhiều sibling phải dùng target_label_vi giống
+      hệt nhau về chữ, hoa/thường và phạm vi cho mọi sibling. Ví dụ tổng quát:
+      `đình chỉ hoạt động X` dùng `hoạt động X`; `đình chỉ X` dùng `X`; không đổi
+      một số sibling thành `X của S` khi source chung không tạo khác biệt đó.
     - Chọn validity_mode theo temporal_overrides: DocumentDefault nếu không áp
       override (để hai ngày null); ExplicitInterval nếu provision có ngày riêng;
       Unresolved nếu căn cứ riêng chưa cho ngày (để hai ngày null). Đối chiếu đúng

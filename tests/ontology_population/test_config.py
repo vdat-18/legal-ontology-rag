@@ -50,6 +50,9 @@ def test_population_prompt_preserves_core_semantic_boundaries() -> None:
     assert "Giữ nguyên target conducts" in compact_prompt
     assert "cây AND/OR/NOT" in compact_prompt
     assert "Không tạo LegalChange" in compact_prompt
+    assert "không được chỉ để qualifier trong conduct_label_vi" in compact_prompt
+    assert "Mọi rule tách ra cho các hậu quả khác nhau" in compact_prompt
+    assert "target_label_vi giống hệt nhau" in compact_prompt
     assert "Mục đích bước 1/6" in compact_prompt
     assert "Mục đích bước 2/6" in compact_prompt
 
