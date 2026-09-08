@@ -65,8 +65,11 @@ function DiscoverLegalExceptions(windows: ExceptionDiscoveryWindowInput[]) -> Ex
   prompt #"
     {{ _.role("system") }}
 
-    Bối cảnh: xây dựng ontology có bằng chứng cho quy định xử phạt vi phạm hành
-    chính về giao thông đường bộ Việt Nam.
+    Bối cảnh: xây dựng ontology có bằng chứng, chỉ cho quy định xử phạt vi phạm
+    hành chính về giao thông đường bộ Việt Nam.
+
+    Mục đích bước 5/6: biểu diễn rule chuyên biệt làm hẹp general rule, giữ
+    citation, provision và target rule riêng và không redirect theo similarity.
 
     Nhiệm vụ: phát hiện quan hệ ngoại lệ được nguồn nêu trực tiếp cho các rule
     versions trong từng window và chuẩn hóa mọi dẫn chiếu pháp lý.
@@ -77,6 +80,12 @@ function DiscoverLegalExceptions(windows: ExceptionDiscoveryWindowInput[]) -> Ex
     - general_population_id là rule bị câu ngoại lệ trực tiếp làm hẹp, không phải
       rule được dẫn chiếu. Evidence phải trực tiếp thuộc chính general rule đó;
       không đảo chiều quan hệ vì một rule khác nhắc tới general rule.
+    - Phân biệt dẫn chiếu tạo phạm vi ngoại lệ với dẫn chiếu chỉ xác định rule
+      đang nhận một hậu quả. Trong clause kiểu `hành vi tại điểm ... bị/buộc ...
+      (trừ trường hợp X)`, danh sách điểm chỉ gắn hậu quả cho general rule, không
+      phải citation của ngoại lệ X. Nếu X là điều kiện bằng chữ và không dẫn tới
+      provision khác, trả citations=[]; không redirect ngoại lệ về general rule
+      hoặc sibling của nó.
     - evidence_source_ids và source_evidence_id chỉ dùng evidence ID nằm trong
       general record đã chọn. Không dùng nội dung khác dù ở cùng chunk.
     - source_contexts chỉ giúp đọc tiêu đề, thứ tự và phạm vi của nội dung sửa đổi;
@@ -93,8 +102,10 @@ function DiscoverLegalExceptions(windows: ExceptionDiscoveryWindowInput[]) -> Ex
       source/general context. Mỗi target_provision_path chỉ gồm locator cần thiết
       theo thứ tự `Điều > Khoản > Điểm`, không chứa Chương/Mục.
     - citation_text phải chép nguyên văn cụm dẫn chiếu ngắn nhất từ evidence đã
-      chọn, ví dụ `điểm d khoản 8 Điều 21`. Không trả offset ký tự, không lấy cả
-      câu hành vi hoặc câu xử phạt và không cắt giữa từ.
+      chọn, ví dụ `điểm d khoản 8 Điều 21`. Với danh sách rút gọn như `điểm b,
+      điểm c khoản 7`, giữ nguyên cả cụm; không tự viết lại thành `điểm b khoản
+      7`. Không trả offset ký tự, không lấy cả câu hành vi hoặc câu xử phạt và
+      không cắt giữa từ.
     - Mỗi câu ngoại lệ của một general rule chỉ tạo một discovery. Không tách thành
       nhiều discovery theo từng locator; gom mọi locator trong cùng citation vào
       target_provision_paths theo đúng thứ tự xuất hiện.

@@ -7,6 +7,10 @@ class ChunkScreeningItem {
   context_text string @description(#"
     Ngữ cảnh cấu trúc do parser tạo; không phải source text.
   "#)
+  previous_chunk_text string? @description(#"
+    Text chunk liền trước trong cùng tài liệu, chỉ dùng để khôi phục câu dẫn
+    đang chi phối Target khi danh sách bị cắt qua ranh giới chunk.
+  "#)
   text string
 }
 
@@ -43,8 +47,17 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
 
     Mỗi block là một target độc lập. Khi đánh giá một block, bỏ qua hoàn toàn
     text và fact của mọi block khác trong cùng request. Không dùng thứ tự các
-    block để nối, bổ sung hoặc hoàn thiện nội dung target. Fact chỉ xuất hiện
-    ở block khác không được dùng làm căn cứ cho kết quả hiện tại.
+    block để nối, bổ sung hoặc hoàn thiện nội dung target. Chỉ
+    previous_chunk_text được cấp riêng cho chính Target mới được dùng làm ngữ
+    cảnh liền trước.
+
+    Nếu Target bắt đầu giữa một danh sách Điểm/Khoản và previous_chunk_text nêu
+    câu dẫn mức phạt, hình thức xử phạt hoặc biện pháp đang chi phối chính danh
+    sách đó, phải coi Target là phần tiếp nối. Đặt penalty=true khi Target tự
+    liệt kê hành vi cụ thể thuộc danh sách kế thừa, dù Target không lặp lại câu
+    dẫn. Previous text chỉ cấp phạm vi chi phối; conduct và evidence vẫn phải
+    nằm trong Target. Không dùng previous text để nhập một fact độc lập, nối
+    khác Điều/Khoản hoặc suy ra quan hệ không được cấu trúc liên tục hỗ trợ.
 
     Cổng quyết định có ưu tiên cao:
     - chỉ đặt true cho quy tắc trực tiếp áp dụng vào một vụ việc cụ thể; câu
@@ -268,7 +281,8 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     suy ra hiệu lực VBHN từ hiệu lực của văn bản gốc, dù điều khoản có tiêu đề
     "Hiệu lực thi hành" và nằm trong chính văn bản đang đọc.
 
-    Chỉ Target text làm căn cứ. Structural context chỉ giúp hiểu cấu trúc,
+    Target text là nguồn fact; previous_chunk_text chỉ khôi phục câu dẫn trực
+    tiếp đang chi phối Target. Structural context chỉ giúp hiểu cấu trúc,
     không tự tạo nội dung pháp lý. Trả đúng một kết quả cho mỗi input, giữ
     nguyên chính xác chunk_id, không tạo hoặc sửa bất kỳ ký tự nào. Reason
     phải là một câu ngắn, hoàn toàn bằng tiếng Việt và không xen từ hay chữ của
@@ -276,11 +290,10 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     quyết định metadata và penalty.
 
     Trước khi trả kết quả, tự kiểm tra riêng từng item: đọc lại đúng Target gắn
-    với chunk_id đó; xác nhận mọi chi tiết trong reason thực sự xuất hiện trong
-    chính Target; xác nhận không lấy câu, ngày hoặc kết luận từ item liền trước
-    hay liền sau. Nếu reason mô tả nội dung không có trong Target thì phải đánh
-    giá lại item đó. Sau cùng kiểm tra mỗi input có đúng một output và reason
-    mô tả đúng chính chunk_id tương ứng.
+    với chunk_id đó; xác nhận mọi fact trong reason nằm trong Target, còn câu
+    dẫn kế thừa nếu có nằm đúng previous_chunk_text của item; không lấy nội dung
+    từ block khác hoặc chunk phía sau. Sau cùng kiểm tra mỗi input có đúng một
+    output và reason mô tả đúng chính chunk_id tương ứng.
 
     {{ _.role("user") }}
 
@@ -296,6 +309,10 @@ function ScreenChunks(chunks: ChunkScreeningItem[]) -> ChunkScreeningResult[] {
     {% if chunk.context_text %}
     Structural context:
     {{ chunk.context_text }}
+    {% endif %}
+    {% if chunk.previous_chunk_text %}
+    Previous chunk text (context only):
+    {{ chunk.previous_chunk_text }}
     {% endif %}
     Target text:
     {{ chunk.text }}

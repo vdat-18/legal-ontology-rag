@@ -96,6 +96,9 @@ def main() -> None:
         target_ids,
         expected_run_id=None if rerun_targets is not None else run_id,
         require_complete=rerun_targets is not None,
+        allowed_missing_target_chunk_ids=(
+            tuple(chunk.chunk_id for chunk in rerun_targets) if rerun_targets is not None else ()
+        ),
     )
     records_by_id = {record.target_chunk_id: record for record in existing}
     chunk_order = {chunk.chunk_id: chunk.chunk_index for chunk in prepared.bundle.chunks}

@@ -32,13 +32,28 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
 from legal_rag.io_utils import write_json_atomic
 from legal_rag.ontology_population import extraction
+from legal_rag.ontology_population.conduct_models import TargetConductInventoryRecord
 from legal_rag.ontology_population.conduct_writer import (
     read_target_conduct_inventories,
+    validate_target_conduct_inventory,
     write_target_conduct_inventories,
 )
 from legal_rag.ontology_population.writer import read_population_progress, read_population_records
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_conduct_inventory_allows_a_newly_selected_rerun_target() -> None:
+    """Selective extraction may fill a target newly accepted by screening."""
+    existing = TargetConductInventoryRecord(target_chunk_id="chunk-existing", conducts=(), run_id="reviewed-run")
+
+    validate_target_conduct_inventory(
+        (existing,),
+        ("chunk-existing", "chunk-new"),
+        expected_run_id=None,
+        require_complete=True,
+        allowed_missing_target_chunk_ids=("chunk-new",),
+    )
 
 
 class _StagedPopulationClient:

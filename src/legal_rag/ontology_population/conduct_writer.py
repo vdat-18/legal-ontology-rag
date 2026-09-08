@@ -66,6 +66,7 @@ def validate_target_conduct_inventory(
     *,
     expected_run_id: str | None,
     require_complete: bool,
+    allowed_missing_target_chunk_ids: Sequence[str] = (),
 ) -> None:
     """Validate only checkpoint identity and target membership."""
     record_ids = [record.target_chunk_id for record in records]
@@ -80,7 +81,10 @@ def validate_target_conduct_inventory(
     if expected_run_id is not None and any(record.run_id != expected_run_id for record in records):
         msg = "Target-conduct inventory does not match the current inputs or LLM configuration"
         raise ValueError(msg)
-    if require_complete and set(record_ids) != target_ids:
-        missing_ids = target_ids - set(record_ids)
+    allowed_missing_ids = set(allowed_missing_target_chunk_ids)
+    if not allowed_missing_ids <= target_ids:
+        msg = "Allowed missing conduct targets must belong to the current selection"
+        raise ValueError(msg)
+    if require_complete and (missing_ids := target_ids - set(record_ids) - allowed_missing_ids):
         msg = f"Target-conduct inventory is incomplete; missing chunk: {sorted(missing_ids)[0]}"
         raise ValueError(msg)

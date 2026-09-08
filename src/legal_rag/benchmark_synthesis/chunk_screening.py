@@ -27,7 +27,7 @@ from legal_rag.settings import Settings
 
 CHUNK_SCREENING_SCHEMA_VERSION = "3.0.0"
 LEGACY_CHUNK_SCREENING_SCHEMA_VERSION = "2.0.0"
-CHUNK_SCREENING_PROMPT_VERSION = "5.17.0"
+CHUNK_SCREENING_PROMPT_VERSION = "5.18.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -215,6 +215,7 @@ def screen_chunks(
     chunks: Sequence[Chunk],
     client: ChunkScreeningClient,
     *,
+    context_chunks: Sequence[Chunk] | None = None,
     batch_size: int,
     max_concurrency: int = 1,
     max_retries: int,
@@ -225,6 +226,7 @@ def screen_chunks(
     screening_run_id: str | None = None,
 ) -> tuple[ChunkScreeningRecord, ...]:
     """Screen chunks in bounded concurrent batches and checkpoint each successful batch."""
+    context_by_id = {chunk.chunk_id: chunk for chunk in context_chunks or chunks}
     results_by_chunk_id: dict[str, ChunkScreeningResult] = {}
     failures: list[LlmTaskFailure] = []
     checkpoint_lock = Lock()
@@ -249,6 +251,11 @@ def screen_chunks(
                     attachment_member_path=chunk.attachment_member_path,
                     kind=chunk.kind,
                     context_text=chunk.context_text,
+                    previous_chunk_text=(
+                        context_by_id[chunk.previous_chunk_id].text
+                        if chunk.previous_chunk_id in context_by_id
+                        else None
+                    ),
                     text=chunk.text,
                 )
                 for chunk in batch

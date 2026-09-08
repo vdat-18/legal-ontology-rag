@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,7 @@ from legal_rag.chunker.models import Chunk, ChunkKind, RecordScope
 from legal_rag.settings import Settings
 
 _SYNTHESIS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "groundtruth" / "synthesis_v1.json"
+_SCREENING_PROMPT_PATH = Path(__file__).resolve().parents[2] / "baml_src" / "chunk_screening.baml"
 
 
 def _chunk(
@@ -116,6 +118,48 @@ def test_screen_chunks_passes_structural_context_separately_from_target_text() -
 
     assert seen_items[0].context_text == context_text
     assert seen_items[0].text == chunk.text
+
+
+def test_screen_chunks_passes_previous_chunk_for_split_penalty_list() -> None:
+    """A selective target still receives its adjacent controlling penalty clause."""
+    previous = _chunk("chunk-previous", "3. Phạt tiền đối với các hành vi sau đây:")
+    target = replace(
+        _chunk("chunk-target", "b) Cơ sở đào tạo sử dụng xe tập lái không có giấy phép."),
+        previous_chunk_id=previous.chunk_id,
+    )
+    seen_items: list[ChunkScreeningItem] = []
+
+    class _RecordingClient:
+        def screen(self, items: Sequence[ChunkScreeningItem]) -> Sequence[ChunkScreeningResult]:
+            seen_items.extend(items)
+            return [
+                ChunkScreeningResult(
+                    chunk_id="chunk-target",
+                    has_penalty_content=True,
+                    has_document_metadata=False,
+                    reason="Target tiếp nối danh sách hành vi bị phạt.",
+                )
+            ]
+
+    screen_chunks(
+        [target],
+        _RecordingClient(),
+        context_chunks=[previous, target],
+        batch_size=1,
+        max_retries=0,
+        retry_delay_seconds=0,
+    )
+
+    assert seen_items[0].previous_chunk_text == previous.text
+
+
+def test_screening_prompt_limits_previous_text_to_the_controlling_clause() -> None:
+    """Adjacent context may restore a split list without becoming extractable evidence."""
+    prompt = " ".join(_SCREENING_PROMPT_PATH.read_text(encoding="utf-8").split())
+
+    assert "Target bắt đầu giữa một danh sách Điểm/Khoản" in prompt
+    assert "Previous text chỉ cấp phạm vi chi phối" in prompt
+    assert "conduct và evidence vẫn phải nằm trong Target" in prompt
 
 
 def test_screen_chunks_passes_source_provenance_separately_from_target_text() -> None:
@@ -474,6 +518,7 @@ def test_baml_chunk_screening_client_parses_typed_result(monkeypatch: pytest.Mon
                 attachment_member_path=None,
                 kind="paragraph_group",
                 context_text="Điều 6",
+                previous_chunk_text=None,
                 text="Điều 6 khoản 9 điểm b quy định mức phạt.",
             )
         ]

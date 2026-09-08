@@ -33,7 +33,7 @@ from legal_rag.ontology_population.models import OntologyPopulationRecord, Popul
 from legal_rag.ontology_proposal_execution import execute_proposal_batches
 from legal_rag.settings import Settings
 
-ONTOLOGY_EXCEPTION_PROMPT_VERSION = "0.11.0"
+ONTOLOGY_EXCEPTION_PROMPT_VERSION = "0.12.0"
 
 
 @dataclass(frozen=True, slots=True)

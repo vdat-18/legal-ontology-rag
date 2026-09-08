@@ -83,6 +83,7 @@ def prepare_chunk_screening(
         screen_chunks(
             chunks_to_screen,
             client_factory(),
+            context_chunks=chunks,
             batch_size=settings.chunk_screening_batch_size,
             max_concurrency=settings.chunk_screening_max_concurrency,
             max_retries=settings.llm_max_retries,

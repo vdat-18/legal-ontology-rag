@@ -57,6 +57,10 @@ PROMPT_CASES = (
             "rule chuyên biệt làm hẹp general rule",
             "citation, provision và target rule riêng",
             "không redirect theo similarity",
+            "dẫn chiếu chỉ xác định rule đang nhận một hậu quả",
+            "trả citations=[]",
+            "không redirect ngoại lệ về general rule",
+            "giữ nguyên cả cụm",
         ),
     ),
     (
