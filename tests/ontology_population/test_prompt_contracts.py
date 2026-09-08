@@ -337,3 +337,18 @@ def test_downstream_ontology_prompt_is_concise_and_preserves_boundaries(
     assert "{{ ctx.output_format }}" in prompt
     for phrase in required_phrases:
         assert phrase in compact_prompt
+
+
+def test_rule_assembly_prompt_keeps_empty_candidate_result_wrapper() -> None:
+    """Step 3 must complete candidates that have no valid assembly proposal."""
+    prompt = (PROJECT_ROOT / "baml_src/ontology_rule_assembly.baml").read_text(encoding="utf-8")
+    compact_prompt = " ".join(prompt.split())
+
+    for phrase in (
+        "đúng một RuleAssemblyWindowResult cho từng candidate window",
+        "sao chép candidate_id nguyên văn",
+        "với `proposals=[]`",
+        "Không được trả danh sách kết quả tổng thể rỗng",
+        "kể cả một input cũng phải có một result",
+    ):
+        assert phrase in compact_prompt

@@ -50,8 +50,8 @@ class RuleAssemblyProposal {
 }
 
 class RuleAssemblyWindowResult {
-  candidate_id string
-  proposals RuleAssemblyProposal[]
+  candidate_id string @description(#"Sao chép nguyên văn candidate_id của input tương ứng."#)
+  proposals RuleAssemblyProposal[] @description(#"Danh sách rỗng khi candidate không có nhóm record hợp lệ để hợp nhất."#)
 }
 
 function ProposeOntologyRuleAssemblies(windows: RuleAssemblyWindowInput[]) -> RuleAssemblyWindowResult[] {
@@ -96,7 +96,11 @@ function ProposeOntologyRuleAssemblies(windows: RuleAssemblyWindowInput[]) -> Ru
     - Không suy diễn role, LegalChange, LegalException, identity xuyên văn bản hay
       concept relation. Thiếu evidence, chỉ có citation rời hoặc khác rule thì
       không đề xuất.
-    - Trả một result cho mỗi candidate_id.
+    - Luôn trả đúng một RuleAssemblyWindowResult cho từng candidate window và sao
+      chép candidate_id nguyên văn, không bỏ, đổi, rút gọn hoặc tạo ID mới.
+    - Nếu một candidate không có nhóm record hợp lệ để hợp nhất, vẫn trả result
+      của candidate đó với `proposals=[]`. Không được trả danh sách kết quả tổng
+      thể rỗng khi input có candidate; kể cả một input cũng phải có một result.
 
     {{ _.role("user") }}
 
