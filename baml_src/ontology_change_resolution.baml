@@ -102,6 +102,16 @@ function ProposeCrossDocumentLegalChanges(windows: CrossDocumentChangeWindowInpu
       điều kiện. Không ghép một earlier leaf với later sibling khác hành động. Một
       rule có thể tách thành nhiều leaf hoặc nhiều leaf có thể nhập lại chỉ khi
       chính source và semantics của từng leaf hỗ trợ mọi liên kết đó.
+    - Cổng ghép successor bắt buộc: so sánh riêng từng cặp earlier-later như hai
+      hành vi độc lập. Later leaf phải tiếp tục, thu hẹp, mở rộng hoặc viết lại
+      chính nghĩa vụ/hành vi của earlier leaf; chỉ cùng chủ đề, phương tiện, hợp
+      đồng, thiết bị hoặc hậu quả là chưa đủ. Nếu earlier leaf biến mất còn later
+      sibling mô tả một hành động hay trạng thái vận hành khác, không nối chúng;
+      earlier dùng RepealOrSupersession với later null khi locator được viết lại.
+    - Không chuyển leaf giữa hai Điểm chỉ vì nội dung giống nhau. Source phải nói
+      trực tiếp việc chuyển, đổi số hoặc đồng thời viết lại cả Điểm nguồn và Điểm
+      đích theo cách chứng minh leaf rời Điểm cũ để sang Điểm mới. Câu chỉ sửa một
+      Điểm không cho phép lấy earlier record từ Điểm khác làm predecessor.
     - Khi source trực tiếp viết lại toàn bộ một Điều/Khoản/Điểm, audit mọi earlier
       rule tại đúng locator đó, kể cả các variant khác điều kiện hoặc hậu quả. Không
       để variant cũ tiếp tục hiệu lực chỉ vì later rule không lặp lại điều kiện/hậu
@@ -121,6 +131,10 @@ function ProposeCrossDocumentLegalChanges(windows: CrossDocumentChangeWindowInpu
     - Amendment/Replacement cần later rule. RepealOrSupersession để later null khi
       source trực tiếp bãi bỏ target hoặc viết lại toàn bộ locator nhưng không có
       later rule kế thừa chính earlier variant đang xét.
+    - Trước khi trả output, audit từng proposal: locator có hợp lệ; hành động,
+      đối tượng và điều kiện có quan hệ successor trực tiếp; rationale phải giải
+      thích chính quan hệ đó. Không đạt bất kỳ mục nào thì loại proposal, không
+      chọn later sibling gần nghĩa để tránh later null.
     - change_provision_path là locator pháp lý đích đầy đủ nhất, thí dụ
       `Điều 14 > Khoản 3 > Điểm b`. Không đưa Điều chứa lệnh sửa đổi, câu
       "Sửa đổi, bổ sung..." hoặc văn xuôi nguồn vào locator.

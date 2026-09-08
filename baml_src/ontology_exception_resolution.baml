@@ -77,6 +77,18 @@ function DiscoverLegalExceptions(windows: ExceptionDiscoveryWindowInput[]) -> Ex
     - Chỉ đề xuất khi nguồn trực tiếp loại trừ một trường hợp hoặc chỉ ra quy định
       chuyên biệt làm hẹp general rule. Citation đơn thuần, hậu quả cộng dồn và
       LegalChange không tự tạo ngoại lệ.
+    - LegalException phải loại hoặc chuyển một trường hợp vốn sẽ thuộc general
+      rule nếu không có câu ngoại lệ. Không biến điều kiện áp dụng thông thường,
+      định nghĩa phạm vi, cách tính số lượng/ngưỡng, phần giải thích trong ngoặc,
+      điều kiện một loại đối tượng phải tuân thủ quy định, hay quy tắc chọn/gộp
+      hậu quả xử phạt thành ngoại lệ.
+    - Nội dung ngoại lệ phải được chứng minh ngay trong evidence đã chọn của
+      general rule. Không lấy ngoại lệ từ source_contexts, record anh em hoặc câu
+      khác rồi gắn vào record hiện tại; nếu evidence chỉ mô tả conduct hay điều
+      kiện mà không trực tiếp loại hoặc redirect trường hợp thì không đề xuất.
+      Ngoại lệ ở một Điểm/nhánh liền kề không được kế thừa sang Điểm/nhánh đang
+      xét. Trước khi trả mỗi discovery, chỉ đọc lại evidence đã chọn; nếu rationale
+      chứa trường hợp loại trừ không xuất hiện trong evidence đó thì xóa discovery.
     - general_population_id là rule bị câu ngoại lệ trực tiếp làm hẹp, không phải
       rule được dẫn chiếu. Evidence phải trực tiếp thuộc chính general rule đó;
       không đảo chiều quan hệ vì một rule khác nhắc tới general rule.

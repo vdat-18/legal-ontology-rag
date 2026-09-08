@@ -1311,17 +1311,6 @@
         <https://w3id.org/legal-ontology-rag/data/chunk/e2fe6ec55c71d9d2616ac5e1f62866a8e7365eea1b73f239e7d74154674bd6f2> ;
     lortc:validDuring <https://w3id.org/legal-ontology-rag/data/rule/13066965c775e8a34debbfd4f7e0bb1f8d160e1f3272ede360e065ef0fa9acca/validity> .
 
-<https://w3id.org/legal-ontology-rag/data/rule/130be39007d64854363bc581cdafe2575c96f261ab8bb726cccbb1e4f2b938be> a lornr:PenaltyRule ;
-    rdfs:label "Không thực hiện việc cung cấp, cập nhật, truyền, lưu trữ, quản lý thông tin, dữ liệu từ thiết bị giám sát hành trình theo quy định"@vi ;
-    lorlc:imposesConsequence <https://w3id.org/legal-ontology-rag/data/consequence/2e9ab51f0807dbd517d8a97f00d0d79eac9ec2940d68919dc0aba3b84a7bac16>,
-        <https://w3id.org/legal-ontology-rag/data/consequence/cbfc17ca56c6ce76827a3c04c7bc947b50f28849daacba1d55e0d0dddf23e113> ;
-    lornr:hasApplicability <https://w3id.org/legal-ontology-rag/data/rule/130be39007d64854363bc581cdafe2575c96f261ab8bb726cccbb1e4f2b938be/applicability> ;
-    lornr:hasConductSpecification <https://w3id.org/legal-ontology-rag/data/rule/130be39007d64854363bc581cdafe2575c96f261ab8bb726cccbb1e4f2b938be/conduct> ;
-    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> ;
-    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/426a237aabd65f5848e056d100fd48e4058945f629ba42c22f70a5dcd4a4eb7c>,
-        <https://w3id.org/legal-ontology-rag/data/chunk/be5673d375e54c06e1975de896e1bb749b56bd4d21b68e51bb0de3bf8733bb70> ;
-    lortc:validDuring <https://w3id.org/legal-ontology-rag/data/rule/130be39007d64854363bc581cdafe2575c96f261ab8bb726cccbb1e4f2b938be/validity> .
-
 <https://w3id.org/legal-ontology-rag/data/rule/130fb873d8a5bdf97cbdcf790b8e029b2b97ec3d00b255b74b19df74553709b3> a lornr:PenaltyRule ;
     rdfs:label "Chở người không có tên trong danh sách hành khách"@vi ;
     lorlc:imposesConsequence <https://w3id.org/legal-ontology-rag/data/consequence/15d80f14b895b1b15451d0ab9cc55302af17d5b4dc0c82adcc7c6087af598863>,
@@ -3032,18 +3021,6 @@
         <https://w3id.org/legal-ontology-rag/data/chunk/bf39d10142d4cdbeec885a1708015ac78fd48ae6d44fcb3e0837df627107b62f> ;
     lortc:validDuring <https://w3id.org/legal-ontology-rag/data/rule/2ab1ef1cb7f903f69dd5601c02e32741dd684af0d4b080932060acac2631553e/validity> .
 
-<https://w3id.org/legal-ontology-rag/data/rule/2afdd644538356c5d5ec0de9cfce6bbd9c413080f04ce9c7daf15fce2ab16b4f> a lornr:PenaltyRule ;
-    rdfs:label "Cơ sở đào tạo lái xe không lưu trữ hoặc lưu trữ không đầy đủ hồ sơ theo quy định của 01 khóa đào tạo"@vi ;
-    lorlc:imposesConsequence <https://w3id.org/legal-ontology-rag/data/consequence/5a32b9e619bf12310c6a828dc2d45713a7404eed9557120646da65ca03106aae>,
-        <https://w3id.org/legal-ontology-rag/data/consequence/75afb7538b0399411e58c480ba5d55a76006ca6640cb1214e869de5a0c8ff5db> ;
-    lornr:hasApplicability <https://w3id.org/legal-ontology-rag/data/rule/2afdd644538356c5d5ec0de9cfce6bbd9c413080f04ce9c7daf15fce2ab16b4f/applicability> ;
-    lornr:hasConductSpecification <https://w3id.org/legal-ontology-rag/data/rule/2afdd644538356c5d5ec0de9cfce6bbd9c413080f04ce9c7daf15fce2ab16b4f/conduct> ;
-    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/7e969b3f7199e59703e9dd0dc850d147b4c9cd535646109fb2b487a8e60aa37e> ;
-    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/3833c292cc986fc6d5996f6fe0ac9fff2ff7b997611ce5b8d4995eddc802bd76>,
-        <https://w3id.org/legal-ontology-rag/data/chunk/5c06e84369c9525771066134426c16b2563a63d373276ea15872e011f907c82f>,
-        <https://w3id.org/legal-ontology-rag/data/chunk/bf39d10142d4cdbeec885a1708015ac78fd48ae6d44fcb3e0837df627107b62f> ;
-    lortc:validDuring <https://w3id.org/legal-ontology-rag/data/rule/2afdd644538356c5d5ec0de9cfce6bbd9c413080f04ce9c7daf15fce2ab16b4f/validity> .
-
 <https://w3id.org/legal-ontology-rag/data/rule/2b3b01dd3a6784e683e0356b88284bede1dafb7a0ad8c013d9b7977808abb6cb> a lornr:PenaltyRule ;
     rdfs:label "Chở công-ten-nơ trên xe (kể cả sơ mi rơ moóc) không bảo đảm quy chuẩn, tiêu chuẩn kỹ thuật của công-ten-nơ theo quy định"@vi ;
     lorlc:imposesConsequence <https://w3id.org/legal-ontology-rag/data/consequence/3e2b33d29240d40831589e2c808742e773872d0b148dc96f122cd2b312bbec14>,
@@ -3605,6 +3582,17 @@
         <https://w3id.org/legal-ontology-rag/data/chunk/44ee2697f451cb0f6127e6e6d8de7d8235dd2f6e46a9035f4d4f4e4d085f8150>,
         <https://w3id.org/legal-ontology-rag/data/chunk/5862379bb325eb57f95e5766b50e24989b8b3580f20b706396ce270f160246c8> ;
     lortc:validDuring <https://w3id.org/legal-ontology-rag/data/rule/3381197db11234b30632707d77a8e76fc188e97b986fc6b8883bf3a36e9682e7/validity> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/33d156c61b7592f3254927804f72ce199bb4b96ae5d90970f1c2557ecd34db70> a lornr:PenaltyRule ;
+    rdfs:label "Không thực hiện việc cập nhật thông tin, dữ liệu từ thiết bị giám sát hành trình theo quy định"@vi ;
+    lorlc:imposesConsequence <https://w3id.org/legal-ontology-rag/data/consequence/48173299ed6fd93934a7a2c7354a7a769e717088993085057d26650e78a8f6a7>,
+        <https://w3id.org/legal-ontology-rag/data/consequence/8c5c3ebe908a0bda6b5e74a91e69a008c03c1ab80bc6bddba69e33c7663243c1> ;
+    lornr:hasApplicability <https://w3id.org/legal-ontology-rag/data/rule/33d156c61b7592f3254927804f72ce199bb4b96ae5d90970f1c2557ecd34db70/applicability> ;
+    lornr:hasConductSpecification <https://w3id.org/legal-ontology-rag/data/rule/33d156c61b7592f3254927804f72ce199bb4b96ae5d90970f1c2557ecd34db70/conduct> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/426a237aabd65f5848e056d100fd48e4058945f629ba42c22f70a5dcd4a4eb7c>,
+        <https://w3id.org/legal-ontology-rag/data/chunk/be5673d375e54c06e1975de896e1bb749b56bd4d21b68e51bb0de3bf8733bb70> ;
+    lortc:validDuring <https://w3id.org/legal-ontology-rag/data/rule/33d156c61b7592f3254927804f72ce199bb4b96ae5d90970f1c2557ecd34db70/validity> .
 
 <https://w3id.org/legal-ontology-rag/data/rule/33eb54734f256a3c0ef56c9f6cd8b1528aa2aff8bd782c4acb8ca5f22f9009fc> a lornr:PenaltyRule ;
     rdfs:label "Không có tờ khai phương tiện vận tải đường bộ tạm nhập, tái xuất theo quy định"@vi ;
@@ -4227,6 +4215,17 @@
     lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/877580d87cf1784e7fb8aebc0d1ea2063d901e80b8fd3fd18b72e76757eb487e> ;
     lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/9da610812d7e27693bbfa600b24518b3b36a127a912bb722fc141eab76bb2e91> ;
     lortc:validDuring <https://w3id.org/legal-ontology-rag/data/rule/3cfecb9282b4ae5b42e678c00428455f52824c62b972a66bfb9611ba476280e0/validity> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/3d1e50567ad6fdaa6424cc9d40d70a4ee8a79ebb208ae1d511b557bda099f5c0> a lornr:PenaltyRule ;
+    rdfs:label "Không thực hiện việc cung cấp thông tin, dữ liệu từ thiết bị giám sát hành trình theo quy định"@vi ;
+    lorlc:imposesConsequence <https://w3id.org/legal-ontology-rag/data/consequence/15a7e9a1c5250dbf2560e190b7722ffd71aebcef418a06a53ea4f53554e6cc00>,
+        <https://w3id.org/legal-ontology-rag/data/consequence/441ab9a1bd4f9b0c3e0c6901447c14597a41eceb938644734ac8eba2059cc24e> ;
+    lornr:hasApplicability <https://w3id.org/legal-ontology-rag/data/rule/3d1e50567ad6fdaa6424cc9d40d70a4ee8a79ebb208ae1d511b557bda099f5c0/applicability> ;
+    lornr:hasConductSpecification <https://w3id.org/legal-ontology-rag/data/rule/3d1e50567ad6fdaa6424cc9d40d70a4ee8a79ebb208ae1d511b557bda099f5c0/conduct> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/426a237aabd65f5848e056d100fd48e4058945f629ba42c22f70a5dcd4a4eb7c>,
+        <https://w3id.org/legal-ontology-rag/data/chunk/be5673d375e54c06e1975de896e1bb749b56bd4d21b68e51bb0de3bf8733bb70> ;
+    lortc:validDuring <https://w3id.org/legal-ontology-rag/data/rule/3d1e50567ad6fdaa6424cc9d40d70a4ee8a79ebb208ae1d511b557bda099f5c0/validity> .
 
 <https://w3id.org/legal-ontology-rag/data/rule/3d69e0bffbac2fa40404b99f551f4e6fb8baec6d42b019929ccedd4a5710cadd> a lornr:PenaltyRule ;
     rdfs:label "Không làm thủ tục đổi chứng nhận đăng ký xe, biển số xe theo quy định"@vi ;
@@ -5118,6 +5117,18 @@
         <https://w3id.org/legal-ontology-rag/data/chunk/5377f69c89b9ec2c5476d9521affb4184720daef1b9395cc5d9d5a9186099587>,
         <https://w3id.org/legal-ontology-rag/data/chunk/aedecb3bcafbc221ec49d76039246cc95aaec50b261ce0c8f78ec1b9254ac1ca> ;
     lortc:validDuring <https://w3id.org/legal-ontology-rag/data/rule/4b5c0ad7bfa6831d902c91ae695b67db243f0d92e1d97b1dc3cc3298b1defa17/validity> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/4b6296434de82afc8a534ffdfd0f671a3e0df06a50ec6d1bf19276bfd1e3164d> a lornr:PenaltyRule ;
+    rdfs:label "Cơ sở đào tạo lái xe không lưu trữ hồ sơ theo quy định của 01 khóa đào tạo"@vi ;
+    lorlc:imposesConsequence <https://w3id.org/legal-ontology-rag/data/consequence/38763547d2b24fd79845baff70ecb001eb32ae070511180d0fd19c5cdb5e97cf>,
+        <https://w3id.org/legal-ontology-rag/data/consequence/9a195d946adbb939cd8d59386ffd32dc74800cfb142829ee78bb87cbbea7eed9> ;
+    lornr:hasApplicability <https://w3id.org/legal-ontology-rag/data/rule/4b6296434de82afc8a534ffdfd0f671a3e0df06a50ec6d1bf19276bfd1e3164d/applicability> ;
+    lornr:hasConductSpecification <https://w3id.org/legal-ontology-rag/data/rule/4b6296434de82afc8a534ffdfd0f671a3e0df06a50ec6d1bf19276bfd1e3164d/conduct> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/7e969b3f7199e59703e9dd0dc850d147b4c9cd535646109fb2b487a8e60aa37e> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/3833c292cc986fc6d5996f6fe0ac9fff2ff7b997611ce5b8d4995eddc802bd76>,
+        <https://w3id.org/legal-ontology-rag/data/chunk/5c06e84369c9525771066134426c16b2563a63d373276ea15872e011f907c82f>,
+        <https://w3id.org/legal-ontology-rag/data/chunk/bf39d10142d4cdbeec885a1708015ac78fd48ae6d44fcb3e0837df627107b62f> ;
+    lortc:validDuring <https://w3id.org/legal-ontology-rag/data/rule/4b6296434de82afc8a534ffdfd0f671a3e0df06a50ec6d1bf19276bfd1e3164d/validity> .
 
 <https://w3id.org/legal-ontology-rag/data/rule/4bd2f32c6dec7ae161e7faa90d083f4f0634c2f5728752a73cbe0ff0b1dceabd> a lornr:PenaltyRule ;
     rdfs:label "Điều khiển xe có kích thước bao ngoài vượt quá kích thước giới hạn cho phép của xe theo quy định, trừ trường hợp có giấy phép lưu hành còn giá trị sử dụng"@vi ;
@@ -9345,6 +9356,16 @@
     lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/b51056464531406c3798835b5eeb35627b078eb88bf9c19691c5dd081a56dc39> ;
     lortc:validDuring <https://w3id.org/legal-ontology-rag/data/rule/891af6ec2ec0eb129cbda00e9e995e94b922274efa58027a6ca4305ad16a38b3/validity> .
 
+<https://w3id.org/legal-ontology-rag/data/rule/89487263c03a04d0b438f168f226dd38654821e67f0a0c2260340b709c58f016> a lornr:PenaltyRule ;
+    rdfs:label "Điều khiển xe chở hành khách liên vận quốc tế không gắn ký hiệu phân biệt quốc gia"@vi ;
+    lorlc:imposesConsequence <https://w3id.org/legal-ontology-rag/data/consequence/36ac2d1e7c0f3c7de1ac03b5fb059505187d2640a168d6f040b7ba3760d58e6f>,
+        <https://w3id.org/legal-ontology-rag/data/consequence/c776b1c945427d5d1124f3160f28c331723bfcbc07ca08f54a36660cfa9d1ef2> ;
+    lornr:hasApplicability <https://w3id.org/legal-ontology-rag/data/rule/89487263c03a04d0b438f168f226dd38654821e67f0a0c2260340b709c58f016/applicability> ;
+    lornr:hasConductSpecification <https://w3id.org/legal-ontology-rag/data/rule/89487263c03a04d0b438f168f226dd38654821e67f0a0c2260340b709c58f016/conduct> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/6cf55b1e6226915ffc6902cab17c108b9eaf1f8a19f319b47e5bd560106c55cd> ;
+    lortc:validDuring <https://w3id.org/legal-ontology-rag/data/rule/89487263c03a04d0b438f168f226dd38654821e67f0a0c2260340b709c58f016/validity> .
+
 <https://w3id.org/legal-ontology-rag/data/rule/894dc8defd9bb5016744836dae3cecf64c39aa2a241f874d624221faea3637b3> a lornr:PenaltyRule ;
     rdfs:label "Dừng xe tại các vị trí: bên trái đường một chiều hoặc bên trái (theo hướng lưu thông) của đường đôi; trên đoạn đường cong hoặc gần đầu dốc nơi tầm nhìn bị che khuất; trên cầu (trừ trường hợp tổ chức giao thông cho phép), gầm cầu vượt (trừ những nơi cho phép dừng xe, đỗ xe), song song với một xe khác đang dừng, đỗ; nơi đường bộ giao nhau hoặc trong phạm vi 05 mét tính từ mép đường giao nhau; điểm đón, trả khách; trước cổng hoặc trong phạm vi 05 mét hai bên cổng trụ sở cơ quan, tổ chức có bố trí đường cho xe ra, vào; nơi phần đường có bề rộng chỉ đủ cho một làn xe cơ giới; che khuất biển báo hiệu đường bộ, đèn tín hiệu giao thông; nơi mở dải phân cách giữa; cách xe ô tô đang đỗ ngược chiều dưới 20 mét trên đường phố hẹp, dưới 40 mét trên đường có một làn xe cơ giới trên một chiều đường, trừ hành vi vi phạm quy định tại điểm b khoản 6 Điều này"@vi ;
     lorlc:imposesConsequence <https://w3id.org/legal-ontology-rag/data/consequence/55a85e0e18e51ebc3dd302e9ad93e054eb8fcfd30f57fd8c958ddb22eefc7237> ;
@@ -11236,16 +11257,6 @@
     lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/9da610812d7e27693bbfa600b24518b3b36a127a912bb722fc141eab76bb2e91> ;
     lortc:validDuring <https://w3id.org/legal-ontology-rag/data/rule/a70ea3656a23c8972d436ac657b6e920dcc7365211e460af30341e45dbe6407a/validity> .
 
-<https://w3id.org/legal-ontology-rag/data/rule/a7124ace1e62281196b9a500c4187d4b1b1f52dae882f4568899da5e25935370> a lornr:PenaltyRule ;
-    rdfs:label "Điều khiển xe chở hành khách liên vận quốc tế không có hoặc không gắn ký hiệu phân biệt quốc gia"@vi ;
-    lorlc:imposesConsequence <https://w3id.org/legal-ontology-rag/data/consequence/00b3bda85ac22f37c107e441448f986868c5702b2f994ba3bc093ce1a38888dd>,
-        <https://w3id.org/legal-ontology-rag/data/consequence/c147be4b4135f063ddf4b65c5656d183f02026c12207d64442ac98d9e21c6d90> ;
-    lornr:hasApplicability <https://w3id.org/legal-ontology-rag/data/rule/a7124ace1e62281196b9a500c4187d4b1b1f52dae882f4568899da5e25935370/applicability> ;
-    lornr:hasConductSpecification <https://w3id.org/legal-ontology-rag/data/rule/a7124ace1e62281196b9a500c4187d4b1b1f52dae882f4568899da5e25935370/conduct> ;
-    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> ;
-    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/6cf55b1e6226915ffc6902cab17c108b9eaf1f8a19f319b47e5bd560106c55cd> ;
-    lortc:validDuring <https://w3id.org/legal-ontology-rag/data/rule/a7124ace1e62281196b9a500c4187d4b1b1f52dae882f4568899da5e25935370/validity> .
-
 <https://w3id.org/legal-ontology-rag/data/rule/a71b0927ed4559012962295ff7c1cc69e0bb6aa5fdde3586f5e73b5bfebd0777> a lornr:PenaltyRule ;
     rdfs:label "Không nhường đường cho xe đi ngược chiều theo quy định tại nơi đường hẹp, đường dốc, nơi có chướng ngại vật"@vi ;
     lorlc:imposesConsequence <https://w3id.org/legal-ontology-rag/data/consequence/42479fc60915914721d054a1fd8509c13fce749a99af87880f04d396174e2d04> ;
@@ -11878,6 +11889,16 @@
         <https://w3id.org/legal-ontology-rag/data/chunk/5597e352982cdebd88c287fb7c4d436db078c992e10a657a2fcca1b1249c7e1e>,
         <https://w3id.org/legal-ontology-rag/data/chunk/5862379bb325eb57f95e5766b50e24989b8b3580f20b706396ce270f160246c8> ;
     lortc:validDuring <https://w3id.org/legal-ontology-rag/data/rule/b083338bbe7319a2b051e091e8af8784d8ae8c9ce4e6df8996bec76fa2ef6814/validity> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/b083c9e1efc4070a0f69485f95f5b45324f5a3714fbffcd4a0b379ac58512006> a lornr:PenaltyRule ;
+    rdfs:label "Điều khiển xe chở hành khách liên vận quốc tế không có ký hiệu phân biệt quốc gia"@vi ;
+    lorlc:imposesConsequence <https://w3id.org/legal-ontology-rag/data/consequence/10e186b50e2d6670fe73f56271e16c47f8f14e809f6bf95e1cfead9d0ccb6934>,
+        <https://w3id.org/legal-ontology-rag/data/consequence/19382b59df0dc05073347e5e925fa96cc8d3c4086537ea7bc788e59dd6a65d3b> ;
+    lornr:hasApplicability <https://w3id.org/legal-ontology-rag/data/rule/b083c9e1efc4070a0f69485f95f5b45324f5a3714fbffcd4a0b379ac58512006/applicability> ;
+    lornr:hasConductSpecification <https://w3id.org/legal-ontology-rag/data/rule/b083c9e1efc4070a0f69485f95f5b45324f5a3714fbffcd4a0b379ac58512006/conduct> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/6cf55b1e6226915ffc6902cab17c108b9eaf1f8a19f319b47e5bd560106c55cd> ;
+    lortc:validDuring <https://w3id.org/legal-ontology-rag/data/rule/b083c9e1efc4070a0f69485f95f5b45324f5a3714fbffcd4a0b379ac58512006/validity> .
 
 <https://w3id.org/legal-ontology-rag/data/rule/b0b24df25008e277637f9f18ec959ebdf28a667fd9cb4f2e2d6fbc41d795c94a> a lornr:PenaltyRule ;
     rdfs:label "Không thực hiện đúng nội dung đã đăng ký, niêm yết về giá cước"@vi ;
@@ -18124,6 +18145,10 @@
     skos:inScheme loroc:conductScheme ;
     skos:prefLabel "Sử dụng giấy phép lái xe đã bị trừ hết điểm, giấy phép lái xe không do cơ quan có thẩm quyền cấp, giấy phép lái xe bị tẩy xóa, giấy phép lái xe không còn hiệu lực"@vi .
 
+<https://w3id.org/legal-ontology-rag/data/concept/conduct/27af511732abbc5ad590f30633e53fdb6c43fa00c3fc4ad12623f8c157f3dab8> a loroc:RegulatedConduct ;
+    skos:inScheme loroc:conductScheme ;
+    skos:prefLabel "Không thực hiện việc cung cấp thông tin, dữ liệu từ thiết bị giám sát hành trình theo quy định"@vi .
+
 <https://w3id.org/legal-ontology-rag/data/concept/conduct/27b8a6bb14f4609dabc51fe2e98989656176583caa185698191f061cf4526116> a loroc:RegulatedConduct ;
     skos:inScheme loroc:conductScheme ;
     skos:prefLabel "Dừng xe trên đường cao tốc không đúng nơi quy định"@vi .
@@ -19056,6 +19081,10 @@
     skos:inScheme loroc:conductScheme ;
     skos:prefLabel "Trực tiếp điều khiển phương tiện thực hiện hành vi vi phạm quy định tại khoản 3 Điều 34 của Nghị định này"@vi .
 
+<https://w3id.org/legal-ontology-rag/data/concept/conduct/483f0dc6c3e2a5110d5d208d60e32ce68e6839140bf2ef98ba94f7bf4ffbd462> a loroc:RegulatedConduct ;
+    skos:inScheme loroc:conductScheme ;
+    skos:prefLabel "Cơ sở đào tạo lái xe không lưu trữ hồ sơ theo quy định của 01 khóa đào tạo"@vi .
+
 <https://w3id.org/legal-ontology-rag/data/concept/conduct/48a8d545ca0fc73771ce3411bdb4c3ccc0be8baabf212a5e43fafee53fe16ee6> a loroc:RegulatedConduct ;
     skos:inScheme loroc:conductScheme ;
     skos:prefLabel "Sử dụng xe ô tô kinh doanh vận tải hành khách không có dây đai an toàn tại các vị trí ghế ngồi, giường nằm theo quy định (trừ xe buýt nội tỉnh)"@vi .
@@ -19371,10 +19400,6 @@
 <https://w3id.org/legal-ontology-rag/data/concept/conduct/529dffd61a0183a2f743edcdc6632401bfd612f1398577c88f1a84244c3d6567> a loroc:RegulatedConduct ;
     skos:inScheme loroc:conductScheme ;
     skos:prefLabel "Mượn linh kiện, phụ kiện của xe ô tô khi kiểm định"@vi .
-
-<https://w3id.org/legal-ontology-rag/data/concept/conduct/53036f9c125bb43053ec461cbd94434cc743b5b0f883ea211f259cce48a1f1c2> a loroc:RegulatedConduct ;
-    skos:inScheme loroc:conductScheme ;
-    skos:prefLabel "Không thực hiện việc cung cấp, cập nhật, truyền, lưu trữ, quản lý thông tin, dữ liệu từ thiết bị giám sát hành trình theo quy định"@vi .
 
 <https://w3id.org/legal-ontology-rag/data/concept/conduct/538dfc63d152e8cc2d2e51efaa28714d29c5ab9302bffb87d7b459081829fc85> a loroc:RegulatedConduct ;
     skos:inScheme loroc:conductScheme ;
@@ -20315,10 +20340,6 @@
 <https://w3id.org/legal-ontology-rag/data/concept/conduct/787a8ac3cc8402e4db2e9386800ff116a2c1f8064ae702e2bbf2fdfa25f175ec> a loroc:RegulatedConduct ;
     skos:inScheme loroc:conductScheme ;
     skos:prefLabel "Đi vào khu vực cấm, đường có biển báo hiệu có nội dung cấm đi vào đối với loại phương tiện đang điều khiển, trừ các hành vi vi phạm quy định tại điểm d khoản 7, điểm đ khoản 9 Điều này và các trường hợp xe ưu tiên đang đi làm nhiệm vụ khẩn cấp theo quy định"@vi .
-
-<https://w3id.org/legal-ontology-rag/data/concept/conduct/7898f4dc98d447fe42f5f9a98438843abdb89f40de944f2102934c8f19be79de> a loroc:RegulatedConduct ;
-    skos:inScheme loroc:conductScheme ;
-    skos:prefLabel "Điều khiển xe chở hành khách liên vận quốc tế không có hoặc không gắn ký hiệu phân biệt quốc gia"@vi .
 
 <https://w3id.org/legal-ontology-rag/data/concept/conduct/78a9c45c3739050aeb22edc14e687c75f5a51750d74cc07d667ab530eaad7047> a loroc:RegulatedConduct ;
     skos:inScheme loroc:conductScheme ;
@@ -21744,6 +21765,10 @@
     skos:inScheme loroc:conductScheme ;
     skos:prefLabel "Làm sai lệch thông tin, dữ liệu của thiết bị ghi nhận hình ảnh người lái xe lắp trên xe ô tô"@vi .
 
+<https://w3id.org/legal-ontology-rag/data/concept/conduct/a9ddddbd9333eb7d6d460209b23ae44666091eb8e72252da2094b5db7abe2840> a loroc:RegulatedConduct ;
+    skos:inScheme loroc:conductScheme ;
+    skos:prefLabel "Điều khiển xe chở hành khách liên vận quốc tế không có ký hiệu phân biệt quốc gia"@vi .
+
 <https://w3id.org/legal-ontology-rag/data/concept/conduct/aa062b61d24f743cfd36f1ce27f4031ceb27a962e481647b46abb92419fbfe7d> a loroc:RegulatedConduct ;
     skos:inScheme loroc:conductScheme ;
     skos:prefLabel "Sản xuất biển số trái phép"@vi .
@@ -22152,6 +22177,10 @@
     skos:inScheme loroc:conductScheme ;
     skos:prefLabel "Lắp đặt thiết bị thay đổi biển số trên xe trái quy định (kể cả rơ moóc và sơ mi rơ moóc)"@vi .
 
+<https://w3id.org/legal-ontology-rag/data/concept/conduct/b7f5df3003cf7dcaee717bf45abeedf460bd994d6923743d8dcd5de3c91587ed> a loroc:RegulatedConduct ;
+    skos:inScheme loroc:conductScheme ;
+    skos:prefLabel "Không thực hiện việc cập nhật thông tin, dữ liệu từ thiết bị giám sát hành trình theo quy định"@vi .
+
 <https://w3id.org/legal-ontology-rag/data/concept/conduct/b81d4d4de4f339fc3d9ea095122806a1f0329bddc5e40c2c13265fa5e567a2bc> a loroc:RegulatedConduct ;
     skos:inScheme loroc:conductScheme ;
     skos:prefLabel "Sử dụng lái xe, người áp tải vận chuyển hàng hóa nguy hiểm mà không được tập huấn về vận chuyển hàng hóa nguy hiểm"@vi .
@@ -22279,10 +22308,6 @@
 <https://w3id.org/legal-ontology-rag/data/concept/conduct/be6120f47a4eb213eff1f2d310ecb5de7742abe277726d0728294fcc8caf09ee> a loroc:RegulatedConduct ;
     skos:inScheme loroc:conductScheme ;
     skos:prefLabel "Vận chuyển hàng hóa trên xe gây cản trở tầm nhìn của người lái xe hoặc che khuất đèn, biển số xe (đối với loại xe có đèn, biển số xe)"@vi .
-
-<https://w3id.org/legal-ontology-rag/data/concept/conduct/be6f24fef24f453bd731f90859d99ce7bfdf16b43011371504e149347cd906a8> a loroc:RegulatedConduct ;
-    skos:inScheme loroc:conductScheme ;
-    skos:prefLabel "Cơ sở đào tạo lái xe không lưu trữ hoặc lưu trữ không đầy đủ hồ sơ theo quy định của 01 khóa đào tạo"@vi .
 
 <https://w3id.org/legal-ontology-rag/data/concept/conduct/be87eb8a97c7942f3782b30b294ee6b5890bf9a5bf12ced2c11d139fb9e6f675> a loroc:RegulatedConduct ;
     skos:inScheme loroc:conductScheme ;
@@ -23820,6 +23845,10 @@
     skos:inScheme loroc:conductScheme ;
     skos:prefLabel "Chở người trên thùng xe trái quy định"@vi .
 
+<https://w3id.org/legal-ontology-rag/data/concept/conduct/f745c474dc15a4a0b20b257946f1764babcf8e038ef92fad98c70de07b340c59> a loroc:RegulatedConduct ;
+    skos:inScheme loroc:conductScheme ;
+    skos:prefLabel "Điều khiển xe chở hành khách liên vận quốc tế không gắn ký hiệu phân biệt quốc gia"@vi .
+
 <https://w3id.org/legal-ontology-rag/data/concept/conduct/f77f123d4d106f57b94e6c12da19a6be2bba9e9d038e30dfd1e73d63ee1229ee> a loroc:RegulatedConduct ;
     skos:inScheme loroc:conductScheme ;
     skos:prefLabel "Sử dụng các giấy tờ, tài liệu giả để được cấp lại biển số xe, chứng nhận đăng ký xe, giấy chứng nhận kiểm định an toàn kỹ thuật và bảo vệ môi trường nhưng chưa đến mức bị truy cứu trách nhiệm hình sự"@vi .
@@ -24631,6 +24660,10 @@
 <https://w3id.org/legal-ontology-rag/data/concept/role/15c669ee8a82cea5d0657bd668b198fdb4e67892f22da805a4d68d0f2e61ac34> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
     skos:prefLabel "tổ chức dịch vụ hỗ trợ vận tải"@vi .
+
+<https://w3id.org/legal-ontology-rag/data/concept/role/15f874a2693e6c2b6082deef071a472bbf76a475c93bae060f07381a5bbd822a> a loroc:LegalSubjectRole ;
+    skos:inScheme loroc:subjectRoleScheme ;
+    skos:prefLabel "Tổ chức kinh doanh vận tải"@vi .
 
 <https://w3id.org/legal-ontology-rag/data/concept/role/160068e1331396daab917ce280465ae6af81dafeaf5f957fec39fdf5a8142e4d> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
@@ -25792,6 +25825,10 @@
     skos:inScheme loroc:subjectRoleScheme ;
     skos:prefLabel "chủ xe"@vi .
 
+<https://w3id.org/legal-ontology-rag/data/concept/role/400a50fa4fa6cad485222d302b3a659c75e934b7a7b6b5e5e128297d4aa88f34> a loroc:LegalSubjectRole ;
+    skos:inScheme loroc:subjectRoleScheme ;
+    skos:prefLabel "Tổ chức dịch vụ hỗ trợ vận tải"@vi .
+
 <https://w3id.org/legal-ontology-rag/data/concept/role/401080673382a202779d721707ddd439e7018b8d1da2ae2223c6a6a34373cee3> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
     skos:prefLabel "cá nhân kinh doanh vận tải"@vi .
@@ -26772,10 +26809,6 @@
     skos:inScheme loroc:subjectRoleScheme ;
     skos:prefLabel "Người đi bộ"@vi .
 
-<https://w3id.org/legal-ontology-rag/data/concept/role/6537b05e5ab43f6cafe256456ffa58dd1e529724e15748d3cdf3259166060529> a loroc:LegalSubjectRole ;
-    skos:inScheme loroc:subjectRoleScheme ;
-    skos:prefLabel "Người điều khiển xe"@vi .
-
 <https://w3id.org/legal-ontology-rag/data/concept/role/653a016cb795ffffde47365e0d0651071d94121dd800d30aa6681d3a3bd20de6> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
     skos:prefLabel "chủ xe"@vi .
@@ -26839,6 +26872,10 @@
 <https://w3id.org/legal-ontology-rag/data/concept/role/67180da33ac0d1cc76ed5801dc4d05a824d7af666b68b1b858e2d914fb9971a0> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
     skos:prefLabel "người điều khiển xe"@vi .
+
+<https://w3id.org/legal-ontology-rag/data/concept/role/67199290d7e4a8713a10ab5653951b9e0bce993f6c41ccbbc52bcaea24849d29> a loroc:LegalSubjectRole ;
+    skos:inScheme loroc:subjectRoleScheme ;
+    skos:prefLabel "Người điều khiển xe"@vi .
 
 <https://w3id.org/legal-ontology-rag/data/concept/role/672e0a86898f4fc329af00c4ea3d493caf5f11e1b34ed4616aa56768d0dd7d98> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
@@ -27011,6 +27048,10 @@
 <https://w3id.org/legal-ontology-rag/data/concept/role/6da27e8512b03f4085b60c99eabf983054336306cd852d36a6baf0f798ffee20> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
     skos:prefLabel "chủ xe mô tô, xe gắn máy và các loại xe tương tự"@vi .
+
+<https://w3id.org/legal-ontology-rag/data/concept/role/6da9ca0bc283c46e49ef9d91b9cd812ab2527c9c7400a54081018649417e6aef> a loroc:LegalSubjectRole ;
+    skos:inScheme loroc:subjectRoleScheme ;
+    skos:prefLabel "Cơ sở đào tạo lái xe"@vi .
 
 <https://w3id.org/legal-ontology-rag/data/concept/role/6e198b3e28b9654ac4bd6c4237c71c792501b85155935fcd31dd35f474eda30b> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
@@ -27388,10 +27429,6 @@
     skos:inScheme loroc:subjectRoleScheme ;
     skos:prefLabel "Tổ chức dịch vụ hỗ trợ vận tải"@vi .
 
-<https://w3id.org/legal-ontology-rag/data/concept/role/79db3cc28a4adcfbaa87c85038ae7d314448eca1a2d4cf3bf1b90220cd0af605> a loroc:LegalSubjectRole ;
-    skos:inScheme loroc:subjectRoleScheme ;
-    skos:prefLabel "Tổ chức kinh doanh vận tải"@vi .
-
 <https://w3id.org/legal-ontology-rag/data/concept/role/79dd9c7dadd5c6d78b86edd07466cd15467a5e0bb38f0f8f4692ac8881372a9f> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
     skos:prefLabel "người điều khiển phương tiện"@vi .
@@ -27623,10 +27660,6 @@
 <https://w3id.org/legal-ontology-rag/data/concept/role/818ca47942b7f879e7c4debeb5146fdf51cf15b68982619c332d186bffdb6b7a> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
     skos:prefLabel "người điều khiển xe"@vi .
-
-<https://w3id.org/legal-ontology-rag/data/concept/role/81953423e7799a11db6ebfde82deda57c33d475418249e73683e028bce248bc0> a loroc:LegalSubjectRole ;
-    skos:inScheme loroc:subjectRoleScheme ;
-    skos:prefLabel "Tổ chức dịch vụ hỗ trợ vận tải"@vi .
 
 <https://w3id.org/legal-ontology-rag/data/concept/role/81a10d7267fa77164604a843bc7cf338eb4c87b721bd21910446532800fa7122> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
@@ -28319,6 +28352,10 @@
 <https://w3id.org/legal-ontology-rag/data/concept/role/9ab7911e03a406d296b7e81a65e51da04bcaba433d2b9ab8a847cb70bb67287d> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
     skos:prefLabel "Người đi bộ"@vi .
+
+<https://w3id.org/legal-ontology-rag/data/concept/role/9ad01c7cfa6e57b30b921018b01428d10675089e82cb4cf0e2385cd6ad530edc> a loroc:LegalSubjectRole ;
+    skos:inScheme loroc:subjectRoleScheme ;
+    skos:prefLabel "Tổ chức dịch vụ hỗ trợ vận tải"@vi .
 
 <https://w3id.org/legal-ontology-rag/data/concept/role/9b20fbee595669f4d15f227d9f6461b3f0df689fba402691940243cb7a628272> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
@@ -29032,10 +29069,6 @@
     skos:inScheme loroc:subjectRoleScheme ;
     skos:prefLabel "tổ chức được ủy quyền"@vi .
 
-<https://w3id.org/legal-ontology-rag/data/concept/role/b657a63ae622bea5d544695595ff78f7d070484bf1e6344740a4a81b82ff9e36> a loroc:LegalSubjectRole ;
-    skos:inScheme loroc:subjectRoleScheme ;
-    skos:prefLabel "Cơ sở đào tạo lái xe"@vi .
-
 <https://w3id.org/legal-ontology-rag/data/concept/role/b682dcb9d29b0396db2290a2139ceb9a1b756d5a762c39887bca8fa948de54fa> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
     skos:prefLabel "Người đi bộ"@vi .
@@ -29428,6 +29461,10 @@
     skos:inScheme loroc:subjectRoleScheme ;
     skos:prefLabel "người điều khiển xe ô tô"@vi .
 
+<https://w3id.org/legal-ontology-rag/data/concept/role/c5137d74c480c5a2e66d625838379913aa1f01c3ef8c7a97f892701616bfc520> a loroc:LegalSubjectRole ;
+    skos:inScheme loroc:subjectRoleScheme ;
+    skos:prefLabel "Người điều khiển xe"@vi .
+
 <https://w3id.org/legal-ontology-rag/data/concept/role/c575ed8a3a89835160e50765174ea99df095a1df4c017a850993537612a9f916> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
     skos:prefLabel "người điều khiển xe"@vi .
@@ -29807,6 +29844,10 @@
 <https://w3id.org/legal-ontology-rag/data/concept/role/d6179cecfb3f0e58275638965001e853329b6d964bfb4bc38850c8d38824b97b> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
     skos:prefLabel "chủ xe"@vi .
+
+<https://w3id.org/legal-ontology-rag/data/concept/role/d64b73a48e529e806c2f238a83573619c39ae4fa2d1ee452f35ff184bbf1ecdf> a loroc:LegalSubjectRole ;
+    skos:inScheme loroc:subjectRoleScheme ;
+    skos:prefLabel "Tổ chức kinh doanh vận tải"@vi .
 
 <https://w3id.org/legal-ontology-rag/data/concept/role/d64db1b36c2ccd8f862fce66d97b09cdba461946b5ff2296e4e6f894407ecaf4> a loroc:LegalSubjectRole ;
     skos:inScheme loroc:subjectRoleScheme ;
@@ -32987,6 +33028,10 @@
 <https://w3id.org/legal-ontology-rag/data/concept/vehicle-category/1f34e004f2a707de778c329c282da5811436c4a9294f85a187dea94a8f022bb7> a loroc:VehicleCategory ;
     skos:inScheme loroc:vehicleCategoryScheme ;
     skos:prefLabel "các loại xe tương tự xe gắn máy"@vi .
+
+<https://w3id.org/legal-ontology-rag/data/concept/vehicle-category/1f36b27e0c192da8b012e73f63c2b5a372cb7e0cf782998a745433b80b252b34> a loroc:VehicleCategory ;
+    skos:inScheme loroc:vehicleCategoryScheme ;
+    skos:prefLabel "Xe chở hành khách liên vận quốc tế"@vi .
 
 <https://w3id.org/legal-ontology-rag/data/concept/vehicle-category/1f38757cc5c080a2c07f92190682ef3581a1c4c664b24fff5df50090f04698c9> a loroc:VehicleCategory ;
     skos:inScheme loroc:vehicleCategoryScheme ;
@@ -37784,10 +37829,6 @@
     skos:inScheme loroc:vehicleCategoryScheme ;
     skos:prefLabel "các loại xe tương tự xe ô tô"@vi .
 
-<https://w3id.org/legal-ontology-rag/data/concept/vehicle-category/70486c654aaae34eb71006e8a1701690c961f421f769d639d96b9cb85c90af5a> a loroc:VehicleCategory ;
-    skos:inScheme loroc:vehicleCategoryScheme ;
-    skos:prefLabel "Xe chở hành khách liên vận quốc tế"@vi .
-
 <https://w3id.org/legal-ontology-rag/data/concept/vehicle-category/705fb5901978333aaab89d306fdea6059bf8ca6b192c783c7e82c89bfe769a29> a loroc:VehicleCategory ;
     skos:inScheme loroc:vehicleCategoryScheme ;
     skos:prefLabel "xe kéo sơ mi rơ moóc"@vi .
@@ -41787,6 +41828,10 @@
 <https://w3id.org/legal-ontology-rag/data/concept/vehicle-category/afdf494257bc12d3340a5a2c9d4dae86b108a41927c854702464df1e2dfd0177> a loroc:VehicleCategory ;
     skos:inScheme loroc:vehicleCategoryScheme ;
     skos:prefLabel "xe đạp máy"@vi .
+
+<https://w3id.org/legal-ontology-rag/data/concept/vehicle-category/afebba8497467cc50d5384569f7aa398985c19b4f01748728fed3755462e22ef> a loroc:VehicleCategory ;
+    skos:inScheme loroc:vehicleCategoryScheme ;
+    skos:prefLabel "Xe chở hành khách liên vận quốc tế"@vi .
 
 <https://w3id.org/legal-ontology-rag/data/concept/vehicle-category/aff6b538e33f9934b5c9dc30fa2a7dddb01d2868f415838831c76ea8cca27cdb> a loroc:VehicleCategory ;
     skos:inScheme loroc:vehicleCategoryScheme ;
@@ -50198,13 +50243,6 @@
     lorlc:maximumAmount 5000000.0 ;
     lorlc:minimumAmount 3000000.0 .
 
-<https://w3id.org/legal-ontology-rag/data/consequence/00b3bda85ac22f37c107e441448f986868c5702b2f994ba3bc093ce1a38888dd> a lorlc:PointDeduction ;
-    rdfs:label "Bị trừ điểm giấy phép lái xe 02 điểm"@vi ;
-    lorlc:affectsTarget <https://w3id.org/legal-ontology-rag/data/target/65e1e301e1030ee6d2cc0cf8fb0cc080d1c9a7fd47718da7aef0e24926b4aea4> ;
-    lorlc:pointValue 2 ;
-    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> ;
-    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/6cf55b1e6226915ffc6902cab17c108b9eaf1f8a19f319b47e5bd560106c55cd> .
-
 <https://w3id.org/legal-ontology-rag/data/consequence/00e1b97774ce049242abcc495e4df1ccf52466cb60fc5f782f79e9653122ae39> a lorlc:MonetaryPenalty ;
     rdfs:label "Phạt tiền từ 8.000.000 đồng đến 10.000.000 đồng"@vi ;
     lorlc:hasAmountRange <https://w3id.org/legal-ontology-rag/data/consequence/00e1b97774ce049242abcc495e4df1ccf52466cb60fc5f782f79e9653122ae39/amount-range> ;
@@ -51539,6 +51577,17 @@
     lorlc:maximumAmount 600000.0 ;
     lorlc:minimumAmount 400000.0 .
 
+<https://w3id.org/legal-ontology-rag/data/consequence/10e186b50e2d6670fe73f56271e16c47f8f14e809f6bf95e1cfead9d0ccb6934> a lorlc:MonetaryPenalty ;
+    rdfs:label "Phạt tiền từ 3.000.000 đồng đến 5.000.000 đồng"@vi ;
+    lorlc:hasAmountRange <https://w3id.org/legal-ontology-rag/data/consequence/10e186b50e2d6670fe73f56271e16c47f8f14e809f6bf95e1cfead9d0ccb6934/amount-range> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/c39d5903e9607cddee07821f3f3768a1b86b860c8257205697ee167cee6e4746> .
+
+<https://w3id.org/legal-ontology-rag/data/consequence/10e186b50e2d6670fe73f56271e16c47f8f14e809f6bf95e1cfead9d0ccb6934/amount-range> a lorlc:MonetaryAmountRange ;
+    lorlc:currency lorlc:VND ;
+    lorlc:maximumAmount 5000000.0 ;
+    lorlc:minimumAmount 3000000.0 .
+
 <https://w3id.org/legal-ontology-rag/data/consequence/10f2cfd9373792c4900d3bf72d7cf18d50768bcfeee6770b23f99af0f575c37a> a lorlc:PointDeduction ;
     rdfs:label "Trừ điểm giấy phép lái xe"@vi ;
     lorlc:affectsTarget <https://w3id.org/legal-ontology-rag/data/target/52d0421d13620b7d06605bdca88a7d318b38b239c10f0a117ceaef011a9b6486> ;
@@ -51997,6 +52046,12 @@
     lorlc:maximumAmount 8000000.0 ;
     lorlc:minimumAmount 7000000.0 .
 
+<https://w3id.org/legal-ontology-rag/data/consequence/15a7e9a1c5250dbf2560e190b7722ffd71aebcef418a06a53ea4f53554e6cc00> a lorlc:RemedialMeasure ;
+    rdfs:label "Buộc cung cấp, cập nhật, truyền dẫn, lưu trữ, quản lý thông tin, dữ liệu theo quy định"@vi ;
+    lorlc:affectsTarget <https://w3id.org/legal-ontology-rag/data/target/16753da7454efc771b22656c99e5c5a7b94f1b05e2345eeda92a3724bb130489> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/be5673d375e54c06e1975de896e1bb749b56bd4d21b68e51bb0de3bf8733bb70> .
+
 <https://w3id.org/legal-ontology-rag/data/consequence/15aa1bc70951288c9b7f66f202ea4126273b68bb75aa28f1af1fba7a4f716388> a lorlc:RemedialMeasure ;
     rdfs:label "Buộc khôi phục lại tình trạng ban đầu đã bị thay đổi do vi phạm hành chính gây ra"@vi ;
     lorlc:affectsTarget <https://w3id.org/legal-ontology-rag/data/target/95fca41cafa3100a4107932fd4be535d38dc947d6acd01377e750267b8b2e9c4> ;
@@ -52342,6 +52397,13 @@
     lorlc:currency lorlc:VND ;
     lorlc:maximumAmount 22000000.0 ;
     lorlc:minimumAmount 20000000.0 .
+
+<https://w3id.org/legal-ontology-rag/data/consequence/19382b59df0dc05073347e5e925fa96cc8d3c4086537ea7bc788e59dd6a65d3b> a lorlc:PointDeduction ;
+    rdfs:label "Bị trừ điểm giấy phép lái xe 02 điểm"@vi ;
+    lorlc:affectsTarget <https://w3id.org/legal-ontology-rag/data/target/348a2aef2060dd3bcfb61378222d4b48660e0872b038f19390a14c4a70ca404b> ;
+    lorlc:pointValue 2 ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/6cf55b1e6226915ffc6902cab17c108b9eaf1f8a19f319b47e5bd560106c55cd> .
 
 <https://w3id.org/legal-ontology-rag/data/consequence/194eb08f865a3b5713b9a62204420fc7a7775433e4a44a42930c2b307a6b2301> a lorlc:MonetaryPenalty ;
     rdfs:label "Phạt tiền từ 8.000.000 đồng đến 10.000.000 đồng"@vi ;
@@ -54337,12 +54399,6 @@
     lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/841024082372fa5aaa532af3abef82b222b9b3904165af05d9edc9c92ec72bc4> ;
     lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/be5673d375e54c06e1975de896e1bb749b56bd4d21b68e51bb0de3bf8733bb70> .
 
-<https://w3id.org/legal-ontology-rag/data/consequence/2e9ab51f0807dbd517d8a97f00d0d79eac9ec2940d68919dc0aba3b84a7bac16> a lorlc:RemedialMeasure ;
-    rdfs:label "Buộc cung cấp, cập nhật, truyền dẫn, lưu trữ, quản lý thông tin, dữ liệu theo quy định"@vi ;
-    lorlc:affectsTarget <https://w3id.org/legal-ontology-rag/data/target/8459e816f78d3267d3c6952c813d85b8348362b945a700e3c7fa718729e03fc1> ;
-    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> ;
-    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/be5673d375e54c06e1975de896e1bb749b56bd4d21b68e51bb0de3bf8733bb70> .
-
 <https://w3id.org/legal-ontology-rag/data/consequence/2eba7349e12b85e5ec53de476934c321351cd523da0b1225a275909d42b04955> a lorlc:PointDeduction ;
     rdfs:label "Trừ điểm giấy phép lái xe"@vi ;
     lorlc:affectsTarget <https://w3id.org/legal-ontology-rag/data/target/c2bc836f3e6ddd77314564b2728c068bcbd4644263bdc6845f961a065902fc72> ;
@@ -55150,6 +55206,17 @@
     lorlc:maximumAmount 6000000.0 ;
     lorlc:minimumAmount 4000000.0 .
 
+<https://w3id.org/legal-ontology-rag/data/consequence/36ac2d1e7c0f3c7de1ac03b5fb059505187d2640a168d6f040b7ba3760d58e6f> a lorlc:MonetaryPenalty ;
+    rdfs:label "Phạt tiền từ 3.000.000 đồng đến 5.000.000 đồng"@vi ;
+    lorlc:hasAmountRange <https://w3id.org/legal-ontology-rag/data/consequence/36ac2d1e7c0f3c7de1ac03b5fb059505187d2640a168d6f040b7ba3760d58e6f/amount-range> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/c39d5903e9607cddee07821f3f3768a1b86b860c8257205697ee167cee6e4746> .
+
+<https://w3id.org/legal-ontology-rag/data/consequence/36ac2d1e7c0f3c7de1ac03b5fb059505187d2640a168d6f040b7ba3760d58e6f/amount-range> a lorlc:MonetaryAmountRange ;
+    lorlc:currency lorlc:VND ;
+    lorlc:maximumAmount 5000000.0 ;
+    lorlc:minimumAmount 3000000.0 .
+
 <https://w3id.org/legal-ontology-rag/data/consequence/36d58b91cfcac21c134eff6939d1533a9080d698fd6dfc007f22b68d18af5ad3> a lorlc:AdditionalSanction ;
     rdfs:label "Tước quyền sử dụng giấy phép sát hạch"@vi ;
     lorlc:affectsTarget <https://w3id.org/legal-ontology-rag/data/target/cce83408e5053156d2d8a5580e1044177ebccbe85a6dd0094238ef0b55e36e15> ;
@@ -55305,6 +55372,14 @@
     lorlc:minimumDurationMonths 22 ;
     lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/05d3c0f9e7ec16b23c1a58a879bbe33189f574dcc618720b35e4b22584234992> ;
     lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/5862379bb325eb57f95e5766b50e24989b8b3580f20b706396ce270f160246c8> .
+
+<https://w3id.org/legal-ontology-rag/data/consequence/38763547d2b24fd79845baff70ecb001eb32ae070511180d0fd19c5cdb5e97cf> a lorlc:AdditionalSanction ;
+    rdfs:label "Đình chỉ tuyển sinh"@vi ;
+    lorlc:affectsTarget <https://w3id.org/legal-ontology-rag/data/target/1fb6366a46b00a6a9c2b7eeb2b6a456dfd264d9d70d12b322dff5ebcaf84136c> ;
+    lorlc:maximumDurationMonths 3 ;
+    lorlc:minimumDurationMonths 1 ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/7e969b3f7199e59703e9dd0dc850d147b4c9cd535646109fb2b487a8e60aa37e> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/5c06e84369c9525771066134426c16b2563a63d373276ea15872e011f907c82f> .
 
 <https://w3id.org/legal-ontology-rag/data/consequence/387f70a13f0a522a4e2fd49100a033f9009e6e6b0440cf1f30210261e5d1af2b> a lorlc:RemedialMeasure ;
     rdfs:label "Buộc chằng buộc hàng hóa theo quy định."@vi ;
@@ -56433,6 +56508,17 @@
     lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/ca26372060ca8d2088fdfec3c8b8816deb0ce5f2e448dfb7f4bad2fdb8ea09f1> ;
     lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/6cf55b1e6226915ffc6902cab17c108b9eaf1f8a19f319b47e5bd560106c55cd> .
 
+<https://w3id.org/legal-ontology-rag/data/consequence/441ab9a1bd4f9b0c3e0c6901447c14597a41eceb938644734ac8eba2059cc24e> a lorlc:MonetaryPenalty ;
+    rdfs:label "Phạt tiền"@vi ;
+    lorlc:hasAmountRange <https://w3id.org/legal-ontology-rag/data/consequence/441ab9a1bd4f9b0c3e0c6901447c14597a41eceb938644734ac8eba2059cc24e/amount-range> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/426a237aabd65f5848e056d100fd48e4058945f629ba42c22f70a5dcd4a4eb7c> .
+
+<https://w3id.org/legal-ontology-rag/data/consequence/441ab9a1bd4f9b0c3e0c6901447c14597a41eceb938644734ac8eba2059cc24e/amount-range> a lorlc:MonetaryAmountRange ;
+    lorlc:currency lorlc:VND ;
+    lorlc:maximumAmount 12000000.0 ;
+    lorlc:minimumAmount 10000000.0 .
+
 <https://w3id.org/legal-ontology-rag/data/consequence/4449cf63ebf2cd57e65dbd31be8624ece15bb1ea44b91bfa1c42f5af81fd3d90> a lorlc:MonetaryPenalty ;
     rdfs:label "Phạt tiền từ 14.000.000 đồng đến 16.000.000 đồng"@vi ;
     lorlc:hasAmountRange <https://w3id.org/legal-ontology-rag/data/consequence/4449cf63ebf2cd57e65dbd31be8624ece15bb1ea44b91bfa1c42f5af81fd3d90/amount-range> ;
@@ -56784,6 +56870,17 @@
     lorlc:mustBePerformedBy <https://w3id.org/legal-ontology-rag/data/concept/role/0540a9738b3e4e3f989740ed072f03a37f90c1a10853931d8867cc8ff383909e> ;
     lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/906b78961ad84e0b076313643cd21c0e13f433b0d6f6b5effd93ccaee0585f2f> ;
     lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/b9d156daeecab944b51630a55260b8760f938fea2b63dd6d38a7a4583b604913> .
+
+<https://w3id.org/legal-ontology-rag/data/consequence/48173299ed6fd93934a7a2c7354a7a769e717088993085057d26650e78a8f6a7> a lorlc:MonetaryPenalty ;
+    rdfs:label "Phạt tiền"@vi ;
+    lorlc:hasAmountRange <https://w3id.org/legal-ontology-rag/data/consequence/48173299ed6fd93934a7a2c7354a7a769e717088993085057d26650e78a8f6a7/amount-range> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/426a237aabd65f5848e056d100fd48e4058945f629ba42c22f70a5dcd4a4eb7c> .
+
+<https://w3id.org/legal-ontology-rag/data/consequence/48173299ed6fd93934a7a2c7354a7a769e717088993085057d26650e78a8f6a7/amount-range> a lorlc:MonetaryAmountRange ;
+    lorlc:currency lorlc:VND ;
+    lorlc:maximumAmount 12000000.0 ;
+    lorlc:minimumAmount 10000000.0 .
 
 <https://w3id.org/legal-ontology-rag/data/consequence/4863f69cf33292cc10ab51d05d4ed214dff7496627f316128e44c5ab2747f683> a lorlc:AdditionalSanction ;
     rdfs:label "Tịch thu phương tiện"@vi ;
@@ -58404,14 +58501,6 @@
     lorlc:currency lorlc:VND ;
     lorlc:maximumAmount 8000000.0 ;
     lorlc:minimumAmount 6000000.0 .
-
-<https://w3id.org/legal-ontology-rag/data/consequence/5a32b9e619bf12310c6a828dc2d45713a7404eed9557120646da65ca03106aae> a lorlc:AdditionalSanction ;
-    rdfs:label "Đình chỉ tuyển sinh"@vi ;
-    lorlc:affectsTarget <https://w3id.org/legal-ontology-rag/data/target/7b95b66df6d915de0e4f564e6f9b92c3b85f4e73c2a08ce97340972935f263ee> ;
-    lorlc:maximumDurationMonths 3 ;
-    lorlc:minimumDurationMonths 1 ;
-    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/7e969b3f7199e59703e9dd0dc850d147b4c9cd535646109fb2b487a8e60aa37e> ;
-    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/5c06e84369c9525771066134426c16b2563a63d373276ea15872e011f907c82f> .
 
 <https://w3id.org/legal-ontology-rag/data/consequence/5a5a9ed46d3eef536e2c860da914b89ebcc4a5dff19994251effc5aadfb4df69> a lorlc:PointDeduction ;
     rdfs:label "Bị trừ điểm giấy phép lái xe 10 điểm"@vi ;
@@ -60637,17 +60726,6 @@
     lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/05d3c0f9e7ec16b23c1a58a879bbe33189f574dcc618720b35e4b22584234992> ;
     lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/d14786e6a51596153beed36f340da001c53751df2f3e60901ccb30bd57be23f9> .
 
-<https://w3id.org/legal-ontology-rag/data/consequence/75afb7538b0399411e58c480ba5d55a76006ca6640cb1214e869de5a0c8ff5db> a lorlc:MonetaryPenalty ;
-    rdfs:label "Phạt tiền"@vi ;
-    lorlc:hasAmountRange <https://w3id.org/legal-ontology-rag/data/consequence/75afb7538b0399411e58c480ba5d55a76006ca6640cb1214e869de5a0c8ff5db/amount-range> ;
-    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/7e969b3f7199e59703e9dd0dc850d147b4c9cd535646109fb2b487a8e60aa37e> ;
-    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/bf39d10142d4cdbeec885a1708015ac78fd48ae6d44fcb3e0837df627107b62f> .
-
-<https://w3id.org/legal-ontology-rag/data/consequence/75afb7538b0399411e58c480ba5d55a76006ca6640cb1214e869de5a0c8ff5db/amount-range> a lorlc:MonetaryAmountRange ;
-    lorlc:currency lorlc:VND ;
-    lorlc:maximumAmount 10000000.0 ;
-    lorlc:minimumAmount 5000000.0 .
-
 <https://w3id.org/legal-ontology-rag/data/consequence/75bc5cbce9815fdad22f17b9b22d5e894b04cd04f944b6461ef83a707f2876ba> a lorlc:MonetaryPenalty ;
     rdfs:label "Phạt tiền từ 400.000 đồng đến 600.000 đồng"@vi ;
     lorlc:hasAmountRange <https://w3id.org/legal-ontology-rag/data/consequence/75bc5cbce9815fdad22f17b9b22d5e894b04cd04f944b6461ef83a707f2876ba/amount-range> ;
@@ -62629,6 +62707,12 @@
     lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/a3bfed58519e6aef11d010af3b76bf204c8bc6066122917a7f74565a1c929f8b> ;
     lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/24560f1a281a873645f3f6b14d81fbfc3cdd826ad8d80d79f245c45b9dcc4563> .
 
+<https://w3id.org/legal-ontology-rag/data/consequence/8c5c3ebe908a0bda6b5e74a91e69a008c03c1ab80bc6bddba69e33c7663243c1> a lorlc:RemedialMeasure ;
+    rdfs:label "Buộc cung cấp, cập nhật, truyền dẫn, lưu trữ, quản lý thông tin, dữ liệu theo quy định"@vi ;
+    lorlc:affectsTarget <https://w3id.org/legal-ontology-rag/data/target/323a5700b7b8a3a5488bf544d2ae57aebb7b7ed1a02a9b4dd74ae61426ec4dad> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/be5673d375e54c06e1975de896e1bb749b56bd4d21b68e51bb0de3bf8733bb70> .
+
 <https://w3id.org/legal-ontology-rag/data/consequence/8c62c2761268c2435d833e241783346ef81778458b65888f0f651e19294c5fc9> a lorlc:MonetaryPenalty ;
     rdfs:label "Phạt tiền từ 20.000.000 đồng đến 22.000.000 đồng"@vi ;
     lorlc:hasAmountRange <https://w3id.org/legal-ontology-rag/data/consequence/8c62c2761268c2435d833e241783346ef81778458b65888f0f651e19294c5fc9/amount-range> ;
@@ -64046,6 +64130,17 @@
     lorlc:minimumDurationMonths 1 ;
     lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/7e969b3f7199e59703e9dd0dc850d147b4c9cd535646109fb2b487a8e60aa37e> ;
     lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/5c06e84369c9525771066134426c16b2563a63d373276ea15872e011f907c82f> .
+
+<https://w3id.org/legal-ontology-rag/data/consequence/9a195d946adbb939cd8d59386ffd32dc74800cfb142829ee78bb87cbbea7eed9> a lorlc:MonetaryPenalty ;
+    rdfs:label "Phạt tiền"@vi ;
+    lorlc:hasAmountRange <https://w3id.org/legal-ontology-rag/data/consequence/9a195d946adbb939cd8d59386ffd32dc74800cfb142829ee78bb87cbbea7eed9/amount-range> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/7e969b3f7199e59703e9dd0dc850d147b4c9cd535646109fb2b487a8e60aa37e> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/bf39d10142d4cdbeec885a1708015ac78fd48ae6d44fcb3e0837df627107b62f> .
+
+<https://w3id.org/legal-ontology-rag/data/consequence/9a195d946adbb939cd8d59386ffd32dc74800cfb142829ee78bb87cbbea7eed9/amount-range> a lorlc:MonetaryAmountRange ;
+    lorlc:currency lorlc:VND ;
+    lorlc:maximumAmount 10000000.0 ;
+    lorlc:minimumAmount 5000000.0 .
 
 <https://w3id.org/legal-ontology-rag/data/consequence/9a258e3baeabad970012ea60f39cb6be85a62c688f0f5d97009337453253d13f> a lorlc:MonetaryPenalty ;
     rdfs:label "Phạt tiền từ 14.000.000 đồng đến 16.000.000 đồng"@vi ;
@@ -67576,17 +67671,6 @@
     lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/411eb6ae85405f211b44856bfd9ea22e613470b8a8563f93c4364cebfa88b797> ;
     lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/b9d156daeecab944b51630a55260b8760f938fea2b63dd6d38a7a4583b604913> .
 
-<https://w3id.org/legal-ontology-rag/data/consequence/c147be4b4135f063ddf4b65c5656d183f02026c12207d64442ac98d9e21c6d90> a lorlc:MonetaryPenalty ;
-    rdfs:label "Phạt tiền từ 3.000.000 đồng đến 5.000.000 đồng"@vi ;
-    lorlc:hasAmountRange <https://w3id.org/legal-ontology-rag/data/consequence/c147be4b4135f063ddf4b65c5656d183f02026c12207d64442ac98d9e21c6d90/amount-range> ;
-    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> ;
-    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/c39d5903e9607cddee07821f3f3768a1b86b860c8257205697ee167cee6e4746> .
-
-<https://w3id.org/legal-ontology-rag/data/consequence/c147be4b4135f063ddf4b65c5656d183f02026c12207d64442ac98d9e21c6d90/amount-range> a lorlc:MonetaryAmountRange ;
-    lorlc:currency lorlc:VND ;
-    lorlc:maximumAmount 5000000.0 ;
-    lorlc:minimumAmount 3000000.0 .
-
 <https://w3id.org/legal-ontology-rag/data/consequence/c151cbe22bf9ed93f951ceb9c809b48fdfa61eac0397babebd96c765111bb4ad> a lorlc:MonetaryPenalty ;
     rdfs:label "Phạt tiền từ 5.000.000 đồng đến 10.000.000 đồng"@vi ;
     lorlc:hasAmountRange <https://w3id.org/legal-ontology-rag/data/consequence/c151cbe22bf9ed93f951ceb9c809b48fdfa61eac0397babebd96c765111bb4ad/amount-range> ;
@@ -68144,6 +68228,13 @@
     lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/304f8111111f5bd8ef8105fe4fb274abaafe5a0c570967c7312a21f83773fc13> ;
     lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/1fcbed57345b0db2037d8cc251c9f68de45fee6d818d03542f86ffc4d2cb9499> .
 
+<https://w3id.org/legal-ontology-rag/data/consequence/c776b1c945427d5d1124f3160f28c331723bfcbc07ca08f54a36660cfa9d1ef2> a lorlc:PointDeduction ;
+    rdfs:label "Bị trừ điểm giấy phép lái xe 02 điểm"@vi ;
+    lorlc:affectsTarget <https://w3id.org/legal-ontology-rag/data/target/f2479ef0b6df39c8797d78041d814fb0dc3bab45f9586269978f6b3100d7dc47> ;
+    lorlc:pointValue 2 ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/6cf55b1e6226915ffc6902cab17c108b9eaf1f8a19f319b47e5bd560106c55cd> .
+
 <https://w3id.org/legal-ontology-rag/data/consequence/c7774556ac31d0e146ca1a4a4fb5b279a5ce1935136f9f8a0387d561553ebc3c> a lorlc:AdditionalSanction ;
     rdfs:label "Tước quyền sử dụng phù hiệu"@vi ;
     lorlc:affectsTarget <https://w3id.org/legal-ontology-rag/data/target/49b90f61164020f6ba357eea1977f34edc44b9e13f6d64555fa2d22ac12c27fb> ;
@@ -68527,17 +68618,6 @@
     lorlc:currency lorlc:VND ;
     lorlc:maximumAmount 4000000.0 ;
     lorlc:minimumAmount 3000000.0 .
-
-<https://w3id.org/legal-ontology-rag/data/consequence/cbfc17ca56c6ce76827a3c04c7bc947b50f28849daacba1d55e0d0dddf23e113> a lorlc:MonetaryPenalty ;
-    rdfs:label "Phạt tiền"@vi ;
-    lorlc:hasAmountRange <https://w3id.org/legal-ontology-rag/data/consequence/cbfc17ca56c6ce76827a3c04c7bc947b50f28849daacba1d55e0d0dddf23e113/amount-range> ;
-    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> ;
-    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/426a237aabd65f5848e056d100fd48e4058945f629ba42c22f70a5dcd4a4eb7c> .
-
-<https://w3id.org/legal-ontology-rag/data/consequence/cbfc17ca56c6ce76827a3c04c7bc947b50f28849daacba1d55e0d0dddf23e113/amount-range> a lorlc:MonetaryAmountRange ;
-    lorlc:currency lorlc:VND ;
-    lorlc:maximumAmount 12000000.0 ;
-    lorlc:minimumAmount 10000000.0 .
 
 <https://w3id.org/legal-ontology-rag/data/consequence/cc30db1ad6a0c2bc370f1d5a3fe79c7ff1f7f36bbfe981fea25cdef0df4a21d1> a lorlc:MonetaryPenalty ;
     rdfs:label "Phạt tiền từ 12.000.000 đồng đến 14.000.000 đồng"@vi ;
@@ -76507,26 +76587,6 @@
 <https://w3id.org/legal-ontology-rag/data/rule/13066965c775e8a34debbfd4f7e0bb1f8d160e1f3272ede360e065ef0fa9acca/validity/beginning> a time:Instant ;
     time:inXSDDateTime "2025-01-01T00:00:00+00:00"^^xsd:dateTime .
 
-<https://w3id.org/legal-ontology-rag/data/rule/130be39007d64854363bc581cdafe2575c96f261ab8bb726cccbb1e4f2b938be/applicability> a lornr:ApplicabilityProfile ;
-    lornr:requiresRole <https://w3id.org/legal-ontology-rag/data/concept/role/79db3cc28a4adcfbaa87c85038ae7d314448eca1a2d4cf3bf1b90220cd0af605>,
-        <https://w3id.org/legal-ontology-rag/data/concept/role/81953423e7799a11db6ebfde82deda57c33d475418249e73683e028bce248bc0> ;
-    lornr:requiresSubjectKind loroc:organization ;
-    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> ;
-    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/426a237aabd65f5848e056d100fd48e4058945f629ba42c22f70a5dcd4a4eb7c>,
-        <https://w3id.org/legal-ontology-rag/data/chunk/be5673d375e54c06e1975de896e1bb749b56bd4d21b68e51bb0de3bf8733bb70> .
-
-<https://w3id.org/legal-ontology-rag/data/rule/130be39007d64854363bc581cdafe2575c96f261ab8bb726cccbb1e4f2b938be/conduct> a lornr:ConductSpecification ;
-    lornr:usesConductConcept <https://w3id.org/legal-ontology-rag/data/concept/conduct/53036f9c125bb43053ec461cbd94434cc743b5b0f883ea211f259cce48a1f1c2> ;
-    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> ;
-    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/426a237aabd65f5848e056d100fd48e4058945f629ba42c22f70a5dcd4a4eb7c>,
-        <https://w3id.org/legal-ontology-rag/data/chunk/be5673d375e54c06e1975de896e1bb749b56bd4d21b68e51bb0de3bf8733bb70> .
-
-<https://w3id.org/legal-ontology-rag/data/rule/130be39007d64854363bc581cdafe2575c96f261ab8bb726cccbb1e4f2b938be/validity> a lortc:ValidityInterval ;
-    time:hasBeginning <https://w3id.org/legal-ontology-rag/data/rule/130be39007d64854363bc581cdafe2575c96f261ab8bb726cccbb1e4f2b938be/validity/beginning> .
-
-<https://w3id.org/legal-ontology-rag/data/rule/130be39007d64854363bc581cdafe2575c96f261ab8bb726cccbb1e4f2b938be/validity/beginning> a time:Instant ;
-    time:inXSDDateTime "2025-01-01T00:00:00+00:00"^^xsd:dateTime .
-
 <https://w3id.org/legal-ontology-rag/data/rule/130fb873d8a5bdf97cbdcf790b8e029b2b97ec3d00b255b74b19df74553709b3/applicability> a lornr:ApplicabilityProfile ;
     lornr:requiresSubjectKind loroc:naturalPerson ;
     lornr:requiresVehicleCategory <https://w3id.org/legal-ontology-rag/data/concept/vehicle-category/cc1dc85347b5fd803cf6d7392f3efcc4518b77a2c1cff7fb1379c24757da2232> ;
@@ -80041,27 +80101,6 @@
 <https://w3id.org/legal-ontology-rag/data/rule/2ab1ef1cb7f903f69dd5601c02e32741dd684af0d4b080932060acac2631553e/validity/beginning> a time:Instant ;
     time:inXSDDateTime "2025-01-01T00:00:00+00:00"^^xsd:dateTime .
 
-<https://w3id.org/legal-ontology-rag/data/rule/2afdd644538356c5d5ec0de9cfce6bbd9c413080f04ce9c7daf15fce2ab16b4f/applicability> a lornr:ApplicabilityProfile ;
-    lornr:requiresRole <https://w3id.org/legal-ontology-rag/data/concept/role/b657a63ae622bea5d544695595ff78f7d070484bf1e6344740a4a81b82ff9e36> ;
-    lornr:requiresSubjectKind loroc:organization ;
-    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/7e969b3f7199e59703e9dd0dc850d147b4c9cd535646109fb2b487a8e60aa37e> ;
-    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/3833c292cc986fc6d5996f6fe0ac9fff2ff7b997611ce5b8d4995eddc802bd76>,
-        <https://w3id.org/legal-ontology-rag/data/chunk/5c06e84369c9525771066134426c16b2563a63d373276ea15872e011f907c82f>,
-        <https://w3id.org/legal-ontology-rag/data/chunk/bf39d10142d4cdbeec885a1708015ac78fd48ae6d44fcb3e0837df627107b62f> .
-
-<https://w3id.org/legal-ontology-rag/data/rule/2afdd644538356c5d5ec0de9cfce6bbd9c413080f04ce9c7daf15fce2ab16b4f/conduct> a lornr:ConductSpecification ;
-    lornr:usesConductConcept <https://w3id.org/legal-ontology-rag/data/concept/conduct/be6f24fef24f453bd731f90859d99ce7bfdf16b43011371504e149347cd906a8> ;
-    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/7e969b3f7199e59703e9dd0dc850d147b4c9cd535646109fb2b487a8e60aa37e> ;
-    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/3833c292cc986fc6d5996f6fe0ac9fff2ff7b997611ce5b8d4995eddc802bd76>,
-        <https://w3id.org/legal-ontology-rag/data/chunk/5c06e84369c9525771066134426c16b2563a63d373276ea15872e011f907c82f>,
-        <https://w3id.org/legal-ontology-rag/data/chunk/bf39d10142d4cdbeec885a1708015ac78fd48ae6d44fcb3e0837df627107b62f> .
-
-<https://w3id.org/legal-ontology-rag/data/rule/2afdd644538356c5d5ec0de9cfce6bbd9c413080f04ce9c7daf15fce2ab16b4f/validity> a lortc:ValidityInterval ;
-    time:hasBeginning <https://w3id.org/legal-ontology-rag/data/rule/2afdd644538356c5d5ec0de9cfce6bbd9c413080f04ce9c7daf15fce2ab16b4f/validity/beginning> .
-
-<https://w3id.org/legal-ontology-rag/data/rule/2afdd644538356c5d5ec0de9cfce6bbd9c413080f04ce9c7daf15fce2ab16b4f/validity/beginning> a time:Instant ;
-    time:inXSDDateTime "2025-01-01T00:00:00+00:00"^^xsd:dateTime .
-
 <https://w3id.org/legal-ontology-rag/data/rule/2b3b01dd3a6784e683e0356b88284bede1dafb7a0ad8c013d9b7977808abb6cb/applicability> a lornr:ApplicabilityProfile ;
     lornr:requiresRole <https://w3id.org/legal-ontology-rag/data/concept/role/334d7bb38f5d20ef8f7465af6bebd1afb7223bfc1f078644a98eba0cce4ddb3d> ;
     lornr:requiresSubjectKind loroc:naturalPerson ;
@@ -81220,6 +81259,26 @@
     time:hasBeginning <https://w3id.org/legal-ontology-rag/data/rule/3381197db11234b30632707d77a8e76fc188e97b986fc6b8883bf3a36e9682e7/validity/beginning> .
 
 <https://w3id.org/legal-ontology-rag/data/rule/3381197db11234b30632707d77a8e76fc188e97b986fc6b8883bf3a36e9682e7/validity/beginning> a time:Instant ;
+    time:inXSDDateTime "2025-01-01T00:00:00+00:00"^^xsd:dateTime .
+
+<https://w3id.org/legal-ontology-rag/data/rule/33d156c61b7592f3254927804f72ce199bb4b96ae5d90970f1c2557ecd34db70/applicability> a lornr:ApplicabilityProfile ;
+    lornr:requiresRole <https://w3id.org/legal-ontology-rag/data/concept/role/15f874a2693e6c2b6082deef071a472bbf76a475c93bae060f07381a5bbd822a>,
+        <https://w3id.org/legal-ontology-rag/data/concept/role/400a50fa4fa6cad485222d302b3a659c75e934b7a7b6b5e5e128297d4aa88f34> ;
+    lornr:requiresSubjectKind loroc:organization ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/426a237aabd65f5848e056d100fd48e4058945f629ba42c22f70a5dcd4a4eb7c>,
+        <https://w3id.org/legal-ontology-rag/data/chunk/be5673d375e54c06e1975de896e1bb749b56bd4d21b68e51bb0de3bf8733bb70> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/33d156c61b7592f3254927804f72ce199bb4b96ae5d90970f1c2557ecd34db70/conduct> a lornr:ConductSpecification ;
+    lornr:usesConductConcept <https://w3id.org/legal-ontology-rag/data/concept/conduct/b7f5df3003cf7dcaee717bf45abeedf460bd994d6923743d8dcd5de3c91587ed> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/426a237aabd65f5848e056d100fd48e4058945f629ba42c22f70a5dcd4a4eb7c>,
+        <https://w3id.org/legal-ontology-rag/data/chunk/be5673d375e54c06e1975de896e1bb749b56bd4d21b68e51bb0de3bf8733bb70> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/33d156c61b7592f3254927804f72ce199bb4b96ae5d90970f1c2557ecd34db70/validity> a lortc:ValidityInterval ;
+    time:hasBeginning <https://w3id.org/legal-ontology-rag/data/rule/33d156c61b7592f3254927804f72ce199bb4b96ae5d90970f1c2557ecd34db70/validity/beginning> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/33d156c61b7592f3254927804f72ce199bb4b96ae5d90970f1c2557ecd34db70/validity/beginning> a time:Instant ;
     time:inXSDDateTime "2025-01-01T00:00:00+00:00"^^xsd:dateTime .
 
 <https://w3id.org/legal-ontology-rag/data/rule/33eb54734f256a3c0ef56c9f6cd8b1528aa2aff8bd782c4acb8ca5f22f9009fc/applicability> a lornr:ApplicabilityProfile ;
@@ -82513,6 +82572,26 @@
     time:hasBeginning <https://w3id.org/legal-ontology-rag/data/rule/3cfecb9282b4ae5b42e678c00428455f52824c62b972a66bfb9611ba476280e0/validity/beginning> .
 
 <https://w3id.org/legal-ontology-rag/data/rule/3cfecb9282b4ae5b42e678c00428455f52824c62b972a66bfb9611ba476280e0/validity/beginning> a time:Instant ;
+    time:inXSDDateTime "2025-01-01T00:00:00+00:00"^^xsd:dateTime .
+
+<https://w3id.org/legal-ontology-rag/data/rule/3d1e50567ad6fdaa6424cc9d40d70a4ee8a79ebb208ae1d511b557bda099f5c0/applicability> a lornr:ApplicabilityProfile ;
+    lornr:requiresRole <https://w3id.org/legal-ontology-rag/data/concept/role/9ad01c7cfa6e57b30b921018b01428d10675089e82cb4cf0e2385cd6ad530edc>,
+        <https://w3id.org/legal-ontology-rag/data/concept/role/d64b73a48e529e806c2f238a83573619c39ae4fa2d1ee452f35ff184bbf1ecdf> ;
+    lornr:requiresSubjectKind loroc:organization ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/426a237aabd65f5848e056d100fd48e4058945f629ba42c22f70a5dcd4a4eb7c>,
+        <https://w3id.org/legal-ontology-rag/data/chunk/be5673d375e54c06e1975de896e1bb749b56bd4d21b68e51bb0de3bf8733bb70> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/3d1e50567ad6fdaa6424cc9d40d70a4ee8a79ebb208ae1d511b557bda099f5c0/conduct> a lornr:ConductSpecification ;
+    lornr:usesConductConcept <https://w3id.org/legal-ontology-rag/data/concept/conduct/27af511732abbc5ad590f30633e53fdb6c43fa00c3fc4ad12623f8c157f3dab8> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/426a237aabd65f5848e056d100fd48e4058945f629ba42c22f70a5dcd4a4eb7c>,
+        <https://w3id.org/legal-ontology-rag/data/chunk/be5673d375e54c06e1975de896e1bb749b56bd4d21b68e51bb0de3bf8733bb70> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/3d1e50567ad6fdaa6424cc9d40d70a4ee8a79ebb208ae1d511b557bda099f5c0/validity> a lortc:ValidityInterval ;
+    time:hasBeginning <https://w3id.org/legal-ontology-rag/data/rule/3d1e50567ad6fdaa6424cc9d40d70a4ee8a79ebb208ae1d511b557bda099f5c0/validity/beginning> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/3d1e50567ad6fdaa6424cc9d40d70a4ee8a79ebb208ae1d511b557bda099f5c0/validity/beginning> a time:Instant ;
     time:inXSDDateTime "2025-01-01T00:00:00+00:00"^^xsd:dateTime .
 
 <https://w3id.org/legal-ontology-rag/data/rule/3d69e0bffbac2fa40404b99f551f4e6fb8baec6d42b019929ccedd4a5710cadd/applicability> a lornr:ApplicabilityProfile ;
@@ -84357,6 +84436,27 @@
     time:hasBeginning <https://w3id.org/legal-ontology-rag/data/rule/4b5c0ad7bfa6831d902c91ae695b67db243f0d92e1d97b1dc3cc3298b1defa17/validity/beginning> .
 
 <https://w3id.org/legal-ontology-rag/data/rule/4b5c0ad7bfa6831d902c91ae695b67db243f0d92e1d97b1dc3cc3298b1defa17/validity/beginning> a time:Instant ;
+    time:inXSDDateTime "2025-01-01T00:00:00+00:00"^^xsd:dateTime .
+
+<https://w3id.org/legal-ontology-rag/data/rule/4b6296434de82afc8a534ffdfd0f671a3e0df06a50ec6d1bf19276bfd1e3164d/applicability> a lornr:ApplicabilityProfile ;
+    lornr:requiresRole <https://w3id.org/legal-ontology-rag/data/concept/role/6da9ca0bc283c46e49ef9d91b9cd812ab2527c9c7400a54081018649417e6aef> ;
+    lornr:requiresSubjectKind loroc:organization ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/7e969b3f7199e59703e9dd0dc850d147b4c9cd535646109fb2b487a8e60aa37e> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/3833c292cc986fc6d5996f6fe0ac9fff2ff7b997611ce5b8d4995eddc802bd76>,
+        <https://w3id.org/legal-ontology-rag/data/chunk/5c06e84369c9525771066134426c16b2563a63d373276ea15872e011f907c82f>,
+        <https://w3id.org/legal-ontology-rag/data/chunk/bf39d10142d4cdbeec885a1708015ac78fd48ae6d44fcb3e0837df627107b62f> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/4b6296434de82afc8a534ffdfd0f671a3e0df06a50ec6d1bf19276bfd1e3164d/conduct> a lornr:ConductSpecification ;
+    lornr:usesConductConcept <https://w3id.org/legal-ontology-rag/data/concept/conduct/483f0dc6c3e2a5110d5d208d60e32ce68e6839140bf2ef98ba94f7bf4ffbd462> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/7e969b3f7199e59703e9dd0dc850d147b4c9cd535646109fb2b487a8e60aa37e> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/3833c292cc986fc6d5996f6fe0ac9fff2ff7b997611ce5b8d4995eddc802bd76>,
+        <https://w3id.org/legal-ontology-rag/data/chunk/5c06e84369c9525771066134426c16b2563a63d373276ea15872e011f907c82f>,
+        <https://w3id.org/legal-ontology-rag/data/chunk/bf39d10142d4cdbeec885a1708015ac78fd48ae6d44fcb3e0837df627107b62f> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/4b6296434de82afc8a534ffdfd0f671a3e0df06a50ec6d1bf19276bfd1e3164d/validity> a lortc:ValidityInterval ;
+    time:hasBeginning <https://w3id.org/legal-ontology-rag/data/rule/4b6296434de82afc8a534ffdfd0f671a3e0df06a50ec6d1bf19276bfd1e3164d/validity/beginning> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/4b6296434de82afc8a534ffdfd0f671a3e0df06a50ec6d1bf19276bfd1e3164d/validity/beginning> a time:Instant ;
     time:inXSDDateTime "2025-01-01T00:00:00+00:00"^^xsd:dateTime .
 
 <https://w3id.org/legal-ontology-rag/data/rule/4bd2f32c6dec7ae161e7faa90d083f4f0634c2f5728752a73cbe0ff0b1dceabd/applicability> a lornr:ApplicabilityProfile ;
@@ -93001,6 +93101,24 @@
 <https://w3id.org/legal-ontology-rag/data/rule/891af6ec2ec0eb129cbda00e9e995e94b922274efa58027a6ca4305ad16a38b3/validity/beginning> a time:Instant ;
     time:inXSDDateTime "2025-01-01T00:00:00+00:00"^^xsd:dateTime .
 
+<https://w3id.org/legal-ontology-rag/data/rule/89487263c03a04d0b438f168f226dd38654821e67f0a0c2260340b709c58f016/applicability> a lornr:ApplicabilityProfile ;
+    lornr:requiresRole <https://w3id.org/legal-ontology-rag/data/concept/role/c5137d74c480c5a2e66d625838379913aa1f01c3ef8c7a97f892701616bfc520> ;
+    lornr:requiresSubjectKind loroc:naturalPerson ;
+    lornr:requiresVehicleCategory <https://w3id.org/legal-ontology-rag/data/concept/vehicle-category/1f36b27e0c192da8b012e73f63c2b5a372cb7e0cf782998a745433b80b252b34> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/6cf55b1e6226915ffc6902cab17c108b9eaf1f8a19f319b47e5bd560106c55cd> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/89487263c03a04d0b438f168f226dd38654821e67f0a0c2260340b709c58f016/conduct> a lornr:ConductSpecification ;
+    lornr:usesConductConcept <https://w3id.org/legal-ontology-rag/data/concept/conduct/f745c474dc15a4a0b20b257946f1764babcf8e038ef92fad98c70de07b340c59> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/6cf55b1e6226915ffc6902cab17c108b9eaf1f8a19f319b47e5bd560106c55cd> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/89487263c03a04d0b438f168f226dd38654821e67f0a0c2260340b709c58f016/validity> a lortc:ValidityInterval ;
+    time:hasBeginning <https://w3id.org/legal-ontology-rag/data/rule/89487263c03a04d0b438f168f226dd38654821e67f0a0c2260340b709c58f016/validity/beginning> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/89487263c03a04d0b438f168f226dd38654821e67f0a0c2260340b709c58f016/validity/beginning> a time:Instant ;
+    time:inXSDDateTime "2025-01-01T00:00:00+00:00"^^xsd:dateTime .
+
 <https://w3id.org/legal-ontology-rag/data/rule/894dc8defd9bb5016744836dae3cecf64c39aa2a241f874d624221faea3637b3/applicability> a lornr:ApplicabilityProfile ;
     lornr:requiresRole <https://w3id.org/legal-ontology-rag/data/concept/role/d764e11052063fea6e31bd2d74e3871924a96f36b2f256c6779016649455c74a> ;
     lornr:requiresSubjectKind loroc:naturalPerson ;
@@ -96905,24 +97023,6 @@
 <https://w3id.org/legal-ontology-rag/data/rule/a70ea3656a23c8972d436ac657b6e920dcc7365211e460af30341e45dbe6407a/validity/beginning> a time:Instant ;
     time:inXSDDateTime "2025-01-01T00:00:00+00:00"^^xsd:dateTime .
 
-<https://w3id.org/legal-ontology-rag/data/rule/a7124ace1e62281196b9a500c4187d4b1b1f52dae882f4568899da5e25935370/applicability> a lornr:ApplicabilityProfile ;
-    lornr:requiresRole <https://w3id.org/legal-ontology-rag/data/concept/role/6537b05e5ab43f6cafe256456ffa58dd1e529724e15748d3cdf3259166060529> ;
-    lornr:requiresSubjectKind loroc:naturalPerson ;
-    lornr:requiresVehicleCategory <https://w3id.org/legal-ontology-rag/data/concept/vehicle-category/70486c654aaae34eb71006e8a1701690c961f421f769d639d96b9cb85c90af5a> ;
-    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> ;
-    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/6cf55b1e6226915ffc6902cab17c108b9eaf1f8a19f319b47e5bd560106c55cd> .
-
-<https://w3id.org/legal-ontology-rag/data/rule/a7124ace1e62281196b9a500c4187d4b1b1f52dae882f4568899da5e25935370/conduct> a lornr:ConductSpecification ;
-    lornr:usesConductConcept <https://w3id.org/legal-ontology-rag/data/concept/conduct/7898f4dc98d447fe42f5f9a98438843abdb89f40de944f2102934c8f19be79de> ;
-    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> ;
-    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/6cf55b1e6226915ffc6902cab17c108b9eaf1f8a19f319b47e5bd560106c55cd> .
-
-<https://w3id.org/legal-ontology-rag/data/rule/a7124ace1e62281196b9a500c4187d4b1b1f52dae882f4568899da5e25935370/validity> a lortc:ValidityInterval ;
-    time:hasBeginning <https://w3id.org/legal-ontology-rag/data/rule/a7124ace1e62281196b9a500c4187d4b1b1f52dae882f4568899da5e25935370/validity/beginning> .
-
-<https://w3id.org/legal-ontology-rag/data/rule/a7124ace1e62281196b9a500c4187d4b1b1f52dae882f4568899da5e25935370/validity/beginning> a time:Instant ;
-    time:inXSDDateTime "2025-01-01T00:00:00+00:00"^^xsd:dateTime .
-
 <https://w3id.org/legal-ontology-rag/data/rule/a71b0927ed4559012962295ff7c1cc69e0bb6aa5fdde3586f5e73b5bfebd0777/applicability> a lornr:ApplicabilityProfile ;
     lornr:requiresRole <https://w3id.org/legal-ontology-rag/data/concept/role/797ed06fab5544c47aa661749291b2e89350c7938363761257ada5b5a16e293f> ;
     lornr:requiresSubjectKind loroc:naturalPerson ;
@@ -98208,6 +98308,24 @@
     time:hasBeginning <https://w3id.org/legal-ontology-rag/data/rule/b083338bbe7319a2b051e091e8af8784d8ae8c9ce4e6df8996bec76fa2ef6814/validity/beginning> .
 
 <https://w3id.org/legal-ontology-rag/data/rule/b083338bbe7319a2b051e091e8af8784d8ae8c9ce4e6df8996bec76fa2ef6814/validity/beginning> a time:Instant ;
+    time:inXSDDateTime "2025-01-01T00:00:00+00:00"^^xsd:dateTime .
+
+<https://w3id.org/legal-ontology-rag/data/rule/b083c9e1efc4070a0f69485f95f5b45324f5a3714fbffcd4a0b379ac58512006/applicability> a lornr:ApplicabilityProfile ;
+    lornr:requiresRole <https://w3id.org/legal-ontology-rag/data/concept/role/67199290d7e4a8713a10ab5653951b9e0bce993f6c41ccbbc52bcaea24849d29> ;
+    lornr:requiresSubjectKind loroc:naturalPerson ;
+    lornr:requiresVehicleCategory <https://w3id.org/legal-ontology-rag/data/concept/vehicle-category/afebba8497467cc50d5384569f7aa398985c19b4f01748728fed3755462e22ef> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/6cf55b1e6226915ffc6902cab17c108b9eaf1f8a19f319b47e5bd560106c55cd> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/b083c9e1efc4070a0f69485f95f5b45324f5a3714fbffcd4a0b379ac58512006/conduct> a lornr:ConductSpecification ;
+    lornr:usesConductConcept <https://w3id.org/legal-ontology-rag/data/concept/conduct/a9ddddbd9333eb7d6d460209b23ae44666091eb8e72252da2094b5db7abe2840> ;
+    lorsp:groundedIn <https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> ;
+    lorsp:sourcedFromChunk <https://w3id.org/legal-ontology-rag/data/chunk/6cf55b1e6226915ffc6902cab17c108b9eaf1f8a19f319b47e5bd560106c55cd> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/b083c9e1efc4070a0f69485f95f5b45324f5a3714fbffcd4a0b379ac58512006/validity> a lortc:ValidityInterval ;
+    time:hasBeginning <https://w3id.org/legal-ontology-rag/data/rule/b083c9e1efc4070a0f69485f95f5b45324f5a3714fbffcd4a0b379ac58512006/validity/beginning> .
+
+<https://w3id.org/legal-ontology-rag/data/rule/b083c9e1efc4070a0f69485f95f5b45324f5a3714fbffcd4a0b379ac58512006/validity/beginning> a time:Instant ;
     time:inXSDDateTime "2025-01-01T00:00:00+00:00"^^xsd:dateTime .
 
 <https://w3id.org/legal-ontology-rag/data/rule/b0b24df25008e277637f9f18ec959ebdf28a667fd9cb4f2e2d6fbc41d795c94a/applicability> a lornr:ApplicabilityProfile ;
@@ -109575,6 +109693,9 @@
 <https://w3id.org/legal-ontology-rag/data/target/1656d9ae05c25f4dc2853a14c70f11208d940623c8c22161cef4ff625d953bd6> a lorlc:ConsequenceTarget ;
     rdfs:label "giấy phép lái xe"@vi .
 
+<https://w3id.org/legal-ontology-rag/data/target/16753da7454efc771b22656c99e5c5a7b94f1b05e2345eeda92a3724bb130489> a lorlc:ConsequenceTarget ;
+    rdfs:label "Thông tin, dữ liệu thu thập từ thiết bị giám sát hành trình lắp trên xe ô tô"@vi .
+
 <https://w3id.org/legal-ontology-rag/data/target/17120b500944a7368afa187c4b2da03ee9806deba38068c5696ea888242240b3> a lorlc:ConsequenceTarget ;
     rdfs:label "giấy phép lái xe"@vi .
 
@@ -109664,6 +109785,9 @@
 
 <https://w3id.org/legal-ontology-rag/data/target/1f75acfa03eb8b59048ded127061eebc968e1345cc821600cac84980b76c782f> a lorlc:ConsequenceTarget ;
     rdfs:label "giấy phép lái xe"@vi .
+
+<https://w3id.org/legal-ontology-rag/data/target/1fb6366a46b00a6a9c2b7eeb2b6a456dfd264d9d70d12b322dff5ebcaf84136c> a lorlc:ConsequenceTarget ;
+    rdfs:label "tuyển sinh"@vi .
 
 <https://w3id.org/legal-ontology-rag/data/target/1fdb4893af9223e5fd99ab8b336338cb5696a47cfe5dd131abf06c80fb29e721> a lorlc:ConsequenceTarget ;
     rdfs:label "Thiết bị giám sát hành trình trên xe"@vi .
@@ -109896,6 +110020,9 @@
 <https://w3id.org/legal-ontology-rag/data/target/3234e27ade47b52baa0cec063f4afe7e302e1f68e0ddc3fd7d7275777e70ce45> a lorlc:ConsequenceTarget ;
     rdfs:label "Giấy phép lái xe"@vi .
 
+<https://w3id.org/legal-ontology-rag/data/target/323a5700b7b8a3a5488bf544d2ae57aebb7b7ed1a02a9b4dd74ae61426ec4dad> a lorlc:ConsequenceTarget ;
+    rdfs:label "Thông tin, dữ liệu thu thập từ thiết bị giám sát hành trình lắp trên xe ô tô"@vi .
+
 <https://w3id.org/legal-ontology-rag/data/target/323b49a0f8ede24948e97e8723d87fb8e3746a28202e0bd64efc505c214f1188> a lorlc:ConsequenceTarget ;
     rdfs:label "giấy phép lái xe"@vi .
 
@@ -109922,6 +110049,9 @@
 
 <https://w3id.org/legal-ontology-rag/data/target/346ebf62db0d740d769f07739e5110500d7a84c312df160e786d0c438e24eef0> a lorlc:ConsequenceTarget ;
     rdfs:label "giấy phép lái xe"@vi .
+
+<https://w3id.org/legal-ontology-rag/data/target/348a2aef2060dd3bcfb61378222d4b48660e0872b038f19390a14c4a70ca404b> a lorlc:ConsequenceTarget ;
+    rdfs:label "Giấy phép lái xe"@vi .
 
 <https://w3id.org/legal-ontology-rag/data/target/34b7cc47d232c01f5e2bc258f2ac5f5c71b0b29b6b4c6369ac82aa9109f2b931> a lorlc:ConsequenceTarget ;
     rdfs:label "giấy phép lái xe"@vi .
@@ -110532,9 +110662,6 @@
 <https://w3id.org/legal-ontology-rag/data/target/65dd4537c2ad78c08d3770a577239ba0bd6bbed8d1b38bf7ce0b012fc793a278> a lorlc:ConsequenceTarget ;
     rdfs:label "giấy phép lái xe"@vi .
 
-<https://w3id.org/legal-ontology-rag/data/target/65e1e301e1030ee6d2cc0cf8fb0cc080d1c9a7fd47718da7aef0e24926b4aea4> a lorlc:ConsequenceTarget ;
-    rdfs:label "Giấy phép lái xe"@vi .
-
 <https://w3id.org/legal-ontology-rag/data/target/65e731b80b9a14d133dcdcd1658e15e220c3e8ee3231e942045d7383af5fcef6> a lorlc:ConsequenceTarget ;
     rdfs:label "giấy chứng nhận kiểm định an toàn kỹ thuật và bảo vệ môi trường và tem kiểm định của phương tiện"@vi .
 
@@ -110811,9 +110938,6 @@
 <https://w3id.org/legal-ontology-rag/data/target/7b671932222c9d74a2150917feec92ff053e6d70b7df0d8e4dec2293fb3cdadd> a lorlc:ConsequenceTarget ;
     rdfs:label "phù hiệu đối với xe vi phạm"@vi .
 
-<https://w3id.org/legal-ontology-rag/data/target/7b95b66df6d915de0e4f564e6f9b92c3b85f4e73c2a08ce97340972935f263ee> a lorlc:ConsequenceTarget ;
-    rdfs:label "tuyển sinh"@vi .
-
 <https://w3id.org/legal-ontology-rag/data/target/7bb8dfecd533a29aa91cdd956ebf56ad0f8b14e761acbf5c9fd15fa6a12edee9> a lorlc:ConsequenceTarget ;
     rdfs:label "phương tiện"@vi .
 
@@ -110906,9 +111030,6 @@
 
 <https://w3id.org/legal-ontology-rag/data/target/84260beaedb5e17d823a3c2ceef107faa50ebbd26a517c310e7cc0698a8ea652> a lorlc:ConsequenceTarget ;
     rdfs:label "biển số, thiết bị thay đổi biển số"@vi .
-
-<https://w3id.org/legal-ontology-rag/data/target/8459e816f78d3267d3c6952c813d85b8348362b945a700e3c7fa718729e03fc1> a lorlc:ConsequenceTarget ;
-    rdfs:label "Thông tin, dữ liệu thu thập từ thiết bị giám sát hành trình lắp trên xe ô tô"@vi .
 
 <https://w3id.org/legal-ontology-rag/data/target/845c5ed9c8bcbd3f836a0bdd9a511314bd2a11c576fe3e9648fc809b356791c9> a lorlc:ConsequenceTarget ;
     rdfs:label "chứng nhận đăng ký xe, biển số xe, giấy chứng nhận kiểm định an toàn kỹ thuật và bảo vệ môi trường"@vi .
@@ -112215,6 +112336,9 @@
 <https://w3id.org/legal-ontology-rag/data/target/f1faf7c02c592613fec18ccb90e224fd9f0276dae204de1c6a3f146eda96385c> a lorlc:ConsequenceTarget ;
     rdfs:label "Biển số, phương tiện sản xuất, lắp ráp trái phép"@vi .
 
+<https://w3id.org/legal-ontology-rag/data/target/f2479ef0b6df39c8797d78041d814fb0dc3bab45f9586269978f6b3100d7dc47> a lorlc:ConsequenceTarget ;
+    rdfs:label "Giấy phép lái xe"@vi .
+
 <https://w3id.org/legal-ontology-rag/data/target/f24af308a96d369ed727411bcd0685ed4dab653de51e7cb04f815e07cc9576bd> a lorlc:ConsequenceTarget ;
     rdfs:label "giấy phép lái xe"@vi .
 
@@ -113399,9 +113523,6 @@
 <https://w3id.org/legal-ontology-rag/data/provision/cfab602be844061fa36b6eb83aeee54f444c81524104d7b4033ed2f11b2a7751> a lorsp:LegalProvision ;
     lorsp:structuralPath "Chương II > Mục 1 > Điều 6 > Khoản 8" .
 
-<https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> a lorsp:LegalProvision ;
-    lorsp:structuralPath "Chương II > Mục 4 > Điều 20 > Khoản 6 > Điểm e" .
-
 <https://w3id.org/legal-ontology-rag/data/provision/d233679cba1a02703f1b37b51246857d203bf205d0640a91167a8ba6db63fb85> a lorsp:LegalProvision ;
     lorsp:structuralPath "Chương II > Mục 5 > Điều 40 > Khoản 2 > Điểm đ" .
 
@@ -113971,6 +114092,9 @@
 
 <https://w3id.org/legal-ontology-rag/data/provision/ce8117f29ea5060aa32055c6059f7cf82584c142d32a31d6114d6486ce5a8995> a lorsp:LegalProvision ;
     lorsp:structuralPath "Chương III > Mục 2 > Điều 47 > Điểm p" .
+
+<https://w3id.org/legal-ontology-rag/data/provision/cff095d5e47f4bcc887e7c10e74d249ca10ef24b02b19abe010f433546d885de> a lorsp:LegalProvision ;
+    lorsp:structuralPath "Chương II > Mục 4 > Điều 20 > Khoản 6 > Điểm e" .
 
 <https://w3id.org/legal-ontology-rag/data/provision/d82492a52cf88f9b0194d4b6fb32fd8b4883bf2c7c30323ce1ad9ab285b83f4d> a lorsp:LegalProvision ;
     lorsp:structuralPath "Chương II > Mục 1 > Điều 12 > Khoản 6 > Điểm a" .
@@ -114854,9 +114978,6 @@
     dcterms:identifier "e7942d2e57e8ed4b458145dbf9d1a2cd3904682946fcc95f022ec51a5563bc34" ;
     lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/15c966a7625c8f999fefd4be4c4e205daf29680a61945e30379f6fb1cd93bb13> .
 
-<https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> a lorsp:LegalProvision ;
-    lorsp:structuralPath "Chương II > Mục 4 > Điều 26 > Khoản 7 > Điểm a" .
-
 <https://w3id.org/legal-ontology-rag/data/chunk/cc2d7e6957e05c7073ff406395ebf85ac427cf4c17dbdf0946e617bcbb3a3f84> a lorsp:SourceChunk ;
     dcterms:identifier "ae720301a77070fa4b277ffea0148579561d1db5216abbaca6eac3e696fc0b83" ;
     lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/15c966a7625c8f999fefd4be4c4e205daf29680a61945e30379f6fb1cd93bb13> .
@@ -114868,6 +114989,9 @@
 <https://w3id.org/legal-ontology-rag/data/chunk/f458a73bb9324c302f295fce9c2b88de5035436136085acedc61c46c410a0cc9> a lorsp:SourceChunk ;
     dcterms:identifier "b6d02df12e8a03fc92e0f97e5a835b597f94c6c5544d48b6f7b380b8205895c8" ;
     lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/15c966a7625c8f999fefd4be4c4e205daf29680a61945e30379f6fb1cd93bb13> .
+
+<https://w3id.org/legal-ontology-rag/data/provision/f5a7c51ce565620443a65a010922e0c679b3419997d3f350580a1963e37590a2> a lorsp:LegalProvision ;
+    lorsp:structuralPath "Chương II > Mục 4 > Điều 26 > Khoản 7 > Điểm a" .
 
 <https://w3id.org/legal-ontology-rag/data/chunk/6d35dfb3217dd658434f04617d02460c13afa457979417286a1d4a5207e7bc1c> a lorsp:SourceChunk ;
     dcterms:identifier "a2472431f096704c781f566789f162e444f93df7c3d734886addeb47e7f4079d" ;
@@ -114959,12 +115083,12 @@
     dcterms:identifier "e11ab2629a4d0765c77082ad2952ddebd0fbde64b77b86a358562f9f138102ca" ;
     lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/15c966a7625c8f999fefd4be4c4e205daf29680a61945e30379f6fb1cd93bb13> .
 
-<https://w3id.org/legal-ontology-rag/data/chunk/c39d5903e9607cddee07821f3f3768a1b86b860c8257205697ee167cee6e4746> a lorsp:SourceChunk ;
-    dcterms:identifier "286bf3097863f0afcff956219abb12cb6b2d9b702076d74391217167a0cb6974" ;
-    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/15c966a7625c8f999fefd4be4c4e205daf29680a61945e30379f6fb1cd93bb13> .
-
 <https://w3id.org/legal-ontology-rag/data/chunk/61baf353dd177ff185ba2cf85f394eef6c3e2ec9f57c6b3a613d3573a26f43f7> a lorsp:SourceChunk ;
     dcterms:identifier "39be48ac876c9bf009cbbc7ec24c7d3c839c7a12f74875397b47b0c4d25950db" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/15c966a7625c8f999fefd4be4c4e205daf29680a61945e30379f6fb1cd93bb13> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/c39d5903e9607cddee07821f3f3768a1b86b860c8257205697ee167cee6e4746> a lorsp:SourceChunk ;
+    dcterms:identifier "286bf3097863f0afcff956219abb12cb6b2d9b702076d74391217167a0cb6974" ;
     lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/15c966a7625c8f999fefd4be4c4e205daf29680a61945e30379f6fb1cd93bb13> .
 
 <https://w3id.org/legal-ontology-rag/data/provision/5c5b56fe03075029d3fb48e07bd5156cc0a5370aaaf181148d1544a4a541d688> a lorsp:LegalProvision ;
@@ -115170,12 +115294,12 @@
     dcterms:identifier "441ac6c34c424904cbe05f661418728ab551e00d103e61cb9a7b13105ada0a94" ;
     lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/15c966a7625c8f999fefd4be4c4e205daf29680a61945e30379f6fb1cd93bb13> .
 
-<https://w3id.org/legal-ontology-rag/data/chunk/426a237aabd65f5848e056d100fd48e4058945f629ba42c22f70a5dcd4a4eb7c> a lorsp:SourceChunk ;
-    dcterms:identifier "c372081f327aaf3843380c93bf15ff2c6345d0b03d395e2d6a28984d1951e611" ;
-    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/15c966a7625c8f999fefd4be4c4e205daf29680a61945e30379f6fb1cd93bb13> .
-
 <https://w3id.org/legal-ontology-rag/data/chunk/9da610812d7e27693bbfa600b24518b3b36a127a912bb722fc141eab76bb2e91> a lorsp:SourceChunk ;
     dcterms:identifier "548739c261f1b1f217bf173f1c91d0d7e4a57a0a928f6cd2a2774e6742c60ffb" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/15c966a7625c8f999fefd4be4c4e205daf29680a61945e30379f6fb1cd93bb13> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/426a237aabd65f5848e056d100fd48e4058945f629ba42c22f70a5dcd4a4eb7c> a lorsp:SourceChunk ;
+    dcterms:identifier "c372081f327aaf3843380c93bf15ff2c6345d0b03d395e2d6a28984d1951e611" ;
     lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/15c966a7625c8f999fefd4be4c4e205daf29680a61945e30379f6fb1cd93bb13> .
 
 <https://w3id.org/legal-ontology-rag/data/chunk/b97a24c7bbec81b9bf5b350f8814d0f2faa5c0b41b865026a8c059253f2e80a5> a lorsp:SourceChunk ;
@@ -115197,12 +115321,12 @@
     dcterms:identifier "4f977b5e55ff31542f2ab53e8df19038f85828b9738f5635e407f55d845983b0" ;
     lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/15c966a7625c8f999fefd4be4c4e205daf29680a61945e30379f6fb1cd93bb13> .
 
-<https://w3id.org/legal-ontology-rag/data/chunk/6cf55b1e6226915ffc6902cab17c108b9eaf1f8a19f319b47e5bd560106c55cd> a lorsp:SourceChunk ;
-    dcterms:identifier "61723ada7348c51a47dbce8c64c0b9f1918efbc84336759af747d7b4c81e0bf6" ;
-    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/15c966a7625c8f999fefd4be4c4e205daf29680a61945e30379f6fb1cd93bb13> .
-
 <https://w3id.org/legal-ontology-rag/data/chunk/6e37b310859e7387fb48c355ea21738eecbb29d11024c44e2826113322bf93c2> a lorsp:SourceChunk ;
     dcterms:identifier "c3f86ad86d9709085d010a069f71c51f2197b8991dd75323a7a4fd6e3548aa69" ;
+    lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/15c966a7625c8f999fefd4be4c4e205daf29680a61945e30379f6fb1cd93bb13> .
+
+<https://w3id.org/legal-ontology-rag/data/chunk/6cf55b1e6226915ffc6902cab17c108b9eaf1f8a19f319b47e5bd560106c55cd> a lorsp:SourceChunk ;
+    dcterms:identifier "61723ada7348c51a47dbce8c64c0b9f1918efbc84336759af747d7b4c81e0bf6" ;
     lorsp:derivedFromFile <https://w3id.org/legal-ontology-rag/data/file/15c966a7625c8f999fefd4be4c4e205daf29680a61945e30379f6fb1cd93bb13> .
 
 <https://w3id.org/legal-ontology-rag/data/chunk/30a5fe0b0c30eacefee43371ae8c8c436afb9beb654666258ce0a7f7deee5e9b> a lorsp:SourceChunk ;

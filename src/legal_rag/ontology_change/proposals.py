@@ -30,7 +30,7 @@ from legal_rag.ontology_population.models import OntologyPopulationRecord, popul
 from legal_rag.ontology_proposal_execution import execute_proposal_batches
 from legal_rag.settings import Settings
 
-ONTOLOGY_CHANGE_PROMPT_VERSION = "1.1.0"
+ONTOLOGY_CHANGE_PROMPT_VERSION = "1.2.0"
 
 
 class ChangeProposalClient(Protocol):

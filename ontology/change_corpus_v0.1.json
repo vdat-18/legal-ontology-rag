@@ -7,7 +7,7 @@
       "comparison_document_ids": [],
       "chunks_path": "../data/processed/groundtruth/168_2024_ND-CP_619502.chunks.jsonl",
       "metadata_path": "../data/processed/groundtruth/168_2024_ND-CP_619502.document_metadata.jsonl",
-      "canonical_records_path": "../data/ontology/canonical/168_2024_ND-CP_619502.step3-v0.3.jsonl"
+      "canonical_records_path": "../data/ontology/canonical/168_2024_ND-CP_619502.step3-v0.4.jsonl"
     },
     {
       "document_id": "336_2025_ND-CP_670893",
