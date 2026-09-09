@@ -10,7 +10,7 @@ from baml_py.logging import set_log_level
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import RetrievedChunkContext as BamlRetrievedChunkContext
 from legal_rag.baml_transport import build_client_registry, execute_baml_request
-from legal_rag.naive_rag.retriever import RetrievedChunk
+from legal_rag.naive_rag.models import RetrievedChunk
 from legal_rag.settings import NaiveRagSettings, Settings
 
 

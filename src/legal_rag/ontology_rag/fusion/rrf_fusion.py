@@ -7,7 +7,7 @@ from collections.abc import Sequence
 
 from loguru import logger
 
-from legal_rag.naive_rag.retriever import RetrievedChunk
+from legal_rag.naive_rag.models import RetrievedChunk
 from legal_rag.ontology_rag.models import OntologyInstance
 
 

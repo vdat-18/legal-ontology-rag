@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from rdflib import URIRef
 
-from legal_rag.naive_rag.retriever import RetrievedChunk
+from legal_rag.naive_rag.models import RetrievedChunk
 from legal_rag.ontology_rag.fusion.rrf_fusion import RRFFusion
 from legal_rag.ontology_rag.models import OntologyInstance
 

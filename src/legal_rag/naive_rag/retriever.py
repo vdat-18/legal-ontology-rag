@@ -10,27 +10,9 @@ from pymilvus import MilvusClient
 
 from legal_rag.benchmark_synthesis.vietnamese_lexical import VietnameseWordSegmenter
 from legal_rag.embedding.encoder import EmbeddingEncoder
+from legal_rag.naive_rag.models import RetrievedChunk, SearchMode
 from legal_rag.retrieval.vietnamese_bm25 import vietnamese_legal_tokens
 from legal_rag.settings import NaiveRagSettings
-
-
-class SearchMode(Enum):
-    """Supported retrieval strategies."""
-
-    KEYWORD = "keyword"
-    SEMANTIC = "semantic"
-    HYBRID = "hybrid"
-
-
-@dataclass(frozen=True, slots=True)
-class RetrievedChunk:
-    """A single chunk returned by the retriever."""
-
-    chunk_id: str
-    text: str
-    source_name: str
-    kind: str
-    score: float
 
 
 class Retriever:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from loguru import logger
 from rdflib import URIRef
 
-from legal_rag.naive_rag.retriever import RetrievedChunk
+from legal_rag.naive_rag.models import RetrievedChunk
 from legal_rag.ontology_rag.index.chunk_index import ChunkIndex
 from legal_rag.ontology_rag.models import OntologyInstance
 
