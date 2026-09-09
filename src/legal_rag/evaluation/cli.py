@@ -74,6 +74,12 @@ def _parser() -> argparse.ArgumentParser:
         help="Maximum ranked retrieval units supplied to each pipeline per question.",
     )
     run_parser.add_argument(
+        "--concurrency",
+        type=_positive_int,
+        default=1,
+        help="Maximum questions evaluated concurrently; each carries one LLM answer-generation call.",
+    )
+    run_parser.add_argument(
         "--k-values",
         type=_parse_k_values,
         default=DEFAULT_K_VALUES,
@@ -223,10 +229,25 @@ def _handle_run(args: argparse.Namespace) -> None:
         raise SystemExit(msg)
 
     backend = _build_evaluation_backend(args)
-    rows = asyncio.run(run_evaluation(records, backend, limit=args.limit))
     predictions_output = args.predictions_output or Path(f"data/evaluation/{args.pipeline}_predictions.jsonl")
+    predictions_output.parent.mkdir(parents=True, exist_ok=True)
+    with predictions_output.open("w", encoding="utf-8", newline="\n") as predictions_file:
+
+        def _append_prediction(row: dict[str, Any]) -> None:
+            """Persist one finished prediction immediately so progress survives interruption."""
+            predictions_file.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+            predictions_file.flush()
+
+        rows = asyncio.run(
+            run_evaluation(
+                records,
+                backend,
+                limit=args.limit,
+                concurrency=args.concurrency,
+                on_row=_append_prediction,
+            )
+        )
     metrics_output = args.metrics_output or Path(f"data/evaluation/{args.pipeline}_metrics.json")
-    _write_jsonl(predictions_output, rows)
     metrics = evaluate_samples([EvaluationSample.from_mapping(row) for row in rows], k_values=args.k_values)
     metrics_payload = {
         "pipeline": args.pipeline,

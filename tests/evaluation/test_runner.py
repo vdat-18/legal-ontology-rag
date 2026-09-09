@@ -74,6 +74,76 @@ def test_graphiti_backend_maps_ranked_fact_provenance_to_gold_chunk_ids(tmp_path
     assert pipeline.closed is True
 
 
+def test_run_evaluation_bounds_concurrency_and_preserves_order(tmp_path) -> None:
+    """No more than *concurrency* predictions run at once and rows keep input order."""
+    records = _many_records(tmp_path, 6)
+    backend = _TrackingBackend(max_concurrency=2)
+
+    rows = asyncio.run(run_evaluation(records, backend, limit=5, concurrency=2))
+
+    assert backend.max_active == 2
+    assert [row["question_id"] for row in rows] == [f"question-{index}" for index in range(6)]
+    assert backend.closed is True
+
+
+def test_run_evaluation_emits_rows_incrementally_before_close(tmp_path) -> None:
+    """on_row receives each row in input order while the backend is still open."""
+    records = _many_records(tmp_path, 3)
+    backend = _TrackingBackend(max_concurrency=3)
+    emitted: list[tuple[str, bool]] = []
+
+    def on_row(row: dict[str, Any]) -> None:
+        emitted.append((row["question_id"], backend.closed))
+
+    rows = asyncio.run(run_evaluation(records, backend, limit=5, concurrency=3, on_row=on_row))
+
+    assert [question_id for question_id, _ in emitted] == ["question-0", "question-1", "question-2"]
+    assert all(not closed for _, closed in emitted)
+    assert len(rows) == 3
+
+
+def _many_records(tmp_path: Path, count: int) -> list[EvaluationRecord]:
+    """Write and load *count* minimal ground-truth rows."""
+    path = tmp_path / "groundtruth.jsonl"
+    path.write_text(
+        "".join(
+            json.dumps({"question_id": f"question-{index}", "question": f"q{index}"}) + "\n" for index in range(count)
+        ),
+        encoding="utf-8",
+    )
+    return load_evaluation_records(path)
+
+
+class _TrackingBackend:
+    """Count in-flight predictions to verify the concurrency bound."""
+
+    name = "tracking"
+
+    def __init__(self, max_concurrency: int) -> None:
+        self._limit = max_concurrency
+        self.active = 0
+        self.max_active = 0
+        self.closed = False
+
+    async def predict(self, question: str, limit: int) -> Any:
+        """Yield once so sibling predictions interleave while tracking peak concurrency."""
+        self.active += 1
+        self.max_active = max(self.max_active, self.active)
+        await asyncio.sleep(0)
+        self.active -= 1
+        return SimpleNamespace(
+            answer="answer",
+            retrieved_chunk_ids=(),
+            retrieved_source_names=(),
+            retrieved_contexts=(),
+            metadata={},
+        )
+
+    async def close(self) -> None:
+        """Record cleanup."""
+        self.closed = True
+
+
 def _records(tmp_path: Path) -> list[EvaluationRecord]:
     """Write and load one representative synthesized ground-truth row."""
     path = tmp_path / "groundtruth.jsonl"

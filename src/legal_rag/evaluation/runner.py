@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -67,7 +68,7 @@ class NaiveEvaluationBackend:
 
     async def predict(self, question: str, limit: int) -> PipelinePrediction:
         """Run naive RAG and expose its retrieved chunks as generation context."""
-        result = self._pipeline.run(question, top_k=limit, search_mode=self._search_mode)
+        result = await asyncio.to_thread(self._pipeline.run, question, top_k=limit, search_mode=self._search_mode)
         contexts = tuple(
             PredictionContext(
                 chunk_id=source.chunk_id,
@@ -101,7 +102,7 @@ class CorrectiveEvaluationBackend:
 
     async def predict(self, question: str, limit: int) -> PipelinePrediction:
         """Run CRAG and retain both initial retrieval and corrected knowledge."""
-        result = self._pipeline.run(question, limit=limit)
+        result = await asyncio.to_thread(self._pipeline.run, question, limit=limit)
         graded_chunks = _mapping_sequence(result.get("graded_chunks"))
         generation_contexts = _mapping_sequence(result.get("generation_contexts"))
         contexts = tuple(
@@ -194,26 +195,58 @@ async def run_evaluation(
     backend: EvaluationBackend,
     *,
     limit: int,
+    concurrency: int = 1,
+    on_row: Callable[[dict[str, Any]], None] | None = None,
 ) -> list[dict[str, Any]]:
-    """Run one backend over every record and emit a shared prediction schema."""
-    rows: list[dict[str, Any]] = []
-    try:
-        for index, record in enumerate(records, 1):
-            logger.info("Evaluating {} sample {}/{}", backend.name, index, len(records))
+    """Run one backend over every record and emit a shared prediction schema.
+
+    At most *concurrency* questions are evaluated at once; a semaphore bounds how many pipeline
+    calls (each including one LLM answer generation) run at the same time so the shared provider
+    is not overwhelmed. When *on_row* is given it is invoked with each finished row, in input
+    order, as soon as every earlier row has also finished — so a caller can persist progress
+    without waiting for the whole dataset. The returned list keeps the input record order.
+    """
+    semaphore = asyncio.Semaphore(concurrency)
+
+    async def _predict_record(index: int, record: EvaluationRecord) -> dict[str, Any]:
+        async with semaphore:
+            logger.info("Evaluating {} sample {}/{}", backend.name, index + 1, len(records))
             prediction = await backend.predict(record.sample.question, limit)
-            row = dict(record.raw)
-            row.update(
-                {
-                    "pipeline": backend.name,
-                    "actual_answer": prediction.answer,
-                    "retrieved_chunk_ids": list(prediction.retrieved_chunk_ids),
-                    "retrieved_source_names": list(prediction.retrieved_source_names),
-                    "retrieved_contexts": [asdict(context) for context in prediction.retrieved_contexts],
-                    "pipeline_metadata": dict(prediction.metadata),
-                }
-            )
-            rows.append(row)
+        row = dict(record.raw)
+        row.update(
+            {
+                "pipeline": backend.name,
+                "actual_answer": prediction.answer,
+                "retrieved_chunk_ids": list(prediction.retrieved_chunk_ids),
+                "retrieved_source_names": list(prediction.retrieved_source_names),
+                "retrieved_contexts": [asdict(context) for context in prediction.retrieved_contexts],
+                "pipeline_metadata": dict(prediction.metadata),
+            }
+        )
+        return row
+
+    rows: list[dict[str, Any]] = []
+    finished: dict[int, dict[str, Any]] = {}
+    next_index = 0
+    indexed: dict[asyncio.Future[dict[str, Any]], int] = {
+        asyncio.ensure_future(_predict_record(index, record)): index for index, record in enumerate(records)
+    }
+    pending: set[asyncio.Future[dict[str, Any]]] = set(indexed)
+    try:
+        while pending:
+            done_futures, _ = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+            for future in done_futures:
+                pending.remove(future)
+                finished[indexed[future]] = future.result()
+            while next_index in finished:
+                row = finished.pop(next_index)
+                rows.append(row)
+                if on_row is not None:
+                    on_row(row)
+                next_index += 1
     finally:
+        for future in pending:
+            future.cancel()
         await backend.close()
     return rows
 
