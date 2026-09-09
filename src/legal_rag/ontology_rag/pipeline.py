@@ -9,7 +9,8 @@ from pathlib import Path
 from loguru import logger
 
 from legal_rag.naive_rag.generator import BamlGenerationClient, generate_answer
-from legal_rag.naive_rag.retriever import RetrievedChunk, Retriever, SearchMode
+from legal_rag.naive_rag.models import RetrievedChunk, SearchMode
+from legal_rag.naive_rag.retriever import Retriever
 from legal_rag.ontology_rag.context.context_builder import ContextBuilder
 from legal_rag.ontology_rag.fusion.rrf_fusion import RRFFusion
 from legal_rag.ontology_rag.index.chunk_index import ChunkIndex
