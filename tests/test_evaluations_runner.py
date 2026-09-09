@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Sequence
 
-from evaluations.baml.runner import evaluate_samples
-from evaluations.core.dataset import EvalSample
+from legal_rag.evaluation.generation.core.dataset import EvalSample
+from legal_rag.evaluation.generation.runner import evaluate_samples
 
 
 class _RecordingJudge:

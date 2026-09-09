@@ -6,11 +6,11 @@ import asyncio
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from evaluations.core.report import EvaluationReport
+from legal_rag.evaluation.generation.core.report import EvaluationReport
 
 if TYPE_CHECKING:
-    from evaluations.baml.judge import JudgeClient
-    from evaluations.core.dataset import EvalSample
+    from legal_rag.evaluation.generation.core.dataset import EvalSample
+    from legal_rag.evaluation.generation.judge import JudgeClient
 
 
 async def evaluate_samples(

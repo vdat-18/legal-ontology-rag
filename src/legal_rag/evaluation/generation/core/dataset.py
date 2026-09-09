@@ -1,4 +1,4 @@
-"""Evaluation samples and their mapping onto Ragas single-turn records."""
+"""Evaluation samples and their flexible JSONL mapping."""
 
 from __future__ import annotations
 

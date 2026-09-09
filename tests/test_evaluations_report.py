@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 
-from evaluations.core.report import EvaluationReport
+from legal_rag.evaluation.generation.core.report import EvaluationReport
 
 
 def test_from_per_sample_averages_each_metric_over_valid_values() -> None:

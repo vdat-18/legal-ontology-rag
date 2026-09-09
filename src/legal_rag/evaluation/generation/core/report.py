@@ -1,4 +1,4 @@
-"""Aggregate one Ragas evaluation into a typed, JSON-serializable report."""
+"""Aggregate per-sample generation scores into a typed, JSON-serializable report."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ class EvaluationReport:
 
     @classmethod
     def from_per_sample(cls, per_sample: Sequence[Mapping[str, Any]]) -> EvaluationReport:
-        """Build a report from Ragas per-sample scores, averaging each metric over valid values."""
+        """Build a report from per-sample scores, averaging each metric over valid values."""
         rows = tuple({name: _finite(value) for name, value in row.items()} for row in per_sample)
         metric_names = {name for row in rows for name in row}
         aggregate = {name: _mean(row.get(name) for row in rows) for name in sorted(metric_names)}

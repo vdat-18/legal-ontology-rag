@@ -1,4 +1,4 @@
-"""Command-line entry point for the BAML + QUEST evaluation harness."""
+"""Command-line entry point for the BAML generation-metrics evaluation harness."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from evaluations.core.dataset import load_samples
+from legal_rag.evaluation.generation.core.dataset import load_samples
 
 _DEFAULT_BATCH_SIZE = 5
 _DEFAULT_CONCURRENCY = 8
@@ -26,9 +26,9 @@ def _positive_int(raw: str) -> int:
 
 
 def _parser() -> argparse.ArgumentParser:
-    """Build the evaluation command-line interface."""
+    """Build the generation evaluation command-line interface."""
     parser = argparse.ArgumentParser(
-        description="Evaluate Legal RAG predictions with a BAML LLM judge (QUEST rubric + grounding metrics)."
+        description="Evaluate Legal RAG predictions with a BAML LLM judge (grounding and correctness metrics)."
     )
     parser.add_argument(
         "predictions",
@@ -55,8 +55,8 @@ def main() -> None:
     """Load predictions, judge them concurrently through BAML, and write the aggregate report."""
     from dotenv import find_dotenv, load_dotenv
 
-    from evaluations.baml.judge import BamlJudgeClient
-    from evaluations.baml.runner import evaluate_samples
+    from legal_rag.evaluation.generation.judge import BamlJudgeClient
+    from legal_rag.evaluation.generation.runner import evaluate_samples
     from legal_rag.settings import Settings
 
     arguments = _parser().parse_args()

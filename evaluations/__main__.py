@@ -1,5 +1,5 @@
-"""Run the evaluation harness via ``python -m evaluations``."""
+"""Run the generation evaluation harness via ``python -m evaluations`` (deprecated alias)."""
 
-from evaluations.cli import main
+from legal_rag.evaluation.generation.cli import main
 
 main()

@@ -92,6 +92,29 @@ def _parser() -> argparse.ArgumentParser:
         help="Aggregate JSON path; defaults to data/evaluation/<pipeline>_metrics.json.",
     )
     run_parser.add_argument(
+        "--generation",
+        action="store_true",
+        help="Also score generated answers with the BAML LLM judge and merge the aggregate into the metrics.",
+    )
+    run_parser.add_argument(
+        "--judge-batch-size",
+        type=_positive_int,
+        default=5,
+        help="Number of samples judged per LLM call when --generation is set.",
+    )
+    run_parser.add_argument(
+        "--judge-concurrency",
+        type=_positive_int,
+        default=8,
+        help="Maximum concurrent judge batch calls when --generation is set.",
+    )
+    run_parser.add_argument(
+        "--generation-output",
+        type=Path,
+        default=None,
+        help="Full per-sample judge report path; defaults to data/evaluation/<pipeline>_generation.json.",
+    )
+    run_parser.add_argument(
         "--naive-search-mode",
         choices=("keyword", "semantic", "hybrid"),
         default=None,
@@ -184,7 +207,7 @@ def _handle_score(args: argparse.Namespace) -> None:
 
 
 def _handle_run(args: argparse.Namespace) -> None:
-    """Run one selected RAG pipeline and score its normalized predictions."""
+    """Run one selected RAG pipeline and score it with retrieval and optional generation metrics."""
     dotenv_path = find_dotenv(usecwd=True)
     if dotenv_path:
         load_dotenv(dotenv_path)
@@ -210,8 +233,29 @@ def _handle_run(args: argparse.Namespace) -> None:
         "retrieval_limit": args.limit,
         **metrics.to_dict(),
     }
+    if args.generation:
+        report = _score_generation(rows, args)
+        generation_output = args.generation_output or Path(f"data/evaluation/{args.pipeline}_generation.json")
+        _write_json(generation_output, report.to_dict())
+        metrics_payload["generation"] = report.aggregate
     _write_json(metrics_output, metrics_payload)
     _write_stdout(metrics_payload)
+
+
+def _score_generation(rows: list[dict[str, Any]], args: argparse.Namespace) -> Any:
+    """Judge the generated answers of *rows* with the BAML LLM judge and return the report."""
+    from legal_rag.evaluation.generation.core.dataset import EvalSample
+    from legal_rag.evaluation.generation.judge import BamlJudgeClient
+    from legal_rag.evaluation.generation.runner import evaluate_samples as evaluate_generation_samples
+    from legal_rag.settings import Settings
+
+    samples = [EvalSample.from_mapping(row) for row in rows]
+    judge = BamlJudgeClient(Settings.from_environment())
+    return asyncio.run(
+        evaluate_generation_samples(
+            samples, judge, batch_size=args.judge_batch_size, concurrency=args.judge_concurrency
+        )
+    )
 
 
 def _build_evaluation_backend(args: argparse.Namespace) -> EvaluationBackend:

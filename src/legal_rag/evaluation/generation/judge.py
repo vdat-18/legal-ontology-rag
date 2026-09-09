@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Protocol
 
-from evaluations.core.dataset import EvalSample
+from legal_rag.evaluation.generation.core.dataset import EvalSample
 
 if TYPE_CHECKING:
     from legal_rag.settings import Settings

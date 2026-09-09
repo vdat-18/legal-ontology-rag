@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from evaluations.core.dataset import EvalSample, load_samples
+from legal_rag.evaluation.generation.core.dataset import EvalSample, load_samples
 
 
 def test_from_mapping_reads_canonical_fields_with_string_contexts() -> None:
