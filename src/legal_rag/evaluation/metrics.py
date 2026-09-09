@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
-import string
-from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,7 +65,6 @@ class EvaluationMetrics:
 
     sample_count: int
     retrieval_sample_count: int
-    answer_sample_count: int
     k_values: tuple[int, ...]
     hit_rate: float | None
     hit_rate_at_k: dict[int, float | None]
@@ -76,15 +72,12 @@ class EvaluationMetrics:
     recall_at_k: dict[int, float | None]
     context_precision: float | None
     context_recall: float | None
-    answer_exact_match: float | None
-    answer_token_f1: float | None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert metrics to a JSON-serializable dictionary."""
         return {
             "sample_count": self.sample_count,
             "retrieval_sample_count": self.retrieval_sample_count,
-            "answer_sample_count": self.answer_sample_count,
             "k_values": list(self.k_values),
             "hit_rate": self.hit_rate,
             "hit_rate_at_k": _string_keyed_metrics(self.hit_rate_at_k),
@@ -92,8 +85,6 @@ class EvaluationMetrics:
             "recall_at_k": _string_keyed_metrics(self.recall_at_k),
             "context_precision": self.context_precision,
             "context_recall": self.context_recall,
-            "answer_exact_match": self.answer_exact_match,
-            "answer_token_f1": self.answer_token_f1,
         }
 
 
@@ -122,13 +113,9 @@ def evaluate_samples(
     retrieval_scores = [_retrieval_scores(sample, normalized_k_values) for sample in samples]
     retrieval_scores = [score for score in retrieval_scores if score is not None]
 
-    answer_scores = [_answer_scores(sample) for sample in samples]
-    answer_scores = [score for score in answer_scores if score is not None]
-
     return EvaluationMetrics(
         sample_count=len(samples),
         retrieval_sample_count=len(retrieval_scores),
-        answer_sample_count=len(answer_scores),
         k_values=normalized_k_values,
         hit_rate=_mean(score["hit"] for score in retrieval_scores),
         hit_rate_at_k=_aggregate_at_k(retrieval_scores, "hit", normalized_k_values),
@@ -136,8 +123,6 @@ def evaluate_samples(
         recall_at_k=_aggregate_at_k(retrieval_scores, "recall", normalized_k_values),
         context_precision=_mean(score["precision"] for score in retrieval_scores),
         context_recall=_mean(score["recall"] for score in retrieval_scores),
-        answer_exact_match=_mean(score["exact_match"] for score in answer_scores),
-        answer_token_f1=_mean(score["token_f1"] for score in answer_scores),
     )
 
 
@@ -184,44 +169,6 @@ def _binary_relevance_flags(retrieved_ids: Sequence[str], reference_set: set[str
         else:
             flags.append(0)
     return flags
-
-
-def _answer_scores(sample: EvaluationSample) -> dict[str, float] | None:
-    if sample.expected_answer is None or sample.actual_answer is None:
-        return None
-    return {
-        "exact_match": 1.0
-        if _normalize_answer(sample.expected_answer) == _normalize_answer(sample.actual_answer)
-        else 0.0,
-        "token_f1": _token_f1(sample.expected_answer, sample.actual_answer),
-    }
-
-
-def _token_f1(expected: str, actual: str) -> float:
-    expected_tokens = _tokenize(expected)
-    actual_tokens = _tokenize(actual)
-    if not expected_tokens and not actual_tokens:
-        return 1.0
-    if not expected_tokens or not actual_tokens:
-        return 0.0
-
-    overlap = Counter(expected_tokens) & Counter(actual_tokens)
-    shared = sum(overlap.values())
-    if shared == 0:
-        return 0.0
-    precision = shared / len(actual_tokens)
-    recall = shared / len(expected_tokens)
-    return 2 * precision * recall / (precision + recall)
-
-
-def _normalize_answer(value: str) -> str:
-    without_punctuation = value.translate(str.maketrans("", "", string.punctuation))
-    return " ".join(without_punctuation.casefold().split())
-
-
-def _tokenize(value: str) -> list[str]:
-    return re.findall(r"\w+", _normalize_answer(value), flags=re.UNICODE)
-
 
 def _mean(values: Iterable[float]) -> float | None:
     numbers = list(values)

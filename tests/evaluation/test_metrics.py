@@ -30,7 +30,6 @@ def test_evaluate_samples_computes_retrieval_and_answer_metrics() -> None:
 
     assert metrics.sample_count == 2
     assert metrics.retrieval_sample_count == 2
-    assert metrics.answer_sample_count == 2
     assert metrics.k_values == (1, 2, 3)
     assert metrics.hit_rate == 0.5
     assert metrics.hit_rate_at_k == {1: 0.0, 2: 0.5, 3: 0.5}
@@ -38,8 +37,6 @@ def test_evaluate_samples_computes_retrieval_and_answer_metrics() -> None:
     assert metrics.recall_at_k == {1: 0.0, 2: 0.25, 3: 0.25}
     assert metrics.context_precision == 1 / 6
     assert metrics.context_recall == 0.25
-    assert metrics.answer_exact_match == 0.5
-    assert metrics.answer_token_f1 == 0.5
 
 
 def test_metrics_to_dict_uses_json_friendly_k_keys() -> None:
