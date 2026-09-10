@@ -1,0 +1,6011 @@
+{
+  "aggregate": {
+    "answer_relevancy": 3.868,
+    "correctness": 3.097,
+    "faithfulness": 0.94136,
+    "temporal_correctness": 0.729
+  },
+  "per_sample": [
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.75,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.65,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.75,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.6,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 1.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.65,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.67,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.7,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.65,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.93,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.96,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.7,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.96,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.97,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 3.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.7,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.75,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.92,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.6,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.75,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.91,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.96,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.92,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.86,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 1.0,
+      "faithfulness": 0.5,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 1.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.75,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.86,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.65,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.75,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 3.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.96,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.94,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 0.96,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.82,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.89,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.86,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.78,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.92,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.94,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.93,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.55,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 1.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.7,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.4,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 3.0,
+      "faithfulness": 0.94,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.75,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.6,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 0.93,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 1.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.88,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.94,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.78,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.75,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.92,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 1.0,
+      "faithfulness": 0.93,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.75,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.7,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 1.0,
+      "correctness": 1.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.88,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 5.0,
+      "faithfulness": 0.92,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.45,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.94,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.96,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.2,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.7,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.83,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.86,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.78,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.88,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 2.0,
+      "faithfulness": 0.4,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.5,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.67,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.86,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.86,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.83,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 4.0,
+      "faithfulness": 0.96,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.6,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.65,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 2.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.97,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.97,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.89,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.94,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.7,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 2.0,
+      "faithfulness": 0.75,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.92,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.97,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 0.67,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 1.0,
+      "faithfulness": 0.75,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.5,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.89,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.75,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.94,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.82,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.94,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.88,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.76,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 1.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 1.0,
+      "faithfulness": 0.6,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.56,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.88,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.92,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.96,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.86,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.88,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.63,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.94,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 1.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.6,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.96,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.7,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 1.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.97,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.82,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.93,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 3.0,
+      "faithfulness": 0.96,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.63,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.93,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 3.0,
+      "faithfulness": 0.94,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 5.0,
+      "faithfulness": 0.99,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.75,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.85,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.6,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.65,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.55,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.5,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.93,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.88,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.8,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 1.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.7,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 1.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.98,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 3.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 0.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 4.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 2.0,
+      "correctness": 1.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 3.0,
+      "correctness": 2.0,
+      "faithfulness": 0.9,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 4.0,
+      "correctness": 5.0,
+      "faithfulness": 1.0,
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "correctness": 2.0,
+      "faithfulness": 0.95,
+      "temporal_correctness": 1.0
+    }
+  ],
+  "sample_count": 1000
+}

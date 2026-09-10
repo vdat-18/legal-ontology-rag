@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 from dataclasses import asdict, replace
 from pathlib import Path
@@ -19,6 +20,7 @@ from legal_rag.evaluation.runner import (
     EvaluationBackend,
     GraphitiEvaluationBackend,
     NaiveEvaluationBackend,
+    OntologyEvaluationBackend,
     load_evaluation_records,
     run_evaluation,
 )
@@ -57,9 +59,16 @@ def _parser() -> argparse.ArgumentParser:
     run_parser = subparsers.add_parser("run", help="Run one RAG pipeline and score it with the shared metrics.")
     run_parser.add_argument(
         "--pipeline",
-        choices=("naive", "corrective", "graphiti"),
+        choices=("naive", "corrective", "graphiti", "ontology"),
         default="corrective",
         help="RAG implementation to evaluate. All choices emit the same prediction schema.",
+    )
+    run_parser.add_argument(
+        "--ontology-paths",
+        type=Path,
+        nargs="+",
+        default=None,
+        help="Ontology TTL files for --pipeline ontology; defaults to the ONTOLOGY_PATHS env (comma-separated).",
     )
     run_parser.add_argument(
         "--ground-truth",
@@ -200,6 +209,12 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _ontology_paths_from_environment() -> list[Path]:
+    """Read comma-separated ontology TTL paths from the ONTOLOGY_PATHS environment variable."""
+    raw = os.environ.get("ONTOLOGY_PATHS", "")
+    return [Path(part.strip()) for part in raw.split(",") if part.strip()]
+
+
 def _handle_score(args: argparse.Namespace) -> None:
     """Score an existing prediction JSONL file."""
     if not args.input_path.exists():
@@ -291,6 +306,22 @@ def _build_evaluation_backend(args: argparse.Namespace) -> EvaluationBackend:
             NaiveRagSettings.from_environment(),
         )
         return NaiveEvaluationBackend(pipeline, search_mode=args.naive_search_mode)
+
+    if args.pipeline == "ontology":
+        from legal_rag.ontology_rag.pipeline import OntologyRAGPipeline
+        from legal_rag.settings import MilvusSettings, NaiveRagSettings, Settings
+
+        ontology_paths = list(args.ontology_paths or _ontology_paths_from_environment())
+        if not ontology_paths:
+            msg = "--ontology-paths or the ONTOLOGY_PATHS environment variable is required for --pipeline ontology"
+            raise SystemExit(msg)
+        pipeline = OntologyRAGPipeline(
+            Settings.from_environment(),
+            MilvusSettings.from_environment(),
+            NaiveRagSettings.from_environment(),
+            ontology_paths,
+        )
+        return OntologyEvaluationBackend(pipeline)
 
     if args.pipeline == "corrective":
         from legal_rag.corrective_rag.generate.config import RAGConfig

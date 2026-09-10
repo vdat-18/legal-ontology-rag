@@ -170,6 +170,7 @@ def _binary_relevance_flags(retrieved_ids: Sequence[str], reference_set: set[str
             flags.append(0)
     return flags
 
+
 def _mean(values: Iterable[float]) -> float | None:
     numbers = list(values)
     if not numbers:

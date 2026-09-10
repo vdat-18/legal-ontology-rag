@@ -4,7 +4,7 @@ Metrics (4 generation metrics via LLM judge):
 - faithfulness (0.0-1.0): Percentage of claims supported by retrieved context
 - correctness (1-5): Matching with expected answer (LLM judge)
 - answer_relevancy (1-5): Relevance to the question (LLM judge)
-- temporal_correctness (binary 0/1): Applying correct law version
+- temporal_correctness (0/1, null when the answer abstains): Applying correct law version
 """
 
 from legal_rag.evaluation.generation.core.dataset import EvalSample, load_samples

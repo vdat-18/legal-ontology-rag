@@ -11,13 +11,29 @@ from legal_rag.evaluation import cli
 from legal_rag.evaluation.runner import PipelinePrediction, PredictionContext
 
 
-@pytest.mark.parametrize("pipeline", ["naive", "corrective", "graphiti"])
+@pytest.mark.parametrize("pipeline", ["naive", "corrective", "graphiti", "ontology"])
 def test_run_accepts_every_comparable_pipeline(pipeline: str) -> None:
-    """The end-to-end command exposes all three implementations behind one interface."""
+    """The end-to-end command exposes all four implementations behind one interface."""
     arguments = cli._parser().parse_args(["run", "--pipeline", pipeline])
 
     assert arguments.pipeline == pipeline
     assert arguments.ground_truth.as_posix() == "data/benchmark_synthesis/groundtruth.jsonl"
+
+
+def test_run_parses_ontology_paths() -> None:
+    """Ontology TTL paths are collected as a list for the ontology pipeline."""
+    arguments = cli._parser().parse_args(["run", "--pipeline", "ontology", "--ontology-paths", "a.ttl", "b.ttl"])
+
+    assert arguments.ontology_paths == [Path("a.ttl"), Path("b.ttl")]
+
+
+def test_run_rejects_ontology_without_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Building the ontology backend without paths fails with a clear message."""
+    monkeypatch.delenv("ONTOLOGY_PATHS", raising=False)
+    arguments = cli._parser().parse_args(["run", "--pipeline", "ontology"])
+
+    with pytest.raises(SystemExit, match="ONTOLOGY_PATHS"):
+        cli._build_evaluation_backend(arguments)
 
 
 def test_run_parses_generation_options() -> None:

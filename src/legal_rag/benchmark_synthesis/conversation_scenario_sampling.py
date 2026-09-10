@@ -27,9 +27,9 @@ CONVERSATION_DISTRIBUTION_SCHEMA_VERSION = "1.0.0"
 TurnDialogueAct = str
 TurnContextDependency = str
 
-_TURN_DIALOGUE_ACTS = ("continuity", "switch", "return", "clarification", "underspecified")
+_TURN_DIALOGUE_ACTS = ("continuity", "deepening", "switch", "return", "clarification", "underspecified")
 _TURN_CONTEXT_DEPENDENCIES = ("anaphora", "ellipsis")
-_TURN_ANSWERABILITY_VALUES = ("answerable", "partially_answerable")
+_TURN_ANSWERABILITY_VALUES = ("answerable", "partially_answerable", "unanswerable")
 _TOPIC_RETURN_MIN_CONVERSATION_LENGTH = 6
 
 
@@ -194,9 +194,7 @@ def sample_conversation_scenarios(
         usage.lengths[length] += 1
         seed = min(scenarios, key=lambda scenario: (usage.seeds[scenario.scenario_id], scenario.scenario_id))
         usage.seeds[seed.scenario_id] += 1
-        conversations.append(
-            _sample_conversation(seed, length, scenarios_by_id, adjacency, distribution, usage)
-        )
+        conversations.append(_sample_conversation(seed, length, scenarios_by_id, adjacency, distribution, usage))
     return tuple(conversations)
 
 
@@ -220,12 +218,9 @@ def _scenario_adjacency(scenarios: Sequence[Scenario], relations: Sequence[Evide
                     related[left_id].add(right_id)
 
     return _ScenarioAdjacency(
-        shared_fact_neighbors={
-            scenario_id: frozenset(peers - {scenario_id}) for scenario_id, peers in shared.items()
-        },
+        shared_fact_neighbors={scenario_id: frozenset(peers - {scenario_id}) for scenario_id, peers in shared.items()},
         relation_neighbors={
-            scenario_id: frozenset(related[scenario_id] - shared[scenario_id] - {scenario_id})
-            for scenario_id in shared
+            scenario_id: frozenset(related[scenario_id] - shared[scenario_id] - {scenario_id}) for scenario_id in shared
         },
     )
 
@@ -272,9 +267,7 @@ def _sample_conversation(
         dependency = usage.pick_dependency(distribution)
         usage.dependencies[dependency] += 1
         answerability = (
-            "partially_answerable"
-            if dialogue_act == "underspecified"
-            else usage.pick_answerability(distribution)
+            "partially_answerable" if dialogue_act == "underspecified" else usage.pick_answerability(distribution)
         )
         usage.answerabilities[answerability] += 1
         turns.append(
@@ -313,7 +306,7 @@ def _feasible_acts(
     """Return every dialogue act whose anchor requirement can still be satisfied."""
     previous_anchor = anchors[-1]
     unused_exists = len(set(anchors)) < len(scenarios_by_id)
-    feasible = ["clarification", "underspecified"]
+    feasible = ["clarification", "underspecified", "deepening"]
     if unused_exists:
         feasible.append("switch")
     if adjacency.shared_fact_neighbors[previous_anchor] - set(anchors):
@@ -332,7 +325,7 @@ def _resolve_anchor(
 ) -> str:
     """Resolve the anchor scenario id for one planned dialogue act."""
     previous_anchor = anchors[-1]
-    if dialogue_act in {"clarification", "underspecified"}:
+    if dialogue_act in {"clarification", "underspecified", "deepening"}:
         return previous_anchor
     if dialogue_act == "return":
         candidates = tuple(dict.fromkeys(anchors[:-1]))

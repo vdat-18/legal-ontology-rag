@@ -52,8 +52,13 @@ class InstanceRetriever:
                 ?consequence a lorlc:MonetaryPenalty ;
                              lorlc:hasAmountRange ?range .
                 ?range lorlc:minimumAmount ?min_amount ;
-                       lorlc:maximumAmount ?max_amount ;
-                       lorlc:hasCurrency ?currency .
+                       lorlc:maximumAmount ?max_amount .
+            }}
+            OPTIONAL {{
+                <{uri}> lorlc:imposesConsequence ?currency_consequence .
+                ?currency_consequence a lorlc:MonetaryPenalty ;
+                                      lorlc:hasAmountRange ?currency_range .
+                ?currency_range lorlc:currency ?currency_uri .
             }}
             OPTIONAL {{
                 <{uri}> lorlc:imposesConsequence ?points .
@@ -73,23 +78,28 @@ class InstanceRetriever:
         if not result:
             return None
 
-        row = next(iter(result))
+        row = next(iter(result)).asdict()
         return PenaltyRule(
             uri=uri,
-            conduct_label_vi=str(row.conduct_label),
+            conduct_label_vi=str(row["conduct_label"]),
             vehicle_categories=(),
             subject_kind=None,
             roles=(),
-            monetary_penalty_min=Decimal(str(row.min_amount)) if row.min_amount else None,
-            monetary_penalty_max=Decimal(str(row.max_amount)) if row.max_amount else None,
-            currency=str(row.currency) if row.currency else None,
-            point_value=int(row.point_value) if row.point_value else None,
-            valid_from=self._parse_date(str(row.valid_from)),
-            valid_to=self._parse_date(str(row.valid_to)) if row.valid_to else None,
+            monetary_penalty_min=Decimal(str(row["min_amount"])) if row.get("min_amount") else None,
+            monetary_penalty_max=Decimal(str(row["max_amount"])) if row.get("max_amount") else None,
+            currency=self._currency_local_name(row["currency_uri"]) if row.get("currency_uri") else None,
+            point_value=int(row["point_value"]) if row.get("point_value") else None,
+            valid_from=self._parse_date(str(row["valid_from"])),
+            valid_to=self._parse_date(str(row["valid_to"])) if row.get("valid_to") else None,
             source_chunk_ids=(),
-            provision_path=str(row.provision_path),
+            provision_path=str(row["provision_path"]),
             document_number="",
         )
+
+    @staticmethod
+    def _currency_local_name(currency_uri: object) -> str:
+        """Extract the local name (for example VND) from a currency concept URI."""
+        return str(currency_uri).rsplit("#", 1)[-1].rsplit("/", 1)[-1]
 
     def _parse_date(self, xsd_datetime: str) -> date:
         """Parse XSD dateTime to date."""

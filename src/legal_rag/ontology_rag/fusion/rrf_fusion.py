@@ -25,12 +25,21 @@ class RRFFusion:
         keyword_chunks: Sequence[RetrievedChunk],
         ontology_instances: Sequence[OntologyInstance],
     ) -> list[OntologyInstance]:
-        """Merge three sources into ranked instances."""
-        chunk_scores = self._compute_chunk_scores(semantic_chunks, keyword_chunks, ontology_instances)
+        """Merge chunk retrieval and ontology matches into ranked instances.
+
+        Each instance scores the sum of RRF chunk scores over its source chunks, plus a
+        weighted RRF term for its own ontology-match rank, so a rule whose label matches
+        the query ranks highly even when its chunks were not retrieved.
+        """
+        chunk_scores = self._compute_chunk_scores(semantic_chunks, keyword_chunks)
         all_instances = self._collect_all_instances(semantic_chunks, ontology_instances)
         instance_scores = self._aggregate_instance_scores(all_instances, chunk_scores)
-        ranked_instances = sorted(instance_scores.items(), key=lambda x: -x[1])
-        result = [inst for inst, _ in ranked_instances]
+
+        for rank, instance in enumerate(ontology_instances, start=1):
+            instance_scores[instance] = instance_scores.get(instance, 0.0) + self._ontology_weight / (self._k + rank)
+
+        ranked_pairs = sorted(instance_scores.items(), key=lambda item: (-item[1], str(item[0].uri)))
+        result = [instance for instance, _ in ranked_pairs]
         logger.info("RRF fused {} instances from {} sources", len(result), 3)
         return result
 
@@ -38,7 +47,6 @@ class RRFFusion:
         self,
         semantic_chunks: Sequence[RetrievedChunk],
         keyword_chunks: Sequence[RetrievedChunk],
-        ontology_instances: Sequence[OntologyInstance],
     ) -> dict[str, float]:
         """Compute RRF scores for chunk IDs."""
         scores: dict[str, float] = defaultdict(float)
@@ -48,10 +56,6 @@ class RRFFusion:
 
         for rank, chunk in enumerate(keyword_chunks, start=1):
             scores[chunk.chunk_id] += 1.0 / (self._k + rank)
-
-        for rank, instance in enumerate(ontology_instances, start=1):
-            for chunk_id in instance.source_chunk_ids:
-                scores[chunk_id] += self._ontology_weight / (self._k + rank)
 
         return dict(scores)
 

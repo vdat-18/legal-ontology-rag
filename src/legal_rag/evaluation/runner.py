@@ -134,6 +134,44 @@ class CorrectiveEvaluationBackend:
         self._pipeline.close()
 
 
+class OntologyEvaluationBackend:
+    """Adapt the ontology-enhanced RAG pipeline for shared evaluation.
+
+    Retrieval labels come from the Milvus chunks the pipeline retrieved, while the generation
+    context is the rule summaries the pipeline actually supplied to answer generation.
+    """
+
+    name = "ontology"
+
+    def __init__(self, pipeline: Any) -> None:
+        """Store the ontology RAG pipeline."""
+        self._pipeline = pipeline
+
+    async def predict(self, question: str, limit: int) -> PipelinePrediction:
+        """Run ontology RAG and expose both chunk labels and rule-summary contexts."""
+        result = await asyncio.to_thread(self._pipeline.run, question, top_k=limit)
+        contexts = tuple(
+            PredictionContext(
+                chunk_id=context.chunk_id,
+                source_name=context.source_name,
+                text=context.text,
+                kind=context.kind,
+            )
+            for context in result.answer_contexts
+        )
+        return PipelinePrediction(
+            answer=result.answer,
+            retrieved_chunk_ids=_unique(source.chunk_id for source in result.sources if source.chunk_id),
+            retrieved_source_names=_unique(source.source_name for source in result.sources if source.source_name),
+            retrieved_contexts=contexts,
+            metadata={"rule_count": len(result.rules)},
+        )
+
+    async def close(self) -> None:
+        """Close the ontology pipeline's Milvus connection."""
+        await asyncio.to_thread(self._pipeline.close)
+
+
 class GraphitiEvaluationBackend:
     """Adapt Graphiti facts and their chunk provenance for shared evaluation."""
 

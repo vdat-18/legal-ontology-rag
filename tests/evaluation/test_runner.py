@@ -13,6 +13,7 @@ from legal_rag.evaluation.runner import (
     EvaluationRecord,
     GraphitiEvaluationBackend,
     NaiveEvaluationBackend,
+    OntologyEvaluationBackend,
     load_evaluation_records,
     run_evaluation,
 )
@@ -102,6 +103,30 @@ def test_run_evaluation_emits_rows_incrementally_before_close(tmp_path) -> None:
     assert len(rows) == 3
 
 
+def test_ontology_backend_separates_chunk_labels_from_rule_contexts(tmp_path) -> None:
+    """Ontology retrieval labels come from chunks while generation uses rule summaries."""
+    records = _records(tmp_path)
+    pipeline = _FakeOntologyPipeline()
+
+    rows = asyncio.run(run_evaluation(records, OntologyEvaluationBackend(pipeline), limit=10))
+
+    assert rows[0]["pipeline"] == "ontology"
+    assert rows[0]["retrieved_chunk_ids"] == ["chunk-1", "chunk-2"]
+    assert rows[0]["retrieved_source_names"] == ["document.docx"]
+    assert rows[0]["retrieved_contexts"] == [
+        {
+            "text": "Không đội mũ bảo hiểm: Phạt 400000-600000 VND",
+            "chunk_id": "rule-1",
+            "source_name": "Điều 5",
+            "kind": "ontology",
+            "url": None,
+        }
+    ]
+    assert rows[0]["pipeline_metadata"] == {"rule_count": 1}
+    assert pipeline.calls == [("question", 10)]
+    assert pipeline.closed is True
+
+
 def _many_records(tmp_path: Path, count: int) -> list[EvaluationRecord]:
     """Write and load *count* minimal ground-truth rows."""
     path = tmp_path / "groundtruth.jsonl"
@@ -178,6 +203,34 @@ class _FakeNaivePipeline:
             query=question,
             answer="naive answer",
             sources=(RetrievedChunk("chunk-1", "naive context", "document.docx", "paragraph", 0.9),),
+        )
+
+    def close(self) -> None:
+        """Record resource cleanup."""
+        self.closed = True
+
+
+class _FakeOntologyPipeline:
+    """Return one ontology result with distinct chunk sources and rule contexts."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, int]] = []
+        self.closed = False
+
+    def run(self, question: str, top_k: int) -> SimpleNamespace:
+        """Record the request and return chunks plus one rule-summary context."""
+        self.calls.append((question, top_k))
+        return SimpleNamespace(
+            answer="ontology answer",
+            rules=(SimpleNamespace(),),
+            sources=(
+                RetrievedChunk("chunk-1", "chunk one", "document.docx", "paragraph", 0.9),
+                RetrievedChunk("chunk-2", "chunk two", "document.docx", "paragraph", 0.8),
+                RetrievedChunk("chunk-1", "chunk one duplicate", "document.docx", "paragraph", 0.7),
+            ),
+            answer_contexts=(
+                RetrievedChunk("rule-1", "Không đội mũ bảo hiểm: Phạt 400000-600000 VND", "Điều 5", "ontology", 1.0),
+            ),
         )
 
     def close(self) -> None:

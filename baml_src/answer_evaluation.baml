@@ -45,9 +45,11 @@ class LegalAnswerEvaluation {
     4 = trả lời đúng trọng tâm nhưng thừa thông tin;
     5 = trả lời đúng trọng tâm, súc tích.
   "#)
-  temporal_correctness bool @description(#"
+  temporal_correctness bool? @description(#"
     true nếu câu trả lời áp dụng đúng bản luật đang có hiệu lực tại thời điểm
     liên quan tới câu hỏi, không dùng bản đã hết hiệu lực hoặc chưa có hiệu lực.
+    null nếu câu trả lời từ chối trả lời hoặc không khẳng định bất kỳ quy định
+    pháp luật nào (không có version luật nào để đánh giá tính temporal).
   "#)
 }
 
@@ -75,9 +77,10 @@ function EvaluateAnswers(items: LegalAnswerToEvaluate[]) -> LegalAnswerEvaluatio
     3. answer_relevancy (1-5): Đánh giá xem câu trả lời có đúng trọng tâm câu hỏi không
        - Không đánh giá đúng/sai, chỉ đánh giá relevance
     
-    4. temporal_correctness (true/false): Áp dụng đúng luật đang hiệu lực không?
-       - Kiểm tra năm hiệu lực, số hiệu văn bản
-       - false nếu dùng luật đã hết hiệu lực hoặc chưa có hiệu lực
+    4. temporal_correctness (true/false/null): Áp dụng đúng luật đang hiệu lực không?
+        - Kiểm tra năm hiệu lực, số hiệu văn bản
+        - false nếu dùng luật đã hết hiệu lực hoặc chưa có hiệu lực
+        - null nếu câu trả lời từ chối trả lời hoặc không trích dẫn/khẳng định bất kỳ quy định pháp luật nào
 
     Trả về đúng một kết quả cho mỗi mục, giữ nguyên sample_id để đối chiếu.
 

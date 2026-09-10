@@ -2,8 +2,8 @@
 
 One ``EvaluateAnswers`` call scores a whole batch of samples, and each result carries every metric
 for its sample as a typed object (faithfulness 0-1, correctness 1-5, answer_relevancy 1-5,
-and temporal_correctness binary). So a batch of samples costs a single LLM call, and
-the runner runs many batches concurrently.
+and temporal_correctness nullable binary — null when the answer abstains). So a batch of samples
+costs a single LLM call, and the runner runs many batches concurrently.
 """
 
 from __future__ import annotations
@@ -70,10 +70,11 @@ class BamlJudgeClient:
 
 def _to_scores(evaluation: Any) -> dict[str, float | None]:
     """Flatten one typed BAML evaluation into a metric-name to score mapping."""
+    temporal = None if evaluation.temporal_correctness is None else (1.0 if evaluation.temporal_correctness else 0.0)
     scores: dict[str, float | None] = {
         "faithfulness": float(evaluation.faithfulness),
         "correctness": float(evaluation.correctness),
         "answer_relevancy": float(evaluation.answer_relevancy),
-        "temporal_correctness": 1.0 if evaluation.temporal_correctness else 0.0,
+        "temporal_correctness": temporal,
     }
     return scores

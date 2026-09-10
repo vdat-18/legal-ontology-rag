@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from enum import Enum
+from threading import Lock
 
 from loguru import logger
 from pymilvus import MilvusClient
@@ -33,6 +32,7 @@ class Retriever:
         self._word_segmenter = word_segmenter
         self._bm25: object | None = None
         self._bm25_chunks: list[dict] | None = None
+        self._bm25_lock = Lock()
 
     def _ensure_bm25_index(self) -> None:
         """Build the BM25L index lazily from Milvus on first keyword or hybrid query."""
@@ -41,36 +41,40 @@ class Retriever:
 
         from rank_bm25 import BM25L
 
-        iterator = self.client.query_iterator(
-            collection_name=self.settings.milvus_collection_name,
-            batch_size=self.settings.milvus_insert_batch_size,
-            output_fields=["chunk_id", "text", "source_name", "kind"],
-        )
-        all_chunks: list[dict] = []
-        try:
-            while batch := iterator.next():
-                all_chunks.extend(batch)
-        finally:
-            iterator.close()
+        with self._bm25_lock:
+            if self._bm25_chunks is not None:
+                return
 
-        if not all_chunks:
-            return
+            iterator = self.client.query_iterator(
+                collection_name=self.settings.milvus_collection_name,
+                batch_size=self.settings.milvus_insert_batch_size,
+                output_fields=["chunk_id", "text", "source_name", "kind"],
+            )
+            all_chunks: list[dict] = []
+            try:
+                while batch := iterator.next():
+                    all_chunks.extend(batch)
+            finally:
+                iterator.close()
 
-        texts = [chunk["text"] for chunk in all_chunks]
-        if self._word_segmenter is not None:
-            segmented = self._word_segmenter.segment(texts)
-            corpus = [vietnamese_legal_tokens(tokens) for tokens in segmented]
-        else:
-            corpus = [[token for token in text.lower().split() if token] for text in texts]
+            if not all_chunks:
+                return
 
-        self._bm25 = BM25L(
-            corpus,
-            k1=self.settings.bm25_k1,
-            b=self.settings.bm25_b,
-            delta=self.settings.bm25_delta,
-        )
-        self._bm25_chunks = all_chunks
-        logger.info("Built BM25L index over {} chunks", len(all_chunks))
+            texts = [chunk["text"] for chunk in all_chunks]
+            if self._word_segmenter is not None:
+                segmented = self._word_segmenter.segment(texts)
+                corpus = [vietnamese_legal_tokens(tokens) for tokens in segmented]
+            else:
+                corpus = [[token for token in text.lower().split() if token] for text in texts]
+
+            self._bm25 = BM25L(
+                corpus,
+                k1=self.settings.bm25_k1,
+                b=self.settings.bm25_b,
+                delta=self.settings.bm25_delta,
+            )
+            self._bm25_chunks = all_chunks
+            logger.info("Built BM25L index over {} chunks", len(all_chunks))
 
     def _semantic_search(self, query: str, top_k: int) -> list[RetrievedChunk]:
         """Dense vector search via Milvus."""
