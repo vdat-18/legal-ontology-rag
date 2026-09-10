@@ -58,6 +58,10 @@ function GenerateMultiTurnTurnBatch(
       cùng tính chất với single-turn: nêu đủ chủ thể, hành vi và điều kiện.
     - continuity: hỏi khía cạnh pháp lý khác nhưng cùng chủ đề với lượt liền
       trước; facts của lượt này là căn cứ trả lời.
+    - deepening: hỏi chi tiết hơn, sâu hơn về cùng khía cạnh pháp lý với lượt
+      liền trước. Ví dụ: lượt trước hỏi "Điều 5 quy định gì?", deepening hỏi
+      "Giải thích rõ hơn khoản 2", "Khoản 2 áp dụng khi nào?", "Tại sao có
+      ngoại lệ đó?". Query phải rõ là theo chiều sâu, không phải chuyển khía cạnh.
     - switch: chuyển sang chủ đề mới. Câu hỏi gần như tự chứa; chỉ được nối
       nhẹ với hội thoại nếu tự nhiên, không dùng đại từ thiếu ngữ cảnh.
     - return: quay lại một chủ đề đã hỏi ở các lượt trước (xem history). Phải
@@ -94,7 +98,7 @@ function GenerateMultiTurnTurnBatch(
     - Viết như người hỏi thật theo persona, tự nhiên tiếng Việt, không lộ đáp
       án, không thuật ngữ nội bộ, không dùng dấu gạch nối để nối từ.
     - Khoảng độ dài mềm, ưu tiên tự nhiên: inquiry/switch 10-25 từ;
-      continuity/return 8-18 từ; clarification 6-15 từ; underspecified 10-20 từ
+      continuity/return/deepening 8-18 từ; clarification 6-15 từ; underspecified 10-20 từ
       và phải nêu tình huống cộng cụm "chưa rõ ...".
     - Trọng tâm lượt phải thuộc xác định vi phạm giao thông đường bộ, chế tài
       hoặc hậu quả của vi phạm, phát hiện/chứng minh, thẩm quyền, trình tự
