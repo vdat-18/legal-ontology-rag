@@ -71,6 +71,31 @@ class TurnSpec:
     fact_ids: tuple[str, ...]
     gold_chunk_ids: tuple[str, ...]
 
+    def __post_init__(self) -> None:
+        """Validate the structural contract required by turn generation."""
+        if self.turn_number < 1:
+            msg = "turn_number must be positive"
+            raise ValueError(msg)
+        if not self.fact_ids:
+            msg = "A conversation turn must reference at least one fact"
+            raise ValueError(msg)
+        if self.turn_number == 1:
+            if self.dialogue_act != "inquiry" or self.context_dependency != "standalone":
+                msg = "The first conversation turn must be an inquiry with standalone context"
+                raise ValueError(msg)
+        elif self.dialogue_act == "inquiry" or self.context_dependency == "standalone":
+            msg = "Only the first conversation turn may be standalone inquiry"
+            raise ValueError(msg)
+        if self.dialogue_act != "inquiry" and self.dialogue_act not in _TURN_DIALOGUE_ACTS:
+            msg = f"Unsupported dialogue act: {self.dialogue_act}"
+            raise ValueError(msg)
+        if self.turn_number > 1 and self.context_dependency not in _TURN_CONTEXT_DEPENDENCIES:
+            msg = f"Unsupported context dependency: {self.context_dependency}"
+            raise ValueError(msg)
+        if self.answerability not in _TURN_ANSWERABILITY_VALUES:
+            msg = f"Unsupported answerability: {self.answerability}"
+            raise ValueError(msg)
+
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable turn-spec record."""
         return {
@@ -93,6 +118,21 @@ class ConversationScenario:
     conversation_length: int
     turns: tuple[TurnSpec, ...]
     gold_chunk_ids: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        """Validate turn numbering and conversation-level identity fields."""
+        if self.conversation_length < 2:
+            msg = "conversation_length must be at least 2"
+            raise ValueError(msg)
+        if len(self.turns) != self.conversation_length:
+            msg = "conversation_length must match the number of turns"
+            raise ValueError(msg)
+        if [turn.turn_number for turn in self.turns] != list(range(1, self.conversation_length + 1)):
+            msg = "Conversation turns must be numbered consecutively from 1"
+            raise ValueError(msg)
+        if not self.persona:
+            msg = "A conversation scenario must have a persona"
+            raise ValueError(msg)
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable conversation-scenario record."""
@@ -216,6 +256,7 @@ def _scenario_adjacency(scenarios: Sequence[Scenario], relations: Sequence[Evide
             for right_id in scenario_ids_by_fact.get(relation.fact_ids[1], ()):
                 if left_id != right_id:
                     related[left_id].add(right_id)
+                    related[right_id].add(left_id)
 
     return _ScenarioAdjacency(
         shared_fact_neighbors={scenario_id: frozenset(peers - {scenario_id}) for scenario_id, peers in shared.items()},

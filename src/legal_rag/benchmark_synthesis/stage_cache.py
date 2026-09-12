@@ -6,7 +6,7 @@ import json
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from legal_rag.benchmark_synthesis.candidate_generation import (
     CANDIDATE_GENERATION_PROMPT_VERSION,
@@ -32,9 +32,18 @@ from legal_rag.chunker.models import Chunk
 from legal_rag.io_utils import write_json_atomic
 from legal_rag.parser.hashing import sha256_json
 
+if TYPE_CHECKING:
+    from legal_rag.benchmark_synthesis.conversation_scenario_sampling import ConversationScenario
+
 STAGE_CACHE_SCHEMA_VERSION = "1.0.0"
 
-StageName = Literal["chunk_screening", "document_metadata", "fact_extraction", "candidate_generation"]
+StageName = Literal[
+    "chunk_screening",
+    "document_metadata",
+    "fact_extraction",
+    "candidate_generation",
+    "multi_turn_generation",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -299,6 +308,44 @@ def build_candidate_generation_artifact_fingerprint(
         stage="candidate_generation",
         prompt_version=next(iter(prompt_versions)) if len(prompt_versions) == 1 else "mixed",
         model=next(iter(models)) if len(models) == 1 else "mixed",
+        identity=identity,
+    )
+
+
+def build_multi_turn_generation_fingerprint(
+    facts: Sequence[LegalFact],
+    conversations: Sequence[ConversationScenario],
+    persona_descriptions: Mapping[str, str],
+    settings: SynthesisSettings,
+    *,
+    llm_base_url: str,
+    llm_model: str,
+    prompt_version: str,
+    candidate_schema_version: str,
+) -> StageCacheFingerprint:
+    """Fingerprint every input that can change multi-turn candidates."""
+    referenced_fact_ids = sorted(
+        {
+            fact_id
+            for conversation in conversations
+            for turn in conversation.turns
+            for fact_id in turn.fact_ids
+        }
+    )
+    facts_by_id = {fact.fact_id: fact for fact in facts}
+    referenced_personas = sorted({conversation.persona for conversation in conversations})
+    identity = {
+        "candidate_schema": candidate_schema_version,
+        "facts": [facts_by_id[fact_id].to_dict() for fact_id in referenced_fact_ids],
+        "llm": {"base_url": llm_base_url, "model": llm_model},
+        "personas": {persona: persona_descriptions[persona] for persona in referenced_personas},
+        "conversations": [conversation.to_dict() for conversation in conversations],
+        "settings": {"generation": asdict(settings.candidate_generation)},
+    }
+    return _build_fingerprint(
+        stage="multi_turn_generation",
+        prompt_version=prompt_version,
+        model=llm_model,
         identity=identity,
     )
 

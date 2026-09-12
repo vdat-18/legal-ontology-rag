@@ -51,6 +51,7 @@ def _export_candidate(candidate: CandidateDraft) -> dict[str, Any]:
 
 def _export_conversation(conversation: MultiTurnCandidateDraft) -> dict[str, Any]:
     """Return one evaluation record keeping turn-level evidence for each question."""
+    first_turn = conversation.turns[0]
     return {
         "schema_version": MULTI_TURN_GROUND_TRUTH_EXPORT_SCHEMA_VERSION,
         "conversation_id": conversation.conversation_id,
@@ -58,6 +59,8 @@ def _export_conversation(conversation: MultiTurnCandidateDraft) -> dict[str, Any
         "persona": conversation.persona,
         "conversation_length": conversation.conversation_length,
         "expected_chunk_ids": list(conversation.gold_chunk_ids),
+        "question": first_turn.query,
+        "expected_answer": first_turn.reference_answer,
         "turns": [_export_turn(conversation, turn) for turn in conversation.turns],
         "generator_model": conversation.generator_model,
         "prompt_version": conversation.prompt_version,

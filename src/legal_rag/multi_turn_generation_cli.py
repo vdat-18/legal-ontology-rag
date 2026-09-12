@@ -35,6 +35,8 @@ def main() -> None:
     from legal_rag.benchmark_synthesis.config import SynthesisSettings
     from legal_rag.benchmark_synthesis.llm_execution import IncompleteLlmTasksError
     from legal_rag.benchmark_synthesis.multi_turn_candidate_generation import (
+        MULTI_TURN_CANDIDATE_SCHEMA_VERSION,
+        MULTI_TURN_GENERATION_PROMPT_VERSION,
         BamlMultiTurnGenerationClient,
         MultiTurnPipelineContext,
         MultiTurnProgressRecord,
@@ -43,6 +45,11 @@ def main() -> None:
         turn_task_id,
     )
     from legal_rag.benchmark_synthesis.scenario_sampling import load_persona_descriptions
+    from legal_rag.benchmark_synthesis.stage_cache import (
+        build_multi_turn_generation_fingerprint,
+        initialize_stage_cache,
+        stage_cache_path,
+    )
     from legal_rag.benchmark_synthesis.writer import (
         read_conversation_scenarios,
         read_legal_facts,
@@ -66,6 +73,23 @@ def main() -> None:
     facts_by_id = {fact.fact_id: fact for fact in facts}
     conversation_scenarios = read_conversation_scenarios(arguments.conversations_path)
     persona_descriptions = load_persona_descriptions(arguments.personas)
+
+    fingerprint_path = stage_cache_path(arguments.candidates_output_path)
+    execution_fingerprint = build_multi_turn_generation_fingerprint(
+        facts,
+        conversation_scenarios,
+        persona_descriptions,
+        synthesis_settings,
+        llm_base_url=settings.llm_base_url,
+        llm_model=settings.llm_model,
+        prompt_version=MULTI_TURN_GENERATION_PROMPT_VERSION,
+        candidate_schema_version=MULTI_TURN_CANDIDATE_SCHEMA_VERSION,
+    )
+    initialize_stage_cache(
+        fingerprint_path,
+        (arguments.candidates_output_path, progress_output_path),
+        execution_fingerprint,
+    )
 
     existing_progress = (
         read_multi_turn_progress(progress_output_path) if progress_output_path.exists() else ()

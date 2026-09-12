@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+from legal_rag.evaluation.metrics import EvaluationSample
 from legal_rag.evaluation.runner import (
     CorrectiveEvaluationBackend,
     EvaluationRecord,
@@ -37,6 +38,21 @@ def test_naive_backend_emits_shared_prediction_schema(tmp_path) -> None:
     assert rows[0]["pipeline_metadata"] == {"search_mode": "hybrid"}
     assert pipeline.calls == [("question", 5, "hybrid")]
     assert pipeline.closed is True
+
+
+def test_naive_backend_passes_multi_turn_history_to_pipeline(tmp_path: Path) -> None:
+    """Multi-turn evaluation uses prior question-answer pairs for supported backends."""
+    records = [
+        EvaluationRecord(
+            raw={"question": "follow-up"},
+            sample=EvaluationSample(question="follow-up", history=(("first", "first answer"),)),
+        )
+    ]
+    pipeline = _HistoryNaivePipeline()
+
+    asyncio.run(run_evaluation(records, NaiveEvaluationBackend(pipeline), limit=5))
+
+    assert pipeline.history == (("first", "first answer"),)
 
 
 def test_corrective_backend_separates_initial_retrieval_from_generation_context(tmp_path) -> None:
@@ -127,6 +143,32 @@ def test_ontology_backend_separates_chunk_labels_from_rule_contexts(tmp_path) ->
     assert pipeline.closed is True
 
 
+def test_nested_multi_turn_rows_are_flattened_with_history(tmp_path: Path) -> None:
+    """Nested ground truth becomes one evaluation record per turn with prior answers."""
+    path = tmp_path / "multi-turn.jsonl"
+    path.write_text(
+        json.dumps(
+            {
+                "conversation_id": "conversation-1",
+                "interaction_type": "multi_turn",
+                "turns": [
+                    {"turn_number": 1, "question": "first", "expected_answer": "first answer"},
+                    {"turn_number": 2, "question": "follow-up", "expected_answer": "follow-up answer"},
+                ],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    records = load_evaluation_records(path)
+
+    assert [record.sample.question for record in records] == ["first", "follow-up"]
+    assert records[0].raw["conversation_id"] == "conversation-1"
+    assert records[0].sample.history == ()
+    assert records[1].sample.history == (("first", "first answer"),)
+
+
 def _many_records(tmp_path: Path, count: int) -> list[EvaluationRecord]:
     """Write and load *count* minimal ground-truth rows."""
     path = tmp_path / "groundtruth.jsonl"
@@ -208,6 +250,23 @@ class _FakeNaivePipeline:
     def close(self) -> None:
         """Record resource cleanup."""
         self.closed = True
+
+
+class _HistoryNaivePipeline:
+    """Record conversation history passed to a naive pipeline."""
+
+    settings = SimpleNamespace(search_mode="semantic")
+
+    def __init__(self) -> None:
+        self.history: tuple[tuple[str, str], ...] = ()
+
+    def run(self, question: str, top_k: int, history: tuple[tuple[str, str], ...]) -> RAGResult:
+        """Record history and return a minimal result."""
+        self.history = history
+        return RAGResult(query=question, answer="answer")
+
+    def close(self) -> None:
+        """Release the fake pipeline."""
 
 
 class _FakeOntologyPipeline:

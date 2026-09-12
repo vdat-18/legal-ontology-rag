@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass
@@ -11,7 +12,7 @@ from typing import Any, Protocol
 
 from loguru import logger
 
-from legal_rag.evaluation.metrics import EvaluationSample
+from legal_rag.evaluation.metrics import EvaluationSample, expand_evaluation_row
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,12 +76,28 @@ class NaiveEvaluationBackend:
 
     async def predict(self, question: str, limit: int) -> PipelinePrediction:
         """Run naive RAG and expose its retrieved chunks as generation context."""
+        return await self._predict(question, limit)
+
+    async def predict_with_history(
+        self, question: str, limit: int, history: tuple[tuple[str, str], ...]
+    ) -> PipelinePrediction:
+        """Run naive RAG with earlier conversation turns."""
+        return await self._predict(question, limit, history=history)
+
+    async def _predict(
+        self, question: str, limit: int, history: tuple[tuple[str, str], ...] = ()
+    ) -> PipelinePrediction:
+        """Run the pipeline while passing only arguments it supports."""
+        run_kwargs = {"top_k": limit, "search_mode": self._search_mode, "rewrite_query": self._rewrite_query}
+        if history:
+            run_kwargs["history"] = history
+        supported_kwargs = {
+            key: value for key, value in run_kwargs.items() if key in inspect.signature(self._pipeline.run).parameters
+        }
         result = await asyncio.to_thread(
             self._pipeline.run,
             question,
-            top_k=limit,
-            search_mode=self._search_mode,
-            rewrite_query=self._rewrite_query,
+            **supported_kwargs,
         )
         contexts = tuple(
             PredictionContext(
@@ -96,10 +113,11 @@ class NaiveEvaluationBackend:
             retrieved_chunk_ids=tuple(context.chunk_id for context in contexts if context.chunk_id),
             retrieved_source_names=tuple(context.source_name for context in contexts if context.source_name),
             retrieved_contexts=contexts,
-            metadata={
-                "search_mode": self._search_mode or self._pipeline.settings.search_mode,
-                "rewritten_query": result.rewritten_query,
-            },
+            metadata=_with_optional_value(
+                {"search_mode": self._search_mode or self._pipeline.settings.search_mode},
+                "rewritten_query",
+                result.rewritten_query,
+            ),
         )
 
     async def close(self) -> None:
@@ -171,11 +189,28 @@ class OntologyEvaluationBackend:
 
     async def predict(self, question: str, limit: int) -> PipelinePrediction:
         """Run ontology RAG and expose both chunk labels and rule-summary contexts."""
+        return await self._predict(question, limit)
+
+    async def predict_with_history(
+        self, question: str, limit: int, history: tuple[tuple[str, str], ...]
+    ) -> PipelinePrediction:
+        """Run ontology RAG with earlier conversation turns."""
+        return await self._predict(question, limit, history=history)
+
+    async def _predict(
+        self, question: str, limit: int, history: tuple[tuple[str, str], ...] = ()
+    ) -> PipelinePrediction:
+        """Run ontology RAG while passing only arguments it supports."""
+        run_kwargs = {"top_k": limit, "rewrite_query": self._rewrite_query}
+        if history:
+            run_kwargs["history"] = history
+        supported_kwargs = {
+            key: value for key, value in run_kwargs.items() if key in inspect.signature(self._pipeline.run).parameters
+        }
         result = await asyncio.to_thread(
             self._pipeline.run,
             question,
-            top_k=limit,
-            rewrite_query=self._rewrite_query,
+            **supported_kwargs,
         )
         contexts = tuple(
             PredictionContext(
@@ -191,10 +226,9 @@ class OntologyEvaluationBackend:
             retrieved_chunk_ids=_unique(source.chunk_id for source in result.sources if source.chunk_id),
             retrieved_source_names=_unique(source.source_name for source in result.sources if source.source_name),
             retrieved_contexts=contexts,
-            metadata={
-                "rule_count": len(result.rules),
-                "rewritten_query": result.rewritten_query,
-            },
+            metadata=_with_optional_value(
+                {"rule_count": len(result.rules)}, "rewritten_query", getattr(result, "rewritten_query", None)
+            ),
         )
 
     async def close(self) -> None:
@@ -213,9 +247,27 @@ class GraphitiEvaluationBackend:
 
     async def predict(self, question: str, limit: int) -> PipelinePrediction:
         """Run Graphiti RAG and flatten ranked fact provenance into chunk labels."""
+        return await self._predict(question, limit)
+
+    async def predict_with_history(
+        self, question: str, limit: int, history: tuple[tuple[str, str], ...]
+    ) -> PipelinePrediction:
+        """Run Graphiti RAG with earlier conversation turns."""
+        return await self._predict(question, limit, history=history)
+
+    async def _predict(
+        self, question: str, limit: int, history: tuple[tuple[str, str], ...] = ()
+    ) -> PipelinePrediction:
+        """Run Graphiti RAG with typed conversation history."""
+        from legal_rag.baml_client.types import ConversationTurn
         from legal_rag.graphiti_rag.generator import format_fact_context
 
-        result = await self._pipeline.run(question, max_facts=limit)
+        typed_history = tuple(ConversationTurn(question=item[0], answer=item[1]) for item in history)
+        run_kwargs = {"max_facts": limit, "history": typed_history}
+        supported_kwargs = {
+            key: value for key, value in run_kwargs.items() if key in inspect.signature(self._pipeline.run).parameters
+        }
+        result = await self._pipeline.run(question, **supported_kwargs)
         contexts = tuple(
             PredictionContext(
                 chunk_id=source.chunk_id,
@@ -254,7 +306,10 @@ def load_evaluation_records(path: Path) -> list[EvaluationRecord]:
             if not isinstance(row, Mapping):
                 msg = f"Expected a JSON object at {path}:{line_number}"
                 raise TypeError(msg)
-            records.append(EvaluationRecord(raw=dict(row), sample=EvaluationSample.from_mapping(row)))
+            records.extend(
+                EvaluationRecord(raw=dict(item), sample=EvaluationSample.from_mapping(item))
+                for item in expand_evaluation_row(row)
+            )
     return records
 
 
@@ -279,7 +334,11 @@ async def run_evaluation(
     async def _predict_record(index: int, record: EvaluationRecord) -> dict[str, Any]:
         async with semaphore:
             logger.info("Evaluating {} sample {}/{}", backend.name, index + 1, len(records))
-            prediction = await backend.predict(record.sample.question, limit)
+            predict_with_history = getattr(backend, "predict_with_history", None)
+            if record.sample.history and callable(predict_with_history):
+                prediction = await predict_with_history(record.sample.question, limit, record.sample.history)
+            else:
+                prediction = await backend.predict(record.sample.question, limit)
         row = dict(record.raw)
         row.update(
             {
@@ -334,6 +393,13 @@ def _field_values(items: Sequence[Mapping[str, Any]], key: str) -> tuple[str, ..
 def _optional_string(value: Any) -> str | None:
     """Normalize one optional external string."""
     return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _with_optional_value(metadata: dict[str, Any], key: str, value: Any) -> dict[str, Any]:
+    """Add optional pipeline metadata only when the pipeline returned it."""
+    if value is not None:
+        metadata[key] = value
+    return metadata
 
 
 def _required_string(value: Any, label: str) -> str:

@@ -196,7 +196,18 @@ def generate_turn_batch(
         )
         for task_id, conversation, turn_spec, history in tasks
     ]
-    generated_by_task_id = {result.task_id: result.turn for result in client.generate_turn_batch(items)}
+    results = tuple(client.generate_turn_batch(items))
+    expected_task_ids = tuple(task_id for task_id, _conversation, _turn_spec, _history in tasks)
+    result_task_ids = tuple(result.task_id for result in results)
+    has_expected_results = (
+        len(results) == len(items)
+        and len(set(result_task_ids)) == len(result_task_ids)
+        and set(result_task_ids) == set(expected_task_ids)
+    )
+    if not has_expected_results:
+        msg = "Multi-turn generation response must contain exactly one result for every task"
+        raise ValueError(msg)
+    generated_by_task_id = {result.task_id: result.turn for result in results}
     return tuple(
         (
             task_id,
@@ -366,6 +377,21 @@ def _turn_from_generated(
 ) -> ConversationTurnDraft:
     """Attach one typed LLM result to its deterministic turn metadata."""
     turn_facts_by_id = {fact_id: facts_by_id[fact_id] for fact_id in turn_spec.fact_ids}
+    allowed_fact_ids = set(turn_spec.fact_ids)
+    returned_claim_fact_ids = [claim.fact_id for claim in raw.required_claims]
+    if turn_spec.answerability == "unanswerable":
+        if raw.required_claims:
+            msg = "An unanswerable turn must not contain required claims"
+            raise ValueError(msg)
+    elif not raw.required_claims:
+        msg = "An answerable turn must contain required claims"
+        raise ValueError(msg)
+    elif set(returned_claim_fact_ids) != allowed_fact_ids:
+        msg = "Required claims must cover exactly the facts assigned to the turn"
+        raise ValueError(msg)
+    if len({(claim.claim, claim.fact_id) for claim in raw.required_claims}) != len(raw.required_claims):
+        msg = "Required claims must be unique"
+        raise ValueError(msg)
     required_claims = tuple(
         RequiredClaim(
             claim=claim.claim,

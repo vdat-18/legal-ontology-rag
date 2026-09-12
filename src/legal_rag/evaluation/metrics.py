@@ -22,6 +22,7 @@ class EvaluationSample:
     retrieved_chunk_ids: tuple[str, ...] = ()
     expected_source_names: tuple[str, ...] = ()
     retrieved_source_names: tuple[str, ...] = ()
+    history: tuple[tuple[str, str], ...] = ()
 
     @classmethod
     def from_mapping(cls, data: Mapping[str, Any]) -> EvaluationSample:
@@ -34,6 +35,7 @@ class EvaluationSample:
             or _read_sequence(data, "reference_contexts")
             or _read_sequence(data, "ground_truth_contexts")
         )
+        history = _read_sequence(data, "history")
 
         return cls(
             question=_read_first_string(data, ("question", "query", "user_input", "input")),
@@ -56,6 +58,13 @@ class EvaluationSample:
             retrieved_source_names=_read_string_tuple(data, ("retrieved_source_names", "predicted_source_names"))
             or _extract_field_tuple(graded_chunks, ("source_name", "source", "name"))
             or _extract_field_tuple(contexts, ("source_name", "source", "name")),
+            history=tuple(
+                (item["question"], item["answer"])
+                for item in history
+                if isinstance(item, Mapping)
+                and isinstance(item.get("question"), str)
+                and isinstance(item.get("answer"), str)
+            ),
         )
 
 
@@ -89,7 +98,7 @@ class EvaluationMetrics:
 
 
 def load_jsonl_samples(path: Path) -> list[EvaluationSample]:
-    """Load evaluation samples from a JSONL file."""
+    """Load flat samples and expand nested multi-turn conversations by turn."""
     samples: list[EvaluationSample] = []
     with path.open(encoding="utf-8") as file:
         for line_number, line in enumerate(file, 1):
@@ -99,8 +108,31 @@ def load_jsonl_samples(path: Path) -> list[EvaluationSample]:
             if not isinstance(row, Mapping):
                 msg = f"Expected JSON object at {path}:{line_number}"
                 raise TypeError(msg)
-            samples.append(EvaluationSample.from_mapping(row))
+            samples.extend(EvaluationSample.from_mapping(item) for item in expand_evaluation_row(row))
     return samples
+
+
+def expand_evaluation_row(data: Mapping[str, Any]) -> tuple[Mapping[str, Any], ...]:
+    """Expand one nested multi-turn ground-truth row into turn-level samples."""
+    turns = data.get("turns")
+    if not isinstance(turns, Sequence) or isinstance(turns, (str, bytes)):
+        return (data,)
+    expanded: list[Mapping[str, Any]] = []
+    history: list[dict[str, str]] = []
+    for turn in turns:
+        if not isinstance(turn, Mapping):
+            msg = "Multi-turn ground truth turns must be JSON objects"
+            raise TypeError(msg)
+        row = dict(data)
+        row.pop("turns", None)
+        row.update(turn)
+        row["history"] = list(history)
+        expanded.append(row)
+        question = turn.get("question")
+        answer = turn.get("expected_answer")
+        if isinstance(question, str) and isinstance(answer, str):
+            history.append({"question": question, "answer": answer})
+    return tuple(expanded)
 
 
 def evaluate_samples(

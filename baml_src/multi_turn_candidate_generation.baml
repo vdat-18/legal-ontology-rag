@@ -93,6 +93,10 @@ function GenerateMultiTurnTurnBatch(
     - partially_answerable: đúng một tình tiết còn thiếu như mô tả ở
       underspecified; đáp án tách phần có căn cứ và phần chưa thể kết luận,
       không tự điền thông tin thiếu.
+    - unanswerable: facts của lượt không cung cấp căn cứ để trả lời trọng tâm
+      câu hỏi. Reference answer phải nói rõ phần nào không thể kết luận từ
+      facts hiện tại và không được đưa ra kết luận mới. Required claims phải
+      để trống vì không có claim được hỗ trợ.
 
     Query contract:
     - Viết như người hỏi thật theo persona, tự nhiên tiếng Việt, không lộ đáp
@@ -115,11 +119,12 @@ function GenerateMultiTurnTurnBatch(
       dung, mà diễn đạt lại phần cần thiết một cách trọn vẹn.
     - reasoning giải thích ngắn cách facts của lượt dẫn tới đáp án; không bịa
       citation và không nói "dữ liệu được cung cấp".
-    - required_claims có ít nhất một phần tử; claim trỏ đúng fact_id trong
-      facts của lượt và tập fact_id phải phủ đúng toàn bộ facts của lượt; mỗi
-      claim phải tự giữ đủ chủ thể, hành vi, điều kiện, thời điểm và phạm vi
-      làm kết luận đúng. Không tạo claim cho phần chưa thể kết luận của
-      partially_answerable.
+    - Với answerable và partially_answerable, required_claims có ít nhất một
+      phần tử; claim trỏ đúng fact_id trong facts của lượt và tập fact_id phải
+      phủ đúng toàn bộ facts của lượt. Mỗi claim phải tự giữ đủ chủ thể, hành
+      vi, điều kiện, thời điểm và phạm vi làm kết luận đúng. Không tạo claim
+      cho phần chưa thể kết luận của partially_answerable. Với unanswerable,
+      required_claims phải là danh sách rỗng.
 
     Trả đúng một kết quả cho mỗi task, giữ nguyên task_id và thứ tự.
 

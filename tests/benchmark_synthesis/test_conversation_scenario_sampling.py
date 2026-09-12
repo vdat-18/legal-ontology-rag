@@ -84,6 +84,7 @@ def test_load_conversation_distribution_reads_repo_config() -> None:
     assert {length for length, _weight in distribution.conversation_length_weights} == {3, 5, 7, 10}
     assert {act for act, _weight in distribution.turn_flow_weights} == {
         "continuity",
+        "deepening",
         "switch",
         "return",
         "clarification",

@@ -49,6 +49,8 @@ def test_export_multi_turn_ground_truth_keeps_turn_level_evidence() -> None:
     assert record["interaction_type"] == "multi_turn"
     assert record["conversation_id"] == "conv-1"
     assert record["expected_chunk_ids"] == ["chunk-1", "chunk-2"]
+    assert record["question"] == "Câu hỏi lượt 1"
+    assert record["expected_answer"] == "Đáp án lượt 1"
     assert [turn["turn_number"] for turn in record["turns"]] == [1, 2]
     second = record["turns"][1]
     assert second["question_id"] == "conv-1:2"
