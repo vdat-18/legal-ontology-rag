@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -21,6 +22,7 @@ from legal_rag.ontology_rag.retrieval.instance_retriever import InstanceRetrieve
 from legal_rag.ontology_rag.retrieval.linker import ChunkLinker
 from legal_rag.ontology_rag.retrieval.sparql_search import SPARQLSearch
 from legal_rag.ontology_rag.retrieval.temporal_resolver import TemporalResolver
+from legal_rag.query_rewriting import SyncQueryRewriter
 from legal_rag.settings import MilvusSettings, NaiveRagSettings, Settings
 
 
@@ -29,7 +31,8 @@ class OntologyRAGResult:
     """Container for ontology-enhanced RAG result."""
 
     query: str
-    answer: str
+    rewritten_query: str | None = None
+    answer: str = ""
     rules: tuple[PenaltyRule, ...] = ()
     sources: tuple[RetrievedChunk, ...] = ()
     answer_contexts: tuple[RetrievedChunk, ...] = ()
@@ -47,6 +50,7 @@ class OntologyRAGPipeline:
     ) -> None:
         """Initialize the pipeline with settings and ontology paths."""
         self._naive_rag_settings = naive_rag_settings
+        self._settings = settings
 
         ontology_index = OntologyIndex(ontology_paths)
         self._chunk_index = ChunkIndex(ontology_index.graph)
@@ -58,6 +62,7 @@ class OntologyRAGPipeline:
             naive_rag_settings,
         )
         self._generation_client = BamlGenerationClient(settings, naive_rag_settings)
+        self._query_rewriter = SyncQueryRewriter(settings)
         self._linker = ChunkLinker(self._chunk_index)
         self._instance_retriever = InstanceRetriever(ontology_index.graph)
         self._sparql_search = SPARQLSearch(ontology_index.graph)
@@ -86,14 +91,34 @@ class OntologyRAGPipeline:
         query: str,
         query_date: datetime | None = None,
         top_k: int | None = None,
+        history: Sequence[tuple[str, str]] = (),
+        rewrite_query: bool = True,
     ) -> OntologyRAGResult:
-        """Execute the full ontology-enhanced RAG pipeline."""
+        """Execute the full ontology-enhanced RAG pipeline.
+
+        Args:
+            query: The user's raw question, possibly context-dependent.
+            query_date: Target date for temporal filtering.
+            top_k: Maximum number of results.
+            history: Sequence of (question, answer) pairs from earlier turns.
+            rewrite_query: Whether to rewrite the query before retrieval.
+
+        Returns:
+            OntologyRAGResult with answer and supporting evidence.
+        """
         k = top_k or self._naive_rag_settings.top_k
         target_date = query_date or datetime.now(UTC).date()
 
-        semantic_chunks = self._retriever.retrieve(query, top_k=k, mode=SearchMode.SEMANTIC)
-        keyword_chunks = self._retriever.retrieve(query, top_k=k, mode=SearchMode.KEYWORD)
-        ontology_instances = self._sparql_search.search([query])
+        rewritten_query = query
+        if rewrite_query and (history or self._should_rewrite_single_turn(query)):
+            result = self._query_rewriter.rewrite(query, tuple(history))
+            rewritten_query = result.rewritten
+            if rewritten_query != query:
+                logger.debug("Query rewritten: '{}' -> '{}'", query, rewritten_query)
+
+        semantic_chunks = self._retriever.retrieve(rewritten_query, top_k=k, mode=SearchMode.SEMANTIC)
+        keyword_chunks = self._retriever.retrieve(rewritten_query, top_k=k, mode=SearchMode.KEYWORD)
+        ontology_instances = self._sparql_search.search([rewritten_query])
         linked_instances = self._linker.link([*semantic_chunks, *keyword_chunks])
 
         candidates = self._merge_instances([*linked_instances, *ontology_instances])
@@ -110,11 +135,24 @@ class OntologyRAGPipeline:
         )
         return OntologyRAGResult(
             query=query,
+            rewritten_query=rewritten_query if rewritten_query != query else None,
             answer=answer,
             rules=tuple(valid_rules),
             sources=tuple(semantic_chunks[:5] + keyword_chunks[:5]),
             answer_contexts=tuple(answer_contexts),
         )
+
+    def _should_rewrite_single_turn(self, query: str) -> bool:
+        """Check if a single-turn query should be rewritten for terminology normalization."""
+        colloquial_markers = [
+            "vượt đèn",
+            "đi ngược chiều",
+            "không đội mũ",
+            "chạy quá tốc độ",
+            "đèn đỏ",
+            "bỏ chạy",
+        ]
+        return any(marker in query.lower() for marker in colloquial_markers)
 
     @staticmethod
     def _merge_instances(instances: list[OntologyInstance]) -> list[OntologyInstance]:

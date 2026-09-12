@@ -61,14 +61,27 @@ class NaiveEvaluationBackend:
 
     name = "naive"
 
-    def __init__(self, pipeline: Any, search_mode: str | None = None) -> None:
-        """Store the pipeline and optional retrieval-mode override."""
+    def __init__(self, pipeline: Any, search_mode: str | None = None, rewrite_query: bool = False) -> None:
+        """Store the pipeline and optional retrieval-mode override.
+
+        Args:
+            pipeline: The NaiveRAGPipeline instance.
+            search_mode: Optional retrieval mode override.
+            rewrite_query: Whether to rewrite queries before retrieval.
+        """
         self._pipeline = pipeline
         self._search_mode = search_mode
+        self._rewrite_query = rewrite_query
 
     async def predict(self, question: str, limit: int) -> PipelinePrediction:
         """Run naive RAG and expose its retrieved chunks as generation context."""
-        result = await asyncio.to_thread(self._pipeline.run, question, top_k=limit, search_mode=self._search_mode)
+        result = await asyncio.to_thread(
+            self._pipeline.run,
+            question,
+            top_k=limit,
+            search_mode=self._search_mode,
+            rewrite_query=self._rewrite_query,
+        )
         contexts = tuple(
             PredictionContext(
                 chunk_id=source.chunk_id,
@@ -83,7 +96,10 @@ class NaiveEvaluationBackend:
             retrieved_chunk_ids=tuple(context.chunk_id for context in contexts if context.chunk_id),
             retrieved_source_names=tuple(context.source_name for context in contexts if context.source_name),
             retrieved_contexts=contexts,
-            metadata={"search_mode": self._search_mode or self._pipeline.settings.search_mode},
+            metadata={
+                "search_mode": self._search_mode or self._pipeline.settings.search_mode,
+                "rewritten_query": result.rewritten_query,
+            },
         )
 
     async def close(self) -> None:
@@ -143,13 +159,24 @@ class OntologyEvaluationBackend:
 
     name = "ontology"
 
-    def __init__(self, pipeline: Any) -> None:
-        """Store the ontology RAG pipeline."""
+    def __init__(self, pipeline: Any, rewrite_query: bool = False) -> None:
+        """Store the ontology RAG pipeline.
+
+        Args:
+            pipeline: The OntologyRAGPipeline instance.
+            rewrite_query: Whether to rewrite queries before retrieval.
+        """
         self._pipeline = pipeline
+        self._rewrite_query = rewrite_query
 
     async def predict(self, question: str, limit: int) -> PipelinePrediction:
         """Run ontology RAG and expose both chunk labels and rule-summary contexts."""
-        result = await asyncio.to_thread(self._pipeline.run, question, top_k=limit)
+        result = await asyncio.to_thread(
+            self._pipeline.run,
+            question,
+            top_k=limit,
+            rewrite_query=self._rewrite_query,
+        )
         contexts = tuple(
             PredictionContext(
                 chunk_id=context.chunk_id,
@@ -164,7 +191,10 @@ class OntologyEvaluationBackend:
             retrieved_chunk_ids=_unique(source.chunk_id for source in result.sources if source.chunk_id),
             retrieved_source_names=_unique(source.source_name for source in result.sources if source.source_name),
             retrieved_contexts=contexts,
-            metadata={"rule_count": len(result.rules)},
+            metadata={
+                "rule_count": len(result.rules),
+                "rewritten_query": result.rewritten_query,
+            },
         )
 
     async def close(self) -> None:

@@ -1,26 +1,26 @@
 {
   "schema_version": "1.0.0",
   "conversation_length_weights": {
-    "3": 20.0,
-    "5": 35.0,
-    "7": 30.0,
-    "10": 15.0
+    "3": 25.0,
+    "5": 25.0,
+    "7": 25.0,
+    "10": 25.0
   },
   "turn_flow_weights": {
-    "continuity": 45.0,
+    "continuity": 30.0,
     "deepening": 15.0,
     "switch": 20.0,
-    "return": 10.0,
-    "clarification": 5.0,
-    "underspecified": 5.0
+    "return": 15.0,
+    "clarification": 10.0,
+    "underspecified": 10.0
   },
   "turn_context_dependency_weights": {
-    "anaphora": 57.0,
-    "ellipsis": 43.0
+    "anaphora": 50.0,
+    "ellipsis": 50.0
   },
   "turn_answerability_weights": {
-    "answerable": 0.80,
-    "partially_answerable": 0.15,
-    "unanswerable": 0.05
+    "answerable": 0.70,
+    "partially_answerable": 0.20,
+    "unanswerable": 0.10
   }
 }

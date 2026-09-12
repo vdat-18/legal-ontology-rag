@@ -55,7 +55,7 @@ def main() -> None:
     arguments = _parser().parse_args()
     dotenv_path = find_dotenv(usecwd=True)
     if dotenv_path:
-        load_dotenv(dotenv_path)
+        load_dotenv(dotenv_path, override=True)
     settings = Settings.from_environment()
     synthesis_settings = SynthesisSettings.from_path(arguments.synthesis_config)
     progress_output_path = arguments.progress_output or arguments.candidates_output_path.with_suffix(

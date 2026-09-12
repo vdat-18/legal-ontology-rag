@@ -1,14 +1,17 @@
-"""Multi-turn query rewriter backed by BAML LLM."""
+"""Multi-turn query rewriter backed by BAML LLM.
+
+DEPRECATED: Use legal_rag.query_rewriting.SyncQueryRewriter instead.
+This module provides backward compatibility.
+"""
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from typing import Protocol
 
-from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import ConversationTurn as BamlConversationTurn
-from legal_rag.baml_client.types import MultiTurnRewrittenQuery
-from legal_rag.baml_transport import BamlCaller
+from legal_rag.query_rewriting import SyncQueryRewriter
 from legal_rag.settings import Settings
 
 
@@ -20,7 +23,10 @@ class QueryRewriteClient(Protocol):
 
 
 class BamlMultiTurnQueryRewriter:
-    """Typed BAML client for multi-turn query rewriting."""
+    """Typed BAML client for multi-turn query rewriting.
+
+    DEPRECATED: Use legal_rag.query_rewriting.SyncQueryRewriter instead.
+    """
 
     def __init__(
         self,
@@ -28,8 +34,19 @@ class BamlMultiTurnQueryRewriter:
         temperature: float = 0.0,
         max_response_bytes: int = 1024 * 1024,
     ) -> None:
-        """Create a runtime BAML client from typed, secret-safe configuration."""
-        self._caller = BamlCaller.from_settings(
+        """Create a runtime BAML client from typed, secret-safe configuration.
+
+        Args:
+            settings: Application LLM connection settings.
+            temperature: LLM temperature for response generation.
+            max_response_bytes: Maximum response size in bytes.
+        """
+        warnings.warn(
+            "BamlMultiTurnQueryRewriter is deprecated. Use legal_rag.query_rewriting.SyncQueryRewriter instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self._impl = SyncQueryRewriter(
             settings,
             max_output_tokens=4096,
             temperature=temperature,
@@ -43,9 +60,6 @@ class BamlMultiTurnQueryRewriter:
         retriever until the earlier subject is restored, and restoring it separately would cost a
         second round trip on every turn.
         """
-        request = b.request.RewriteMultiTurnQuery(query, list(history), baml_options=self._caller.options)
-        raw_output = self._caller.execute(request)
-        result: MultiTurnRewrittenQuery = b.parse.RewriteMultiTurnQuery(
-            raw_output, baml_options=self._caller.options
-        )
-        return result.query_vi
+        tuple_history = tuple((turn.question, turn.answer) for turn in history)
+        result = self._impl.rewrite(query, tuple_history)
+        return result.rewritten

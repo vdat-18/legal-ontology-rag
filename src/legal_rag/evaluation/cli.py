@@ -156,6 +156,11 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Use Graphiti cross-encoder ranking instead of rank fusion.",
     )
+    run_parser.add_argument(
+        "--rewrite-query",
+        action="store_true",
+        help="Rewrite queries before retrieval using LLM-based terminology normalization.",
+    )
 
     retrieve_parser = subparsers.add_parser("retrieve", help="Run retrieval-only evaluation without LLM calls.")
     retrieve_parser.add_argument(
@@ -305,7 +310,11 @@ def _build_evaluation_backend(args: argparse.Namespace) -> EvaluationBackend:
             MilvusSettings.from_environment(),
             NaiveRagSettings.from_environment(),
         )
-        return NaiveEvaluationBackend(pipeline, search_mode=args.naive_search_mode)
+        return NaiveEvaluationBackend(
+            pipeline,
+            search_mode=args.naive_search_mode,
+            rewrite_query=getattr(args, "rewrite_query", False),
+        )
 
     if args.pipeline == "ontology":
         from legal_rag.ontology_rag.pipeline import OntologyRAGPipeline
@@ -321,7 +330,10 @@ def _build_evaluation_backend(args: argparse.Namespace) -> EvaluationBackend:
             NaiveRagSettings.from_environment(),
             ontology_paths,
         )
-        return OntologyEvaluationBackend(pipeline)
+        return OntologyEvaluationBackend(
+            pipeline,
+            rewrite_query=getattr(args, "rewrite_query", False),
+        )
 
     if args.pipeline == "corrective":
         from legal_rag.corrective_rag.generate.config import RAGConfig
