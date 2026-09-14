@@ -1,161 +1,124 @@
-class PriorTurn {
+class MultiTurnHistoryInput {
+  turn_number int
   question string
   answer string
 }
 
-class GeneratedMultiTurnTurn {
-  query string @description(#"Câu hỏi của lượt này, đúng dialogue_act và context_dependency được yêu cầu."#)
-  reference_answer string @description(#"Đáp án tham chiếu của lượt này, chỉ dựa trên facts của lượt."#)
-  reasoning string @description(#"Giải thích ngắn cách facts của lượt dẫn tới đáp án."#)
-  required_claims ClaimReference[] @description(#"Các ý bắt buộc trong đáp án của lượt, trỏ đúng fact_id trong facts của lượt."#)
-}
-
-class MultiTurnGenerationBatchInput {
-  task_id string
+class MultiTurnTargetInput {
+  turn_number int
+  reference_turn_number int
   facts FactContext[]
-  persona_description string
   dialogue_act string
   context_dependency string
   answerability string
-  history PriorTurn[]
 }
 
-class GeneratedMultiTurnTurnBatchItem {
+class MultiTurnTargetGenerationInput {
   task_id string
-  turn GeneratedMultiTurnTurn
+  persona_description string
+  history MultiTurnHistoryInput[]
+  target MultiTurnTargetInput
 }
 
-function GenerateMultiTurnTurnBatch(
-  items: MultiTurnGenerationBatchInput[]
-) -> GeneratedMultiTurnTurnBatchItem[] {
+class GeneratedMultiTurnTarget {
+  turn_number int
+  query string @description(#"Cau hoi follow-up phu thuoc vao history."#)
+  standalone_query string @description(#"Cau hoi day du sau khi khoi phuc thong tin bi luoc bo tu history."#)
+  reference_answer string @description(#"Dap an tham chieu dua tren history va facts moi cua target."#)
+  reasoning string @description(#"Giai thich ngan cach facts moi dan toi dap an."#)
+  missing_information string? @description(#"Chi tiet con thieu doi voi partially_answerable; null doi voi answerable."#)
+  required_claims ClaimReference[] @description(#"Cac y bat buoc moi, tro dung fact_id cua target."#)
+}
+
+class GeneratedMultiTurnTargetBatchItem {
+  task_id string
+  target GeneratedMultiTurnTarget
+}
+
+function GenerateMultiTurnTargetBatch(
+  items: MultiTurnTargetGenerationInput[]
+) -> GeneratedMultiTurnTargetBatchItem[] {
   client OpenAICompatibleProvider
   prompt #"
     {{ _.role("system") }}
 
-    Bối cảnh: tạo ground truth multi-turn để đánh giá RAG hội thoại trong domain
-    xử lý vi phạm giao thông đường bộ tại Việt Nam. Mỗi task là MỘT lượt của
-    một hội thoại; xử lý độc lập từng task theo đúng history được cung cấp.
+    Tao luot cuoi cho ground truth danh gia RAG hoi thoai trong domain xu ly vi
+    pham giao thong duong bo tai Viet Nam. History da duoc duyet va phai giu
+    nguyen. Moi task chi sinh luot target cuoi cung.
 
-    Nguồn và grounding:
-    - statement và metadata của facts là nguồn pháp lý duy nhất của lượt này.
-      Không thêm kiến thức, con số, điều kiện, ngoại lệ, mốc thời gian hay số
-      Điều/khoản/điểm không có trong facts. Chỉ gán tên hoặc số hiệu văn bản
-      cho nội dung của đúng fact mang metadata đó.
-    - Giữ nguyên mọi từ hạn định làm đổi hành vi hoặc kết luận, như chủ thể,
-      đối tượng, mục đích, cách thức và điều kiện đi kèm. Không rút một cụm
-      điều kiện thành khái niệm rộng hơn, và không bỏ một từ hạn định để biến
-      hành vi hẹp trong fact thành hành vi rộng hơn trong query.
-    - valid_from và valid_to là điều kiện pháp lý của fact. Nếu query của lượt
-      không giới hạn thời điểm, reference_answer phải nêu rõ mốc áp dụng. Không
-      tự đặt ngày kết thúc hay quan hệ thay thế khi valid_to là null và
-      statements không nêu quan hệ đó.
-    - history chỉ là ngữ cảnh để hiểu lượt này; không dùng nội dung của các
-      lượt trước làm căn cứ pháp lý cho reference_answer, và không trả lời lại
-      các lượt trước.
+    Muc tieu danh gia:
+    - Query phai can history de khoi phuc chu the, hanh vi, doi tuong hoac chu de.
+    - History chi cung cap boi canh. Thong tin moi de tra loi trong tam nam trong
+      target facts, vi vay he thong van phai retrieval.
+    - Khong hoi lai dieu history da tra loi. Khong dua dap an vao query.
 
-    Vai trò của lượt (dialogue_act):
-    - inquiry: lượt mở đầu, chưa có history. Đặt một câu hỏi độc lập, tự chứa,
-      cùng tính chất với single-turn: nêu đủ chủ thể, hành vi và điều kiện.
-    - continuity: hỏi khía cạnh pháp lý khác nhưng cùng chủ đề với lượt liền
-      trước; facts của lượt này là căn cứ trả lời.
-    - deepening: hỏi chi tiết hơn, sâu hơn về cùng khía cạnh pháp lý với lượt
-      liền trước. Ví dụ: lượt trước hỏi "Điều 5 quy định gì?", deepening hỏi
-      "Giải thích rõ hơn khoản 2", "Khoản 2 áp dụng khi nào?", "Tại sao có
-      ngoại lệ đó?". Query phải rõ là theo chiều sâu, không phải chuyển khía cạnh.
-    - switch: chuyển sang chủ đề mới. Câu hỏi gần như tự chứa; chỉ được nối
-      nhẹ với hội thoại nếu tự nhiên, không dùng đại từ thiếu ngữ cảnh.
-    - return: quay lại một chủ đề đã hỏi ở các lượt trước (xem history). Phải
-      có dấu hiệu quay lại rõ ràng, ví dụ "quay lại vấn đề lúc đầu về ...",
-      rồi nêu lại đủ nội dung pháp lý của chủ đề đó.
-    - clarification: hỏi làm rõ một điểm cụ thể ngay trong câu trả lời liền
-      trước mà facts của lượt này trả lời được; không hỏi lại toàn bộ vấn đề.
-    - underspecified: hỏi về một tình huống thiếu đúng một tình tiết mà facts
-      không xác định. Query phải là vụ việc cụ thể, nêu rõ đúng một dữ kiện
-      còn thiếu bằng cụm như "chưa rõ thời điểm/chủ thể/vị trí", và dữ kiện
-      thiếu đó phải tạo ra ít nhất hai kết luận pháp lý khác nhau.
+    Grounding:
+    - Target facts la nguon duy nhat cho moi ket luan moi. Khong them kien thuc,
+      con so, dieu kien, ngoai le, moc thoi gian hoac dan chieu khong co trong facts.
+    - Co the nhac lai thong tin cu trong history de cau tra loi tu nhien, nhung
+      required_claims chi ghi cac ket luan moi duoc ho tro boi target facts.
+    - Giu day du cac tu han dinh ve chu the, hanh vi, doi tuong, muc dich, cach
+      thuc, thoi diem va ngoai le.
+    - valid_to null chi co nghia dau vao khong neu ngay ket thuc; khong duoc tu
+      khang dinh quy dinh van con hieu luc.
 
-    Phụ thuộc ngữ cảnh (context_dependency, áp cho mọi lượt đã có history):
-    - anaphora: dùng từ chỉ đại gắn với hội thoại ("vậy", "như vậy",
-      "trường hợp đó", "mức phạt này") nhưng khi đọc cùng history phải xác định
-      duy nhất chủ thể, hành vi được hỏi; không để một câu hiểu được hai cách.
-    - ellipsis: lược bỏ chủ thể hoặc hành vi đã rõ từ hội thoại; câu rất ngắn
-      như "Còn xe máy thì sao?", "Bị tước bằng không?".
-    - Mọi lượt sau lượt đầu phải KHÔNG tự đứng độc lập — đó là mục đích của
-      benchmark — nhưng khi ghép với history phải chỉ còn đúng một cách hiểu
-      và trỏ về nội dung mà facts của lượt này trả lời.
-    - Không lặp nguyên văn câu hỏi cũ và không tự trả lời trong câu hỏi.
+    Query:
+    - Viet tieng Viet tu nhien theo persona. Tuyet doi khong de lo alias nhu
+      T5F1, T10F2, hoac thuat ngu noi bo nhu fact, facts, target facts, du lieu
+      duoc cung cap hay thong tin duoc cung cap trong bat ky truong text nao.
+    - continuity hoi mot khia canh moi cung chu de; deepening hoi sau hon dua tren
+      chi tiet trong history; return quay lai chu de cu sau cac luot xen giua.
+    - anaphora dung dai tu nhu "vay", "truong hop do", "muc nay". Ellipsis luoc
+      phan da ro, vi du "Con xe may thi sao?".
+    - query phai phu thuoc history, con standalone_query phai khoi phuc day du
+      thong tin de co the dung doc lap cho retrieval.
 
     Answerability:
-    - answerable: facts của lượt trả lời trọn trọng tâm câu hỏi. Query phải
-      khóa đủ mọi điều kiện kích hoạt được facts nêu, kể cả loại phương tiện,
-      chủ thể, thời điểm, ngoại lệ và quan hệ pháp lý; đáp án không được kết
-      thúc bằng phần "chưa thể xác định".
-    - partially_answerable: đúng một tình tiết còn thiếu như mô tả ở
-      underspecified; đáp án tách phần có căn cứ và phần chưa thể kết luận,
-      không tự điền thông tin thiếu.
-    - unanswerable: facts của lượt không cung cấp căn cứ để trả lời trọng tâm
-      câu hỏi. Reference answer phải nói rõ phần nào không thể kết luận từ
-      facts hiện tại và không được đưa ra kết luận mới. Required claims phải
-      để trống vì không có claim được hỗ trợ.
+    - answerable: target facts tra loi tron trong tam.
+    - partially_answerable: tra loi phan co can cu va noi ro dung mot chi tiet
+      ma chinh query dang yeu cau nhung target facts chua xac dinh; khong tu them
+      mot van de ngoai query chi de tao phan thieu.
+    - missing_information phai null doi voi answerable. Voi partially_answerable,
+      truong nay phai neu ngan gon dung mot chi tiet con thieu va chi tiet do phai
+      duoc hoi truc tiep trong query cung standalone_query.
+    - Moi task phai co it nhat mot required_claim. Moi claim tro dung fact_id cua
+      target va chi chon tap facts nho nhat du tra loi. Moi fact_id chi duoc dung
+      cho mot claim; neu co nhieu y cung mot fact thi gop thanh mot claim.
 
-    Query contract:
-    - Viết như người hỏi thật theo persona, tự nhiên tiếng Việt, không lộ đáp
-      án, không thuật ngữ nội bộ, không dùng dấu gạch nối để nối từ.
-    - Khoảng độ dài mềm, ưu tiên tự nhiên: inquiry/switch 10-25 từ;
-      continuity/return/deepening 8-18 từ; clarification 6-15 từ; underspecified 10-20 từ
-      và phải nêu tình huống cộng cụm "chưa rõ ...".
-    - Trọng tâm lượt phải thuộc xác định vi phạm giao thông đường bộ, chế tài
-      hoặc hậu quả của vi phạm, phát hiện/chứng minh, thẩm quyền, trình tự
-      hoặc thi hành trong một vụ vi phạm; không hỏi về cấp/đổi giấy phép,
-      đào tạo, đăng kiểm hay quản lý thông thường.
-    - Nếu viện dẫn Điều, khoản hoặc điểm, phải nêu văn bản hoặc mô tả đủ hành
-      vi để xác định duy nhất nội dung được hỏi; không dùng dẫn chiếu trần.
+    Do dai mem:
+    - query thuong khong qua 25 tu.
+    - reference_answer thuong khong qua 180 tu.
+    - reasoning thuong khong qua 80 tu.
 
-    Output contract:
-    - query tuân thủ dialogue_act, context_dependency và answerability.
-    - reference_answer trả lời trực tiếp trọng tâm lượt này, đủ điều kiện,
-      ngoại lệ, hệ quả và mốc thời gian cần thiết; luôn giữ cả mốc bắt đầu
-      tính của mọi thời hạn; không viết "như đã trả lời ở trên" thay cho nội
-      dung, mà diễn đạt lại phần cần thiết một cách trọn vẹn.
-    - reasoning giải thích ngắn cách facts của lượt dẫn tới đáp án; không bịa
-      citation và không nói "dữ liệu được cung cấp".
-    - Với answerable và partially_answerable, required_claims có ít nhất một
-      phần tử; claim trỏ đúng fact_id trong facts của lượt và tập fact_id phải
-      phủ đúng toàn bộ facts của lượt. Mỗi claim phải tự giữ đủ chủ thể, hành
-      vi, điều kiện, thời điểm và phạm vi làm kết luận đúng. Không tạo claim
-      cho phần chưa thể kết luận của partially_answerable. Với unanswerable,
-      required_claims phải là danh sách rỗng.
-
-    Trả đúng một kết quả cho mỗi task, giữ nguyên task_id và thứ tự.
+    Tra toi da mot ket qua cho moi task. Giu nguyen task_id. Khong tron noi dung
+    hoac fact_id giua cac task. Neu khong sinh duoc mot task, bo qua task do thay
+    vi tao ket qua sai.
 
     {{ _.role("user") }}
 
-    Các task cần sinh:
+    Cac target can sinh:
     {% for item in items %}
-    ===== TASK {{ item.task_id }} =====
-    Lượt này:
-    - Persona: {{ item.persona_description }}
-    - Dialogue act: {{ item.dialogue_act }}
-    - Context dependency: {{ item.context_dependency }}
-    - Answerability: {{ item.answerability }}
-
-    Facts của lượt:
-    {% for fact in item.facts %}
-    [{{ fact.fact_id }}] {{ fact.statement }}
-    Văn bản: {{ fact.document_number }}
-    Hiệu lực: {{ fact.valid_from }} đến {{ fact.valid_to }}
-    ---
-    {% endfor %}
-    {% if item.history %}
-    Hội thoại trước:
+    ===== TARGET {{ item.task_id }} =====
+    Persona: {{ item.persona_description }}
+    History:
     {% for turn in item.history %}
-    Người hỏi: {{ turn.question }}
-    Trả lời: {{ turn.answer }}
+    Luot {{ turn.turn_number }}
+    Nguoi hoi: {{ turn.question }}
+    Tra loi: {{ turn.answer }}
     {% endfor %}
-    {% else %}
-    Hội thoại trước: không có, đây là lượt mở đầu.
-    {% endif %}
-    ===== END TASK {{ item.task_id }} =====
+
+    Luot target: {{ item.target.turn_number }}
+    Luot history can tham chieu: {{ item.target.reference_turn_number }}
+    Dialogue act: {{ item.target.dialogue_act }}
+    Context dependency: {{ item.target.context_dependency }}
+    Answerability: {{ item.target.answerability }}
+    Target facts moi can retrieval:
+    {% for fact in item.target.facts %}
+    [{{ fact.fact_id }}] {{ fact.statement }}
+    Van ban: {{ fact.document_number }}
+    Hieu luc: {{ fact.valid_from }} den {{ fact.valid_to }}
+    {% endfor %}
+    ===== END TARGET {{ item.task_id }} =====
     {% endfor %}
 
     {{ ctx.output_format }}

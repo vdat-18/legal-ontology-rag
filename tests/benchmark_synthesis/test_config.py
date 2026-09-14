@@ -18,7 +18,7 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
 
     assert settings.embedding_profile == "bge_m3"
-    assert settings.embedding_batch_size == 5
+    assert settings.embedding_batch_size == 100
     assert settings.embedding_max_concurrency == 30
     assert settings.embedding_max_retries == 2
     assert settings.embedding_retry_delay_seconds == 120
@@ -32,7 +32,7 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.chunk_screening.max_output_tokens == 16_384
     assert settings.chunk_screening.reasoning_effort == "high"
     assert settings.document_metadata.reasoning_effort == "high"
-    assert settings.fact_extraction_batch_size == 5
+    assert settings.fact_extraction_batch_size == 1
     assert settings.fact_extraction_max_concurrency == 30
     assert settings.fact_extraction_max_preceding_chunks == 3
     assert settings.fact_extraction_max_following_chunks == 1
@@ -61,6 +61,8 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.bundle_scope.reasoning_effort == "high"
     assert settings.candidate_generation_batch_size == 1
     assert settings.candidate_generation_max_concurrency == 30
+    assert settings.multi_turn_generation_batch_size == 10
+    assert settings.multi_turn_generation_max_concurrency == 30
     assert settings.evidence_retrieval.retrieval_pool_size == 30
     assert settings.evidence_retrieval.max_candidates_per_fact == 10
     assert settings.evidence_retrieval.rrf_k == 60
@@ -69,8 +71,10 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.evidence_retrieval.bm25_delta == 0.5
     assert settings.evidence_relation.max_output_tokens == 4096
     assert settings.evidence_relation.reasoning_effort == "high"
-    assert settings.candidate_generation.max_output_tokens == 8192
+    assert settings.candidate_generation.max_output_tokens == 32_768
     assert settings.candidate_generation.reasoning_effort == "high"
+    assert settings.multi_turn_generation.max_output_tokens == 16_384
+    assert settings.multi_turn_generation.reasoning_effort == "medium"
 
 
 def test_synthesis_settings_reject_unknown_schema(tmp_path: Path) -> None:
@@ -198,3 +202,11 @@ def test_synthesis_settings_reject_non_positive_candidate_generation_batch_size(
 
     with pytest.raises(ValueError, match="candidate_generation_batch_size must be positive"):
         replace(settings, candidate_generation_batch_size=0)
+
+
+def test_synthesis_settings_reject_non_positive_multi_turn_batch_size() -> None:
+    """Multi-turn generation cannot start with an empty conversation batch."""
+    settings = SynthesisSettings.from_path(_SYNTHESIS_CONFIG_PATH)
+
+    with pytest.raises(ValueError, match="multi_turn_generation_batch_size must be positive"):
+        replace(settings, multi_turn_generation_batch_size=0)

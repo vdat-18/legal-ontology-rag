@@ -1,0 +1,7 @@
+{
+  "model": "glm-5",
+  "prompt_version": "1.1.0",
+  "run_id": "53090a525f565433eb4a23d6437ee652b1571bcf5a89a7c978c1d292a23c3c0e",
+  "schema_version": "1.0.0",
+  "stage": "multi_turn_generation"
+}

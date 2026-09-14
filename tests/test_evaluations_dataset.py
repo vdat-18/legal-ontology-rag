@@ -47,6 +47,26 @@ def test_from_mapping_reads_alternate_field_names_and_object_contexts() -> None:
     assert sample.reference_contexts == ("gold 1",)
 
 
+def test_from_mapping_reads_stable_identity_answerability_and_claims() -> None:
+    """Generation judging retains benchmark fields needed for traceable analysis."""
+    sample = EvalSample.from_mapping(
+        {
+            "question_id": "question-1",
+            "question": "câu hỏi",
+            "actual_answer": "trả lời",
+            "answerability": "partially_answerable",
+            "required_claims": [
+                {"claim": "  claim one  ", "evidence": [{"chunk_id": "chunk-1"}]},
+                {"claim": "", "evidence": []},
+            ],
+        }
+    )
+
+    assert sample.sample_id == "question-1"
+    assert sample.answerability == "partially_answerable"
+    assert sample.required_claims == ("claim one",)
+
+
 def test_from_mapping_raises_when_the_question_field_is_missing() -> None:
     """A row with no recognizable question field fails loudly."""
     with pytest.raises(ValueError, match="question"):

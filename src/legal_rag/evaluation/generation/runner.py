@@ -34,5 +34,9 @@ async def evaluate_samples(
             return await judge.score_batch(batch)
 
     batch_scores = await asyncio.gather(*(_score_batch(batch) for batch in batches))
-    per_sample = [scores for batch in batch_scores for scores in batch]
+    scores_in_order = [scores for batch in batch_scores for scores in batch]
+    per_sample = [
+        {"sample_id": sample.sample_id or str(index), **scores}
+        for index, (sample, scores) in enumerate(zip(samples, scores_in_order, strict=True))
+    ]
     return EvaluationReport.from_per_sample(per_sample)

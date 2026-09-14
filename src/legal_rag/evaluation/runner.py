@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import inspect
 import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
@@ -35,14 +36,44 @@ class PredictionContext:
 
 
 @dataclass(frozen=True, slots=True)
+class PredictionEvidence:
+    """One source chunk supporting a pipeline-native retrieval unit."""
+
+    chunk_id: str
+    source_name: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RetrievedUnit:
+    """One ranked retrieval unit with chunk-level provenance for shared scoring."""
+
+    unit_id: str
+    unit_kind: str
+    text: str
+    evidence: tuple[PredictionEvidence, ...]
+    score: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class PipelinePrediction:
     """Pipeline-neutral answer and retrieval result."""
 
     answer: str
-    retrieved_chunk_ids: tuple[str, ...]
-    retrieved_source_names: tuple[str, ...]
+    retrieved_units: tuple[RetrievedUnit, ...]
     retrieved_contexts: tuple[PredictionContext, ...]
     metadata: Mapping[str, Any]
+
+    @property
+    def retrieved_chunk_ids(self) -> tuple[str, ...]:
+        """Flatten ranked unit provenance for compatibility with v1 prediction files."""
+        return _unique(evidence.chunk_id for unit in self.retrieved_units for evidence in unit.evidence)
+
+    @property
+    def retrieved_source_names(self) -> tuple[str, ...]:
+        """Flatten ranked unit source names for compatibility with v1 prediction files."""
+        return _unique(
+            evidence.source_name for unit in self.retrieved_units for evidence in unit.evidence if evidence.source_name
+        )
 
 
 class EvaluationBackend(Protocol):
@@ -108,10 +139,19 @@ class NaiveEvaluationBackend:
             )
             for source in result.sources
         )
+        units = tuple(
+            RetrievedUnit(
+                unit_id=source.chunk_id,
+                unit_kind="chunk",
+                text=source.text,
+                evidence=(PredictionEvidence(chunk_id=source.chunk_id, source_name=source.source_name),),
+                score=source.score,
+            )
+            for source in result.sources
+        )
         return PipelinePrediction(
             answer=result.answer,
-            retrieved_chunk_ids=tuple(context.chunk_id for context in contexts if context.chunk_id),
-            retrieved_source_names=tuple(context.source_name for context in contexts if context.source_name),
+            retrieved_units=units,
             retrieved_contexts=contexts,
             metadata=_with_optional_value(
                 {"search_mode": self._search_mode or self._pipeline.settings.search_mode},
@@ -149,10 +189,24 @@ class CorrectiveEvaluationBackend:
             )
             for item in generation_contexts
         )
+        units = tuple(
+            RetrievedUnit(
+                unit_id=_required_string(item.get("chunk_id"), "CRAG retrieved chunk id"),
+                unit_kind="chunk",
+                text=_required_string(item.get("text"), "CRAG retrieved chunk text"),
+                evidence=(
+                    PredictionEvidence(
+                        chunk_id=_required_string(item.get("chunk_id"), "CRAG retrieved chunk id"),
+                        source_name=_optional_string(item.get("source_name")),
+                    ),
+                ),
+                score=_optional_float(item.get("score")),
+            )
+            for item in graded_chunks
+        )
         return PipelinePrediction(
             answer=_required_string(result.get("answer"), "CRAG answer"),
-            retrieved_chunk_ids=_field_values(graded_chunks, "chunk_id"),
-            retrieved_source_names=_field_values(graded_chunks, "source_name"),
+            retrieved_units=units,
             retrieved_contexts=contexts,
             metadata={
                 "status": result.get("status"),
@@ -171,8 +225,8 @@ class CorrectiveEvaluationBackend:
 class OntologyEvaluationBackend:
     """Adapt the ontology-enhanced RAG pipeline for shared evaluation.
 
-    Retrieval labels come from the Milvus chunks the pipeline retrieved, while the generation
-    context is the rule summaries the pipeline actually supplied to answer generation.
+    Ranked retrieval units are selected ontology rules, with their source chunks retained as
+    comparable evidence. Generation context is the rule summaries supplied to answer generation.
     """
 
     name = "ontology"
@@ -188,7 +242,7 @@ class OntologyEvaluationBackend:
         self._rewrite_query = rewrite_query
 
     async def predict(self, question: str, limit: int) -> PipelinePrediction:
-        """Run ontology RAG and expose both chunk labels and rule-summary contexts."""
+        """Run ontology RAG and expose selected rules with source-chunk provenance."""
         return await self._predict(question, limit)
 
     async def predict_with_history(
@@ -221,10 +275,25 @@ class OntologyEvaluationBackend:
             )
             for context in result.answer_contexts
         )
+        source_names = {source.chunk_id: source.source_name for source in result.sources}
+        units = tuple(
+            RetrievedUnit(
+                unit_id=str(rule.uri),
+                unit_kind="ontology_rule",
+                text=_ontology_rule_text(rule),
+                evidence=tuple(
+                    PredictionEvidence(chunk_id=chunk_id, source_name=source_names.get(chunk_id))
+                    for chunk_id in rule.source_chunk_ids
+                ),
+            )
+            for rule in result.rules
+        )
+        if any(not unit.evidence for unit in units):
+            msg = "Ontology evaluation requires source_chunk_ids on every selected rule"
+            raise ValueError(msg)
         return PipelinePrediction(
             answer=result.answer,
-            retrieved_chunk_ids=_unique(source.chunk_id for source in result.sources if source.chunk_id),
-            retrieved_source_names=_unique(source.source_name for source in result.sources if source.source_name),
+            retrieved_units=units,
             retrieved_contexts=contexts,
             metadata=_with_optional_value(
                 {"rule_count": len(result.rules)}, "rewritten_query", getattr(result, "rewritten_query", None)
@@ -246,7 +315,7 @@ class GraphitiEvaluationBackend:
         self._pipeline = pipeline
 
     async def predict(self, question: str, limit: int) -> PipelinePrediction:
-        """Run Graphiti RAG and flatten ranked fact provenance into chunk labels."""
+        """Run Graphiti RAG and preserve ranked facts with chunk provenance."""
         return await self._predict(question, limit)
 
     async def predict_with_history(
@@ -278,10 +347,21 @@ class GraphitiEvaluationBackend:
             for fact in result.sources
             for source in fact.sources
         )
+        units = tuple(
+            RetrievedUnit(
+                unit_id=_graph_fact_id(fact),
+                unit_kind="graph_fact",
+                text=fact.fact,
+                evidence=tuple(
+                    PredictionEvidence(chunk_id=source.chunk_id, source_name=source.source_name)
+                    for source in fact.sources
+                ),
+            )
+            for fact in result.sources
+        )
         return PipelinePrediction(
             answer=result.answer,
-            retrieved_chunk_ids=_unique(context.chunk_id for context in contexts if context.chunk_id),
-            retrieved_source_names=_unique(context.source_name for context in contexts if context.source_name),
+            retrieved_units=units,
             retrieved_contexts=contexts,
             metadata={
                 "rewritten_query": result.rewritten_query,
@@ -325,9 +405,9 @@ async def run_evaluation(
 
     At most *concurrency* questions are evaluated at once; a semaphore bounds how many pipeline
     calls (each including one LLM answer generation) run at the same time so the shared provider
-    is not overwhelmed. When *on_row* is given it is invoked with each finished row, in input
-    order, as soon as every earlier row has also finished — so a caller can persist progress
-    without waiting for the whole dataset. The returned list keeps the input record order.
+    is not overwhelmed. When *on_row* is given it is invoked immediately in completion order so
+    a caller can durably persist progress without waiting for slower earlier rows. The returned
+    list keeps the input record order.
     """
     semaphore = asyncio.Semaphore(concurrency)
 
@@ -342,8 +422,10 @@ async def run_evaluation(
         row = dict(record.raw)
         row.update(
             {
+                "prediction_schema_version": "2.0.0",
                 "pipeline": backend.name,
                 "actual_answer": prediction.answer,
+                "retrieved_units": [_retrieved_unit_dict(unit) for unit in prediction.retrieved_units],
                 "retrieved_chunk_ids": list(prediction.retrieved_chunk_ids),
                 "retrieved_source_names": list(prediction.retrieved_source_names),
                 "retrieved_contexts": [asdict(context) for context in prediction.retrieved_contexts],
@@ -364,12 +446,14 @@ async def run_evaluation(
             done_futures, _ = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
             for future in done_futures:
                 pending.remove(future)
-                finished[indexed[future]] = future.result()
+                index = indexed[future]
+                row = future.result()
+                finished[index] = row
+                if on_row is not None:
+                    on_row(row)
             while next_index in finished:
                 row = finished.pop(next_index)
                 rows.append(row)
-                if on_row is not None:
-                    on_row(row)
                 next_index += 1
     finally:
         for future in pending:
@@ -385,9 +469,22 @@ def _mapping_sequence(value: Any) -> list[Mapping[str, Any]]:
     return [item for item in value if isinstance(item, Mapping)]
 
 
-def _field_values(items: Sequence[Mapping[str, Any]], key: str) -> tuple[str, ...]:
-    """Read non-empty string values from result mappings."""
-    return tuple(value for item in items if (value := _optional_string(item.get(key))))
+def _retrieved_unit_dict(unit: RetrievedUnit) -> dict[str, Any]:
+    """Serialize one unit into the exact JSON-compatible prediction schema."""
+    return {
+        "unit_id": unit.unit_id,
+        "unit_kind": unit.unit_kind,
+        "text": unit.text,
+        "evidence": [asdict(item) for item in unit.evidence],
+        "score": unit.score,
+    }
+
+
+def _optional_float(value: Any) -> float | None:
+    """Normalize one optional numeric score."""
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    return float(value)
 
 
 def _optional_string(value: Any) -> str | None:
@@ -409,6 +506,17 @@ def _required_string(value: Any, label: str) -> str:
         msg = f"{label} must be a non-empty string"
         raise ValueError(msg)
     return normalized
+
+
+def _ontology_rule_text(rule: Any) -> str:
+    """Render stable text for one selected ontology rule."""
+    return f"{rule.conduct_label_vi} ({rule.provision_path})"
+
+
+def _graph_fact_id(fact: Any) -> str:
+    """Build a deterministic identity for a graph fact and its provenance."""
+    evidence = "\n".join(sorted({source.chunk_id for source in fact.sources}))
+    return hashlib.sha256(f"{fact.fact}\n{evidence}".encode()).hexdigest()
 
 
 def _unique(values: Iterable[str]) -> tuple[str, ...]:

@@ -14,14 +14,19 @@ class EvaluationReport:
 
     sample_count: int
     aggregate: dict[str, float | None]
-    per_sample: tuple[dict[str, float | None], ...]
+    per_sample: tuple[dict[str, Any], ...]
 
     @classmethod
     def from_per_sample(cls, per_sample: Sequence[Mapping[str, Any]]) -> EvaluationReport:
         """Build a report from per-sample scores, averaging each metric over valid values."""
-        rows = tuple({name: _finite(value) for name, value in row.items()} for row in per_sample)
-        metric_names = {name for row in rows for name in row}
-        aggregate = {name: _mean(row.get(name) for row in rows) for name in sorted(metric_names)}
+        rows = tuple(_normalize_row(row) for row in per_sample)
+        metric_names = {
+            name
+            for row in rows
+            for name, value in row.items()
+            if name != "sample_id" and (value is None or isinstance(value, int | float))
+        }
+        aggregate = {name: _mean(_finite(row.get(name)) for row in rows) for name in sorted(metric_names)}
         return cls(sample_count=len(rows), aggregate=aggregate, per_sample=rows)
 
     def to_dict(self) -> dict[str, Any]:
@@ -39,6 +44,17 @@ def _finite(value: Any) -> float | None:
         return None
     number = float(value)
     return number if math.isfinite(number) else None
+
+
+def _normalize_row(row: Mapping[str, Any]) -> dict[str, Any]:
+    """Preserve stable sample identity while normalizing metric values."""
+    normalized: dict[str, Any] = {}
+    for name, value in row.items():
+        if name == "sample_id" and isinstance(value, str):
+            normalized[name] = value
+        else:
+            normalized[name] = _finite(value)
+    return normalized
 
 
 def _mean(values: Iterable[float | None]) -> float | None:

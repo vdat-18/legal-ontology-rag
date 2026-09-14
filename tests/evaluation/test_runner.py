@@ -15,6 +15,7 @@ from legal_rag.evaluation.runner import (
     GraphitiEvaluationBackend,
     NaiveEvaluationBackend,
     OntologyEvaluationBackend,
+    PipelinePrediction,
     load_evaluation_records,
     run_evaluation,
 )
@@ -33,6 +34,16 @@ def test_naive_backend_emits_shared_prediction_schema(tmp_path) -> None:
     assert rows[0]["question_id"] == "question-1"
     assert rows[0]["pipeline"] == "naive"
     assert rows[0]["actual_answer"] == "naive answer"
+    assert rows[0]["prediction_schema_version"] == "2.0.0"
+    assert rows[0]["retrieved_units"] == [
+        {
+            "unit_id": "chunk-1",
+            "unit_kind": "chunk",
+            "text": "naive context",
+            "evidence": [{"chunk_id": "chunk-1", "source_name": "document.docx"}],
+            "score": 0.9,
+        }
+    ]
     assert rows[0]["retrieved_chunk_ids"] == ["chunk-1"]
     assert rows[0]["retrieved_contexts"][0]["text"] == "naive context"
     assert rows[0]["pipeline_metadata"] == {"search_mode": "hybrid"}
@@ -85,6 +96,8 @@ def test_graphiti_backend_maps_ranked_fact_provenance_to_gold_chunk_ids(tmp_path
 
     assert rows[0]["retrieved_chunk_ids"] == ["chunk-1"]
     assert rows[0]["retrieved_source_names"] == ["document.docx"]
+    assert rows[0]["retrieved_units"][0]["unit_kind"] == "graph_fact"
+    assert rows[0]["retrieved_units"][0]["evidence"] == [{"chunk_id": "chunk-1", "source_name": "document.docx"}]
     assert rows[0]["retrieved_contexts"][0]["text"] == "source passage\n\n[Trích xuất] extracted fact"
     assert rows[0]["pipeline_metadata"]["rewritten_query"] == "rewritten question"
     assert pipeline.calls == [("question", 5)]
@@ -103,10 +116,10 @@ def test_run_evaluation_bounds_concurrency_and_preserves_order(tmp_path) -> None
     assert backend.closed is True
 
 
-def test_run_evaluation_emits_rows_incrementally_before_close(tmp_path) -> None:
-    """on_row receives each row in input order while the backend is still open."""
+def test_run_evaluation_checkpoints_completion_order_but_returns_input_order(tmp_path) -> None:
+    """Checkpointing is immediate even when an earlier input is still running."""
     records = _many_records(tmp_path, 3)
-    backend = _TrackingBackend(max_concurrency=3)
+    backend = _TrackingBackend(max_concurrency=3, delays={"q0": 0.02})
     emitted: list[tuple[str, bool]] = []
 
     def on_row(row: dict[str, Any]) -> None:
@@ -114,13 +127,13 @@ def test_run_evaluation_emits_rows_incrementally_before_close(tmp_path) -> None:
 
     rows = asyncio.run(run_evaluation(records, backend, limit=5, concurrency=3, on_row=on_row))
 
-    assert [question_id for question_id, _ in emitted] == ["question-0", "question-1", "question-2"]
+    assert emitted[0][0] != "question-0"
     assert all(not closed for _, closed in emitted)
-    assert len(rows) == 3
+    assert [row["question_id"] for row in rows] == ["question-0", "question-1", "question-2"]
 
 
-def test_ontology_backend_separates_chunk_labels_from_rule_contexts(tmp_path) -> None:
-    """Ontology retrieval labels come from chunks while generation uses rule summaries."""
+def test_ontology_backend_preserves_rule_units_and_source_chunk_provenance(tmp_path) -> None:
+    """Ontology rules remain ranked units while their chunks provide comparable evidence."""
     records = _records(tmp_path)
     pipeline = _FakeOntologyPipeline()
 
@@ -129,6 +142,18 @@ def test_ontology_backend_separates_chunk_labels_from_rule_contexts(tmp_path) ->
     assert rows[0]["pipeline"] == "ontology"
     assert rows[0]["retrieved_chunk_ids"] == ["chunk-1", "chunk-2"]
     assert rows[0]["retrieved_source_names"] == ["document.docx"]
+    assert rows[0]["retrieved_units"] == [
+        {
+            "unit_id": "https://example.test/rule-1",
+            "unit_kind": "ontology_rule",
+            "text": "Không đội mũ bảo hiểm (Điều 5)",
+            "evidence": [
+                {"chunk_id": "chunk-1", "source_name": "document.docx"},
+                {"chunk_id": "chunk-2", "source_name": "document.docx"},
+            ],
+            "score": None,
+        }
+    ]
     assert rows[0]["retrieved_contexts"] == [
         {
             "text": "Không đội mũ bảo hiểm: Phạt 400000-600000 VND",
@@ -186,8 +211,9 @@ class _TrackingBackend:
 
     name = "tracking"
 
-    def __init__(self, max_concurrency: int) -> None:
+    def __init__(self, max_concurrency: int, delays: dict[str, float] | None = None) -> None:
         self._limit = max_concurrency
+        self._delays = delays or {}
         self.active = 0
         self.max_active = 0
         self.closed = False
@@ -196,12 +222,11 @@ class _TrackingBackend:
         """Yield once so sibling predictions interleave while tracking peak concurrency."""
         self.active += 1
         self.max_active = max(self.max_active, self.active)
-        await asyncio.sleep(0)
+        await asyncio.sleep(self._delays.get(question, 0))
         self.active -= 1
-        return SimpleNamespace(
+        return PipelinePrediction(
             answer="answer",
-            retrieved_chunk_ids=(),
-            retrieved_source_names=(),
+            retrieved_units=(),
             retrieved_contexts=(),
             metadata={},
         )
@@ -281,7 +306,14 @@ class _FakeOntologyPipeline:
         self.calls.append((question, top_k))
         return SimpleNamespace(
             answer="ontology answer",
-            rules=(SimpleNamespace(),),
+            rules=(
+                SimpleNamespace(
+                    uri="https://example.test/rule-1",
+                    conduct_label_vi="Không đội mũ bảo hiểm",
+                    provision_path="Điều 5",
+                    source_chunk_ids=("chunk-1", "chunk-2"),
+                ),
+            ),
             sources=(
                 RetrievedChunk("chunk-1", "chunk one", "document.docx", "paragraph", 0.9),
                 RetrievedChunk("chunk-2", "chunk two", "document.docx", "paragraph", 0.8),
@@ -311,7 +343,14 @@ class _FakeCorrectivePipeline:
             "crag_action": "CORRECT",
             "reformulated_query": None,
             "web_search_count": 0,
-            "graded_chunks": [{"chunk_id": "initial-chunk", "source_name": "document.docx"}],
+            "graded_chunks": [
+                {
+                    "chunk_id": "initial-chunk",
+                    "source_name": "document.docx",
+                    "text": "initial context",
+                    "score": 0.9,
+                }
+            ],
             "generation_contexts": [
                 {
                     "chunk_id": "initial-chunk",

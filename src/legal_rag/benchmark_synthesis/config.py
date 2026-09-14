@@ -10,7 +10,7 @@ from typing import Any
 
 from legal_rag.baml_transport import ReasoningEffort
 
-SYNTHESIS_CONFIG_SCHEMA_VERSION = "5.5.0"
+SYNTHESIS_CONFIG_SCHEMA_VERSION = "5.6.0"
 _MAX_LLM_TEMPERATURE = 2.0
 
 
@@ -101,6 +101,8 @@ class SynthesisSettings:
     bundle_scope_max_concurrency: int
     candidate_generation_batch_size: int
     candidate_generation_max_concurrency: int
+    multi_turn_generation_batch_size: int
+    multi_turn_generation_max_concurrency: int
     evidence_retrieval: EvidenceRetrievalSettings
     chunk_screening: LlmStageSettings
     document_metadata: LlmStageSettings
@@ -111,6 +113,7 @@ class SynthesisSettings:
     multi_hop_5: LlmStageSettings
     bundle_scope: LlmStageSettings
     candidate_generation: LlmStageSettings
+    multi_turn_generation: LlmStageSettings
 
     def __post_init__(self) -> None:
         """Reject invalid synthesis limits before a run starts."""
@@ -153,6 +156,8 @@ class SynthesisSettings:
             "bundle_scope_max_concurrency": self.bundle_scope_max_concurrency,
             "candidate_generation_batch_size": self.candidate_generation_batch_size,
             "candidate_generation_max_concurrency": self.candidate_generation_max_concurrency,
+            "multi_turn_generation_batch_size": self.multi_turn_generation_batch_size,
+            "multi_turn_generation_max_concurrency": self.multi_turn_generation_max_concurrency,
         }
         for name, value in positive_limits.items():
             if value < 1:
@@ -186,6 +191,8 @@ class SynthesisSettings:
         multi_hop_4 = stages["multi_hop_4"]
         multi_hop_5 = stages["multi_hop_5"]
         bundle_scope = stages["bundle_scope"]
+        candidate_generation = stages["candidate_generation"]
+        multi_turn_generation = stages["multi_turn_generation"]
         retrieval = relation["retrieval"]
         return cls(
             embedding_profile=config["embedding_profile"],
@@ -219,8 +226,10 @@ class SynthesisSettings:
             multi_hop_5_max_concurrency=multi_hop_5["max_concurrency"],
             bundle_scope_batch_size=bundle_scope["batch_size"],
             bundle_scope_max_concurrency=bundle_scope["max_concurrency"],
-            candidate_generation_batch_size=stages["candidate_generation"]["batch_size"],
-            candidate_generation_max_concurrency=stages["candidate_generation"]["max_concurrency"],
+            candidate_generation_batch_size=candidate_generation["batch_size"],
+            candidate_generation_max_concurrency=candidate_generation["max_concurrency"],
+            multi_turn_generation_batch_size=multi_turn_generation["batch_size"],
+            multi_turn_generation_max_concurrency=multi_turn_generation["max_concurrency"],
             evidence_retrieval=_evidence_retrieval_settings(retrieval),
             chunk_screening=_stage_settings(screening),
             document_metadata=_stage_settings(metadata),
@@ -230,7 +239,8 @@ class SynthesisSettings:
             multi_hop_4=_stage_settings(multi_hop_4),
             multi_hop_5=_stage_settings(multi_hop_5),
             bundle_scope=_stage_settings(bundle_scope),
-            candidate_generation=_stage_settings(stages["candidate_generation"]),
+            candidate_generation=_stage_settings(candidate_generation),
+            multi_turn_generation=_stage_settings(multi_turn_generation),
         )
 
 

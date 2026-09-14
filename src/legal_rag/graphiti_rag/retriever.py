@@ -13,6 +13,7 @@ from graphiti_core.search.search_config_recipes import EDGE_HYBRID_SEARCH_CROSS_
 from loguru import logger
 
 EpisodeLookup = Callable[[GraphDriver, list[str]], Awaitable[list[EpisodicNode]]]
+_EXPANSION_RRF_K = 60
 
 
 class MissingProvenanceError(ValueError):
@@ -88,9 +89,9 @@ async def _search_edges(
     the graph as a store of independent facts. Graphiti reranks by graph distance when given a
     center node, so a second pass centred on the best fact's source entity promotes facts that are
     structurally adjacent to it — the penalty, remedy, and provision hanging off the same
-    violation — which plain text similarity would rank far lower. Results from the first pass keep
-    their order and the expansion is appended, so this can only add context, never displace the
-    best text match.
+    violation — which plain text similarity would rank far lower. Reciprocal Rank Fusion combines
+    the text and neighbourhood rankings so graph-adjacent facts can enter the selected top-k while
+    facts supported by both searches receive the strongest rank.
     """
     if rerank_with_cross_encoder:
         config = EDGE_HYBRID_SEARCH_CROSS_ENCODER.model_copy(deep=True)
@@ -105,10 +106,27 @@ async def _search_edges(
     neighbourhood = await graphiti_client.search(
         query, group_ids=[group_id], num_results=num_results, center_node_uuid=edges[0].source_node_uuid
     )
-    seen = {edge.uuid for edge in edges}
-    expanded = [*edges, *(edge for edge in neighbourhood if edge.uuid not in seen)]
-    logger.debug("Graph expansion added {} facts around the top fact's entity", len(expanded) - len(edges))
+    expanded = _fuse_edge_rankings(edges, neighbourhood, limit=num_results)
+    added = len({edge.uuid for edge in expanded} - {edge.uuid for edge in edges})
+    logger.debug("Graph expansion promoted {} adjacent facts into the result set", added)
     return expanded
+
+
+def _fuse_edge_rankings(
+    base_edges: Sequence[EntityEdge],
+    neighbourhood_edges: Sequence[EntityEdge],
+    *,
+    limit: int,
+) -> list[EntityEdge]:
+    """Fuse text and graph-neighbourhood rankings so expansion can affect the selected top-k."""
+    scores: dict[str, float] = {}
+    edges_by_uuid: dict[str, EntityEdge] = {}
+    for ranking in (base_edges, neighbourhood_edges):
+        for rank, edge in enumerate(ranking, 1):
+            scores[edge.uuid] = scores.get(edge.uuid, 0.0) + 1.0 / (_EXPANSION_RRF_K + rank)
+            edges_by_uuid[edge.uuid] = edge
+    ranked_ids = sorted(scores, key=lambda edge_uuid: (-scores[edge_uuid], edge_uuid))[:limit]
+    return [edges_by_uuid[edge_uuid] for edge_uuid in ranked_ids]
 
 
 async def search_facts(

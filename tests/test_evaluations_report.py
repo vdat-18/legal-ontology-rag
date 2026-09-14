@@ -42,3 +42,11 @@ def test_to_dict_is_json_serializable_shape() -> None:
         "aggregate": {"faithfulness": 1.0},
         "per_sample": [{"faithfulness": 1.0}],
     }
+
+
+def test_from_per_sample_preserves_sample_id_without_aggregating_it() -> None:
+    """Stable sample IDs stay in detail rows and never become numeric metrics."""
+    report = EvaluationReport.from_per_sample([{"sample_id": "question-1", "faithfulness": 1.0}])
+
+    assert report.aggregate == {"faithfulness": 1.0}
+    assert report.per_sample == ({"sample_id": "question-1", "faithfulness": 1.0},)

@@ -238,6 +238,24 @@ def test_graph_expansion_appends_structurally_adjacent_facts_without_duplicates(
     assert [fact.fact for fact in facts] == ["vi phạm", "biện pháp khắc phục"]
 
 
+def test_graph_expansion_can_promote_an_adjacent_fact_into_a_full_top_k() -> None:
+    """RRF lets graph proximity affect generation even when text search already filled top-k."""
+    first = [_FakeEdge(f"e{index}", f"text fact {index}", "RELATED", episodes=[f"ep{index}"]) for index in range(1, 6)]
+    neighbourhood = [
+        _FakeEdge("adjacent", "adjacent remedy", "REQUIRES_REMEDY", episodes=["ep-adjacent"]),
+        first[0],
+    ]
+    episodes = [
+        *[_FakeEpisode(f"ep{index}", f"chunk-{index}", "doc.docx") for index in range(1, 6)],
+        _FakeEpisode("ep-adjacent", "chunk-adjacent", "doc.docx"),
+    ]
+    graphiti = _TwoPassGraphiti(first, neighbourhood)
+
+    facts = asyncio.run(search_facts(graphiti, "q", "group-1", 2, get_episodes_by_uuids=_fake_episode_lookup(episodes)))
+
+    assert [fact.fact for fact in facts] == ["text fact 1", "adjacent remedy"]
+
+
 def test_graph_expansion_is_skipped_when_nothing_matched() -> None:
     """With no seed fact there is no entity to expand around, so no second query is issued."""
     graphiti = _TwoPassGraphiti([], neighbourhood=[])

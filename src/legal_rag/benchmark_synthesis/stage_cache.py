@@ -34,6 +34,7 @@ from legal_rag.parser.hashing import sha256_json
 
 if TYPE_CHECKING:
     from legal_rag.benchmark_synthesis.conversation_scenario_sampling import ConversationScenario
+    from legal_rag.benchmark_synthesis.multi_turn_candidate_generation import ReviewedHistoryCandidate
 
 STAGE_CACHE_SCHEMA_VERSION = "1.0.0"
 
@@ -315,6 +316,7 @@ def build_candidate_generation_artifact_fingerprint(
 def build_multi_turn_generation_fingerprint(
     facts: Sequence[LegalFact],
     conversations: Sequence[ConversationScenario],
+    history_candidates: Sequence[ReviewedHistoryCandidate],
     persona_descriptions: Mapping[str, str],
     settings: SynthesisSettings,
     *,
@@ -334,13 +336,31 @@ def build_multi_turn_generation_fingerprint(
     )
     facts_by_id = {fact.fact_id: fact for fact in facts}
     referenced_personas = sorted({conversation.persona for conversation in conversations})
+    referenced_history_ids = {
+        turn.anchor_scenario_id
+        for conversation in conversations
+        for turn in conversation.turns[:-1]
+    }
     identity = {
         "candidate_schema": candidate_schema_version,
         "facts": [facts_by_id[fact_id].to_dict() for fact_id in referenced_fact_ids],
+        "history": [
+            {
+                "scenario_id": candidate.scenario_id,
+                "persona": candidate.persona,
+                "answerability": candidate.answerability,
+                "query": candidate.query,
+                "reference_answer": candidate.reference_answer,
+                "gold_chunk_ids": list(candidate.gold_chunk_ids),
+                "source_fact_ids": list(candidate.source_fact_ids),
+            }
+            for candidate in history_candidates
+            if candidate.scenario_id in referenced_history_ids
+        ],
         "llm": {"base_url": llm_base_url, "model": llm_model},
         "personas": {persona: persona_descriptions[persona] for persona in referenced_personas},
         "conversations": [conversation.to_dict() for conversation in conversations],
-        "settings": {"generation": asdict(settings.candidate_generation)},
+        "settings": {"generation": asdict(settings.multi_turn_generation)},
     }
     return _build_fingerprint(
         stage="multi_turn_generation",

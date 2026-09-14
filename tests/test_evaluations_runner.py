@@ -30,7 +30,7 @@ class _RecordingJudge:
 
 def _sample(user_input: str) -> EvalSample:
     """Build one minimal evaluation sample."""
-    return EvalSample(user_input=user_input, response="answer")
+    return EvalSample(user_input=user_input, response="answer", sample_id=f"id-{user_input}")
 
 
 def test_evaluate_samples_splits_into_batches_of_the_requested_size() -> None:
@@ -63,4 +63,5 @@ def test_evaluate_samples_preserves_sample_order_across_batches() -> None:
     report = asyncio.run(evaluate_samples(samples, judge, batch_size=1, concurrency=3))
 
     assert [row["faithfulness"] for row in report.per_sample] == [0.0, 0.5, 1.0]
+    assert [row["sample_id"] for row in report.per_sample] == ["id-q0", "id-q1", "id-q2"]
     assert report.aggregate == {"faithfulness": 0.5}

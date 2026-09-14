@@ -9,7 +9,7 @@ from legal_rag.benchmark_synthesis.candidate_generation import CandidateDraft
 from legal_rag.benchmark_synthesis.multi_turn_candidate_generation import MultiTurnCandidateDraft
 
 GROUND_TRUTH_EXPORT_SCHEMA_VERSION = "5.0.0"
-MULTI_TURN_GROUND_TRUTH_EXPORT_SCHEMA_VERSION = "1.0.0"
+MULTI_TURN_GROUND_TRUTH_EXPORT_SCHEMA_VERSION = "4.0.0"
 
 
 def export_ground_truth(candidates: Sequence[CandidateDraft]) -> tuple[dict[str, Any], ...]:
@@ -50,34 +50,32 @@ def _export_candidate(candidate: CandidateDraft) -> dict[str, Any]:
 
 
 def _export_conversation(conversation: MultiTurnCandidateDraft) -> dict[str, Any]:
-    """Return one evaluation record keeping turn-level evidence for each question."""
-    first_turn = conversation.turns[0]
+    """Return one evaluation record targeting only the final conversation turn."""
+    target = conversation.turns[-1]
     return {
         "schema_version": MULTI_TURN_GROUND_TRUTH_EXPORT_SCHEMA_VERSION,
         "conversation_id": conversation.conversation_id,
+        "question_id": f"{conversation.conversation_id}:{target.turn_number}",
         "interaction_type": "multi_turn",
         "persona": conversation.persona,
         "conversation_length": conversation.conversation_length,
-        "expected_chunk_ids": list(conversation.gold_chunk_ids),
-        "question": first_turn.query,
-        "expected_answer": first_turn.reference_answer,
-        "turns": [_export_turn(conversation, turn) for turn in conversation.turns],
+        "target_turn_number": target.turn_number,
+        "history": [
+            {"question": turn.query, "answer": turn.reference_answer}
+            for turn in conversation.turns[:-1]
+        ],
+        "question": target.query,
+        "standalone_question": target.standalone_query,
+        "expected_answer": target.reference_answer,
+        "expected_chunk_ids": list(target.gold_chunk_ids),
+        "dialogue_act": target.dialogue_act,
+        "context_dependency": target.context_dependency,
+        "answerability": target.answerability,
+        "missing_information": target.missing_information,
+        "evaluation_mode": "retrieval_required",
+        "reasoning": target.reasoning,
+        "required_claims": [claim.to_dict() for claim in target.required_claims],
+        "source_fact_ids": list(target.source_fact_ids),
         "generator_model": conversation.generator_model,
         "prompt_version": conversation.prompt_version,
-    }
-
-
-def _export_turn(conversation: MultiTurnCandidateDraft, turn: Any) -> dict[str, Any]:
-    """Return one turn-level evaluation question inside a conversation record."""
-    return {
-        "turn_number": turn.turn_number,
-        "question_id": f"{conversation.conversation_id}:{turn.turn_number}",
-        "question": turn.query,
-        "expected_answer": turn.reference_answer,
-        "expected_chunk_ids": list(turn.gold_chunk_ids),
-        "dialogue_act": turn.dialogue_act,
-        "context_dependency": turn.context_dependency,
-        "answerability": turn.answerability,
-        "required_claims": [claim.to_dict() for claim in turn.required_claims],
-        "source_fact_ids": list(turn.source_fact_ids),
     }

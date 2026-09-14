@@ -11,7 +11,7 @@ from loguru import logger
 def _parser() -> argparse.ArgumentParser:
     """Build the conversation-scenario sampling command-line interface."""
     parser = argparse.ArgumentParser(
-        description="Sample multi-turn conversation scenarios from reviewed single-turn scenarios."
+        description="Sample target-first conversations from reviewed single-turn scenarios."
     )
     parser.add_argument("scenarios_path", type=Path, help="Reviewed single-turn scenarios JSONL path")
     parser.add_argument("relations_path", type=Path, help="Evidence-relations JSONL path")
@@ -32,7 +32,7 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    """Sample conversation scenarios as deterministic walks over the scenario pool."""
+    """Sample deterministic conversations around retrieval-required targets."""
     from legal_rag.benchmark_synthesis.conversation_scenario_sampling import (
         load_conversation_distribution,
         sample_conversation_scenarios,

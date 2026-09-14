@@ -1,4 +1,4 @@
-"""Command-line interface for multi-turn candidate generation, trusting LLM output as-is."""
+"""Command-line interface for complete multi-turn conversation generation."""
 
 from __future__ import annotations
 
@@ -19,6 +19,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("conversations_path", type=Path, help="Conversation scenarios JSONL path")
     parser.add_argument("candidates_output_path", type=Path, help="Destination multi-turn candidates JSONL path")
     parser.add_argument(
+        "--history-groundtruth",
+        type=Path,
+        required=True,
+        help="Reviewed single-turn ground-truth JSONL reused as conversation history",
+    )
+    parser.add_argument(
         "--progress-output",
         type=Path,
         help="Multi-turn checkpoint JSONL path; defaults beside candidates_output_path",
@@ -29,7 +35,7 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    """Generate every conversation turn round by round, trusting LLM output with no gating checks."""
+    """Generate complete conversations with conversation-level resume."""
     from dotenv import find_dotenv, load_dotenv
 
     from legal_rag.benchmark_synthesis.config import SynthesisSettings
@@ -42,7 +48,6 @@ def main() -> None:
         MultiTurnProgressRecord,
         assemble_completed_conversations,
         generate_multi_turn_candidates,
-        turn_task_id,
     )
     from legal_rag.benchmark_synthesis.scenario_sampling import load_persona_descriptions
     from legal_rag.benchmark_synthesis.stage_cache import (
@@ -54,6 +59,7 @@ def main() -> None:
         read_conversation_scenarios,
         read_legal_facts,
         read_multi_turn_progress,
+        read_reviewed_history_candidates,
         write_multi_turn_candidates,
         write_multi_turn_progress,
     )
@@ -72,12 +78,39 @@ def main() -> None:
     facts = read_legal_facts(arguments.facts_path)
     facts_by_id = {fact.fact_id: fact for fact in facts}
     conversation_scenarios = read_conversation_scenarios(arguments.conversations_path)
+    history_candidates = read_reviewed_history_candidates(arguments.history_groundtruth)
+    history_candidates_by_scenario_id = {
+        candidate.scenario_id: candidate for candidate in history_candidates
+    }
+    if len(history_candidates_by_scenario_id) != len(history_candidates):
+        msg = "History ground truth contains duplicate scenario IDs"
+        raise ValueError(msg)
+    required_history_ids = {
+        turn.anchor_scenario_id
+        for conversation in conversation_scenarios
+        for turn in conversation.turns[:-1]
+    }
+    missing_history_ids = required_history_ids - history_candidates_by_scenario_id.keys()
+    if missing_history_ids:
+        msg = f"History ground truth is missing {len(missing_history_ids)} referenced scenario(s)"
+        raise ValueError(msg)
+    mismatched_personas = {
+        turn.anchor_scenario_id
+        for conversation in conversation_scenarios
+        for turn in conversation.turns[:-1]
+        if history_candidates_by_scenario_id[turn.anchor_scenario_id].persona
+        != conversation.persona
+    }
+    if mismatched_personas:
+        msg = f"History ground truth has {len(mismatched_personas)} persona mismatch(es)"
+        raise ValueError(msg)
     persona_descriptions = load_persona_descriptions(arguments.personas)
 
     fingerprint_path = stage_cache_path(arguments.candidates_output_path)
     execution_fingerprint = build_multi_turn_generation_fingerprint(
         facts,
         conversation_scenarios,
+        history_candidates,
         persona_descriptions,
         synthesis_settings,
         llm_base_url=settings.llm_base_url,
@@ -96,13 +129,12 @@ def main() -> None:
     )
     progress_by_task_id = {record.task_id: record for record in existing_progress}
     task_order = [
-        turn_task_id(conversation.conversation_scenario_id, turn_spec.turn_number)
-        for conversation in conversation_scenarios
-        for turn_spec in conversation.turns
+        conversation.conversation_scenario_id for conversation in conversation_scenarios
     ]
 
     context = MultiTurnPipelineContext(
         facts_by_id=facts_by_id,
+        history_candidates_by_scenario_id=history_candidates_by_scenario_id,
         persona_descriptions=persona_descriptions,
         generation_client=BamlMultiTurnGenerationClient(settings, synthesis_settings),
         generator_model=settings.llm_model,
@@ -113,7 +145,7 @@ def main() -> None:
     progress_lock = threading.Lock()
 
     def _persist(records: Sequence[MultiTurnProgressRecord]) -> None:
-        """Persist one completed turn batch atomically per file.
+        """Persist completed conversations atomically per file.
 
         Runs from worker threads under generate_multi_turn_candidates' bounded
         concurrency, so the shared progress dict and the two output files are
@@ -139,8 +171,8 @@ def main() -> None:
         progress_by_task_id,
         context,
         _persist,
-        batch_size=synthesis_settings.candidate_generation_batch_size,
-        max_concurrency=synthesis_settings.candidate_generation_max_concurrency,
+        batch_size=synthesis_settings.multi_turn_generation_batch_size,
+        max_concurrency=synthesis_settings.multi_turn_generation_max_concurrency,
     )
 
     conversations = assemble_completed_conversations(

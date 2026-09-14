@@ -14,6 +14,7 @@ _REFERENCE_KEYS = ("reference", "expected_answer", "ground_truth", "ground_truth
 _RETRIEVED_CONTEXT_KEYS = ("retrieved_contexts", "contexts", "retrieved_chunks")
 _REFERENCE_CONTEXT_KEYS = ("reference_contexts", "expected_contexts", "ground_truth_contexts")
 _CONTEXT_TEXT_KEYS = ("text", "content", "context", "chunk")
+_SAMPLE_ID_KEYS = ("evaluation_record_id", "question_id", "sample_id")
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,9 +23,12 @@ class EvalSample:
 
     user_input: str
     response: str
+    sample_id: str = ""
     retrieved_contexts: tuple[str, ...] = ()
     reference: str | None = None
     reference_contexts: tuple[str, ...] = ()
+    answerability: str | None = None
+    required_claims: tuple[str, ...] = ()
 
     @classmethod
     def from_mapping(cls, row: Mapping[str, Any]) -> EvalSample:
@@ -32,9 +36,12 @@ class EvalSample:
         return cls(
             user_input=_first_string(row, _QUESTION_KEYS),
             response=_first_string(row, _RESPONSE_KEYS),
+            sample_id=_optional_string(row, _SAMPLE_ID_KEYS) or "",
             retrieved_contexts=_context_texts(row, _RETRIEVED_CONTEXT_KEYS),
             reference=_optional_string(row, _REFERENCE_KEYS),
             reference_contexts=_context_texts(row, _REFERENCE_CONTEXT_KEYS),
+            answerability=_optional_string(row, ("answerability",)),
+            required_claims=_required_claim_texts(row),
         )
 
 
@@ -92,3 +99,18 @@ def _context_text(item: Any) -> str | None:
             if isinstance(value, str) and value.strip():
                 return value.strip()
     return None
+
+
+def _required_claim_texts(row: Mapping[str, Any]) -> tuple[str, ...]:
+    """Read the expected claim text carried by synthesized ground truth."""
+    value = row.get("required_claims")
+    if not isinstance(value, Sequence) or isinstance(value, str):
+        return ()
+    claims: list[str] = []
+    for item in value:
+        if not isinstance(item, Mapping):
+            continue
+        claim = item.get("claim")
+        if isinstance(claim, str) and claim.strip():
+            claims.append(claim.strip())
+    return tuple(claims)

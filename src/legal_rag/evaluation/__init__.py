@@ -2,11 +2,22 @@
 
 from __future__ import annotations
 
-from legal_rag.evaluation.metrics import EvaluationMetrics, EvaluationSample, evaluate_samples, load_jsonl_samples
+from legal_rag.evaluation.metrics import (
+    EvaluationMetrics,
+    EvaluationRetrievedUnit,
+    EvaluationSample,
+    ExpectedClaimEvidence,
+    evaluate_samples,
+    evaluate_slices,
+    load_jsonl_samples,
+)
 
 __all__ = [
     "EvaluationMetrics",
+    "EvaluationRetrievedUnit",
     "EvaluationSample",
+    "ExpectedClaimEvidence",
     "evaluate_samples",
+    "evaluate_slices",
     "load_jsonl_samples",
 ]

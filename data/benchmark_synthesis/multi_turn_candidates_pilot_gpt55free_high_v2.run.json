@@ -1,0 +1,7 @@
+{
+  "model": "gpt-5.5-free",
+  "prompt_version": "2.0.0",
+  "run_id": "572ba8fb26e085d4edc0b3bc766100f6d309e5d7891ee07e724c5c499ab5d46b",
+  "schema_version": "1.0.0",
+  "stage": "multi_turn_generation"
+}

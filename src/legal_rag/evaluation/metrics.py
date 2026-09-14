@@ -9,6 +9,24 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_K_VALUES = (1, 3, 5, 10)
+DEFAULT_SLICE_FIELDS = ("bundle_kind", "answerability", "reasoning_hops", "query_style")
+
+
+@dataclass(frozen=True, slots=True)
+class EvaluationRetrievedUnit:
+    """One pipeline-native retrieval unit and its comparable source evidence."""
+
+    unit_id: str
+    evidence_chunk_ids: tuple[str, ...] = ()
+    evidence_source_names: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ExpectedClaimEvidence:
+    """Gold evidence required to support one expected answer claim."""
+
+    claim: str
+    chunk_ids: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,6 +40,8 @@ class EvaluationSample:
     retrieved_chunk_ids: tuple[str, ...] = ()
     expected_source_names: tuple[str, ...] = ()
     retrieved_source_names: tuple[str, ...] = ()
+    retrieved_units: tuple[EvaluationRetrievedUnit, ...] = ()
+    expected_claims: tuple[ExpectedClaimEvidence, ...] = ()
     history: tuple[tuple[str, str], ...] = ()
 
     @classmethod
@@ -58,6 +78,8 @@ class EvaluationSample:
             retrieved_source_names=_read_string_tuple(data, ("retrieved_source_names", "predicted_source_names"))
             or _extract_field_tuple(graded_chunks, ("source_name", "source", "name"))
             or _extract_field_tuple(contexts, ("source_name", "source", "name")),
+            retrieved_units=_read_retrieved_units(data),
+            expected_claims=_read_expected_claims(data),
             history=tuple(
                 (item["question"], item["answer"])
                 for item in history
@@ -74,6 +96,7 @@ class EvaluationMetrics:
 
     sample_count: int
     retrieval_sample_count: int
+    claim_sample_count: int
     k_values: tuple[int, ...]
     hit_rate: float | None
     hit_rate_at_k: dict[int, float | None]
@@ -81,12 +104,17 @@ class EvaluationMetrics:
     recall_at_k: dict[int, float | None]
     context_precision: float | None
     context_recall: float | None
+    mean_reciprocal_rank: float | None
+    empty_retrieval_rate: float | None
+    claim_evidence_any_at_k: dict[int, float | None]
+    claim_evidence_complete_at_k: dict[int, float | None]
 
     def to_dict(self) -> dict[str, Any]:
         """Convert metrics to a JSON-serializable dictionary."""
         return {
             "sample_count": self.sample_count,
             "retrieval_sample_count": self.retrieval_sample_count,
+            "claim_sample_count": self.claim_sample_count,
             "k_values": list(self.k_values),
             "hit_rate": self.hit_rate,
             "hit_rate_at_k": _string_keyed_metrics(self.hit_rate_at_k),
@@ -94,6 +122,10 @@ class EvaluationMetrics:
             "recall_at_k": _string_keyed_metrics(self.recall_at_k),
             "context_precision": self.context_precision,
             "context_recall": self.context_recall,
+            "mean_reciprocal_rank": self.mean_reciprocal_rank,
+            "empty_retrieval_rate": self.empty_retrieval_rate,
+            "claim_evidence_any_at_k": _string_keyed_metrics(self.claim_evidence_any_at_k),
+            "claim_evidence_complete_at_k": _string_keyed_metrics(self.claim_evidence_complete_at_k),
         }
 
 
@@ -140,14 +172,16 @@ def evaluate_samples(
     *,
     k_values: Sequence[int] = DEFAULT_K_VALUES,
 ) -> EvaluationMetrics:
-    """Compute aggregate retrieval and answer metrics."""
+    """Compute aggregate native-unit retrieval and evidence-coverage metrics."""
     normalized_k_values = _normalize_k_values(k_values)
     retrieval_scores = [_retrieval_scores(sample, normalized_k_values) for sample in samples]
     retrieval_scores = [score for score in retrieval_scores if score is not None]
+    claim_scores = [score for score in retrieval_scores if score["has_claims"]]
 
     return EvaluationMetrics(
         sample_count=len(samples),
         retrieval_sample_count=len(retrieval_scores),
+        claim_sample_count=len(claim_scores),
         k_values=normalized_k_values,
         hit_rate=_mean(score["hit"] for score in retrieval_scores),
         hit_rate_at_k=_aggregate_at_k(retrieval_scores, "hit", normalized_k_values),
@@ -155,99 +189,173 @@ def evaluate_samples(
         recall_at_k=_aggregate_at_k(retrieval_scores, "recall", normalized_k_values),
         context_precision=_mean(score["precision"] for score in retrieval_scores),
         context_recall=_mean(score["recall"] for score in retrieval_scores),
+        mean_reciprocal_rank=_mean(score["reciprocal_rank"] for score in retrieval_scores),
+        empty_retrieval_rate=_mean(score["empty"] for score in retrieval_scores),
+        claim_evidence_any_at_k=_aggregate_at_k(claim_scores, "claim_any", normalized_k_values),
+        claim_evidence_complete_at_k=_aggregate_at_k(claim_scores, "claim_complete", normalized_k_values),
     )
 
 
-def _retrieval_scores(sample: EvaluationSample, k_values: Sequence[int]) -> dict[str, float] | None:
+def evaluate_slices(
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    k_values: Sequence[int] = DEFAULT_K_VALUES,
+    fields: Sequence[str] = DEFAULT_SLICE_FIELDS,
+) -> dict[str, dict[str, dict[str, Any]]]:
+    """Evaluate configured metadata slices without discarding the shared metrics."""
+    slices: dict[str, dict[str, dict[str, Any]]] = {}
+    for field in fields:
+        groups: dict[str, list[EvaluationSample]] = {}
+        for row in rows:
+            value = row.get(field)
+            if value is None:
+                continue
+            groups.setdefault(str(value), []).append(EvaluationSample.from_mapping(row))
+        if groups:
+            slices[field] = {
+                value: evaluate_samples(samples, k_values=k_values).to_dict()
+                for value, samples in sorted(groups.items())
+            }
+    return slices
+
+
+def _retrieval_scores(sample: EvaluationSample, k_values: Sequence[int]) -> dict[str, float | bool] | None:
     label_pair = _retrieval_label_pair(sample)
     if label_pair is None:
         return None
 
-    reference_ids, retrieved_ids = label_pair
+    reference_kind, reference_ids = label_pair
     reference_set = set(reference_ids)
-    relevance_flags = _binary_relevance_flags(retrieved_ids, reference_set)
+    units = _effective_units(sample)
+    unit_evidence = [
+        set(unit.evidence_chunk_ids if reference_kind == "chunk" else unit.evidence_source_names) for unit in units
+    ]
+    relevance_flags = [1 if evidence & reference_set else 0 for evidence in unit_evidence]
+    covered = set().union(*unit_evidence) & reference_set if unit_evidence else set()
     relevant_count = sum(relevance_flags)
-    scores: dict[str, float] = {
+    first_relevant = next((rank for rank, relevant in enumerate(relevance_flags, 1) if relevant), None)
+    scores: dict[str, float | bool] = {
         "hit": 1.0 if relevant_count else 0.0,
-        "precision": relevant_count / len(retrieved_ids) if retrieved_ids else 0.0,
-        "recall": relevant_count / len(reference_set),
+        "precision": relevant_count / len(units) if units else 0.0,
+        "recall": len(covered) / len(reference_set),
+        "reciprocal_rank": 1.0 / first_relevant if first_relevant else 0.0,
+        "empty": 0.0 if units else 1.0,
+        "has_claims": bool(sample.expected_claims),
     }
     for k in k_values:
-        top_k_flags = relevance_flags[:k]
-        top_k_relevant_count = sum(top_k_flags)
+        top_k_evidence = set().union(*unit_evidence[:k]) if unit_evidence[:k] else set()
+        top_k_relevant_count = sum(relevance_flags[:k])
         scores[f"hit@{k}"] = 1.0 if top_k_relevant_count else 0.0
         scores[f"precision@{k}"] = top_k_relevant_count / k
-        scores[f"recall@{k}"] = top_k_relevant_count / len(reference_set)
+        scores[f"recall@{k}"] = len(top_k_evidence & reference_set) / len(reference_set)
+        claim_any, claim_complete = _claim_coverage(sample.expected_claims, top_k_evidence)
+        scores[f"claim_any@{k}"] = claim_any
+        scores[f"claim_complete@{k}"] = claim_complete
     return scores
 
 
-def _retrieval_label_pair(sample: EvaluationSample) -> tuple[tuple[str, ...], tuple[str, ...]] | None:
-    """Return comparable expected and retrieved retrieval labels."""
+def _effective_units(sample: EvaluationSample) -> tuple[EvaluationRetrievedUnit, ...]:
+    if sample.retrieved_units:
+        return sample.retrieved_units
+    return tuple(
+        EvaluationRetrievedUnit(
+            unit_id=sample.retrieved_chunk_ids[index]
+            if index < len(sample.retrieved_chunk_ids)
+            else f"source:{sample.retrieved_source_names[index]}",
+            evidence_chunk_ids=(sample.retrieved_chunk_ids[index],) if index < len(sample.retrieved_chunk_ids) else (),
+            evidence_source_names=(sample.retrieved_source_names[index],)
+            if index < len(sample.retrieved_source_names)
+            else (),
+        )
+        for index in range(max(len(sample.retrieved_chunk_ids), len(sample.retrieved_source_names)))
+    )
+
+
+def _claim_coverage(claims: Sequence[ExpectedClaimEvidence], covered_chunk_ids: set[str]) -> tuple[float, float]:
+    if not claims:
+        return 0.0, 0.0
+    any_count = sum(bool(set(claim.chunk_ids) & covered_chunk_ids) for claim in claims)
+    complete_count = sum(bool(claim.chunk_ids) and set(claim.chunk_ids) <= covered_chunk_ids for claim in claims)
+    return any_count / len(claims), complete_count / len(claims)
+
+
+def _retrieval_label_pair(sample: EvaluationSample) -> tuple[str, tuple[str, ...]] | None:
     if sample.expected_chunk_ids:
-        return sample.expected_chunk_ids, sample.retrieved_chunk_ids
+        return "chunk", sample.expected_chunk_ids
     if sample.expected_source_names:
-        return sample.expected_source_names, sample.retrieved_source_names
+        return "source", sample.expected_source_names
     return None
 
 
-def _binary_relevance_flags(retrieved_ids: Sequence[str], reference_set: set[str]) -> list[int]:
-    """Return binary relevance flags while ignoring duplicate relevant IDs."""
-    seen_relevant: set[str] = set()
-    flags: list[int] = []
-    for item in retrieved_ids:
-        if item in reference_set and item not in seen_relevant:
-            flags.append(1)
-            seen_relevant.add(item)
-        else:
-            flags.append(0)
-    return flags
+def _read_retrieved_units(data: Mapping[str, Any]) -> tuple[EvaluationRetrievedUnit, ...]:
+    units: list[EvaluationRetrievedUnit] = []
+    for item in _read_sequence(data, "retrieved_units"):
+        if not isinstance(item, Mapping):
+            continue
+        unit_id = _read_optional_string(item, ("unit_id", "id"))
+        if unit_id is None:
+            continue
+        evidence = item.get("evidence")
+        evidence_items = evidence if isinstance(evidence, Sequence) and not isinstance(evidence, str) else ()
+        units.append(
+            EvaluationRetrievedUnit(
+                unit_id=unit_id,
+                evidence_chunk_ids=_extract_field_tuple(evidence_items, ("chunk_id", "id")),
+                evidence_source_names=_extract_field_tuple(evidence_items, ("source_name", "source", "name")),
+            )
+        )
+    return tuple(units)
 
 
-def _mean(values: Iterable[float]) -> float | None:
-    numbers = list(values)
+def _read_expected_claims(data: Mapping[str, Any]) -> tuple[ExpectedClaimEvidence, ...]:
+    claims: list[ExpectedClaimEvidence] = []
+    for item in _read_sequence(data, "required_claims"):
+        if not isinstance(item, Mapping):
+            continue
+        claim = _read_optional_string(item, ("claim",))
+        evidence = item.get("evidence")
+        evidence_items = evidence if isinstance(evidence, Sequence) and not isinstance(evidence, str) else ()
+        chunk_ids = _extract_field_tuple(evidence_items, ("chunk_id", "id"))
+        if claim is not None and chunk_ids:
+            claims.append(ExpectedClaimEvidence(claim=claim, chunk_ids=chunk_ids))
+    return tuple(claims)
+
+
+def _mean(values: Iterable[float | bool]) -> float | None:
+    numbers = [float(value) for value in values]
     if not numbers:
         return None
     return sum(numbers) / len(numbers)
 
 
 def _aggregate_at_k(
-    scores: Sequence[Mapping[str, float]],
+    scores: Sequence[Mapping[str, float | bool]],
     metric_name: str,
     k_values: Sequence[int],
 ) -> dict[int, float | None]:
-    """Aggregate one metric family for each k."""
     return {k: _mean(score[f"{metric_name}@{k}"] for score in scores) for k in k_values}
 
 
 def _normalize_k_values(k_values: Sequence[int]) -> tuple[int, ...]:
-    """Normalize k values while preserving order."""
     normalized: list[int] = []
     for value in k_values:
-        if value <= 0 or value in normalized:
-            continue
-        normalized.append(value)
-    if not normalized:
-        return DEFAULT_K_VALUES
-    return tuple(normalized)
+        if value > 0 and value not in normalized:
+            normalized.append(value)
+    return tuple(normalized) or DEFAULT_K_VALUES
 
 
 def _string_keyed_metrics(values: Mapping[int, float | None]) -> dict[str, float | None]:
-    """Convert integer metric keys to JSON-friendly string keys."""
     return {str(key): value for key, value in values.items()}
 
 
 def _read_mapping(data: Mapping[str, Any], key: str) -> Mapping[str, Any]:
     value = data.get(key)
-    if isinstance(value, Mapping):
-        return value
-    return {}
+    return value if isinstance(value, Mapping) else {}
 
 
 def _read_sequence(data: Mapping[str, Any], key: str) -> Sequence[Any]:
     value = data.get(key)
-    if isinstance(value, Sequence) and not isinstance(value, str):
-        return value
-    return ()
+    return value if isinstance(value, Sequence) and not isinstance(value, str) else ()
 
 
 def _read_first_string(data: Mapping[str, Any], keys: Sequence[str]) -> str:
@@ -268,8 +376,7 @@ def _read_optional_string(data: Mapping[str, Any], keys: Sequence[str]) -> str |
 
 def _read_string_tuple(data: Mapping[str, Any], keys: Sequence[str]) -> tuple[str, ...]:
     for key in keys:
-        value = data.get(key)
-        values = _coerce_string_sequence(value)
+        values = _coerce_string_sequence(data.get(key))
         if values:
             return values
     return ()
@@ -279,11 +386,9 @@ def _extract_field_tuple(items: Sequence[Any], keys: Sequence[str]) -> tuple[str
     values: list[str] = []
     for item in items:
         if isinstance(item, Mapping):
-            for key in keys:
-                value = item.get(key)
-                if isinstance(value, str) and value.strip():
-                    values.append(value.strip())
-                    break
+            value = _read_optional_string(item, keys)
+            if value is not None:
+                values.append(value)
     return tuple(values)
 
 

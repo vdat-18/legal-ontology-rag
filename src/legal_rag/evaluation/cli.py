@@ -4,17 +4,26 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import sys
+from collections.abc import Mapping
 from dataclasses import asdict, replace
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from dotenv import find_dotenv, load_dotenv
 from loguru import logger
 
-from legal_rag.evaluation.metrics import DEFAULT_K_VALUES, EvaluationSample, evaluate_samples, load_jsonl_samples
+from legal_rag.evaluation.metrics import (
+    DEFAULT_K_VALUES,
+    EvaluationSample,
+    evaluate_samples,
+    evaluate_slices,
+    load_jsonl_samples,
+)
 from legal_rag.evaluation.runner import (
     CorrectiveEvaluationBackend,
     EvaluationBackend,
@@ -24,6 +33,7 @@ from legal_rag.evaluation.runner import (
     load_evaluation_records,
     run_evaluation,
 )
+from legal_rag.io_utils import write_json_atomic, write_jsonl_atomic
 
 
 def main() -> None:
@@ -98,13 +108,13 @@ def _parser() -> argparse.ArgumentParser:
         "--predictions-output",
         type=Path,
         default=None,
-        help="Per-sample JSONL path; defaults to data/evaluation/<pipeline>_predictions.jsonl.",
+        help="Per-sample JSONL path; defaults to <run-dir>/predictions.jsonl.",
     )
     run_parser.add_argument(
         "--metrics-output",
         type=Path,
         default=None,
-        help="Aggregate JSON path; defaults to data/evaluation/<pipeline>_metrics.json.",
+        help="Aggregate JSON path; defaults to <run-dir>/metrics.json.",
     )
     run_parser.add_argument(
         "--generation",
@@ -127,7 +137,23 @@ def _parser() -> argparse.ArgumentParser:
         "--generation-output",
         type=Path,
         default=None,
-        help="Full per-sample judge report path; defaults to data/evaluation/<pipeline>_generation.json.",
+        help="Full per-sample judge report path; defaults to <run-dir>/generation.json.",
+    )
+    run_parser.add_argument(
+        "--run-dir",
+        type=Path,
+        default=None,
+        help="Experiment directory; defaults to data/evaluation/runs/<deterministic-run-id>.",
+    )
+    run_parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume a compatible interrupted run from its progress JSONL file.",
+    )
+    run_parser.add_argument(
+        "--judge-model",
+        default=None,
+        help="Optional model override for generation judging; recorded separately from the answer model.",
     )
     run_parser.add_argument(
         "--naive-search-mode",
@@ -248,38 +274,78 @@ def _handle_run(args: argparse.Namespace) -> None:
         msg = f"Evaluation file has no samples: {ground_truth_path}"
         raise SystemExit(msg)
 
-    backend = _build_evaluation_backend(args)
-    predictions_output = args.predictions_output or Path(f"data/evaluation/{args.pipeline}_predictions.jsonl")
-    predictions_output.parent.mkdir(parents=True, exist_ok=True)
-    with predictions_output.open("w", encoding="utf-8", newline="\n") as predictions_file:
+    identity = _run_identity(args, ground_truth_path)
+    run_id = _identity_hash(identity)
+    run_dir = args.run_dir or Path("data/evaluation/runs") / run_id
+    manifest_path = run_dir / "manifest.json"
+    progress_path = run_dir / "predictions.progress.jsonl"
+    predictions_output = args.predictions_output or run_dir / "predictions.jsonl"
+    metrics_output = args.metrics_output or run_dir / "metrics.json"
+    generation_output = args.generation_output or run_dir / "generation.json"
+    already_complete = _prepare_run(manifest_path, progress_path, identity, run_id, resume=args.resume)
+    if already_complete:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        stored_metrics = manifest.get("outputs", {}).get("metrics")
+        completed_metrics = Path(stored_metrics) if isinstance(stored_metrics, str) else metrics_output
+        if not completed_metrics.exists():
+            msg = f"Completed run is missing its metrics output: {completed_metrics}"
+            raise SystemExit(msg)
+        _write_stdout(json.loads(completed_metrics.read_text(encoding="utf-8")))
+        return
+    try:
+        completed = _read_progress(progress_path) if args.resume else {}
+        remaining_records = [record for record in records if _record_id(record.raw) not in completed]
+        new_rows: list[dict[str, Any]] = []
+        if remaining_records:
+            backend = _build_evaluation_backend(args)
+            progress_path.parent.mkdir(parents=True, exist_ok=True)
+            with progress_path.open("a", encoding="utf-8", newline="\n") as progress_file:
 
-        def _append_prediction(row: dict[str, Any]) -> None:
-            """Persist one finished prediction immediately so progress survives interruption."""
-            predictions_file.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
-            predictions_file.flush()
+                def _append_prediction(row: dict[str, Any]) -> None:
+                    """Persist each completed prediction immediately for safe resume."""
+                    row["evaluation_record_id"] = _record_id(row)
+                    progress_file.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+                    progress_file.flush()
 
-        rows = asyncio.run(
-            run_evaluation(
-                records,
-                backend,
-                limit=args.limit,
-                concurrency=args.concurrency,
-                on_row=_append_prediction,
-            )
+                new_rows = asyncio.run(
+                    run_evaluation(
+                        remaining_records,
+                        backend,
+                        limit=args.limit,
+                        concurrency=args.concurrency,
+                        on_row=_append_prediction,
+                    )
+                )
+
+        rows_by_id = {**completed, **{_record_id(row): row for row in new_rows}}
+        rows = [rows_by_id[_record_id(record.raw)] for record in records]
+        _write_jsonl(predictions_output, rows)
+        metrics = evaluate_samples([EvaluationSample.from_mapping(row) for row in rows], k_values=args.k_values)
+        metrics_payload = {
+            "schema_version": "2.0.0",
+            "run_id": run_id,
+            "pipeline": args.pipeline,
+            "retrieval_limit": args.limit,
+            **metrics.to_dict(),
+            "slices": evaluate_slices(rows, k_values=args.k_values),
+        }
+        if args.generation:
+            report = _score_generation(rows, args)
+            _write_json(generation_output, report.to_dict())
+            metrics_payload["generation"] = report.aggregate
+        _write_json(metrics_output, metrics_payload)
+        _update_manifest(
+            manifest_path,
+            status="complete",
+            outputs={
+                "predictions": predictions_output.as_posix(),
+                "metrics": metrics_output.as_posix(),
+                "generation": generation_output.as_posix() if args.generation else None,
+            },
         )
-    metrics_output = args.metrics_output or Path(f"data/evaluation/{args.pipeline}_metrics.json")
-    metrics = evaluate_samples([EvaluationSample.from_mapping(row) for row in rows], k_values=args.k_values)
-    metrics_payload = {
-        "pipeline": args.pipeline,
-        "retrieval_limit": args.limit,
-        **metrics.to_dict(),
-    }
-    if args.generation:
-        report = _score_generation(rows, args)
-        generation_output = args.generation_output or Path(f"data/evaluation/{args.pipeline}_generation.json")
-        _write_json(generation_output, report.to_dict())
-        metrics_payload["generation"] = report.aggregate
-    _write_json(metrics_output, metrics_payload)
+    except BaseException as error:
+        _update_manifest(manifest_path, status="failed", error_type=type(error).__name__)
+        raise
     _write_stdout(metrics_payload)
 
 
@@ -291,12 +357,177 @@ def _score_generation(rows: list[dict[str, Any]], args: argparse.Namespace) -> A
     from legal_rag.settings import Settings
 
     samples = [EvalSample.from_mapping(row) for row in rows]
-    judge = BamlJudgeClient(Settings.from_environment())
+    settings = Settings.from_environment()
+    if args.judge_model:
+        settings = replace(settings, llm_model=args.judge_model)
+    judge = BamlJudgeClient(settings)
     return asyncio.run(
         evaluate_generation_samples(
             samples, judge, batch_size=args.judge_batch_size, concurrency=args.judge_concurrency
         )
     )
+
+
+_RUN_ENVIRONMENT_FIELDS = (
+    "LLM_MODEL",
+    "EMBEDDING_PROFILE",
+    "MILVUS_DATABASE",
+    "NAIVE_RAG_MILVUS_COLLECTION_NAME",
+    "NAIVE_RAG_SEARCH_MODE",
+    "NAIVE_RAG_HYBRID_RRF_K",
+    "NAIVE_RAG_HYBRID_POOL_MULTIPLIER",
+    "CRAG_MILVUS_COLLECTION_NAME",
+    "CRAG_WEB_SEARCH_ENABLED",
+    "GRAPHITI_SEARCH_NUM_RESULTS",
+    "GRAPHITI_MAX_CONTEXT_FACTS",
+    "GRAPHITI_RERANKER_MODEL_ID",
+    "GRAPHITI_RERANKER_MODEL_REVISION",
+)
+
+
+def _run_identity(args: argparse.Namespace, ground_truth_path: Path) -> dict[str, Any]:
+    """Build the secret-free identity that distinguishes one experiment configuration."""
+    ontology_paths = list(args.ontology_paths or _ontology_paths_from_environment())
+    return {
+        "pipeline": args.pipeline,
+        "ground_truth_path": ground_truth_path.resolve().as_posix(),
+        "ground_truth_sha256": _sha256_file(ground_truth_path),
+        "retrieval_limit": args.limit,
+        "k_values": list(args.k_values),
+        "naive_search_mode": args.naive_search_mode,
+        "group_id": args.group_id,
+        "graph_expansion": not args.no_graph_expansion,
+        "cross_encoder": args.cross_encoder,
+        "rewrite_query": args.rewrite_query,
+        "generation": args.generation,
+        "judge_model": args.judge_model or os.environ.get("LLM_MODEL"),
+        "ontology_files": {
+            path.resolve().as_posix(): _sha256_file(path) if path.exists() and path.is_file() else None
+            for path in ontology_paths
+        },
+        "environment": {name: os.environ[name] for name in _RUN_ENVIRONMENT_FIELDS if name in os.environ},
+    }
+
+
+def _identity_hash(identity: Mapping[str, Any]) -> str:
+    """Return a compact deterministic run identifier."""
+    serialized = json.dumps(identity, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
+    return hashlib.sha256(serialized).hexdigest()[:20]
+
+
+def _prepare_run(
+    manifest_path: Path,
+    progress_path: Path,
+    identity: Mapping[str, Any],
+    run_id: str,
+    *,
+    resume: bool,
+) -> bool:
+    """Create or validate a run manifest before any expensive pipeline calls."""
+    if manifest_path.exists():
+        existing = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if existing.get("identity") != identity:
+            msg = f"Run directory contains a different experiment: {manifest_path.parent}"
+            raise SystemExit(msg)
+        if not resume:
+            msg = f"Run already exists; pass --resume or choose --run-dir: {manifest_path.parent}"
+            raise SystemExit(msg)
+        if existing.get("status") == "complete":
+            return True
+        existing["status"] = "running"
+        existing["resumed_at"] = datetime.now(UTC).isoformat()
+        existing.pop("error_type", None)
+        _write_json(manifest_path, existing)
+        return False
+    if resume and progress_path.exists():
+        msg = f"Cannot resume progress without a manifest: {progress_path}"
+        raise SystemExit(msg)
+    if progress_path.exists():
+        msg = f"Progress file already exists; pass --resume or choose --run-dir: {progress_path}"
+        raise SystemExit(msg)
+    _write_json(
+        manifest_path,
+        {
+            "schema_version": "1.0.0",
+            "run_id": run_id,
+            "status": "running",
+            "identity": dict(identity),
+            "started_at": datetime.now(UTC).isoformat(),
+        },
+    )
+    return False
+
+
+def _update_manifest(
+    manifest_path: Path,
+    *,
+    status: str,
+    outputs: Mapping[str, Any] | None = None,
+    error_type: str | None = None,
+) -> None:
+    """Atomically record a terminal run state while retaining its original identity."""
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["status"] = status
+    timestamp_key = "completed_at" if status == "complete" else f"{status}_at"
+    manifest[timestamp_key] = datetime.now(UTC).isoformat()
+    if outputs is not None:
+        manifest["outputs"] = dict(outputs)
+    if error_type is not None:
+        manifest["error_type"] = error_type
+    _write_json(manifest_path, manifest)
+
+
+def _read_progress(path: Path) -> dict[str, dict[str, Any]]:
+    """Load completed prediction rows keyed by stable evaluation record identity."""
+    if not path.exists():
+        return {}
+    rows: dict[str, dict[str, Any]] = {}
+    with path.open(encoding="utf-8") as file:
+        for line_number, line in enumerate(file, 1):
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if not isinstance(row, dict):
+                msg = f"Expected JSON object at {path}:{line_number}"
+                raise TypeError(msg)
+            record_id = _record_id(row)
+            if record_id in rows:
+                msg = f"Duplicate evaluation record in progress file: {record_id}"
+                raise ValueError(msg)
+            rows[record_id] = row
+    return rows
+
+
+def _record_id(row: Mapping[str, Any]) -> str:
+    """Return a stable record ID for checkpointing single- or multi-turn evaluation rows."""
+    value = row.get("evaluation_record_id")
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    conversation_id = row.get("conversation_id")
+    turn_number = row.get("turn_number")
+    if isinstance(conversation_id, str) and conversation_id.strip() and turn_number is not None:
+        return f"{conversation_id.strip()}:turn:{turn_number}"
+    for field in ("question_id",):
+        value = row.get(field)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    identity = {
+        "conversation_id": row.get("conversation_id"),
+        "turn_number": row.get("turn_number"),
+        "question": row.get("question") or row.get("query"),
+    }
+    return hashlib.sha256(
+        json.dumps(identity, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
+    ).hexdigest()
+
+
+def _sha256_file(path: Path) -> str:
+    """Hash one experiment input without loading the whole file into memory."""
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for block in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def _build_evaluation_backend(args: argparse.Namespace) -> EvaluationBackend:
@@ -504,19 +735,13 @@ def _positive_int(value: str) -> int:
 
 
 def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
-    """Write JSONL rows."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="\n") as file:
-        for row in rows:
-            file.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+    """Atomically replace a JSONL result file."""
+    write_jsonl_atomic(path, rows)
 
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:
-    """Write a JSON document."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="\n") as file:
-        json.dump(data, file, ensure_ascii=False, indent=2, sort_keys=True)
-        file.write("\n")
+    """Atomically replace a JSON document."""
+    write_json_atomic(path, data)
 
 
 def _write_stdout(data: dict[str, Any]) -> None:

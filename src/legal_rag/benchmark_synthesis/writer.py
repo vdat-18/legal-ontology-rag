@@ -86,6 +86,7 @@ from legal_rag.benchmark_synthesis.multi_turn_candidate_generation import (
     ConversationTurnDraft,
     MultiTurnCandidateDraft,
     MultiTurnProgressRecord,
+    ReviewedHistoryCandidate,
 )
 from legal_rag.benchmark_synthesis.scenario_sampling import SCENARIO_SCHEMA_VERSION, Scenario
 from legal_rag.io_utils import write_json_atomic, write_jsonl_atomic
@@ -346,6 +347,33 @@ def write_multi_turn_candidates(
     write_jsonl_atomic(output_path, (conversation.to_dict() for conversation in conversations))
 
 
+def read_reviewed_history_candidates(
+    input_path: Path,
+) -> tuple[ReviewedHistoryCandidate, ...]:
+    """Read reviewed single-turn ground truth for reuse as fixed history."""
+    candidates: list[ReviewedHistoryCandidate] = []
+    with input_path.open(encoding="utf-8") as source_file:
+        for line_number, line in enumerate(source_file, start=1):
+            if not line.strip():
+                continue
+            payload = json.loads(line)
+            if payload.get("interaction_type") != "single_turn":
+                msg = f"Expected single-turn ground truth at {input_path}:{line_number}"
+                raise ValueError(msg)
+            candidates.append(
+                ReviewedHistoryCandidate(
+                    scenario_id=payload["scenario_id"],
+                    persona=payload["persona"],
+                    answerability=payload["answerability"],
+                    query=payload["question"],
+                    reference_answer=payload["expected_answer"],
+                    gold_chunk_ids=tuple(payload["expected_chunk_ids"]),
+                    source_fact_ids=tuple(payload["source_fact_ids"]),
+                )
+            )
+    return tuple(candidates)
+
+
 def read_multi_turn_candidates(input_path: Path) -> tuple[MultiTurnCandidateDraft, ...]:
     """Read a multi-turn candidates JSONL file back into typed records."""
     conversations: list[MultiTurnCandidateDraft] = []
@@ -355,17 +383,7 @@ def read_multi_turn_candidates(input_path: Path) -> tuple[MultiTurnCandidateDraf
             if payload["schema_version"] != MULTI_TURN_CANDIDATE_SCHEMA_VERSION:
                 msg = f"Unsupported multi-turn candidate schema: {payload['schema_version']}"
                 raise ValueError(msg)
-            conversations.append(
-                MultiTurnCandidateDraft(
-                    conversation_id=payload["conversation_id"],
-                    persona=payload["persona"],
-                    conversation_length=payload["conversation_length"],
-                    turns=tuple(_parse_conversation_turn(turn) for turn in payload["turns"]),
-                    gold_chunk_ids=tuple(payload["gold_chunk_ids"]),
-                    generator_model=payload["generator_model"],
-                    prompt_version=payload["prompt_version"],
-                )
-            )
+            conversations.append(_parse_multi_turn_candidate(payload))
     return tuple(conversations)
 
 
@@ -387,12 +405,27 @@ def read_multi_turn_progress(input_path: Path) -> tuple[MultiTurnProgressRecord,
                 MultiTurnProgressRecord(
                     task_id=payload["task_id"],
                     conversation_id=payload["conversation_id"],
-                    turn_number=payload["turn_number"],
                     stage=payload["stage"],
-                    draft=_parse_conversation_turn(payload["draft"]),
+                    draft=_parse_multi_turn_candidate(payload["draft"]),
                 )
             )
     return tuple(records)
+
+
+def _parse_multi_turn_candidate(payload: dict[str, object]) -> MultiTurnCandidateDraft:
+    """Parse one complete multi-turn candidate payload."""
+    if payload["schema_version"] != MULTI_TURN_CANDIDATE_SCHEMA_VERSION:
+        msg = f"Unsupported multi-turn candidate schema: {payload['schema_version']}"
+        raise ValueError(msg)
+    return MultiTurnCandidateDraft(
+        conversation_id=payload["conversation_id"],
+        persona=payload["persona"],
+        conversation_length=payload["conversation_length"],
+        turns=tuple(_parse_conversation_turn(turn) for turn in payload["turns"]),
+        gold_chunk_ids=tuple(payload["gold_chunk_ids"]),
+        generator_model=payload["generator_model"],
+        prompt_version=payload["prompt_version"],
+    )
 
 
 def _parse_conversation_turn(payload: dict[str, object]) -> ConversationTurnDraft:
@@ -404,8 +437,10 @@ def _parse_conversation_turn(payload: dict[str, object]) -> ConversationTurnDraf
         answerability=payload["answerability"],
         anchor_scenario_id=payload["anchor_scenario_id"],
         query=payload["query"],
+        standalone_query=payload["standalone_query"],
         reference_answer=payload["reference_answer"],
         reasoning=payload["reasoning"],
+        missing_information=payload["missing_information"],
         required_claims=tuple(
             RequiredClaim(
                 claim=claim["claim"],
