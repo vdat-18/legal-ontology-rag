@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
 from pymilvus import MilvusClient
 
 from legal_rag.chunker.models import Chunk
+from legal_rag.chunker.writer import write_chunks
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.naive_rag.indexer import index_chunks
-from legal_rag.naive_rag.retriever import Retriever
+from legal_rag.naive_rag.retriever import Retriever, SearchMode
 from legal_rag.settings import NaiveRagSettings
 
 
@@ -94,6 +96,8 @@ def test_retrieve_returns_top_k_chunks_with_populated_fields(tmp_path: Path) -> 
     assert len(hits) == 1
     assert hits[0].chunk_id in {"chunk-1", "chunk-2"}
     assert hits[0].source_name == "168_2024_ND-CP.docx"
+    assert hits[0].content_sha256 == "content-hash"
+    assert hits[0].chunker_config_sha256 == "config-hash"
 
 
 def test_retrieve_encodes_the_query_with_query_side_instruction(tmp_path: Path) -> None:
@@ -110,3 +114,32 @@ def test_retrieve_encodes_the_query_with_query_side_instruction(tmp_path: Path) 
     retriever.retrieve("Mức phạt vượt đèn đỏ")
 
     assert backend.calls == [["QUERY: Mức phạt vượt đèn đỏ"]]
+
+
+def test_hierarchical_retrieval_expands_a_milvus_seed_from_local_chunks(tmp_path: Path) -> None:
+    """Milvus identity metadata safely connects one seed to its local article context."""
+    first = _chunk("chunk-1", "Điều 7. Nội dung thứ nhất.")
+    second = _chunk("chunk-2", "Nội dung thứ hai.")
+    context = "[LEGAL_STRUCTURE 1.0.0]\nĐiều 7. Xử phạt xe mô tô\n[/LEGAL_STRUCTURE]"
+    first = replace(first, chunk_index=0, context_text=context, next_chunk_id="chunk-2")
+    second = replace(second, chunk_index=1, context_text=context, previous_chunk_id="chunk-1")
+    chunks = (first, second)
+    chunks_dir = tmp_path / "chunks"
+    chunks_dir.mkdir()
+    write_chunks(chunks_dir / "document.chunks.jsonl", chunks)
+    encoder = EmbeddingEncoder(_profile(), _FakeEncoderBackend())
+    settings = NaiveRagSettings(
+        embedding_profile="test-profile",
+        top_k=1,
+        milvus_nlist=1,
+        milvus_flush_after_insert=False,
+        chunks_dir=chunks_dir,
+    )
+    client = MilvusClient(uri=str(tmp_path / "naive_rag.db"))
+    index_chunks(chunks, encoder, client, settings)
+    retriever = Retriever(encoder, client, settings)
+
+    [hit] = retriever.retrieve("Nội dung thứ hai", top_k=1, mode=SearchMode.HIERARCHICAL)
+
+    assert hit.unit_kind == "article"
+    assert hit.effective_evidence_chunk_ids == ("chunk-1", "chunk-2")

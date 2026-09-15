@@ -23,7 +23,7 @@ class QueryRequest(BaseModel):
 
     query: str = Field(min_length=1)
     top_k: int | None = Field(default=None)
-    search_mode: Literal["keyword", "semantic", "hybrid"] | None = Field(default=None)
+    search_mode: Literal["keyword", "semantic", "hybrid", "hybrid_rerank", "hierarchical"] | None = Field(default=None)
 
 
 class SourceChunk(BaseModel):
@@ -34,6 +34,9 @@ class SourceChunk(BaseModel):
     source_name: str
     kind: str
     score: float
+    unit_id: str
+    unit_kind: str
+    evidence_chunk_ids: list[str]
 
 
 class QueryResponse(BaseModel):
@@ -199,7 +202,16 @@ def query(
         query=request.query,
         answer=result.answer,
         sources=[
-            SourceChunk(chunk_id=s.chunk_id, text=s.text, source_name=s.source_name, kind=s.kind, score=s.score)
+            SourceChunk(
+                chunk_id=s.chunk_id,
+                text=s.text,
+                source_name=s.source_name,
+                kind=s.kind,
+                score=s.score,
+                unit_id=s.effective_unit_id,
+                unit_kind=s.unit_kind,
+                evidence_chunk_ids=list(s.effective_evidence_chunk_ids),
+            )
             for s in result.sources
         ],
         latency_ms=latency,

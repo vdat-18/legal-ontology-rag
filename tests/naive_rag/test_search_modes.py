@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from legal_rag.naive_rag.retriever import RetrievedChunk, Retriever, SearchMode
+from legal_rag.naive_rag.structure import StructuralUnit
 
 
 def _fake_settings(**overrides):
@@ -19,6 +20,13 @@ def _fake_settings(**overrides):
         "search_mode": "semantic",
         "hybrid_rrf_k": 60,
         "hybrid_pool_multiplier": 3,
+        "reranker_model_id": "test/model",
+        "reranker_model_revision": "test-revision",
+        "reranker_batch_size": 8,
+        "reranker_pool_multiplier": 5,
+        "chunks_dir": "unused",
+        "hierarchical_max_chunks_per_unit": 5,
+        "hierarchical_max_tokens_per_unit": 2500,
         "bm25_k1": 1.5,
         "bm25_b": 0.75,
         "bm25_delta": 0.5,
@@ -75,6 +83,124 @@ def test_hybrid_search_returns_chunks():
     hits = retriever.retrieve("test query", top_k=3, mode=SearchMode.HYBRID)
     assert len(hits) > 0
     assert all(isinstance(h, RetrievedChunk) for h in hits)
+
+
+def test_hybrid_search_preserves_rrf_order_scores_and_semantic_representative():
+    """Hybrid fusion keeps the established scores, tie order, and semantic payload."""
+    retriever = _make_retriever()
+    semantic = [
+        RetrievedChunk("shared", "semantic shared", "semantic.docx", "p", 0.9),
+        RetrievedChunk("semantic-only", "semantic only", "semantic.docx", "p", 0.8),
+        RetrievedChunk("semantic-tie", "semantic tie", "semantic.docx", "p", 0.7),
+    ]
+    keyword = [
+        RetrievedChunk("shared", "keyword shared", "keyword.docx", "p", 3.0),
+        RetrievedChunk("keyword-only", "keyword only", "keyword.docx", "p", 2.0),
+        RetrievedChunk("keyword-tie", "keyword tie", "keyword.docx", "p", 1.0),
+    ]
+    retriever._semantic_search = MagicMock(return_value=semantic)
+    retriever._keyword_search = MagicMock(return_value=keyword)
+
+    hits = retriever.retrieve("test query", top_k=5, mode=SearchMode.HYBRID)
+
+    assert [hit.chunk_id for hit in hits] == [
+        "shared",
+        "semantic-only",
+        "keyword-only",
+        "semantic-tie",
+        "keyword-tie",
+    ]
+    assert [hit.score for hit in hits] == pytest.approx([2 / 61, 1 / 62, 1 / 62, 1 / 63, 1 / 63])
+    assert hits[0].text == "semantic shared"
+    assert hits[0].source_name == "semantic.docx"
+
+
+def test_hybrid_rerank_fuses_candidates_before_reranking():
+    """The reranker receives one deduplicated RRF list and controls final ordering."""
+
+    class FakeReranker:
+        def __init__(self) -> None:
+            self.candidates: list[RetrievedChunk] = []
+
+        def rerank(self, query: str, candidates: list[RetrievedChunk]) -> list[RetrievedChunk]:
+            assert query == "test query"
+            self.candidates = list(candidates)
+            return list(reversed(candidates))
+
+    reranker = FakeReranker()
+    retriever = _make_retriever()
+    retriever._reranker = reranker
+    semantic = [
+        RetrievedChunk("shared", "semantic", "doc.docx", "p", 0.9),
+        RetrievedChunk("semantic", "semantic", "doc.docx", "p", 0.8),
+    ]
+    keyword = [
+        RetrievedChunk("shared", "keyword", "doc.docx", "p", 3.0),
+        RetrievedChunk("keyword", "keyword", "doc.docx", "p", 2.0),
+    ]
+    retriever._semantic_search = MagicMock(return_value=semantic)
+    retriever._keyword_search = MagicMock(return_value=keyword)
+
+    hits = retriever.retrieve("test query", top_k=2, mode=SearchMode.HYBRID_RERANK)
+
+    assert len({chunk.chunk_id for chunk in reranker.candidates}) == 3
+    assert [chunk.chunk_id for chunk in hits] == ["keyword", "semantic"]
+    retriever._semantic_search.assert_called_once_with("test query", 10)
+    retriever._keyword_search.assert_called_once_with("test query", 10)
+
+
+def test_baseline_modes_do_not_load_the_reranker():
+    """Existing keyword, semantic, and hybrid modes remain independent of the model."""
+    retriever = _make_retriever()
+    retriever._get_reranker = MagicMock(side_effect=AssertionError("reranker loaded"))
+
+    retriever.retrieve("test", top_k=2, mode=SearchMode.SEMANTIC)
+    retriever.retrieve("keyword", top_k=2, mode=SearchMode.KEYWORD)
+    retriever.retrieve("test", top_k=2, mode=SearchMode.HYBRID)
+
+    retriever._get_reranker.assert_not_called()
+
+
+def test_hierarchical_search_expands_and_deduplicates_article_units():
+    """Hierarchical mode expands RRF seeds and keeps one result per article unit."""
+
+    class FakeCatalog:
+        def build_structural_unit(self, seed, *, max_chunks, max_tokens):
+            assert max_chunks == 5
+            assert max_tokens == 2500
+            if seed.chunk_id in {"seed-1", "seed-2"}:
+                return StructuralUnit("article:1", "expanded article", "doc.docx", ("seed-1", "evidence-2"))
+            return None
+
+    retriever = _make_retriever()
+    retriever._chunk_catalog = FakeCatalog()
+    seeds = [
+        RetrievedChunk("seed-1", "one", "doc.docx", "p", 0.3),
+        RetrievedChunk("seed-2", "two", "doc.docx", "p", 0.2),
+        RetrievedChunk("leaf", "leaf", "doc.docx", "p", 0.1),
+    ]
+    retriever._hybrid_candidates = MagicMock(return_value=seeds)
+
+    hits = retriever.retrieve("query", top_k=2, mode=SearchMode.HIERARCHICAL)
+
+    assert [hit.effective_unit_id for hit in hits] == ["article:1", "leaf"]
+    assert hits[0].text == "expanded article"
+    assert hits[0].effective_evidence_chunk_ids == ("seed-1", "evidence-2")
+    retriever._hybrid_candidates.assert_called_once_with("query", 6, 6)
+
+
+def test_baseline_modes_do_not_load_the_chunk_catalog():
+    """Existing modes remain independent of local structural chunk files."""
+    retriever = _make_retriever()
+    retriever._get_chunk_catalog = MagicMock(side_effect=AssertionError("catalog loaded"))
+    retriever._reranker = MagicMock(rerank=lambda _query, candidates: candidates)
+
+    retriever.retrieve("test", top_k=2, mode=SearchMode.SEMANTIC)
+    retriever.retrieve("keyword", top_k=2, mode=SearchMode.KEYWORD)
+    retriever.retrieve("test", top_k=2, mode=SearchMode.HYBRID)
+    retriever.retrieve("test", top_k=2, mode=SearchMode.HYBRID_RERANK)
+
+    retriever._get_chunk_catalog.assert_not_called()
 
 
 def test_default_mode_is_semantic():

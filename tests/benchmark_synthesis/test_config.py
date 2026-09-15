@@ -61,7 +61,7 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.bundle_scope.reasoning_effort == "high"
     assert settings.candidate_generation_batch_size == 1
     assert settings.candidate_generation_max_concurrency == 30
-    assert settings.multi_turn_generation_batch_size == 10
+    assert settings.multi_turn_generation_batch_size == 5
     assert settings.multi_turn_generation_max_concurrency == 30
     assert settings.evidence_retrieval.retrieval_pool_size == 30
     assert settings.evidence_retrieval.max_candidates_per_fact == 10
@@ -74,7 +74,7 @@ def test_synthesis_settings_load_every_pipeline_stage() -> None:
     assert settings.candidate_generation.max_output_tokens == 32_768
     assert settings.candidate_generation.reasoning_effort == "high"
     assert settings.multi_turn_generation.max_output_tokens == 16_384
-    assert settings.multi_turn_generation.reasoning_effort == "medium"
+    assert settings.multi_turn_generation.reasoning_effort == "high"
 
 
 def test_synthesis_settings_reject_unknown_schema(tmp_path: Path) -> None:

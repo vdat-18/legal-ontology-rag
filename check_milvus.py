@@ -1,25 +1,29 @@
-from pymilvus import MilvusClient
-import os
-from dotenv import load_dotenv
+"""Inspect the configured Naive RAG Milvus collection schema."""
 
-load_dotenv()
+from __future__ import annotations
 
-client = MilvusClient(uri=os.getenv('MILVUS_URI'), token=os.getenv('MILVUS_TOKEN'))
-client.use_database(os.getenv('MILVUS_DATABASE'))
+from dotenv import find_dotenv, load_dotenv
+from loguru import logger
 
-desc = client.describe_collection('naive_rag_chunks')
-print('Collection: naive_rag_chunks')
-print('Fields:')
-for f in desc['fields']:
-    print(f'  {f["name"]}: {f["type"]}')
-    if f['name'] == 'vector':
-        params = f.get('params', {})
-        print(f'    dim: {params.get("dim", "unknown")}')
-print()
+from legal_rag.datastores.milvus import build_milvus_client
+from legal_rag.settings import MilvusSettings, NaiveRagSettings
 
-print('Sample field values (first row):')
-results = client.query('naive_rag_chunks', filter='', limit=1, output_fields=['embedding_profile_id', 'embedding_model_id', 'embedding_model_revision', 'chunker_config_sha256'])
-if results:
-    for k, v in results[0].items():
-        if k != 'vector':
-            print(f'  {k}: {v}')
+
+def main() -> None:
+    """Log collection field names and types without reading document rows."""
+    dotenv_path = find_dotenv(usecwd=True)
+    if dotenv_path:
+        load_dotenv(dotenv_path)
+    client = build_milvus_client(MilvusSettings.from_environment())
+    collection_name = NaiveRagSettings.from_environment().milvus_collection_name
+    try:
+        description = client.describe_collection(collection_name)
+        logger.info("Collection: {}", collection_name)
+        for field in description["fields"]:
+            logger.info("field={} type={}", field["name"], field["type"])
+    finally:
+        client.close()
+
+
+if __name__ == "__main__":
+    main()

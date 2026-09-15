@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
 import pytest
 
 from legal_rag.evaluation import cli
+from legal_rag.evaluation.metrics import EvaluationSample
 from legal_rag.evaluation.runner import (
     PipelinePrediction,
     PredictionContext,
@@ -16,13 +18,65 @@ from legal_rag.evaluation.runner import (
 )
 
 
-@pytest.mark.parametrize("pipeline", ["naive", "corrective", "graphiti", "ontology"])
+@pytest.mark.parametrize("pipeline", ["naive", "adaptive", "corrective", "graphiti", "ontology"])
 def test_run_accepts_every_comparable_pipeline(pipeline: str) -> None:
-    """The end-to-end command exposes all four implementations behind one interface."""
+    """The end-to-end command exposes every comparable implementation behind one interface."""
     arguments = cli._parser().parse_args(["run", "--pipeline", pipeline])
 
     assert arguments.pipeline == pipeline
     assert arguments.ground_truth.as_posix() == "data/benchmark_synthesis/groundtruth.jsonl"
+
+
+def test_adaptive_run_identity_contains_effective_planner_configuration(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Adaptive resumes are tied to effective defaults as well as explicit environment values."""
+    ground_truth = tmp_path / "groundtruth.jsonl"
+    ground_truth.write_text("{}\n", encoding="utf-8")
+    monkeypatch.setenv("ADAPTIVE_RAG_RRF_K", "30")
+    arguments = cli._parser().parse_args(["run", "--pipeline", "adaptive"])
+
+    identity = cli._run_identity(arguments, ground_truth)
+
+    assert identity["adaptive_config"] == {
+        "base_search_mode": "hybrid_rerank",
+        "max_subqueries": 3,
+        "per_leg_limit": 10,
+        "rrf_k": 30,
+        "planner_max_output_tokens": 2048,
+        "planner_temperature": 0.0,
+        "planner_max_response_bytes": 262144,
+    }
+
+
+def test_builds_adaptive_backend_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The adaptive CLI branch wires all four settings objects into its pipeline."""
+    from legal_rag.adaptive_rag import pipeline as pipeline_module
+    from legal_rag.settings import AdaptiveRagSettings, MilvusSettings, NaiveRagSettings, Settings
+
+    created: list[tuple[object, ...]] = []
+
+    class FakePipeline:
+        def __init__(self, *settings: object) -> None:
+            self.settings = settings[-1]
+            created.append(settings)
+
+    app_settings = object()
+    milvus_settings = object()
+    naive_settings = object()
+    adaptive_settings = AdaptiveRagSettings()
+    monkeypatch.setattr(Settings, "from_environment", classmethod(lambda _cls: app_settings))
+    monkeypatch.setattr(MilvusSettings, "from_environment", classmethod(lambda _cls: milvus_settings))
+    monkeypatch.setattr(NaiveRagSettings, "from_environment", classmethod(lambda _cls: naive_settings))
+    monkeypatch.setattr(AdaptiveRagSettings, "from_environment", classmethod(lambda _cls: adaptive_settings))
+    monkeypatch.setattr(pipeline_module, "AdaptiveRAGPipeline", FakePipeline)
+    arguments = cli._parser().parse_args(["run", "--pipeline", "adaptive", "--rewrite-query"])
+
+    backend = cli._build_evaluation_backend(arguments)
+
+    assert created == [(app_settings, milvus_settings, naive_settings, adaptive_settings)]
+    assert backend.name == "adaptive"
+    assert backend._rewrite_query is True
 
 
 def test_run_parses_ontology_paths() -> None:
@@ -58,6 +112,199 @@ def test_run_rejects_a_non_positive_shared_limit() -> None:
     """Every pipeline receives a positive retrieval budget."""
     with pytest.raises(SystemExit):
         cli._parser().parse_args(["run", "--limit", "0"])
+
+
+def test_retrieve_parses_naive_mode_and_sample_limit() -> None:
+    """Retrieval-only evaluation exposes every Naive search strategy and bounded smoke tests."""
+    arguments = cli._parser().parse_args(
+        [
+            "retrieve",
+            "--retriever",
+            "naive",
+            "--naive-search-mode",
+            "hybrid",
+            "--max-samples",
+            "12",
+        ]
+    )
+
+    assert arguments.retriever == "naive"
+    assert arguments.naive_search_mode == "hybrid"
+    assert arguments.max_samples == 12
+
+
+@pytest.mark.parametrize("mode", ["hybrid_rerank", "hierarchical"])
+def test_evaluation_parsers_accept_naive_variants(mode: str) -> None:
+    """Both retrieval-only and end-to-end evaluation expose each Naive variant."""
+    retrieve = cli._parser().parse_args(["retrieve", "--retriever", "naive", "--naive-search-mode", mode])
+    run = cli._parser().parse_args(["run", "--pipeline", "naive", "--naive-search-mode", mode])
+
+    assert retrieve.naive_search_mode == mode
+    assert run.naive_search_mode == mode
+
+
+def test_retrieve_runs_naive_without_llm_and_uses_mode_specific_outputs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A bounded Naive run dispatches directly to retrieval and does not overwrite another mode."""
+    ground_truth = tmp_path / "groundtruth.jsonl"
+    ground_truth.write_text(
+        "".join(
+            json.dumps(
+                {
+                    "question": f"question {index}",
+                    "expected_chunk_ids": [f"chunk-{index}"],
+                    "bundle_kind": "single_hop",
+                    "answerability": "answerable",
+                    "reasoning_hops": 1,
+                    "query_style": "standard",
+                    "required_claims": [{"claim": f"claim {index}", "evidence": [{"chunk_id": f"chunk-{index}"}]}],
+                }
+            )
+            + "\n"
+            for index in (1, 2)
+        ),
+        encoding="utf-8",
+    )
+
+    def retrieve(samples: list[EvaluationSample], arguments: argparse.Namespace) -> list[dict[str, object]]:
+        assert len(samples) == 1
+        assert arguments.naive_search_mode == "hybrid"
+        sample = samples[0]
+        return [
+            cli._retrieval_prediction_row(
+                sample,
+                [{"chunk_id": "chunk-1", "source_name": "document.docx", "text": "context", "score": 1.0}],
+            )
+        ]
+
+    monkeypatch.setattr(cli, "_retrieve_with_naive", retrieve)
+    monkeypatch.chdir(tmp_path)
+    arguments = cli._parser().parse_args(
+        [
+            "retrieve",
+            "--retriever",
+            "naive",
+            "--naive-search-mode",
+            "hybrid",
+            "--max-samples",
+            "1",
+            "--ground-truth",
+            str(ground_truth),
+            "--k-values",
+            "1",
+        ]
+    )
+
+    cli._handle_retrieve(arguments)
+
+    predictions = tmp_path / "data/evaluation/naive_hybrid_retrieval_predictions.jsonl"
+    metrics = tmp_path / "data/evaluation/naive_hybrid_retrieval_metrics.json"
+    assert predictions.exists()
+    report = json.loads(metrics.read_text(encoding="utf-8"))
+    assert report["retriever"] == "naive"
+    assert report["search_mode"] == "hybrid"
+    assert report["sample_count"] == 1
+    assert report["claim_sample_count"] == 1
+    assert report["claim_evidence_complete_at_k"] == {"1": 1.0}
+    assert report["recall_at_k"] == {"1": 1.0}
+    assert report["slices"]["bundle_kind"]["single_hop"]["sample_count"] == 1
+    assert report["slices"]["answerability"]["answerable"]["sample_count"] == 1
+    assert report["slices"]["reasoning_hops"]["1"]["sample_count"] == 1
+    assert report["slices"]["query_style"]["standard"]["sample_count"] == 1
+
+
+def test_retrieve_with_naive_forwards_mode_and_closes_retriever(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The Naive adapter returns scored chunk dictionaries and releases its Milvus client."""
+    from types import SimpleNamespace
+
+    from legal_rag.datastores import milvus as milvus_module
+    from legal_rag.embedding import encoder as encoder_module
+    from legal_rag.embedding import profiles as profiles_module
+    from legal_rag.naive_rag import retriever as retriever_module
+    from legal_rag.settings import MilvusSettings, NaiveRagSettings
+
+    fake_settings = SimpleNamespace(embedding_profile="test-profile")
+
+    class FakeRetriever:
+        """Record adapter calls without loading an embedding model or Milvus."""
+
+        def __init__(self, encoder: object, client: object, settings: object) -> None:
+            assert encoder == "encoder"
+            assert client == "milvus-client"
+            assert settings is fake_settings
+            self.closed = False
+            fake_retrievers.append(self)
+
+        def retrieve(self, question: str, top_k: int, mode: retriever_module.SearchMode) -> list[object]:
+            assert question == "question"
+            assert top_k == 3
+            assert mode.value == "keyword"
+            return [
+                SimpleNamespace(
+                    chunk_id="chunk-1",
+                    source_name="document.docx",
+                    text="context",
+                    kind="paragraph_group",
+                    score=2.5,
+                )
+            ]
+
+        def close(self) -> None:
+            self.closed = True
+
+    fake_retrievers: list[FakeRetriever] = []
+    monkeypatch.setattr(NaiveRagSettings, "from_environment", classmethod(lambda _cls: fake_settings))
+    monkeypatch.setattr(MilvusSettings, "from_environment", classmethod(lambda _cls: "milvus-settings"))
+    monkeypatch.setattr(profiles_module, "load_configured_embedding_profile", lambda _profile: "profile")
+    monkeypatch.setattr(encoder_module.EmbeddingEncoder, "from_profile", classmethod(lambda _cls, _profile: "encoder"))
+    monkeypatch.setattr(milvus_module, "build_milvus_client", lambda _settings: "milvus-client")
+    monkeypatch.setattr(retriever_module, "Retriever", FakeRetriever)
+    arguments = cli._parser().parse_args(
+        ["retrieve", "--retriever", "naive", "--naive-search-mode", "keyword", "--limit", "3"]
+    )
+
+    [row] = cli._retrieve_with_naive([EvaluationSample(question="question")], arguments)
+
+    assert row["retrieved_chunks"] == [
+        {
+            "chunk_id": "chunk-1",
+            "source_name": "document.docx",
+            "text": "context",
+            "kind": "paragraph_group",
+            "score": 2.5,
+            "unit_id": "chunk-1",
+            "unit_kind": "chunk",
+            "evidence": [{"chunk_id": "chunk-1", "source_name": "document.docx"}],
+        }
+    ]
+    assert row["retrieved_units"][0]["unit_id"] == "chunk-1"
+    assert fake_retrievers[0].closed is True
+
+
+def test_retrieval_prediction_row_preserves_grouped_evidence() -> None:
+    """Retrieval-only output keeps one ranked article unit and flattened compatibility IDs."""
+    row = cli._retrieval_prediction_row(
+        EvaluationSample(question="question", expected_chunk_ids=("chunk-1", "chunk-2")),
+        [
+            {
+                "chunk_id": "chunk-1",
+                "unit_id": "article:1",
+                "unit_kind": "article",
+                "source_name": "document.docx",
+                "text": "expanded",
+                "score": 0.5,
+                "evidence": [
+                    {"chunk_id": "chunk-1", "source_name": "document.docx"},
+                    {"chunk_id": "chunk-2", "source_name": "document.docx"},
+                ],
+            }
+        ],
+    )
+
+    assert row["retrieved_chunk_ids"] == ["chunk-1", "chunk-2"]
+    assert row["retrieved_units"][0]["unit_id"] == "article:1"
+    assert len(row["retrieved_units"][0]["evidence"]) == 2
 
 
 def test_run_writes_pipeline_specific_predictions_and_metrics(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -105,7 +352,7 @@ def test_run_writes_pipeline_specific_predictions_and_metrics(monkeypatch: pytes
     assert prediction["question_id"] == "q-1"
     assert metric_report["pipeline"] == "naive"
     assert metric_report["precision_at_k"] == {"1": 1.0}
-    assert metric_report["mean_reciprocal_rank"] == 1.0
+    assert "mean_reciprocal_rank" not in metric_report
     assert backend.closed is True
 
     completed_backend = _FakeBackend()

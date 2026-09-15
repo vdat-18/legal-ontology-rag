@@ -3,7 +3,8 @@
 This repository provides multiple retrieval backends over the same versioned legal-document chunks:
 
 - Graphiti uses Neo4j for temporal entities, relationships, and source provenance.
-- Naive RAG uses Milvus with three retrieval modes (`NAIVE_RAG_SEARCH_MODE`): semantic dense-vector search (default), BM25 keyword search, or hybrid search fused with Reciprocal Rank Fusion (RRF).
+- Naive RAG uses Milvus with semantic dense-vector search (default), BM25 keyword search, hybrid RRF, Cross-Encoder reranking, or bounded article-level hierarchical expansion selected by `NAIVE_RAG_SEARCH_MODE`.
+- Adaptive RAG uses one LLM planning call to select direct or one-shot multi-hop retrieval, reuses a configured Naive search mode for every leg, and fuses multi-hop results with RRF before one answer-generation call.
 - Corrective RAG uses Milvus retrieval plus CRAG grading, refinement, optional web search, and answer generation.
 - Attu is an optional Milvus administration UI; it is not part of the application data path.
 
@@ -35,6 +36,17 @@ Milvus uses one shared database configured by `MILVUS_DATABASE`. Each retrieval 
 When upgrading an existing environment, rename `NAIVE_RAG_MILVUS_URI` to `MILVUS_URI`, `NAIVE_RAG_MILVUS_TOKEN` to `MILVUS_TOKEN`, and `NAIVE_RAG_MILVUS_DATABASE` to `MILVUS_DATABASE`. No automatic data migration runs: keep the previous database value to reuse existing data, or select `legal_rag` and rebuild the method-specific collections there.
 
 The naive index stores one source-text field (`text`), its vector, and chunker/embedding-model identity metadata with each chunk. The vector is generated from the chunk's `embedding_text` in memory, but that duplicate input is not persisted in Milvus. Re-running the indexer resumes missing chunks after a partial run. It fails instead of mixing data when the collection schema, vector dimension, index metric, corpus IDs, chunk content, chunker configuration, or embedding revision differs.
+
+The `hierarchical` Naive mode keeps the same Milvus rows. It uses hybrid RRF seeds, validates them against `NAIVE_RAG_CHUNKS_DIR`, and expands only chunks with one unambiguous parser-owned article context. Each article unit is bounded by `NAIVE_RAG_HIERARCHICAL_MAX_CHUNKS_PER_UNIT` and `NAIVE_RAG_HIERARCHICAL_MAX_TOKENS_PER_UNIT`; chunks without safe structure remain leaf results.
+
+Adaptive RAG does not create another Milvus collection. It defaults to `hybrid_rerank`, always retrieves the original question, and adds two or more standalone subquery legs only when the planner selects `multi_hop`. The planner route and subqueries are stored in evaluation prediction metadata for audit. Run it through the shared evaluation command:
+
+```powershell
+New-Item -ItemType Directory -Force data/evaluation/smoke | Out-Null
+Get-Content data/benchmark_synthesis/groundtruth.jsonl -TotalCount 20 |
+  Set-Content data/evaluation/smoke/groundtruth_20.jsonl -Encoding utf8
+uv run legal-evaluate run --pipeline adaptive --ground-truth data/evaluation/smoke/groundtruth_20.jsonl --limit 10
+```
 
 Existing naive collections that still contain the former `embedding_text`, `record_scope`, or `chunk_index` fields must be dropped and rebuilt once with the current schema.
 

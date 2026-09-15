@@ -18,10 +18,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--ontology",
-        type=str,
-        nargs="+",
+        type=Path,
+        action="append",
         required=True,
-        help="Path(s) to ontology TTL files",
+        help="Ontology TTL path; repeat the option to provide multiple files",
     )
     return parser
 
@@ -43,7 +43,7 @@ def main() -> None:
     settings = Settings.from_environment()
     milvus_settings = MilvusSettings.from_environment()
     naive_rag_settings = NaiveRagSettings.from_environment()
-    ontology_paths = [Path(p) for p in arguments.ontology]
+    ontology_paths = arguments.ontology
 
     query_date = None
     if arguments.query_date:

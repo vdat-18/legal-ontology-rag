@@ -25,6 +25,7 @@ from legal_rag.evaluation.metrics import (
     load_jsonl_samples,
 )
 from legal_rag.evaluation.runner import (
+    AdaptiveEvaluationBackend,
     CorrectiveEvaluationBackend,
     EvaluationBackend,
     GraphitiEvaluationBackend,
@@ -69,7 +70,7 @@ def _parser() -> argparse.ArgumentParser:
     run_parser = subparsers.add_parser("run", help="Run one RAG pipeline and score it with the shared metrics.")
     run_parser.add_argument(
         "--pipeline",
-        choices=("naive", "corrective", "graphiti", "ontology"),
+        choices=("naive", "adaptive", "corrective", "graphiti", "ontology"),
         default="corrective",
         help="RAG implementation to evaluate. All choices emit the same prediction schema.",
     )
@@ -157,7 +158,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     run_parser.add_argument(
         "--naive-search-mode",
-        choices=("keyword", "semantic", "hybrid"),
+        choices=("keyword", "semantic", "hybrid", "hybrid_rerank", "hierarchical"),
         default=None,
         help="Optional search-mode override for the naive pipeline.",
     )
@@ -199,10 +200,22 @@ def _parser() -> argparse.ArgumentParser:
         "--limit", type=_positive_int, default=10, help="Maximum chunks to retrieve per question."
     )
     retrieve_parser.add_argument(
+        "--max-samples",
+        type=_positive_int,
+        default=None,
+        help="Optional maximum number of ground-truth samples to evaluate, useful for smoke tests.",
+    )
+    retrieve_parser.add_argument(
         "--retriever",
-        choices=("vector", "graph"),
+        choices=("vector", "naive", "graph"),
         default="vector",
-        help="Which retriever to score: the Milvus vector baseline or the Graphiti knowledge graph.",
+        help="Which retriever to score: the CRAG vector baseline, Naive RAG, or Graphiti.",
+    )
+    retrieve_parser.add_argument(
+        "--naive-search-mode",
+        choices=("keyword", "semantic", "hybrid", "hybrid_rerank", "hierarchical"),
+        default="semantic",
+        help="Naive RAG search strategy, for --retriever naive.",
     )
     retrieve_parser.add_argument(
         "--group-id",
@@ -228,14 +241,14 @@ def _parser() -> argparse.ArgumentParser:
     retrieve_parser.add_argument(
         "--predictions-output",
         type=Path,
-        default=Path("data/evaluation/retrieval_predictions.jsonl"),
-        help="Path where per-sample retrieval predictions are written.",
+        default=None,
+        help="Path where per-sample retrieval predictions are written; defaults to a retriever-specific path.",
     )
     retrieve_parser.add_argument(
         "--metrics-output",
         type=Path,
-        default=Path("data/evaluation/retrieval_metrics.json"),
-        help="Path where aggregate retrieval metrics are written.",
+        default=None,
+        help="Path where aggregate retrieval metrics are written; defaults to a retriever-specific path.",
     )
     return parser
 
@@ -376,6 +389,13 @@ _RUN_ENVIRONMENT_FIELDS = (
     "NAIVE_RAG_SEARCH_MODE",
     "NAIVE_RAG_HYBRID_RRF_K",
     "NAIVE_RAG_HYBRID_POOL_MULTIPLIER",
+    "NAIVE_RAG_RERANKER_MODEL_ID",
+    "NAIVE_RAG_RERANKER_MODEL_REVISION",
+    "NAIVE_RAG_RERANKER_BATCH_SIZE",
+    "NAIVE_RAG_RERANKER_POOL_MULTIPLIER",
+    "NAIVE_RAG_CHUNKS_DIR",
+    "NAIVE_RAG_HIERARCHICAL_MAX_CHUNKS_PER_UNIT",
+    "NAIVE_RAG_HIERARCHICAL_MAX_TOKENS_PER_UNIT",
     "CRAG_MILVUS_COLLECTION_NAME",
     "CRAG_WEB_SEARCH_ENABLED",
     "GRAPHITI_SEARCH_NUM_RESULTS",
@@ -388,6 +408,11 @@ _RUN_ENVIRONMENT_FIELDS = (
 def _run_identity(args: argparse.Namespace, ground_truth_path: Path) -> dict[str, Any]:
     """Build the secret-free identity that distinguishes one experiment configuration."""
     ontology_paths = list(args.ontology_paths or _ontology_paths_from_environment())
+    adaptive_config = None
+    if args.pipeline == "adaptive":
+        from legal_rag.settings import AdaptiveRagSettings
+
+        adaptive_config = asdict(AdaptiveRagSettings.from_environment())
     return {
         "pipeline": args.pipeline,
         "ground_truth_path": ground_truth_path.resolve().as_posix(),
@@ -399,6 +424,7 @@ def _run_identity(args: argparse.Namespace, ground_truth_path: Path) -> dict[str
         "graph_expansion": not args.no_graph_expansion,
         "cross_encoder": args.cross_encoder,
         "rewrite_query": args.rewrite_query,
+        "adaptive_config": adaptive_config,
         "generation": args.generation,
         "judge_model": args.judge_model or os.environ.get("LLM_MODEL"),
         "ontology_files": {
@@ -547,6 +573,21 @@ def _build_evaluation_backend(args: argparse.Namespace) -> EvaluationBackend:
             rewrite_query=getattr(args, "rewrite_query", False),
         )
 
+    if args.pipeline == "adaptive":
+        from legal_rag.adaptive_rag.pipeline import AdaptiveRAGPipeline
+        from legal_rag.settings import AdaptiveRagSettings, MilvusSettings, NaiveRagSettings, Settings
+
+        pipeline = AdaptiveRAGPipeline(
+            Settings.from_environment(),
+            MilvusSettings.from_environment(),
+            NaiveRagSettings.from_environment(),
+            AdaptiveRagSettings.from_environment(),
+        )
+        return AdaptiveEvaluationBackend(
+            pipeline,
+            rewrite_query=getattr(args, "rewrite_query", False),
+        )
+
     if args.pipeline == "ontology":
         from legal_rag.ontology_rag.pipeline import OntologyRAGPipeline
         from legal_rag.settings import MilvusSettings, NaiveRagSettings, Settings
@@ -597,7 +638,7 @@ def _build_evaluation_backend(args: argparse.Namespace) -> EvaluationBackend:
 
 
 def _handle_retrieve(args: argparse.Namespace) -> None:
-    """Run vector retrieval for each ground-truth sample and score it."""
+    """Run the selected retriever for each ground-truth sample and score it."""
     dotenv_path = find_dotenv(usecwd=True)
     if dotenv_path:
         load_dotenv(dotenv_path)
@@ -611,14 +652,41 @@ def _handle_retrieve(args: argparse.Namespace) -> None:
     if not samples:
         msg = f"Evaluation file has no samples: {ground_truth_path}"
         raise SystemExit(msg)
+    if args.max_samples is not None:
+        samples = samples[: args.max_samples]
 
-    retrieve = _retrieve_with_graph if args.retriever == "graph" else _retrieve_with_vector
+    retrieve = {
+        "vector": _retrieve_with_vector,
+        "naive": _retrieve_with_naive,
+        "graph": _retrieve_with_graph,
+    }[args.retriever]
     rows = retrieve(samples, args)
 
-    _write_jsonl(args.predictions_output, rows)
+    predictions_output, metrics_output = _retrieval_output_paths(args)
+    _write_jsonl(predictions_output, rows)
     metrics = evaluate_samples([EvaluationSample.from_mapping(row) for row in rows], k_values=args.k_values)
-    _write_json(args.metrics_output, metrics.to_dict())
-    _write_stdout(metrics.to_dict())
+    metrics_payload = {
+        "schema_version": "2.0.0",
+        "retriever": args.retriever,
+        "search_mode": args.naive_search_mode if args.retriever == "naive" else None,
+        "retrieval_limit": args.limit,
+        **metrics.to_dict(),
+        "slices": evaluate_slices(rows, k_values=args.k_values),
+    }
+    _write_json(metrics_output, metrics_payload)
+    _write_stdout(metrics_payload)
+
+
+def _retrieval_output_paths(args: argparse.Namespace) -> tuple[Path, Path]:
+    """Resolve defaults that keep separate retriever experiments from overwriting each other."""
+    if args.retriever == "naive":
+        run_name = f"naive_{args.naive_search_mode}"
+        predictions_default = Path(f"data/evaluation/{run_name}_retrieval_predictions.jsonl")
+        metrics_default = Path(f"data/evaluation/{run_name}_retrieval_metrics.json")
+    else:
+        predictions_default = Path("data/evaluation/retrieval_predictions.jsonl")
+        metrics_default = Path("data/evaluation/retrieval_metrics.json")
+    return args.predictions_output or predictions_default, args.metrics_output or metrics_default
 
 
 def _retrieve_with_vector(samples: list[EvaluationSample], args: argparse.Namespace) -> list[dict[str, Any]]:
@@ -638,6 +706,31 @@ def _retrieve_with_vector(samples: list[EvaluationSample], args: argparse.Namesp
     finally:
         db.close()
         embedder.close()
+    return rows
+
+
+def _retrieve_with_naive(samples: list[EvaluationSample], args: argparse.Namespace) -> list[dict[str, Any]]:
+    """Score one Naive RAG search mode without query rewriting or answer generation."""
+    from legal_rag.datastores.milvus import build_milvus_client
+    from legal_rag.embedding.encoder import EmbeddingEncoder
+    from legal_rag.embedding.profiles import load_configured_embedding_profile
+    from legal_rag.naive_rag.retriever import Retriever, SearchMode
+    from legal_rag.settings import MilvusSettings, NaiveRagSettings
+
+    settings = NaiveRagSettings.from_environment()
+    profile = load_configured_embedding_profile(settings.embedding_profile)
+    encoder = EmbeddingEncoder.from_profile(profile)
+    retriever = Retriever(encoder, build_milvus_client(MilvusSettings.from_environment()), settings)
+    mode = SearchMode(args.naive_search_mode)
+    rows: list[dict[str, Any]] = []
+    try:
+        for index, sample in enumerate(samples, 1):
+            logger.info("Retrieving sample {}/{} with Naive RAG {} search", index, len(samples), mode.value)
+            hits = retriever.retrieve(sample.question, top_k=args.limit, mode=mode)
+            retrieved_chunks = [_naive_hit_mapping(hit) for hit in hits]
+            rows.append(_retrieval_prediction_row(sample, retrieved_chunks))
+    finally:
+        retriever.close()
     return rows
 
 
@@ -694,21 +787,61 @@ def _retrieve_with_graph(samples: list[EvaluationSample], args: argparse.Namespa
 def _retrieval_prediction_row(sample: EvaluationSample, retrieved_chunks: list[dict[str, Any]]) -> dict[str, Any]:
     """Merge one ground-truth sample with vector retrieval output."""
     row = asdict(sample)
+    row["required_claims"] = [
+        {
+            "claim": expected_claim["claim"],
+            "evidence": [{"chunk_id": chunk_id} for chunk_id in expected_claim["chunk_ids"]],
+        }
+        for expected_claim in row.pop("expected_claims")
+    ]
+    retrieved_units = [_retrieved_unit_mapping(item) for item in retrieved_chunks]
+    evidence = [item for unit in retrieved_units for item in unit["evidence"]]
     row.update(
         {
-            "retrieved_chunk_ids": _extract_result_field(retrieved_chunks, "chunk_id"),
-            "retrieved_source_names": _extract_result_field(retrieved_chunks, "source_name"),
+            "retrieved_chunk_ids": _unique_mapping_field(evidence, "chunk_id"),
+            "retrieved_source_names": _unique_mapping_field(evidence, "source_name"),
             "retrieved_chunks": retrieved_chunks,
+            "retrieved_units": retrieved_units,
         }
     )
     return row
 
 
-def _extract_result_field(items: Any, key: str) -> list[str]:
-    """Extract a string field from a list of result dictionaries."""
-    if not isinstance(items, list):
-        return []
-    return [str(item[key]) for item in items if isinstance(item, dict) and item.get(key)]
+def _naive_hit_mapping(hit: Any) -> dict[str, Any]:
+    """Serialize one Naive RAG result without assuming a leaf-only unit."""
+    evidence_chunk_ids = getattr(hit, "effective_evidence_chunk_ids", (hit.chunk_id,))
+    return {
+        "chunk_id": hit.chunk_id,
+        "source_name": hit.source_name,
+        "text": hit.text,
+        "kind": hit.kind,
+        "score": hit.score,
+        "unit_id": getattr(hit, "effective_unit_id", hit.chunk_id),
+        "unit_kind": getattr(hit, "unit_kind", "chunk"),
+        "evidence": [{"chunk_id": chunk_id, "source_name": hit.source_name} for chunk_id in evidence_chunk_ids],
+    }
+
+
+def _retrieved_unit_mapping(item: dict[str, Any]) -> dict[str, Any]:
+    """Normalize a flat chunk or native unit into the persisted v2 unit shape."""
+    chunk_id = str(item["chunk_id"])
+    source_name = item.get("source_name")
+    raw_evidence = item.get("evidence")
+    evidence = raw_evidence if isinstance(raw_evidence, list) else []
+    if not evidence:
+        evidence = [{"chunk_id": chunk_id, "source_name": source_name}]
+    return {
+        "unit_id": str(item.get("unit_id") or chunk_id),
+        "unit_kind": str(item.get("unit_kind") or "chunk"),
+        "text": str(item.get("text") or ""),
+        "evidence": evidence,
+        "score": item.get("score"),
+    }
+
+
+def _unique_mapping_field(items: list[dict[str, Any]], key: str) -> list[str]:
+    """Extract unique non-empty string fields while preserving ranked order."""
+    return list(dict.fromkeys(str(item[key]) for item in items if item.get(key)))
 
 
 def _parse_k_values(value: str) -> tuple[int, ...]:

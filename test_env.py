@@ -1,17 +1,23 @@
+"""Check whether the local LLM environment is configured without exposing credentials."""
+
+from __future__ import annotations
+
 import os
-from dotenv import load_dotenv, find_dotenv
 
-print('Before load_dotenv:')
-print(f'  LLM_API_KEY: {os.getenv("LLM_API_KEY", "NOT SET")}')
+from dotenv import find_dotenv, load_dotenv
+from loguru import logger
 
-dotenv_path = find_dotenv(usecwd=True)
-print(f'Dotenv path: {dotenv_path}')
 
-if dotenv_path:
-    load_dotenv(dotenv_path)
-    print('After load_dotenv:')
-    print(f'  LLM_API_KEY: {os.getenv("LLM_API_KEY", "NOT SET")[:20]}...')
-    print(f'  LLM_BASE_URL: {os.getenv("LLM_BASE_URL", "NOT SET")}')
-    print(f'  LLM_MODEL: {os.getenv("LLM_MODEL", "NOT SET")}')
-else:
-    print('No .env found')
+def main() -> None:
+    """Load the local dotenv file and report only configuration presence."""
+    dotenv_path = find_dotenv(usecwd=True)
+    if dotenv_path:
+        load_dotenv(dotenv_path)
+    logger.info("Dotenv file found: {}", bool(dotenv_path))
+    logger.info("LLM API key configured: {}", bool(os.getenv("LLM_API_KEY")))
+    logger.info("LLM base URL configured: {}", bool(os.getenv("LLM_BASE_URL")))
+    logger.info("LLM model configured: {}", bool(os.getenv("LLM_MODEL")))
+
+
+if __name__ == "__main__":
+    main()

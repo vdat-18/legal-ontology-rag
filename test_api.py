@@ -1,33 +1,42 @@
-import os
-import requests
-from dotenv import load_dotenv
+"""Run a minimal OpenAI-compatible API connectivity check."""
 
-load_dotenv()
+from __future__ import annotations
 
-base_url = os.getenv('LLM_BASE_URL')
-api_key = os.getenv('LLM_API_KEY')
-model = os.getenv('LLM_MODEL')
+import json
+from urllib.request import Request, urlopen
 
-print(f'Testing API: {base_url}/chat/completions')
-print(f'Model: {model}')
-print(f'API Key: {api_key[:20]}...')
-print()
+from dotenv import find_dotenv, load_dotenv
+from loguru import logger
 
-headers = {
-    'Authorization': f'Bearer {api_key}',
-    'Content-Type': 'application/json',
-}
+from legal_rag.settings import Settings
 
-data = {
-    'model': model,
-    'messages': [{'role': 'user', 'content': 'Say hello in Vietnamese'}],
-    'max_tokens': 50,
-    'temperature': 0.0,
-}
 
-try:
-    response = requests.post(f'{base_url}/chat/completions', headers=headers, json=data, timeout=10)
-    print(f'Status: {response.status_code}')
-    print(f'Response: {response.text[:200]}')
-except Exception as e:
-    print(f'Error: {e}')
+def main() -> None:
+    """Send one bounded request without logging credentials or response content."""
+    dotenv_path = find_dotenv(usecwd=True)
+    if dotenv_path:
+        load_dotenv(dotenv_path)
+    settings = Settings.from_environment()
+    body = json.dumps(
+        {
+            "model": settings.llm_model,
+            "messages": [{"role": "user", "content": "Say hello in Vietnamese"}],
+            "max_tokens": 50,
+            "temperature": 0.0,
+        }
+    ).encode("utf-8")
+    request = Request(  # noqa: S310 - Settings validates the configured provider URL.
+        f"{settings.llm_base_url.rstrip('/')}/chat/completions",
+        data=body,
+        headers={
+            "Authorization": f"Bearer {settings.llm_api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    with urlopen(request, timeout=settings.llm_timeout_seconds) as response:  # noqa: S310
+        logger.info("LLM connectivity check completed with HTTP {}", response.status)
+
+
+if __name__ == "__main__":
+    main()

@@ -69,7 +69,7 @@ class NaiveRAGPipeline:
         mode = SearchMode(search_mode) if search_mode else None
 
         rewritten_query = query
-        if rewrite_query and (history or self._should_rewrite_single_turn(query)):
+        if rewrite_query and history:
             result = self._query_rewriter.rewrite(query, tuple(history))
             rewritten_query = result.rewritten
             if rewritten_query != query:
@@ -85,18 +85,6 @@ class NaiveRAGPipeline:
             answer=answer,
             sources=tuple(hits),
         )
-
-    def _should_rewrite_single_turn(self, query: str) -> bool:
-        """Check if a single-turn query should be rewritten for terminology normalization."""
-        colloquial_markers = [
-            "vượt đèn",
-            "đi ngược chiều",
-            "không đội mũ",
-            "chạy quá tốc độ",
-            "đèn đỏ",
-            "bỏ chạy",
-        ]
-        return any(marker in query.lower() for marker in colloquial_markers)
 
     def close(self) -> None:
         """Close the underlying retrieval connection."""

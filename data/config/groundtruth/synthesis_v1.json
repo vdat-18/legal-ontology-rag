@@ -98,11 +98,11 @@
       "reasoning_effort": "high"
     },
     "multi_turn_generation": {
-      "batch_size": 10,
+      "batch_size": 5,
       "max_concurrency": 30,
       "max_output_tokens": 16384,
       "temperature": 0.0,
-      "reasoning_effort": "medium"
+      "reasoning_effort": "high"
     }
   }
 }

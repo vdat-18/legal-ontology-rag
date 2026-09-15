@@ -165,6 +165,22 @@ def test_native_fact_with_multiple_chunks_counts_as_one_retrieval_unit() -> None
     assert metrics.recall_at_k == {1: 1.0}
 
 
+def test_hierarchical_article_unit_completes_claim_evidence_at_one() -> None:
+    """Grouped article evidence is scored as one result without losing chunk recall."""
+    sample = EvaluationSample(
+        question="q1",
+        expected_chunk_ids=("chunk-a", "chunk-b"),
+        retrieved_units=(EvaluationRetrievedUnit(unit_id="article:1", evidence_chunk_ids=("chunk-a", "chunk-b")),),
+        expected_claims=(ExpectedClaimEvidence(claim="combined claim", chunk_ids=("chunk-a", "chunk-b")),),
+    )
+
+    metrics = evaluate_samples([sample], k_values=(1,))
+
+    assert metrics.precision_at_k == {1: 1.0}
+    assert metrics.recall_at_k == {1: 1.0}
+    assert metrics.claim_evidence_complete_at_k == {1: 1.0}
+
+
 def test_claim_evidence_distinguishes_any_from_complete_coverage() -> None:
     """Claim metrics show partial support separately from complete supporting evidence."""
     sample = EvaluationSample(

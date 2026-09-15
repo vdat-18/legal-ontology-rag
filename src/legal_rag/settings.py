@@ -202,7 +202,7 @@ def _parse_boolean(value: str) -> bool:
     return parsed
 
 
-_NAIVE_RAG_TUNABLES: dict[str, Callable[[str], str | bool | float | int]] = {
+_NAIVE_RAG_TUNABLES: dict[str, Callable[[str], str | bool | float | int | Path]] = {
     "top_k": int,
     "milvus_collection_name": str.strip,
     "milvus_index_type": str.strip,
@@ -217,6 +217,13 @@ _NAIVE_RAG_TUNABLES: dict[str, Callable[[str], str | bool | float | int]] = {
     "search_mode": str.strip,
     "hybrid_rrf_k": int,
     "hybrid_pool_multiplier": int,
+    "reranker_model_id": str.strip,
+    "reranker_model_revision": str.strip,
+    "reranker_batch_size": int,
+    "reranker_pool_multiplier": int,
+    "chunks_dir": Path,
+    "hierarchical_max_chunks_per_unit": int,
+    "hierarchical_max_tokens_per_unit": int,
     "bm25_k1": float,
     "bm25_b": float,
     "bm25_delta": float,
@@ -247,6 +254,13 @@ class NaiveRagSettings:
     search_mode: str = "semantic"
     hybrid_rrf_k: int = 60
     hybrid_pool_multiplier: int = 3
+    reranker_model_id: str = "BAAI/bge-reranker-v2-m3"
+    reranker_model_revision: str = "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e"
+    reranker_batch_size: int = 16
+    reranker_pool_multiplier: int = 5
+    chunks_dir: Path = Path("data/processed/groundtruth")
+    hierarchical_max_chunks_per_unit: int = 5
+    hierarchical_max_tokens_per_unit: int = 2500
     bm25_k1: float = 1.5
     bm25_b: float = 0.75
     bm25_delta: float = 0.5
@@ -260,6 +274,8 @@ class NaiveRagSettings:
             "milvus_collection_name": self.milvus_collection_name,
             "milvus_index_type": self.milvus_index_type,
             "milvus_metric_type": self.milvus_metric_type,
+            "reranker_model_id": self.reranker_model_id,
+            "reranker_model_revision": self.reranker_model_revision,
         }
         for name, value in required_strings.items():
             if not value:
@@ -283,35 +299,38 @@ class NaiveRagSettings:
             msg = "milvus_flush_after_insert must be a boolean"
             raise TypeError(msg)
 
-        valid_modes = {"keyword", "semantic", "hybrid"}
-        if self.search_mode not in valid_modes:
-            msg = f"search_mode must be one of {valid_modes}, got {self.search_mode!r}"
-            raise ValueError(msg)
-
-        positive_hybrid = {
-            "hybrid_rrf_k": self.hybrid_rrf_k,
-            "hybrid_pool_multiplier": self.hybrid_pool_multiplier,
-            "keyword_retrieval_pool_size": self.keyword_retrieval_pool_size,
-            "keyword_max_candidates_per_fact": self.keyword_max_candidates_per_fact,
-        }
-        for name, value in positive_hybrid.items():
-            if value < 1:
-                msg = f"{name} must be positive, got {value}"
-                raise ValueError(msg)
-
-        non_negative_bm25 = {
-            "bm25_k1": self.bm25_k1,
-            "bm25_b": self.bm25_b,
-            "bm25_delta": self.bm25_delta,
-        }
-        for name, value in non_negative_bm25.items():
-            if value < 0:
-                msg = f"{name} must be non-negative, got {value}"
-                raise ValueError(msg)
+        self._validate_retrieval_settings()
 
         if not isfinite(self.answer_temperature) or not 0 <= self.answer_temperature <= _MAX_LLM_TEMPERATURE:
             msg = f"answer_temperature must be between 0 and {_MAX_LLM_TEMPERATURE}, got {self.answer_temperature}"
             raise ValueError(msg)
+
+    def _validate_retrieval_settings(self) -> None:
+        valid_modes = {"keyword", "semantic", "hybrid", "hybrid_rerank", "hierarchical"}
+        if self.search_mode not in valid_modes:
+            msg = f"search_mode must be one of {valid_modes}, got {self.search_mode!r}"
+            raise ValueError(msg)
+        for name, value in {
+            "hybrid_rrf_k": self.hybrid_rrf_k,
+            "hybrid_pool_multiplier": self.hybrid_pool_multiplier,
+            "reranker_batch_size": self.reranker_batch_size,
+            "reranker_pool_multiplier": self.reranker_pool_multiplier,
+            "hierarchical_max_chunks_per_unit": self.hierarchical_max_chunks_per_unit,
+            "hierarchical_max_tokens_per_unit": self.hierarchical_max_tokens_per_unit,
+            "keyword_retrieval_pool_size": self.keyword_retrieval_pool_size,
+            "keyword_max_candidates_per_fact": self.keyword_max_candidates_per_fact,
+        }.items():
+            if value < 1:
+                msg = f"{name} must be positive, got {value}"
+                raise ValueError(msg)
+        for name, value in {
+            "bm25_k1": self.bm25_k1,
+            "bm25_b": self.bm25_b,
+            "bm25_delta": self.bm25_delta,
+        }.items():
+            if value < 0:
+                msg = f"{name} must be non-negative, got {value}"
+                raise ValueError(msg)
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] | None = None) -> NaiveRagSettings:
@@ -330,6 +349,63 @@ class NaiveRagSettings:
             **overrides,
             embedding_profile=values["EMBEDDING_PROFILE"].strip(),
         )
+
+
+_ADAPTIVE_RAG_TUNABLES: dict[str, Callable[[str], str | float | int]] = {
+    "base_search_mode": str.strip,
+    "max_subqueries": int,
+    "per_leg_limit": int,
+    "rrf_k": int,
+    "planner_max_output_tokens": int,
+    "planner_temperature": float,
+    "planner_max_response_bytes": int,
+}
+
+
+@dataclass(frozen=True, slots=True)
+class AdaptiveRagSettings:
+    """Planning and fusion settings for one-shot adaptive multi-hop RAG."""
+
+    base_search_mode: str = "hybrid_rerank"
+    max_subqueries: int = 3
+    per_leg_limit: int = 10
+    rrf_k: int = 60
+    planner_max_output_tokens: int = 2048
+    planner_temperature: float = 0.0
+    planner_max_response_bytes: int = 262_144
+
+    def __post_init__(self) -> None:
+        """Reject invalid planning configuration before any external calls."""
+        valid_modes = {"keyword", "semantic", "hybrid", "hybrid_rerank", "hierarchical"}
+        if self.base_search_mode not in valid_modes:
+            msg = f"base_search_mode must be one of {valid_modes}, got {self.base_search_mode!r}"
+            raise ValueError(msg)
+        if self.max_subqueries < 2:
+            msg = f"max_subqueries must be at least 2, got {self.max_subqueries}"
+            raise ValueError(msg)
+        for name, value in {
+            "per_leg_limit": self.per_leg_limit,
+            "rrf_k": self.rrf_k,
+            "planner_max_output_tokens": self.planner_max_output_tokens,
+            "planner_max_response_bytes": self.planner_max_response_bytes,
+        }.items():
+            if value < 1:
+                msg = f"{name} must be positive, got {value}"
+                raise ValueError(msg)
+        if not isfinite(self.planner_temperature) or not 0 <= self.planner_temperature <= _MAX_LLM_TEMPERATURE:
+            msg = f"planner_temperature must be between 0 and {_MAX_LLM_TEMPERATURE}, got {self.planner_temperature}"
+            raise ValueError(msg)
+
+    @classmethod
+    def from_environment(cls, environment: Mapping[str, str] | None = None) -> AdaptiveRagSettings:
+        """Load adaptive RAG settings from ``ADAPTIVE_RAG_*`` environment variables."""
+        values = os.environ if environment is None else environment
+        overrides = {
+            name: converter(values[f"ADAPTIVE_RAG_{name.upper()}"])
+            for name, converter in _ADAPTIVE_RAG_TUNABLES.items()
+            if f"ADAPTIVE_RAG_{name.upper()}" in values
+        }
+        return cls(**overrides)
 
 
 _GRAPHITI_TUNABLES: dict[str, Callable[[str], int | float]] = {

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -125,6 +126,7 @@ def _conversation(conversation_id: str, length: int) -> ConversationScenario:
             context_dependency="standalone",
             answerability="answerable",
             anchor_scenario_id=f"scenario-{conversation_id}-{index}",
+            reference_turn_number=None,
             fact_ids=(f"history-{conversation_id}-{index}",),
             gold_chunk_ids=(f"chunk-history-{conversation_id}-{index}",),
         )
@@ -137,6 +139,7 @@ def _conversation(conversation_id: str, length: int) -> ConversationScenario:
             context_dependency="anaphora",
             answerability="answerable",
             anchor_scenario_id=f"target-{conversation_id}",
+            reference_turn_number=length - 1,
             fact_ids=(f"target-{conversation_id}",),
             gold_chunk_ids=(f"chunk-target-{conversation_id}",),
         )
@@ -280,6 +283,9 @@ def test_cli_reuses_history_and_only_requests_targets(tmp_path: Path) -> None:
     assert len(_SEEN_BATCHES[0]) == 2
     assert len(_SEEN_BATCHES[0][1].history) == 2
     assert _SEEN_BATCHES[0][1].target.facts[0].fact_id == "T3F1"
+    assert _SEEN_BATCHES[0][1].target.reference_turn_number == 2
+    assert _SEEN_BATCHES[0][1].target.reference_question.endswith("scenario-conv-b-2")
+    assert _SEEN_BATCHES[0][1].target.reference_facts[0].fact_id == "H2F1"
     assert conversations[1].turns[0].query.startswith("Reviewed question")
     assert conversations[1].turns[-1].standalone_query.startswith("Câu hỏi đầy đủ")
     assert conversations[1].gold_chunk_ids == conversations[1].turns[-1].gold_chunk_ids
@@ -380,59 +386,46 @@ def test_target_requires_a_context_dependent_query() -> None:
         )
 
 
-def test_target_rejects_fact_aliases_in_natural_language() -> None:
-    """Model-facing fact aliases cannot leak into persisted text."""
-    turn_spec = _conversation("conv", 2).turns[-1]
-    raw = GeneratedMultiTurnTarget(
+def test_generated_target_text_is_preserved_before_persistence() -> None:
+    """Typed model text is persisted without rule-based rewriting."""
+    conversation = _conversation("conv", 2)
+    context = _context((conversation,), _FakeTargetClient(None, None))
+    generated = GeneratedMultiTurnTarget(
         turn_number=2,
-        query="Vậy trường hợp đó thì sao?",
-        standalone_query="Trường hợp cụ thể đó được xử lý như thế nào?",
-        reference_answer="Nội dung dựa trên T2F1.",
-        reasoning="Căn cứ",
+        query="Vậy T2F1 áp dụng thế nào?",
+        standalone_query="T2F1 áp dụng cho trường hợp cụ thể thế nào?",
+        reference_answer="Target fact xác định kết quả.",
+        reasoning="History và T2F1 dẫn tới kết luận.",
         missing_information=None,
-        required_claims=[
-            BamlClaimReference(claim="Ý bắt buộc", fact_id=turn_spec.fact_ids[0])
-        ],
+        required_claims=[BamlClaimReference(claim="Claim theo T2F1.", fact_id="T2F1")],
     )
 
-    with pytest.raises(ValueError, match="fact aliases"):
-        multi_turn_candidate_generation._target_turn_from_generated(
-            turn_spec,
-            raw,
-            {turn_spec.fact_ids[0]: _fact(turn_spec.fact_ids[0])},
-        )
-
-
-@pytest.mark.parametrize(
-    "value",
-    [
-        "Fact này dẫn tới kết luận.",
-        "Ý này lấy từ thông tin được cung cấp.",
-        "Dữ liệu được cung cấp chưa xác định chi tiết đó.",
-    ],
-)
-def test_target_allows_general_explanatory_terms(value: str) -> None:
-    """General wording does not make an otherwise valid target fail."""
-    turn_spec = _conversation("conv", 2).turns[-1]
-    raw = GeneratedMultiTurnTarget(
-        turn_number=2,
-        query="Vậy trường hợp đó thì sao?",
-        standalone_query="Trường hợp cụ thể đó được xử lý như thế nào?",
-        reference_answer="Đáp án",
-        reasoning=value,
-        missing_information=None,
-        required_claims=[
-            BamlClaimReference(claim="Ý bắt buộc", fact_id=turn_spec.fact_ids[0])
-        ],
+    draft = multi_turn_candidate_generation._conversation_from_generated(
+        conversation, generated, context
     )
+    target = draft.turns[-1]
 
-    result = multi_turn_candidate_generation._target_turn_from_generated(
-        turn_spec,
-        raw,
-        {turn_spec.fact_ids[0]: _fact(turn_spec.fact_ids[0])},
-    )
+    assert target.query == generated.query
+    assert target.standalone_query == generated.standalone_query
+    assert target.reference_answer == generated.reference_answer
+    assert target.reasoning == generated.reasoning
+    assert target.required_claims[0].claim == generated.required_claims[0].claim
+    assert target.required_claims[0].fact_id == conversation.turns[-1].fact_ids[0]
 
-    assert result.reasoning == value
+
+def test_return_target_receives_the_first_history_turn_as_its_reference() -> None:
+    """Return generation highlights the older topic instead of the latest turn."""
+    original = _conversation("conv", 3)
+    target = replace(original.turns[-1], dialogue_act="return", reference_turn_number=1)
+    conversation = replace(original, turns=(*original.turns[:-1], target))
+    context = _context((conversation,), _FakeTargetClient(None, None))
+
+    item = multi_turn_candidate_generation._generation_input(conversation, context)
+
+    assert item.target.reference_turn_number == 1
+    assert item.target.reference_question.endswith("scenario-conv-1")
+    assert item.target.reference_answer.endswith("scenario-conv-1")
+    assert item.target.reference_facts[0].fact_id == "H1F1"
 
 
 def test_partially_answerable_target_requires_missing_information() -> None:

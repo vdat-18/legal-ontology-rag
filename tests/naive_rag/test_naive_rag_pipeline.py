@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
@@ -15,6 +17,7 @@ from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.naive_rag import pipeline as pipeline_module
 from legal_rag.naive_rag.indexer import index_chunks
 from legal_rag.naive_rag.pipeline import NaiveRAGPipeline
+from legal_rag.naive_rag.retriever import RetrievedChunk
 from legal_rag.settings import MilvusSettings, NaiveRagSettings, Settings
 
 
@@ -152,3 +155,32 @@ def test_pipeline_does_not_log_the_legal_query(monkeypatch: pytest.MonkeyPatch, 
         logger.remove(sink_id)
 
     assert all(query not in message for message in messages)
+
+
+def test_pipeline_generates_from_expanded_hierarchical_context() -> None:
+    """The existing generation boundary receives article text without pipeline special cases."""
+    hit = RetrievedChunk(
+        "seed",
+        "Điều 7\n\nKhoản 1\n\nKhoản 2",
+        "168.docx",
+        "paragraph_group",
+        0.5,
+        unit_id="article:1",
+        unit_kind="article",
+        evidence_chunk_ids=("seed", "neighbor"),
+    )
+    retriever = MagicMock()
+    retriever.retrieve.return_value = [hit]
+    generation_client = MagicMock()
+    generation_client.generate.return_value = "answer"
+    pipeline = NaiveRAGPipeline.__new__(NaiveRAGPipeline)
+    pipeline.settings = SimpleNamespace(top_k=1, search_mode="hierarchical")
+    pipeline._retriever = retriever
+    pipeline._generation_client = generation_client
+
+    result = pipeline.run("question", search_mode="hierarchical")
+
+    query, contexts = generation_client.generate.call_args.args
+    assert query == "question"
+    assert contexts[0].text == hit.text
+    assert result.sources == (hit,)

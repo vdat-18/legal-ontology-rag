@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -42,10 +41,7 @@ from legal_rag.settings import Settings
 
 MULTI_TURN_CANDIDATE_SCHEMA_VERSION = "4.0.0"
 MULTI_TURN_PROGRESS_SCHEMA_VERSION = "4.0.0"
-MULTI_TURN_GENERATION_PROMPT_VERSION = "4.0.0"
-
-_FACT_ALIAS_PATTERN = re.compile(r"\bT\d+F\d+\b", re.IGNORECASE)
-
+MULTI_TURN_GENERATION_PROMPT_VERSION = "4.4.0"
 
 @dataclass(frozen=True, slots=True)
 class ReviewedHistoryCandidate:
@@ -376,6 +372,11 @@ def _generation_input(
         msg = "Reviewed history persona must match the conversation persona"
         raise ValueError(msg)
     target = conversation.turns[-1]
+    if target.reference_turn_number is None:
+        msg = "Target turn must declare its referenced history turn"
+        raise ValueError(msg)
+    reference_index = target.reference_turn_number - 1
+    reference = history[reference_index]
     return MultiTurnTargetGenerationInput(
         task_id=conversation.conversation_scenario_id,
         persona_description=context.persona_descriptions[conversation.persona],
@@ -389,9 +390,17 @@ def _generation_input(
         ],
         target=MultiTurnTargetInput(
             turn_number=target.turn_number,
-            reference_turn_number=(
-                1 if target.dialogue_act == "return" else target.turn_number - 1
-            ),
+            reference_turn_number=target.reference_turn_number,
+            reference_question=reference.query,
+            reference_answer=reference.reference_answer,
+            reference_facts=[
+                build_fact_context(context.facts_by_id[fact_id]).model_copy(
+                    update={
+                        "fact_id": _history_fact_alias(reference_index + 1, index)
+                    }
+                )
+                for index, fact_id in enumerate(reference.source_fact_ids, start=1)
+            ],
             facts=[
                 build_fact_context(context.facts_by_id[fact_id]).model_copy(
                     update={"fact_id": _fact_alias(target.turn_number, index)}
@@ -499,8 +508,6 @@ def _target_turn_from_generated(
     if not raw.required_claims:
         msg = "A retrieval-required target must contain required claims"
         raise ValueError(msg)
-    _validate_natural_language_output(raw)
-
     missing_information = (
         raw.missing_information.strip() if raw.missing_information else None
     )
@@ -565,21 +572,6 @@ def _target_turn_from_generated(
     )
 
 
-def _validate_natural_language_output(raw: GeneratedMultiTurnTarget) -> None:
-    """Reject model-facing fact aliases in user-visible text."""
-    text_fields = (
-        raw.query,
-        raw.standalone_query,
-        raw.reference_answer,
-        raw.reasoning,
-        raw.missing_information or "",
-        *(claim.claim for claim in raw.required_claims),
-    )
-    if any(_FACT_ALIAS_PATTERN.search(value) for value in text_fields):
-        msg = "Natural-language output must not expose fact aliases"
-        raise ValueError(msg)
-
-
 def _target_fact_ids_by_alias(turn_spec: TurnSpec) -> dict[str, str]:
     """Map short aliases returned by the model back to persisted fact IDs."""
     return {
@@ -591,6 +583,11 @@ def _target_fact_ids_by_alias(turn_spec: TurnSpec) -> dict[str, str]:
 def _fact_alias(turn_number: int, fact_number: int) -> str:
     """Return one short fact alias unique inside a conversation."""
     return f"T{turn_number}F{fact_number}"
+
+
+def _history_fact_alias(turn_number: int, fact_number: int) -> str:
+    """Return one short alias for a fact already used by referenced history."""
+    return f"H{turn_number}F{fact_number}"
 
 
 def _batch_task_key(conversation_ids: Sequence[str]) -> str:

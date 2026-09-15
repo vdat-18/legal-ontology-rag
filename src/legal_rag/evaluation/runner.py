@@ -130,30 +130,9 @@ class NaiveEvaluationBackend:
             question,
             **supported_kwargs,
         )
-        contexts = tuple(
-            PredictionContext(
-                chunk_id=source.chunk_id,
-                source_name=source.source_name,
-                text=source.text,
-                kind=source.kind,
-            )
-            for source in result.sources
-        )
-        units = tuple(
-            RetrievedUnit(
-                unit_id=source.chunk_id,
-                unit_kind="chunk",
-                text=source.text,
-                evidence=(PredictionEvidence(chunk_id=source.chunk_id, source_name=source.source_name),),
-                score=source.score,
-            )
-            for source in result.sources
-        )
-        return PipelinePrediction(
-            answer=result.answer,
-            retrieved_units=units,
-            retrieved_contexts=contexts,
-            metadata=_with_optional_value(
+        return _retrieved_chunks_prediction(
+            result,
+            _with_optional_value(
                 {"search_mode": self._search_mode or self._pipeline.settings.search_mode},
                 "rewritten_query",
                 result.rewritten_query,
@@ -162,6 +141,55 @@ class NaiveEvaluationBackend:
 
     async def close(self) -> None:
         """Close the naive pipeline's Milvus connection."""
+        self._pipeline.close()
+
+
+class AdaptiveEvaluationBackend:
+    """Adapt one-shot adaptive RAG to the shared evaluation contract."""
+
+    name = "adaptive"
+
+    def __init__(self, pipeline: Any, rewrite_query: bool = False) -> None:
+        """Store the adaptive pipeline and query-rewriting policy."""
+        self._pipeline = pipeline
+        self._rewrite_query = rewrite_query
+
+    async def predict(self, question: str, limit: int) -> PipelinePrediction:
+        """Run adaptive RAG without conversation history."""
+        return await self._predict(question, limit)
+
+    async def predict_with_history(
+        self, question: str, limit: int, history: tuple[tuple[str, str], ...]
+    ) -> PipelinePrediction:
+        """Run adaptive RAG with earlier conversation turns."""
+        return await self._predict(question, limit, history)
+
+    async def _predict(
+        self,
+        question: str,
+        limit: int,
+        history: tuple[tuple[str, str], ...] = (),
+    ) -> PipelinePrediction:
+        """Run the blocking adaptive pipeline off the event loop."""
+        result = await asyncio.to_thread(
+            self._pipeline.run,
+            question,
+            top_k=limit,
+            history=history,
+            rewrite_query=self._rewrite_query,
+        )
+        metadata = {
+            "route": result.route.value,
+            "subqueries": list(result.subqueries),
+            "base_search_mode": self._pipeline.settings.base_search_mode,
+        }
+        return _retrieved_chunks_prediction(
+            result,
+            _with_optional_value(metadata, "rewritten_query", result.rewritten_query),
+        )
+
+    async def close(self) -> None:
+        """Close the adaptive pipeline's Milvus connection."""
         self._pipeline.close()
 
 
@@ -497,6 +525,38 @@ def _with_optional_value(metadata: dict[str, Any], key: str, value: Any) -> dict
     if value is not None:
         metadata[key] = value
     return metadata
+
+
+def _retrieved_chunks_prediction(result: Any, metadata: Mapping[str, Any]) -> PipelinePrediction:
+    """Map Naive-compatible retrieved chunks into the shared prediction schema."""
+    contexts = tuple(
+        PredictionContext(
+            chunk_id=source.chunk_id,
+            source_name=source.source_name,
+            text=source.text,
+            kind=source.kind,
+        )
+        for source in result.sources
+    )
+    units = tuple(
+        RetrievedUnit(
+            unit_id=source.effective_unit_id,
+            unit_kind=source.unit_kind,
+            text=source.text,
+            evidence=tuple(
+                PredictionEvidence(chunk_id=chunk_id, source_name=source.source_name)
+                for chunk_id in source.effective_evidence_chunk_ids
+            ),
+            score=source.score,
+        )
+        for source in result.sources
+    )
+    return PipelinePrediction(
+        answer=result.answer,
+        retrieved_units=units,
+        retrieved_contexts=contexts,
+        metadata=metadata,
+    )
 
 
 def _required_string(value: Any, label: str) -> str:

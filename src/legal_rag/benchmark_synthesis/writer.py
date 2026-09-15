@@ -335,6 +335,7 @@ def _parse_turn_spec(payload: dict[str, object]) -> TurnSpec:
         context_dependency=payload["context_dependency"],
         answerability=payload["answerability"],
         anchor_scenario_id=payload["anchor_scenario_id"],
+        reference_turn_number=payload["reference_turn_number"],
         fact_ids=tuple(payload["fact_ids"]),
         gold_chunk_ids=tuple(payload["gold_chunk_ids"]),
     )

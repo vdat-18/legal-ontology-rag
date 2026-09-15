@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from threading import Lock
 
 from loguru import logger
@@ -10,6 +11,9 @@ from pymilvus import MilvusClient
 from legal_rag.benchmark_synthesis.vietnamese_lexical import VietnameseWordSegmenter
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.naive_rag.models import RetrievedChunk, SearchMode
+from legal_rag.naive_rag.reranker import ChunkReranker, CrossEncoderReranker
+from legal_rag.naive_rag.structure import ChunkCatalog
+from legal_rag.retrieval.rrf import reciprocal_rank_fusion
 from legal_rag.retrieval.vietnamese_bm25 import vietnamese_legal_tokens
 from legal_rag.settings import NaiveRagSettings
 
@@ -24,6 +28,8 @@ class Retriever:
         settings: NaiveRagSettings,
         *,
         word_segmenter: VietnameseWordSegmenter | None = None,
+        reranker: ChunkReranker | None = None,
+        chunk_catalog: ChunkCatalog | None = None,
     ) -> None:
         """Initialize with encoder, Milvus client, settings, and optional word segmenter."""
         self.encoder = encoder
@@ -33,6 +39,10 @@ class Retriever:
         self._bm25: object | None = None
         self._bm25_chunks: list[dict] | None = None
         self._bm25_lock = Lock()
+        self._reranker = reranker
+        self._reranker_lock = Lock()
+        self._chunk_catalog = chunk_catalog
+        self._chunk_catalog_lock = Lock()
 
     def _ensure_bm25_index(self) -> None:
         """Build the BM25L index lazily from Milvus on first keyword or hybrid query."""
@@ -48,7 +58,14 @@ class Retriever:
             iterator = self.client.query_iterator(
                 collection_name=self.settings.milvus_collection_name,
                 batch_size=self.settings.milvus_insert_batch_size,
-                output_fields=["chunk_id", "text", "source_name", "kind"],
+                output_fields=[
+                    "chunk_id",
+                    "text",
+                    "source_name",
+                    "kind",
+                    "content_sha256",
+                    "chunker_config_sha256",
+                ],
             )
             all_chunks: list[dict] = []
             try:
@@ -83,7 +100,14 @@ class Retriever:
             collection_name=self.settings.milvus_collection_name,
             data=[query_vec],
             limit=top_k,
-            output_fields=["chunk_id", "text", "source_name", "kind"],
+            output_fields=[
+                "chunk_id",
+                "text",
+                "source_name",
+                "kind",
+                "content_sha256",
+                "chunker_config_sha256",
+            ],
             search_params={
                 "metric_type": self.settings.milvus_metric_type,
                 "params": {"nprobe": self.settings.milvus_nprobe},
@@ -96,6 +120,8 @@ class Retriever:
                 source_name=hit["entity"]["source_name"],
                 kind=hit["entity"]["kind"],
                 score=hit["distance"],
+                content_sha256=hit["entity"].get("content_sha256"),
+                chunker_config_sha256=hit["entity"].get("chunker_config_sha256"),
             )
             for hit in results[0]
         ]
@@ -125,40 +151,97 @@ class Retriever:
                 source_name=chunks[i]["source_name"],
                 kind=chunks[i]["kind"],
                 score=float(scores[i]),
+                content_sha256=chunks[i].get("content_sha256"),
+                chunker_config_sha256=chunks[i].get("chunker_config_sha256"),
             )
             for i in ranked_indices
             if scores[i] > 0.0
         ]
 
-    def _hybrid_search(self, query: str, top_k: int) -> list[RetrievedChunk]:
-        """Reciprocal Rank Fusion of semantic and keyword results."""
-        pool_size = top_k * self.settings.hybrid_pool_multiplier
+    def _hybrid_candidates(self, query: str, pool_size: int, limit: int) -> list[RetrievedChunk]:
+        """Fuse semantic and keyword candidate pools with Reciprocal Rank Fusion."""
         semantic_hits = self._semantic_search(query, pool_size)
         keyword_hits = self._keyword_search(query, pool_size)
 
-        rrf_scores: dict[str, float] = {}
-        chunk_map: dict[str, RetrievedChunk] = {}
+        fused = reciprocal_rank_fusion(
+            (semantic_hits, keyword_hits),
+            key=lambda hit: hit.chunk_id,
+            rrf_k=self.settings.hybrid_rrf_k,
+        )
+        return [replace(result.item, score=result.score) for result in fused[:limit]]
 
-        for rank, hit in enumerate(semantic_hits, start=1):
-            rrf_scores[hit.chunk_id] = rrf_scores.get(hit.chunk_id, 0.0) + 1.0 / (self.settings.hybrid_rrf_k + rank)
-            chunk_map[hit.chunk_id] = hit
+    def _hybrid_search(self, query: str, top_k: int) -> list[RetrievedChunk]:
+        """Return the top RRF-fused semantic and keyword results."""
+        pool_size = top_k * self.settings.hybrid_pool_multiplier
+        return self._hybrid_candidates(query, pool_size, top_k)
 
-        for rank, hit in enumerate(keyword_hits, start=1):
-            rrf_scores[hit.chunk_id] = rrf_scores.get(hit.chunk_id, 0.0) + 1.0 / (self.settings.hybrid_rrf_k + rank)
-            if hit.chunk_id not in chunk_map:
-                chunk_map[hit.chunk_id] = hit
+    def _get_reranker(self) -> ChunkReranker:
+        """Load the Cross-Encoder only when hybrid reranking is requested."""
+        if self._reranker is not None:
+            return self._reranker
 
-        ranked_ids = sorted(rrf_scores, key=lambda cid: -rrf_scores[cid])[:top_k]
-        return [
-            RetrievedChunk(
-                chunk_id=chunk_map[cid].chunk_id,
-                text=chunk_map[cid].text,
-                source_name=chunk_map[cid].source_name,
-                kind=chunk_map[cid].kind,
-                score=rrf_scores[cid],
+        with self._reranker_lock:
+            if self._reranker is None:
+                self._reranker = CrossEncoderReranker(
+                    self.settings.reranker_model_id,
+                    self.settings.reranker_model_revision,
+                    self.settings.reranker_batch_size,
+                )
+        return self._reranker
+
+    def _hybrid_rerank_search(self, query: str, top_k: int) -> list[RetrievedChunk]:
+        """Rerank a bounded RRF candidate pool with a Cross-Encoder."""
+        candidate_limit = top_k * self.settings.reranker_pool_multiplier
+        candidates = self._hybrid_candidates(query, candidate_limit, candidate_limit)
+        if not candidates:
+            return []
+        return self._get_reranker().rerank(query, candidates)[:top_k]
+
+    def _get_chunk_catalog(self) -> ChunkCatalog:
+        """Load the local structural catalog only for hierarchical retrieval."""
+        if self._chunk_catalog is not None:
+            return self._chunk_catalog
+
+        with self._chunk_catalog_lock:
+            if self._chunk_catalog is None:
+                self._chunk_catalog = ChunkCatalog.from_directory(self.settings.chunks_dir)
+        return self._chunk_catalog
+
+    def _hierarchical_search(self, query: str, top_k: int) -> list[RetrievedChunk]:
+        """Expand RRF seeds into bounded article-level retrieval units."""
+        candidate_limit = top_k * self.settings.hybrid_pool_multiplier
+        candidates = self._hybrid_candidates(query, candidate_limit, candidate_limit)
+        if not candidates:
+            return []
+
+        catalog = self._get_chunk_catalog()
+        hits: list[RetrievedChunk] = []
+        seen_unit_ids: set[str] = set()
+        for seed in candidates:
+            unit = catalog.build_structural_unit(
+                seed,
+                max_chunks=self.settings.hierarchical_max_chunks_per_unit,
+                max_tokens=self.settings.hierarchical_max_tokens_per_unit,
             )
-            for cid in ranked_ids
-        ]
+            hit = (
+                replace(
+                    seed,
+                    text=unit.text,
+                    source_name=unit.source_name,
+                    unit_id=unit.unit_id,
+                    unit_kind="article",
+                    evidence_chunk_ids=unit.evidence_chunk_ids,
+                )
+                if unit is not None
+                else seed
+            )
+            if hit.effective_unit_id in seen_unit_ids:
+                continue
+            seen_unit_ids.add(hit.effective_unit_id)
+            hits.append(hit)
+            if len(hits) == top_k:
+                break
+        return hits
 
     def retrieve(self, query: str, top_k: int = 10, mode: SearchMode | None = None) -> list[RetrievedChunk]:
         """Dispatch to the configured or overridden search mode."""
@@ -168,6 +251,10 @@ class Retriever:
             hits = self._keyword_search(query, top_k)
         elif active_mode == SearchMode.HYBRID:
             hits = self._hybrid_search(query, top_k)
+        elif active_mode == SearchMode.HYBRID_RERANK:
+            hits = self._hybrid_rerank_search(query, top_k)
+        elif active_mode == SearchMode.HIERARCHICAL:
+            hits = self._hierarchical_search(query, top_k)
         else:
             hits = self._semantic_search(query, top_k)
 

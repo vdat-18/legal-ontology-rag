@@ -34,6 +34,10 @@ class EvaluationSample:
     """One answer/retrieval evaluation sample."""
 
     question: str
+    bundle_kind: str | None = None
+    answerability: str | None = None
+    reasoning_hops: int | None = None
+    query_style: str | None = None
     expected_answer: str | None = None
     actual_answer: str | None = None
     expected_chunk_ids: tuple[str, ...] = ()
@@ -59,6 +63,10 @@ class EvaluationSample:
 
         return cls(
             question=_read_first_string(data, ("question", "query", "user_input", "input")),
+            bundle_kind=_read_optional_string(data, ("bundle_kind",)),
+            answerability=_read_optional_string(data, ("answerability",)),
+            reasoning_hops=_read_optional_int(data, "reasoning_hops"),
+            query_style=_read_optional_string(data, ("query_style",)),
             expected_answer=_read_optional_string(data, ("expected_answer", "ground_truth", "ground_truth_answer")),
             actual_answer=_read_optional_string(data, ("actual_answer", "answer", "response"))
             or _read_optional_string(result, ("answer", "response")),
@@ -104,7 +112,6 @@ class EvaluationMetrics:
     recall_at_k: dict[int, float | None]
     context_precision: float | None
     context_recall: float | None
-    mean_reciprocal_rank: float | None
     empty_retrieval_rate: float | None
     claim_evidence_any_at_k: dict[int, float | None]
     claim_evidence_complete_at_k: dict[int, float | None]
@@ -122,7 +129,6 @@ class EvaluationMetrics:
             "recall_at_k": _string_keyed_metrics(self.recall_at_k),
             "context_precision": self.context_precision,
             "context_recall": self.context_recall,
-            "mean_reciprocal_rank": self.mean_reciprocal_rank,
             "empty_retrieval_rate": self.empty_retrieval_rate,
             "claim_evidence_any_at_k": _string_keyed_metrics(self.claim_evidence_any_at_k),
             "claim_evidence_complete_at_k": _string_keyed_metrics(self.claim_evidence_complete_at_k),
@@ -189,7 +195,6 @@ def evaluate_samples(
         recall_at_k=_aggregate_at_k(retrieval_scores, "recall", normalized_k_values),
         context_precision=_mean(score["precision"] for score in retrieval_scores),
         context_recall=_mean(score["recall"] for score in retrieval_scores),
-        mean_reciprocal_rank=_mean(score["reciprocal_rank"] for score in retrieval_scores),
         empty_retrieval_rate=_mean(score["empty"] for score in retrieval_scores),
         claim_evidence_any_at_k=_aggregate_at_k(claim_scores, "claim_any", normalized_k_values),
         claim_evidence_complete_at_k=_aggregate_at_k(claim_scores, "claim_complete", normalized_k_values),
@@ -233,12 +238,10 @@ def _retrieval_scores(sample: EvaluationSample, k_values: Sequence[int]) -> dict
     relevance_flags = [1 if evidence & reference_set else 0 for evidence in unit_evidence]
     covered = set().union(*unit_evidence) & reference_set if unit_evidence else set()
     relevant_count = sum(relevance_flags)
-    first_relevant = next((rank for rank, relevant in enumerate(relevance_flags, 1) if relevant), None)
     scores: dict[str, float | bool] = {
         "hit": 1.0 if relevant_count else 0.0,
         "precision": relevant_count / len(units) if units else 0.0,
         "recall": len(covered) / len(reference_set),
-        "reciprocal_rank": 1.0 / first_relevant if first_relevant else 0.0,
         "empty": 0.0 if units else 1.0,
         "has_claims": bool(sample.expected_claims),
     }
@@ -372,6 +375,12 @@ def _read_optional_string(data: Mapping[str, Any], keys: Sequence[str]) -> str |
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
+
+
+def _read_optional_int(data: Mapping[str, Any], key: str) -> int | None:
+    """Read one optional integer field without accepting booleans as integers."""
+    value = data.get(key)
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
 
 
 def _read_string_tuple(data: Mapping[str, Any], keys: Sequence[str]) -> tuple[str, ...]:

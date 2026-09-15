@@ -13,7 +13,7 @@ from legal_rag.benchmark_synthesis.evidence_graph import EvidenceRelation
 from legal_rag.benchmark_synthesis.scenario_sampling import Scenario
 from legal_rag.parser.hashing import sha256_json
 
-CONVERSATION_SCENARIO_SCHEMA_VERSION = "2.1.0"
+CONVERSATION_SCENARIO_SCHEMA_VERSION = "2.2.0"
 CONVERSATION_DISTRIBUTION_SCHEMA_VERSION = "2.0.0"
 
 TurnDialogueAct = str
@@ -64,6 +64,7 @@ class TurnSpec:
     context_dependency: TurnContextDependency
     answerability: str
     anchor_scenario_id: str
+    reference_turn_number: int | None
     fact_ids: tuple[str, ...]
     gold_chunk_ids: tuple[str, ...]
 
@@ -79,20 +80,33 @@ class TurnSpec:
             msg = f"Unsupported answerability: {self.answerability}"
             raise ValueError(msg)
         if self.turn_number == 1:
-            if self.dialogue_act != "inquiry" or self.context_dependency != "standalone":
-                msg = "The first conversation turn must be a standalone inquiry"
-                raise ValueError(msg)
+            self._validate_initial_turn()
             return
         if self.dialogue_act == "switch":
-            if self.context_dependency != "standalone":
-                msg = "A copied context switch must remain standalone"
-                raise ValueError(msg)
+            self._validate_context_switch()
             return
         if self.dialogue_act not in _TARGET_DIALOGUE_ACTS:
             msg = f"Unsupported dialogue act: {self.dialogue_act}"
             raise ValueError(msg)
         if self.context_dependency not in _TARGET_CONTEXT_DEPENDENCIES:
             msg = f"Unsupported context dependency: {self.context_dependency}"
+            raise ValueError(msg)
+        if self.reference_turn_number is None or not 1 <= self.reference_turn_number < self.turn_number:
+            msg = "A target turn must reference an earlier conversation turn"
+            raise ValueError(msg)
+
+    def _validate_initial_turn(self) -> None:
+        if (
+            self.dialogue_act != "inquiry"
+            or self.context_dependency != "standalone"
+            or self.reference_turn_number is not None
+        ):
+            msg = "The first conversation turn must be a standalone inquiry"
+            raise ValueError(msg)
+
+    def _validate_context_switch(self) -> None:
+        if self.context_dependency != "standalone" or self.reference_turn_number is not None:
+            msg = "A copied context switch must remain standalone"
             raise ValueError(msg)
 
     def to_dict(self) -> dict[str, Any]:
@@ -103,6 +117,7 @@ class TurnSpec:
             "context_dependency": self.context_dependency,
             "answerability": self.answerability,
             "anchor_scenario_id": self.anchor_scenario_id,
+            "reference_turn_number": self.reference_turn_number,
             "fact_ids": list(self.fact_ids),
             "gold_chunk_ids": list(self.gold_chunk_ids),
         }
@@ -396,6 +411,7 @@ def _build_conversation(
         if dialogue_act == "return"
         else [*selected_fillers, context_anchor]
     )
+    reference_turn_number = 1 if dialogue_act == "return" else len(history)
     turns = [
         TurnSpec(
             turn_number=index,
@@ -403,6 +419,7 @@ def _build_conversation(
             context_dependency="standalone",
             answerability=scenario.answerability,
             anchor_scenario_id=scenario.scenario_id,
+            reference_turn_number=None,
             fact_ids=scenario.fact_ids,
             gold_chunk_ids=scenario.gold_chunk_ids,
         )
@@ -415,6 +432,7 @@ def _build_conversation(
             context_dependency=dependency,
             answerability=target.answerability,
             anchor_scenario_id=target.scenario_id,
+            reference_turn_number=reference_turn_number,
             fact_ids=novel_target_fact_ids,
             gold_chunk_ids=target.gold_chunk_ids,
         )

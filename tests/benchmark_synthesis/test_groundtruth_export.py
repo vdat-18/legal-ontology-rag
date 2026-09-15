@@ -46,11 +46,14 @@ def test_export_ground_truth_maps_evaluation_fields_and_preserves_metadata() -> 
     record = export_ground_truth((candidate,))[0]
     sample = EvaluationSample.from_mapping(record)
 
-    assert sample == EvaluationSample(
-        question=candidate.query,
-        expected_answer=candidate.reference_answer,
-        expected_chunk_ids=candidate.gold_chunk_ids,
-    )
+    assert sample.question == candidate.query
+    assert sample.expected_answer == candidate.reference_answer
+    assert sample.expected_chunk_ids == candidate.gold_chunk_ids
+    assert sample.bundle_kind == candidate.bundle_kind
+    assert sample.answerability == candidate.answerability
+    assert sample.reasoning_hops == candidate.reasoning_hops
+    assert sample.query_style == candidate.query_style
+    assert sample.expected_claims[0].claim == candidate.required_claims[0].claim
     assert record["question_id"] == candidate.sample_id
     assert record["answerability"] == candidate.answerability
     assert record["required_claims"] == [candidate.required_claims[0].to_dict()]

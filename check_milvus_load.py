@@ -1,33 +1,28 @@
-from pymilvus import MilvusClient
-import os
-from dotenv import load_dotenv
+"""Inspect and load the configured Naive RAG Milvus collection."""
 
-load_dotenv()
+from __future__ import annotations
 
-client = MilvusClient(uri=os.getenv('MILVUS_URI'), token=os.getenv('MILVUS_TOKEN'))
-client.use_database(os.getenv('MILVUS_DATABASE'))
+from dotenv import find_dotenv, load_dotenv
+from loguru import logger
 
-print('Collection load state:')
-try:
-    load_state = client.get_load_state('naive_rag_chunks')
-    print(f'  State: {load_state}')
-except Exception as e:
-    print(f'  Error: {e}')
+from legal_rag.datastores.milvus import build_milvus_client
+from legal_rag.settings import MilvusSettings, NaiveRagSettings
 
-print()
-print('Trying to load collection...')
-try:
-    client.load_collection('naive_rag_chunks')
-    print('  Loaded successfully')
-except Exception as e:
-    print(f'  Error: {e}')
 
-print()
-print('Collection indexes:')
-try:
-    for idx in client.list_indexes('naive_rag_chunks'):
-        print(f'  Index: {idx}')
-        desc = client.describe_index('naive_rag_chunks', idx)
-        print(f'    {desc}')
-except Exception as e:
-    print(f'  Error: {e}')
+def main() -> None:
+    """Load the collection and report its state and index names."""
+    dotenv_path = find_dotenv(usecwd=True)
+    if dotenv_path:
+        load_dotenv(dotenv_path)
+    client = build_milvus_client(MilvusSettings.from_environment())
+    collection_name = NaiveRagSettings.from_environment().milvus_collection_name
+    try:
+        client.load_collection(collection_name)
+        logger.info("Collection state: {}", client.get_load_state(collection_name))
+        logger.info("Collection indexes: {}", client.list_indexes(collection_name))
+    finally:
+        client.close()
+
+
+if __name__ == "__main__":
+    main()

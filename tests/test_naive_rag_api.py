@@ -17,6 +17,9 @@ class _FakeChunk:
     source_name: str = "168.docx"
     kind: str = "paragraph_group"
     score: float = 0.85
+    effective_unit_id: str = "chunk-1"
+    unit_kind: str = "chunk"
+    effective_evidence_chunk_ids: tuple[str, ...] = ("chunk-1",)
 
 
 @dataclass(frozen=True)
@@ -127,6 +130,32 @@ def test_empty_query_rejected(client: TestClient) -> None:
     """Empty query string is rejected by validation."""
     response = client.post("/query", json={"query": ""}, headers=_AUTH_HEADER)
     assert response.status_code == 422
+
+
+def test_query_accepts_hybrid_rerank_mode(client: TestClient) -> None:
+    """The API exposes the reranked Naive RAG variant."""
+    response = client.post(
+        "/query",
+        json={"query": "Vượt đèn đỏ?", "search_mode": "hybrid_rerank"},
+        headers=_AUTH_HEADER,
+    )
+
+    assert response.status_code == 200
+
+
+def test_query_accepts_hierarchical_mode_and_returns_provenance(client: TestClient) -> None:
+    """The API exposes hierarchical mode and source evidence identifiers."""
+    response = client.post(
+        "/query",
+        json={"query": "Vượt đèn đỏ?", "search_mode": "hierarchical"},
+        headers=_AUTH_HEADER,
+    )
+
+    assert response.status_code == 200
+    [source] = response.json()["sources"]
+    assert source["unit_id"] == "chunk-1"
+    assert source["unit_kind"] == "chunk"
+    assert source["evidence_chunk_ids"] == ["chunk-1"]
 
 
 @pytest.mark.usefixtures("_env")

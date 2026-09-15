@@ -8,8 +8,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+from legal_rag.adaptive_rag.models import AdaptiveRAGResult, AdaptiveRoute
 from legal_rag.evaluation.metrics import EvaluationSample
 from legal_rag.evaluation.runner import (
+    AdaptiveEvaluationBackend,
     CorrectiveEvaluationBackend,
     EvaluationRecord,
     GraphitiEvaluationBackend,
@@ -51,6 +53,43 @@ def test_naive_backend_emits_shared_prediction_schema(tmp_path) -> None:
     assert pipeline.closed is True
 
 
+def test_naive_backend_preserves_hierarchical_unit_evidence(tmp_path) -> None:
+    """One expanded article remains one ranked unit with all source chunks."""
+    records = _records(tmp_path)
+    pipeline = _FakeNaivePipeline()
+    pipeline.result = RAGResult(
+        query="question",
+        answer="naive answer",
+        sources=(
+            RetrievedChunk(
+                "seed",
+                "expanded article",
+                "document.docx",
+                "paragraph_group",
+                0.9,
+                unit_id="article:1",
+                unit_kind="article",
+                evidence_chunk_ids=("chunk-1", "chunk-2"),
+            ),
+        ),
+    )
+
+    rows = asyncio.run(run_evaluation(records, NaiveEvaluationBackend(pipeline, "hierarchical"), limit=5))
+
+    assert rows[0]["retrieved_units"] == [
+        {
+            "unit_id": "article:1",
+            "unit_kind": "article",
+            "text": "expanded article",
+            "evidence": [
+                {"chunk_id": "chunk-1", "source_name": "document.docx"},
+                {"chunk_id": "chunk-2", "source_name": "document.docx"},
+            ],
+            "score": 0.9,
+        }
+    ]
+
+
 def test_naive_backend_passes_multi_turn_history_to_pipeline(tmp_path: Path) -> None:
     """Multi-turn evaluation uses prior question-answer pairs for supported backends."""
     records = [
@@ -64,6 +103,41 @@ def test_naive_backend_passes_multi_turn_history_to_pipeline(tmp_path: Path) -> 
     asyncio.run(run_evaluation(records, NaiveEvaluationBackend(pipeline), limit=5))
 
     assert pipeline.history == (("first", "first answer"),)
+
+
+def test_adaptive_backend_emits_plan_metadata_and_grouped_evidence(tmp_path: Path) -> None:
+    """Adaptive plans remain auditable while retrieval units keep chunk provenance."""
+    records = _records(tmp_path)
+    pipeline = _FakeAdaptivePipeline()
+
+    rows = asyncio.run(run_evaluation(records, AdaptiveEvaluationBackend(pipeline), limit=5))
+
+    assert rows[0]["pipeline"] == "adaptive"
+    assert rows[0]["pipeline_metadata"] == {
+        "route": "multi_hop",
+        "subqueries": ["first", "second"],
+        "base_search_mode": "hybrid_rerank",
+        "rewritten_query": "rewritten question",
+    }
+    assert rows[0]["retrieved_units"][0]["unit_id"] == "article:1"
+    assert rows[0]["retrieved_chunk_ids"] == ["chunk-1", "chunk-2"]
+    assert pipeline.calls == [("question", 5, (), False)]
+    assert pipeline.closed is True
+
+
+def test_adaptive_backend_passes_multi_turn_history(tmp_path: Path) -> None:
+    """Adaptive evaluation forwards earlier conversation turns to query rewriting."""
+    records = [
+        EvaluationRecord(
+            raw={"question": "follow-up"},
+            sample=EvaluationSample(question="follow-up", history=(("first", "answer"),)),
+        )
+    ]
+    pipeline = _FakeAdaptivePipeline()
+
+    asyncio.run(run_evaluation(records, AdaptiveEvaluationBackend(pipeline, rewrite_query=True), limit=3))
+
+    assert pipeline.calls == [("follow-up", 3, (("first", "answer"),), True)]
 
 
 def test_corrective_backend_separates_initial_retrieval_from_generation_context(tmp_path) -> None:
@@ -262,15 +336,16 @@ class _FakeNaivePipeline:
         self.settings = SimpleNamespace(search_mode="semantic")
         self.calls: list[tuple[str, int, str | None]] = []
         self.closed = False
+        self.result = RAGResult(
+            query="question",
+            answer="naive answer",
+            sources=(RetrievedChunk("chunk-1", "naive context", "document.docx", "paragraph", 0.9),),
+        )
 
     def run(self, question: str, top_k: int, search_mode: str | None) -> RAGResult:
         """Record the request and return one retrieved chunk."""
         self.calls.append((question, top_k, search_mode))
-        return RAGResult(
-            query=question,
-            answer="naive answer",
-            sources=(RetrievedChunk("chunk-1", "naive context", "document.docx", "paragraph", 0.9),),
-        )
+        return self.result
 
     def close(self) -> None:
         """Record resource cleanup."""
@@ -292,6 +367,49 @@ class _HistoryNaivePipeline:
 
     def close(self) -> None:
         """Release the fake pipeline."""
+
+
+class _FakeAdaptivePipeline:
+    """Return one fixed adaptive result and record evaluation arguments."""
+
+    settings = SimpleNamespace(base_search_mode="hybrid_rerank")
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, int, tuple[tuple[str, str], ...], bool]] = []
+        self.closed = False
+
+    def run(
+        self,
+        question: str,
+        top_k: int,
+        history: tuple[tuple[str, str], ...],
+        rewrite_query: bool,
+    ) -> AdaptiveRAGResult:
+        """Record one call and return grouped adaptive evidence."""
+        self.calls.append((question, top_k, history, rewrite_query))
+        return AdaptiveRAGResult(
+            query=question,
+            rewritten_query="rewritten question",
+            answer="adaptive answer",
+            sources=(
+                RetrievedChunk(
+                    "seed",
+                    "expanded article",
+                    "document.docx",
+                    "paragraph_group",
+                    0.9,
+                    unit_id="article:1",
+                    unit_kind="article",
+                    evidence_chunk_ids=("chunk-1", "chunk-2"),
+                ),
+            ),
+            route=AdaptiveRoute.MULTI_HOP,
+            subqueries=("first", "second"),
+        )
+
+    def close(self) -> None:
+        """Record resource cleanup."""
+        self.closed = True
 
 
 class _FakeOntologyPipeline:

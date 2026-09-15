@@ -1,0 +1,43 @@
+{
+  "failed_at": "2026-09-15T02:07:36.768217+00:00",
+  "identity": {
+    "adaptive_config": {
+      "base_search_mode": "hybrid_rerank",
+      "max_subqueries": 3,
+      "per_leg_limit": 10,
+      "planner_max_output_tokens": 2048,
+      "planner_max_response_bytes": 262144,
+      "planner_temperature": 0.0,
+      "rrf_k": 60
+    },
+    "cross_encoder": false,
+    "environment": {
+      "EMBEDDING_PROFILE": "bge_m3",
+      "LLM_MODEL": "gpt-5.6-luna",
+      "MILVUS_DATABASE": "legal_rag",
+      "NAIVE_RAG_MILVUS_COLLECTION_NAME": "naive_rag_chunks"
+    },
+    "generation": false,
+    "graph_expansion": true,
+    "ground_truth_path": "C:/Users/CUONG DAT PHAT/Desktop/legal-ontology-rag/data/evaluation/smoke/groundtruth_20.jsonl",
+    "ground_truth_sha256": "1b2829e3aca85ef8a8cc651d3881d827bb0d953426f4a776b97c3471eb6a4683",
+    "group_id": "traffic_penalty_groundtruth_v1",
+    "judge_model": "gpt-5.6-luna",
+    "k_values": [
+      1,
+      3,
+      5,
+      10
+    ],
+    "naive_search_mode": null,
+    "ontology_files": {},
+    "pipeline": "adaptive",
+    "retrieval_limit": 10,
+    "rewrite_query": false
+  },
+  "resumed_at": "2026-09-15T03:02:45.606588+00:00",
+  "run_id": "1b21d1e50990cb7ed15d",
+  "schema_version": "1.0.0",
+  "started_at": "2026-09-15T00:18:15.090774+00:00",
+  "status": "running"
+}
