@@ -4,16 +4,27 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
+from datetime import UTC, date, datetime, time
 
 from graphiti_core import Graphiti
 from graphiti_core.driver.driver import GraphDriver
 from graphiti_core.edges import EntityEdge
 from graphiti_core.nodes import EpisodicNode
-from graphiti_core.search.search_config_recipes import EDGE_HYBRID_SEARCH_CROSS_ENCODER
+from graphiti_core.search.search import search as graphiti_search
+from graphiti_core.search.search_config_recipes import (
+    EDGE_HYBRID_SEARCH_CROSS_ENCODER,
+    EDGE_HYBRID_SEARCH_NODE_DISTANCE,
+    EDGE_HYBRID_SEARCH_RRF,
+)
+from graphiti_core.search.search_filters import ComparisonOperator, DateFilter, SearchFilters
 from loguru import logger
 
+from legal_rag.graphiti_rag.embedder import QwenGraphitiEmbedder
+
 EpisodeLookup = Callable[[GraphDriver, list[str]], Awaitable[list[EpisodicNode]]]
+_DEFAULT_EPISODE_LOOKUP = EpisodicNode.get_by_uuids
 _EXPANSION_RRF_K = 60
+_FactKey = tuple[str, tuple[tuple[str, str, str], ...]]
 
 
 class MissingProvenanceError(ValueError):
@@ -33,6 +44,16 @@ class MissingProvenanceError(ValueError):
             f"Edge {edge_uuid} has unresolvable provenance "
             f"(missing episode uuids: {', '.join(self.missing_episode_uuids) or 'edge records no episode'})"
         )
+
+
+class MissingEffectiveProvenanceError(ValueError):
+    """Raised when a dated fact has no supporting episode effective by that date."""
+
+    def __init__(self, edge_uuid: str, as_of_date: date) -> None:
+        """Identify the edge whose resolved provenance is entirely from the future."""
+        self.edge_uuid = edge_uuid
+        self.as_of_date = as_of_date
+        super().__init__(f"Edge {edge_uuid} has no supporting episode effective by {as_of_date.isoformat()}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,6 +86,7 @@ class RetrievedFact:
 
     fact: str
     sources: tuple[FactSource, ...]
+    as_of_dates: tuple[date, ...] = ()
 
 
 async def _search_edges(
@@ -73,6 +95,7 @@ async def _search_edges(
     group_id: str,
     num_results: int,
     *,
+    as_of_date: date | None,
     expand_around_top_fact: bool,
     rerank_with_cross_encoder: bool,
 ) -> list[EntityEdge]:
@@ -93,23 +116,65 @@ async def _search_edges(
     the text and neighbourhood rankings so graph-adjacent facts can enter the selected top-k while
     facts supported by both searches receive the strongest rank.
     """
-    if rerank_with_cross_encoder:
-        config = EDGE_HYBRID_SEARCH_CROSS_ENCODER.model_copy(deep=True)
-        config.limit = num_results
-        results = await graphiti_client.search_(query, config, group_ids=[group_id])
-        return results.edges
+    if not isinstance(graphiti_client.embedder, QwenGraphitiEmbedder):
+        msg = "Graphiti retrieval requires QwenGraphitiEmbedder for query-side embedding"
+        raise TypeError(msg)
+    await graphiti_client.embedder.validate_index(graphiti_client.driver, group_id)
+    query_vector = await graphiti_client.embedder.create_query(query.replace("\n", " "))
 
-    edges = await graphiti_client.search(query, group_ids=[group_id], num_results=num_results)
+    config = (EDGE_HYBRID_SEARCH_CROSS_ENCODER if rerank_with_cross_encoder else EDGE_HYBRID_SEARCH_RRF).model_copy(
+        deep=True
+    )
+    config.limit = num_results
+    search_filters = _search_filters_for_date(as_of_date)
+    results = await graphiti_search(
+        graphiti_client.clients,
+        query,
+        [group_id],
+        config,
+        search_filters,
+        query_vector=query_vector,
+        driver=graphiti_client.driver,
+    )
+    edges = results.edges
+    if rerank_with_cross_encoder:
+        return edges
     if not expand_around_top_fact or not edges:
         return edges
 
-    neighbourhood = await graphiti_client.search(
-        query, group_ids=[group_id], num_results=num_results, center_node_uuid=edges[0].source_node_uuid
+    neighbourhood_config = EDGE_HYBRID_SEARCH_NODE_DISTANCE.model_copy(deep=True)
+    neighbourhood_config.limit = num_results
+    neighbourhood = await graphiti_search(
+        graphiti_client.clients,
+        query,
+        [group_id],
+        neighbourhood_config,
+        search_filters,
+        center_node_uuid=edges[0].source_node_uuid,
+        query_vector=query_vector,
+        driver=graphiti_client.driver,
     )
-    expanded = _fuse_edge_rankings(edges, neighbourhood, limit=num_results)
+    expanded = _fuse_edge_rankings(edges, neighbourhood.edges, limit=num_results)
     added = len({edge.uuid for edge in expanded} - {edge.uuid for edge in edges})
     logger.debug("Graph expansion promoted {} adjacent facts into the result set", added)
     return expanded
+
+
+def _search_filters_for_date(as_of_date: date | None) -> SearchFilters:
+    """Restrict facts to those effective at the end of one UTC calendar date."""
+    if as_of_date is None:
+        return SearchFilters()
+
+    cutoff = datetime.combine(as_of_date, time.max, tzinfo=UTC)
+    return SearchFilters(
+        valid_at=[
+            [DateFilter(date=cutoff, comparison_operator=ComparisonOperator.less_than_equal)],
+        ],
+        invalid_at=[
+            [DateFilter(comparison_operator=ComparisonOperator.is_null)],
+            [DateFilter(date=cutoff, comparison_operator=ComparisonOperator.greater_than)],
+        ],
+    )
 
 
 def _fuse_edge_rankings(
@@ -135,9 +200,10 @@ async def search_facts(
     group_id: str,
     num_results: int,
     *,
+    as_of_date: date | None = None,
     expand_around_top_fact: bool = True,
     rerank_with_cross_encoder: bool = False,
-    get_episodes_by_uuids: EpisodeLookup = EpisodicNode.get_by_uuids,
+    get_episodes_by_uuids: EpisodeLookup = _DEFAULT_EPISODE_LOOKUP,
 ) -> list[RetrievedFact]:
     """Run Graphiti's hybrid search and return the relevance-ranked candidate facts with provenance.
 
@@ -153,6 +219,7 @@ async def search_facts(
         query,
         group_id,
         num_results,
+        as_of_date=as_of_date,
         expand_around_top_fact=expand_around_top_fact,
         rerank_with_cross_encoder=rerank_with_cross_encoder,
     )
@@ -167,15 +234,132 @@ async def search_facts(
         missing_episode_uuids = [uuid for uuid in edge.episodes if uuid not in episodes_by_uuid]
         if missing_episode_uuids or not edge.episodes:
             raise MissingProvenanceError(edge.uuid, missing_episode_uuids)
+        effective_episode_uuids = edge.episodes
+        if as_of_date is not None:
+            cutoff = datetime.combine(as_of_date, time.max, tzinfo=UTC)
+            effective_episode_uuids = [
+                uuid
+                for uuid in edge.episodes
+                if _episode_valid_at(episodes_by_uuid[uuid], edge_uuid=edge.uuid) <= cutoff
+            ]
+            if not effective_episode_uuids:
+                raise MissingEffectiveProvenanceError(edge.uuid, as_of_date)
         sources = tuple(
             FactSource(
                 chunk_id=episodes_by_uuid[uuid].name,
                 source_name=episodes_by_uuid[uuid].source_description,
                 text=episodes_by_uuid[uuid].content or "",
             )
-            for uuid in edge.episodes
+            for uuid in effective_episode_uuids
         )
-        facts.append(RetrievedFact(fact=edge.fact, sources=sources))
+        facts.append(
+            RetrievedFact(
+                fact=edge.fact,
+                sources=sources,
+                as_of_dates=(as_of_date,) if as_of_date is not None else (),
+            )
+        )
 
     logger.debug("Retrieved {} candidate facts", len(facts))
     return facts
+
+
+def _episode_valid_at(episode: EpisodicNode, *, edge_uuid: str) -> datetime:
+    """Return one timezone-aware episode validity timestamp for temporal provenance filtering."""
+    valid_at = episode.valid_at
+    if not isinstance(valid_at, datetime) or valid_at.tzinfo is None:
+        msg = f"Edge {edge_uuid} has supporting episode {episode.uuid} without a timezone-aware valid_at"
+        raise TypeError(msg)
+    return valid_at.astimezone(UTC)
+
+
+async def search_facts_at_dates(
+    graphiti_client: Graphiti,
+    query: str,
+    group_id: str,
+    num_results: int,
+    *,
+    as_of_dates: Sequence[date] = (),
+    expand_around_top_fact: bool = True,
+    rerank_with_cross_encoder: bool = False,
+    get_episodes_by_uuids: EpisodeLookup = _DEFAULT_EPISODE_LOOKUP,
+) -> list[RetrievedFact]:
+    """Search each relevant legal date and fuse the fact rankings with reciprocal rank fusion.
+
+    An empty date sequence intentionally performs one unfiltered search. This is required for
+    temporal comparison questions whose exact target date is unknown: forcing a campaign date
+    would silently discard historical or future versions the question asks to compare.
+    """
+    unique_dates = tuple(dict.fromkeys(as_of_dates))
+    episode_lookup_kwargs = (
+        {"get_episodes_by_uuids": get_episodes_by_uuids} if get_episodes_by_uuids is not _DEFAULT_EPISODE_LOOKUP else {}
+    )
+    if len(unique_dates) <= 1:
+        return await search_facts(
+            graphiti_client,
+            query,
+            group_id,
+            num_results,
+            as_of_date=unique_dates[0] if unique_dates else None,
+            expand_around_top_fact=expand_around_top_fact,
+            rerank_with_cross_encoder=rerank_with_cross_encoder,
+            **episode_lookup_kwargs,
+        )
+
+    rankings = [
+        await search_facts(
+            graphiti_client,
+            query,
+            group_id,
+            num_results,
+            as_of_date=as_of_date,
+            expand_around_top_fact=expand_around_top_fact,
+            rerank_with_cross_encoder=rerank_with_cross_encoder,
+            **episode_lookup_kwargs,
+        )
+        for as_of_date in unique_dates
+    ]
+    return _fuse_fact_rankings(rankings, limit=num_results)
+
+
+def _fuse_fact_rankings(rankings: Sequence[Sequence[RetrievedFact]], *, limit: int) -> list[RetrievedFact]:
+    """Fuse dated rankings while reserving evidence unique to every compared version."""
+    scores: dict[_FactKey, float] = {}
+    facts_by_key: dict[_FactKey, RetrievedFact] = {}
+    dates_by_key: dict[_FactKey, set[date]] = {}
+    ranking_keys: list[list[_FactKey]] = []
+    for ranking in rankings:
+        keys: list[_FactKey] = []
+        for rank, fact in enumerate(ranking, 1):
+            source_key = tuple(sorted((source.chunk_id, source.source_name, source.text) for source in fact.sources))
+            key = (fact.fact, source_key)
+            scores[key] = max(scores.get(key, 0.0), 1.0 / (_EXPANSION_RRF_K + rank))
+            facts_by_key[key] = fact
+            dates_by_key.setdefault(key, set()).update(fact.as_of_dates)
+            if key not in keys:
+                keys.append(key)
+        ranking_keys.append(keys)
+
+    occurrence_count = {key: sum(key in keys for keys in ranking_keys) for key in scores}
+    ranked_keys: list[_FactKey] = []
+    for keys in ranking_keys:
+        exclusive = [key for key in keys if occurrence_count[key] == 1 and key not in ranked_keys]
+        fallback = [key for key in keys if key not in ranked_keys]
+        candidate = (exclusive or fallback)[:1]
+        ranked_keys.extend(candidate)
+        if len(ranked_keys) == limit:
+            break
+    if len(ranked_keys) < limit:
+        remaining = sorted(
+            (key for key in scores if key not in ranked_keys),
+            key=lambda key: (-scores[key], key),
+        )
+        ranked_keys.extend(remaining[: limit - len(ranked_keys)])
+    return [
+        RetrievedFact(
+            fact=facts_by_key[key].fact,
+            sources=facts_by_key[key].sources,
+            as_of_dates=tuple(sorted(dates_by_key[key])),
+        )
+        for key in ranked_keys
+    ]

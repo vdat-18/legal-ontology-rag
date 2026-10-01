@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
+import pytest
+
 from legal_rag.baml_client.types import RetrievedChunkContext as BamlRetrievedChunkContext
-from legal_rag.naive_rag.generator import generate_answer
+from legal_rag.naive_rag import generator as generator_module
+from legal_rag.naive_rag.generator import BamlGenerationClient, generate_answer
 from legal_rag.naive_rag.retriever import RetrievedChunk
+from legal_rag.settings import NaiveRagSettings, Settings
 
 
 class _FakeGenerationClient:
@@ -48,3 +54,41 @@ def test_generate_answer_returns_empty_list_of_hits_unmodified() -> None:
 
     [(_, chunks)] = client.calls
     assert chunks == []
+
+
+def test_baml_generation_client_uses_shared_caller_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Answer generation forwards provider-specific settings through the shared bounded caller."""
+    captured: dict[str, object] = {}
+    fake_caller = SimpleNamespace(options={"client_registry": object()})
+
+    class _FakeCaller:
+        @classmethod
+        def from_settings(cls, settings: Settings, **kwargs: object) -> object:
+            captured["settings"] = settings
+            captured.update(kwargs)
+            return fake_caller
+
+    settings = Settings(
+        "http://provider.test/v1",
+        "test-key",
+        "test-model",
+        30,
+        llm_extra_request_body={"thinking": {"type": "disabled"}},
+    )
+    naive_settings = NaiveRagSettings(
+        embedding_profile="bge_m3",
+        answer_max_output_tokens=321,
+        answer_temperature=0.2,
+        max_response_bytes=654,
+    )
+    monkeypatch.setattr(generator_module, "BamlCaller", _FakeCaller)
+
+    client = BamlGenerationClient(settings, naive_settings)
+
+    assert client._caller is fake_caller
+    assert captured == {
+        "settings": settings,
+        "max_output_tokens": 321,
+        "temperature": 0.2,
+        "max_response_bytes": 654,
+    }

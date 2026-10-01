@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -9,6 +10,7 @@ import pytest
 
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import write_chunks
+from legal_rag.corrective_rag.retrieval import database as database_module
 from legal_rag.corrective_rag.retrieval.database import LegalVectorDB
 
 
@@ -30,6 +32,89 @@ class _FakeEmbedder:
     def embed_query(self, text: str) -> list[float]:
         """Return one fixed-size query vector."""
         return [float(len(text)), *([0.0] * (self.dimensions - 1))]
+
+
+def test_constructor_closes_client_when_collection_setup_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """A client created before collection setup fails is closed."""
+    setup_error = RuntimeError("collection setup failed")
+
+    class _FakeMilvusClient:
+        """Expose successful database selection and record cleanup."""
+
+        closed = False
+
+        def list_databases(self) -> list[str]:
+            """Return the configured database as already present."""
+            return ["default"]
+
+        def use_database(self, database_name: str) -> None:
+            """Accept selection of the configured database."""
+            assert database_name == "default"
+
+        def close(self) -> None:
+            """Record client cleanup."""
+            self.closed = True
+
+    client = _FakeMilvusClient()
+
+    def fail_collection_setup(_database: LegalVectorDB) -> None:
+        raise setup_error
+
+    monkeypatch.setattr(database_module, "MilvusClient", lambda **_options: client)
+    monkeypatch.setattr(LegalVectorDB, "_ensure_collection", fail_collection_setup)
+
+    with pytest.raises(RuntimeError, match="collection setup failed") as captured:
+        LegalVectorDB(_config(tmp_path), _FakeEmbedder())
+
+    assert captured.value is setup_error
+    assert client.closed
+
+
+def test_constructor_preserves_setup_error_when_client_cleanup_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """A cleanup failure is attached to the original constructor failure."""
+    setup_error = KeyboardInterrupt("collection setup interrupted")
+
+    class _FailingCloseMilvusClient:
+        """Expose successful database selection and fail client cleanup."""
+
+        closed = False
+
+        def list_databases(self) -> list[str]:
+            """Return the configured database as already present."""
+            return ["default"]
+
+        def use_database(self, database_name: str) -> None:
+            """Accept selection of the configured database."""
+            assert database_name == "default"
+
+        def close(self) -> None:
+            """Record cleanup before raising a secondary error."""
+            self.closed = True
+            msg = "client cleanup failed"
+            raise RuntimeError(msg)
+
+    client = _FailingCloseMilvusClient()
+
+    def fail_collection_setup(_database: LegalVectorDB) -> None:
+        raise setup_error
+
+    monkeypatch.setattr(database_module, "MilvusClient", lambda **_options: client)
+    monkeypatch.setattr(LegalVectorDB, "_ensure_collection", fail_collection_setup)
+
+    with pytest.raises(KeyboardInterrupt, match="collection setup interrupted") as captured:
+        LegalVectorDB(_config(tmp_path), _FakeEmbedder())
+
+    assert captured.value is setup_error
+    assert client.closed
+    assert setup_error.__notes__ == [
+        "Failed to close Milvus client after Corrective RAG setup failed: RuntimeError('client cleanup failed')"
+    ]
 
 
 def test_index_processed_data_resumes_missing_chunks_without_reembedding_existing(tmp_path: Path) -> None:
@@ -156,6 +241,67 @@ def test_collection_validation_rejects_incompatible_metric(tmp_path: Path) -> No
 
     with pytest.raises(ValueError, match="uses metric"):
         LegalVectorDB(_config(tmp_path, metric_type="L2"), _FakeEmbedder())
+
+
+def test_preflight_corpus_fingerprints_the_verified_active_collection(tmp_path: Path) -> None:
+    """CRAG exposes a manifest fingerprint only after exact active-row validation."""
+    chunks_dir = tmp_path / "chunks"
+    chunks_dir.mkdir()
+    chunks = (_chunk("chunk-2", "Two.", content_sha256="second-hash"), _chunk("chunk-1", "One."))
+    write_chunks(chunks_dir / "corpus.chunks.jsonl", chunks)
+    db = LegalVectorDB(_config(tmp_path), _FakeEmbedder())
+    try:
+        db.index_chunks(chunks)
+
+        fingerprint = db.preflight_corpus(chunks_dir)
+
+        assert fingerprint.collection_name == "legal_chunks"
+        assert fingerprint.row_count == 2
+        assert fingerprint.embedding_profile_id == "test-profile"
+        assert fingerprint.embedding_model_id == "test/model"
+        assert fingerprint.embedding_model_revision == "abc123"
+        assert len(fingerprint.corpus_sha256) == 64
+    finally:
+        db.close()
+
+
+def test_preflight_corpus_rejects_an_empty_local_corpus(tmp_path: Path) -> None:
+    """An empty directory cannot validate an unrelated or empty active collection."""
+    chunks_dir = tmp_path / "chunks"
+    chunks_dir.mkdir()
+    db = LegalVectorDB(_config(tmp_path), _FakeEmbedder())
+    try:
+        with pytest.raises(ValueError, match=r"No \*\.chunks\.jsonl files found"):
+            db.preflight_corpus(chunks_dir)
+    finally:
+        db.close()
+
+
+@pytest.mark.parametrize(
+    ("field_name", "changed_value"),
+    [
+        ("embedding_text", "changed embedding text"),
+        ("source_name", "different.docx"),
+    ],
+)
+def test_preflight_corpus_rejects_retrieval_fields_not_covered_by_metadata(
+    tmp_path: Path,
+    field_name: str,
+    changed_value: str,
+) -> None:
+    """Exact CRAG rows catch stale embedding input and provenance with unchanged declared hashes."""
+    chunks_dir = tmp_path / "chunks"
+    chunks_dir.mkdir()
+    changed_chunk = replace(_chunk("chunk-1", "Original text."), **{field_name: changed_value})
+    write_chunks(chunks_dir / "corpus.chunks.jsonl", (changed_chunk,))
+    db = LegalVectorDB(_config(tmp_path), _FakeEmbedder())
+    try:
+        db.index_chunks((_chunk("chunk-1", "Original text."),))
+
+        with pytest.raises(ValueError, match="does not match the configured corpus"):
+            db.preflight_corpus(chunks_dir)
+    finally:
+        db.close()
 
 
 def _config(tmp_path: Path, *, metric_type: str = "COSINE") -> SimpleNamespace:

@@ -6,6 +6,7 @@ import asyncio
 from collections.abc import Sequence
 
 from legal_rag.evaluation.generation.core.dataset import EvalSample
+from legal_rag.evaluation.generation.core.report import GENERATION_METRIC_NAMES
 from legal_rag.evaluation.generation.runner import evaluate_samples
 
 
@@ -25,7 +26,17 @@ class _RecordingJudge:
         self.batch_sizes.append(len(samples))
         await asyncio.sleep(0)
         self.active -= 1
-        return [{"faithfulness": self._scores[sample.user_input]} for sample in samples]
+        return [
+            {
+                "faithfulness": self._scores[sample.user_input],
+                "correctness": 5.0,
+                "answer_relevancy": 5.0,
+                "temporal_correctness": 1.0,
+                "answerability_correctness": 1.0,
+                "required_claim_coverage": 1.0,
+            }
+            for sample in samples
+        ]
 
 
 def _sample(user_input: str) -> EvalSample:
@@ -64,4 +75,5 @@ def test_evaluate_samples_preserves_sample_order_across_batches() -> None:
 
     assert [row["faithfulness"] for row in report.per_sample] == [0.0, 0.5, 1.0]
     assert [row["sample_id"] for row in report.per_sample] == ["id-q0", "id-q1", "id-q2"]
-    assert report.aggregate == {"faithfulness": 0.5}
+    assert report.aggregate["faithfulness"] == 0.5
+    assert set(report.aggregate) == set(GENERATION_METRIC_NAMES)

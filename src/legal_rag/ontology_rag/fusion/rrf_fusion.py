@@ -6,6 +6,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 
 from loguru import logger
+from rdflib import URIRef
 
 from legal_rag.naive_rag.models import RetrievedChunk
 from legal_rag.ontology_rag.models import OntologyInstance
@@ -24,64 +25,78 @@ class RRFFusion:
         semantic_chunks: Sequence[RetrievedChunk],
         keyword_chunks: Sequence[RetrievedChunk],
         ontology_instances: Sequence[OntologyInstance],
+        *,
+        semantic_instances: Sequence[OntologyInstance] | None = None,
+        keyword_instances: Sequence[OntologyInstance] | None = None,
     ) -> list[OntologyInstance]:
         """Merge chunk retrieval and ontology matches into ranked instances.
 
-        Each instance scores the sum of RRF chunk scores over its source chunks, plus a
-        weighted RRF term for its own ontology-match rank, so a rule whose label matches
-        the query ranks highly even when its chunks were not retrieved.
+        ``ontology_instances`` contains direct ontology-search results. Callers can pass
+        each chunk channel's independently linked instances to preserve channel rank and
+        ensure only direct matches receive the ontology weight. The optional arguments
+        retain compatibility with callers that only have chunk lists.
         """
-        chunk_scores = self._compute_chunk_scores(semantic_chunks, keyword_chunks)
-        all_instances = self._collect_all_instances(semantic_chunks, ontology_instances)
-        instance_scores = self._aggregate_instance_scores(all_instances, chunk_scores)
+        semantic_channel = semantic_instances
+        if semantic_channel is None:
+            semantic_channel = self._instances_for_chunks(semantic_chunks, ontology_instances)
+        keyword_channel = keyword_instances
+        if keyword_channel is None:
+            keyword_channel = self._instances_for_chunks(keyword_chunks, ontology_instances)
 
-        for rank, instance in enumerate(ontology_instances, start=1):
-            instance_scores[instance] = instance_scores.get(instance, 0.0) + self._ontology_weight / (self._k + rank)
+        channels = (
+            (semantic_channel, 1.0),
+            (keyword_channel, 1.0),
+            (ontology_instances, self._ontology_weight),
+        )
+        instances_by_uri: dict[URIRef, OntologyInstance] = {}
+        instance_scores: dict[URIRef, float] = defaultdict(float)
+        for instances, weight in channels:
+            self._score_channel(instances, weight, instances_by_uri, instance_scores)
 
-        ranked_pairs = sorted(instance_scores.items(), key=lambda item: (-item[1], str(item[0].uri)))
-        result = [instance for instance, _ in ranked_pairs]
+        ranked_uris = sorted(instance_scores, key=lambda uri: (-instance_scores[uri], str(uri)))
+        result = [instances_by_uri[uri] for uri in ranked_uris]
         logger.info("RRF fused {} instances from {} sources", len(result), 3)
         return result
 
-    def _compute_chunk_scores(
+    def _instances_for_chunks(
         self,
-        semantic_chunks: Sequence[RetrievedChunk],
-        keyword_chunks: Sequence[RetrievedChunk],
-    ) -> dict[str, float]:
-        """Compute RRF scores for chunk IDs."""
-        scores: dict[str, float] = defaultdict(float)
-
-        for rank, chunk in enumerate(semantic_chunks, start=1):
-            scores[chunk.chunk_id] += 1.0 / (self._k + rank)
-
-        for rank, chunk in enumerate(keyword_chunks, start=1):
-            scores[chunk.chunk_id] += 1.0 / (self._k + rank)
-
-        return dict(scores)
-
-    def _collect_all_instances(
-        self, chunks: Sequence[RetrievedChunk], ontology_instances: Sequence[OntologyInstance]
-    ) -> set[OntologyInstance]:
-        """Collect all unique instances from chunks and direct ontology search."""
-        all_instances: set[OntologyInstance] = set(ontology_instances)
-        chunk_instance_map: dict[str, OntologyInstance] = {}
-
-        for instance in ontology_instances:
-            for chunk_id in instance.source_chunk_ids:
-                chunk_instance_map[chunk_id] = instance
-
-        for chunk in chunks:
-            if chunk.chunk_id in chunk_instance_map:
-                all_instances.add(chunk_instance_map[chunk.chunk_id])
-
-        return all_instances
-
-    def _aggregate_instance_scores(
-        self, instances: set[OntologyInstance], chunk_scores: dict[str, float]
-    ) -> dict[OntologyInstance, float]:
-        """Aggregate chunk scores to instance scores."""
-        instance_scores: dict[OntologyInstance, float] = {}
+        chunks: Sequence[RetrievedChunk],
+        instances: Sequence[OntologyInstance],
+    ) -> list[OntologyInstance]:
+        """Infer one ranked instance channel from chunk evidence IDs."""
+        instances_by_chunk: dict[str, list[OntologyInstance]] = defaultdict(list)
         for instance in instances:
-            score = sum(chunk_scores.get(cid, 0.0) for cid in instance.source_chunk_ids)
-            instance_scores[instance] = score
-        return instance_scores
+            for chunk_id in instance.source_chunk_ids:
+                instances_by_chunk[chunk_id].append(instance)
+        ranked: list[OntologyInstance] = []
+        for chunk in chunks:
+            for chunk_id in chunk.effective_evidence_chunk_ids:
+                ranked.extend(instances_by_chunk.get(chunk_id, ()))
+        return ranked
+
+    def _score_channel(
+        self,
+        instances: Sequence[OntologyInstance],
+        weight: float,
+        instances_by_uri: dict[URIRef, OntologyInstance],
+        instance_scores: dict[URIRef, float],
+    ) -> None:
+        """Add one RRF term per unique URI and merge its source provenance."""
+        seen: set[URIRef] = set()
+        rank = 0
+        for instance in instances:
+            previous = instances_by_uri.get(instance.uri)
+            if previous is None:
+                instances_by_uri[instance.uri] = instance
+            else:
+                source_chunk_ids = tuple(dict.fromkeys((*previous.source_chunk_ids, *instance.source_chunk_ids)))
+                instances_by_uri[instance.uri] = OntologyInstance(
+                    uri=instance.uri,
+                    type=previous.type,
+                    source_chunk_ids=source_chunk_ids,
+                )
+            if instance.uri in seen:
+                continue
+            seen.add(instance.uri)
+            rank += 1
+            instance_scores[instance.uri] += weight / (self._k + rank)

@@ -13,6 +13,7 @@ from legal_rag.embedding import profiles as profile_module
 from legal_rag.graphiti_rag import client as client_module
 from legal_rag.graphiti_rag import effective_date as effective_date_module
 from legal_rag.graphiti_rag import embedder as embedder_module
+from legal_rag.graphiti_rag import index_metadata as index_metadata_module
 from legal_rag.graphiti_rag import indexer as indexer_module
 from legal_rag.graphiti_rag.indexer import CorpusMetadata, IndexingSummary
 from legal_rag.naive_rag import indexer as naive_indexer_module
@@ -60,6 +61,7 @@ def _configure_cli(
     summary: IndexingSummary,
     *,
     indexing_error: Exception | None = None,
+    metadata_error: Exception | None = None,
 ) -> list[tuple[object, ...]]:
     """Replace external boundaries for one deterministic multi-client CLI run."""
     graphiti_settings = GraphitiSettings(
@@ -85,6 +87,10 @@ def _configure_cli(
         msg = "single-client index path must not run"
         raise AssertionError(msg)
 
+    async def fake_ensure_metadata(*_args: object) -> None:
+        if metadata_error is not None:
+            raise metadata_error
+
     monkeypatch.setattr(Settings, "from_environment", classmethod(lambda cls: object()))
     monkeypatch.setattr(Neo4jSettings, "from_environment", classmethod(lambda cls: object()))
     monkeypatch.setattr(GraphitiSettings, "from_environment", classmethod(lambda cls: graphiti_settings))
@@ -99,6 +105,7 @@ def _configure_cli(
         client_module, "load_llm_api_keys", lambda: [f"key-{index}" for index in range(len(build_results))]
     )
     monkeypatch.setattr(client_module, "build_graphiti", fake_build_graphiti)
+    monkeypatch.setattr(index_metadata_module, "ensure_graphiti_index_metadata", fake_ensure_metadata)
     monkeypatch.setattr(neo4j_module, "build_neo4j_driver", lambda _settings: driver)
     monkeypatch.setattr(indexer_module, "index_chunks_concurrent", fake_index_concurrent)
     monkeypatch.setattr(indexer_module, "index_chunks", fail_single_index)
@@ -177,3 +184,24 @@ def test_index_run_raises_cleanup_failures_after_success(monkeypatch: pytest.Mon
     assert all(client.closed for client in clients)
     assert driver.closed is True
     assert error.value.subgroup(RuntimeError) is not None
+
+
+def test_index_run_rejects_incompatible_metadata_before_writing_episodes(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A stale Graphiti group fails preflight before either indexing path can write."""
+    clients = [_FakeGraphiti("key-0"), _FakeGraphiti("key-1")]
+    driver = _FakeNeo4jDriver()
+    metadata_error = ValueError("incompatible Graphiti metadata")
+    concurrent_calls = _configure_cli(
+        monkeypatch,
+        list(clients),
+        driver,
+        IndexingSummary(0, 0, 0, 0),
+        metadata_error=metadata_error,
+    )
+
+    with pytest.raises(ValueError, match="incompatible Graphiti metadata"):
+        asyncio.run(graphiti_index_cli._run(Path("chunks"), Path("corpus.json")))
+
+    assert concurrent_calls == []
+    assert all(not client.built_indices and not client.closed for client in clients)
+    assert driver.closed is True

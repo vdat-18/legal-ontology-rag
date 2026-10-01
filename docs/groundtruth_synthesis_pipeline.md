@@ -474,7 +474,8 @@ giữ checkpoint còn lại và chỉ gọi LLM cho scenario mới. Có thể k�
   "question_id": "...",
   "question": "Câu hỏi cho RAG",
   "expected_answer": "Đáp án tham chiếu",
-  "expected_chunk_ids": ["chunk-1", "chunk-2"]
+  "expected_chunk_ids": ["chunk-1", "chunk-2"],
+  "query_dates": ["2025-01-01", "2026-03-01"]
 }
 ```
 
@@ -487,8 +488,27 @@ fact IDs vẫn được giữ để phân tích theo lát cắt.
 - `expected_chunk_ids` là gold evidence cho Precision@k, Recall@k và các
   retrieval metric khác;
 - `expected_answer` là reference cho correctness;
+- `query_dates` là các mốc phiên bản luật có cấu trúc. Với single-turn temporal,
+  chúng đến từ source facts; với multi-turn temporal, chúng chỉ đến từ facts
+  thực sự hỗ trợ required claims của target cuối và ngày ghi rõ trong standalone
+  question, không lấy từ history hoặc scenario facts không được dùng;
 - retrieved context, generated answer, expected answer và required claims có
   thể được dùng cho faithfulness và các generation metric.
+
+Export multi-turn cần cả scenario review và legal-facts release tương ứng để
+khôi phục đúng `bundle_kind` và ngày hiệu lực:
+
+```powershell
+uv run legal-export-groundtruth --multi-turn `
+  data/benchmark_synthesis/multi_turn_candidates_1k.jsonl `
+  data/evaluation/groundtruth_multi_turn.jsonl `
+  --scenarios data/benchmark_synthesis/scenarios.jsonl `
+  --legal-facts data/benchmark_synthesis/legal_facts.jsonl
+```
+
+Exporter chỉ thêm source `valid_from` khi target scenario thật sự có
+`bundle_kind=temporal`; nhiều facts có ngày khác nhau tự nó không biến một
+multi-hop question thành temporal comparison.
 
 ## Contract vận hành
 
@@ -504,7 +524,7 @@ fact IDs vẫn được giữ để phân tích theo lát cắt.
   `reasoning_effort`, hiện đặt là `medium`.
 - `LegalFact 3.0.0`, `EvidenceRelation 3.1.0` và `Scenario 4.0.0` vẫn dùng lại
   được nếu đã được sinh bởi Steps 1-5 hiện tại.
-- `Candidate 6.0.0`, `CandidateProgress 5.0.0` và `GroundTruth 5.0.0` không
+- `Candidate 6.0.0`, `CandidateProgress 5.0.0` và `GroundTruth 6.0.0` không
   tương thích với artifact Step 6-7 cũ; cần chạy lại Step 6 và Step 7, không
   sửa tay hoặc tự động migrate.
 - Candidate artifacts được tạo trước khi Step 6 có fingerprint sidecar không
@@ -517,5 +537,6 @@ thuộc chất lượng semantic output của LLM vì các semantic verification
 được chủ động loại bỏ. Cần audit mẫu thủ công hoặc một quy trình đánh giá độc
 lập nếu muốn đo độ chính xác tuyệt đối của chính ground truth.
 
-Phạm vi hiện tại là single-turn. Multi-turn, hard negatives, leakage scoring,
-deduplication và dataset split không nằm trong pipeline này.
+Pipeline hỗ trợ single-turn và target-only multi-turn export với oracle history.
+Hard negatives, leakage scoring, deduplication và dataset split chưa nằm trong
+pipeline này.

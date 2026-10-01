@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import http.client
+from collections.abc import Iterator
+from contextlib import contextmanager
 from types import SimpleNamespace
 
 import httpx
@@ -62,6 +64,17 @@ def test_generator_rejects_empty_provider_choices() -> None:
         generator.generate_answer("vuot den do", [{"source_name": "source", "text": "muc phat"}])
 
 
+def test_generator_rejects_output_truncated_at_token_limit() -> None:
+    """A partial answer is not accepted when the provider exhausts the configured budget."""
+    generator = ResponseGenerator(_llm_config())
+    generator.client = _JsonLlmClient(
+        {"choices": [{"finish_reason": "length", "message": {"content": "partial answer"}}]}
+    )
+
+    with pytest.raises(ValueError, match="output-token limit"):
+        generator.generate_answer("vuot den do", [{"source_name": "source", "text": "muc phat"}])
+
+
 def test_reformulation_propagates_provider_errors() -> None:
     """Query reformulation must not silently fall back to the original query."""
     generator = ResponseGenerator(_llm_config())
@@ -69,6 +82,15 @@ def test_reformulation_propagates_provider_errors() -> None:
 
     with pytest.raises(httpx.ConnectError):
         generator.reformulate_query("vuot den do")
+
+
+def test_generator_rejects_oversized_provider_response() -> None:
+    """Answer generation stops reading when the configured byte bound is exceeded."""
+    generator = ResponseGenerator(_llm_config(max_response_bytes=8))
+    generator.client = _JsonLlmClient({"choices": [{"message": {"content": "answer"}}]})
+
+    with pytest.raises(ValueError, match="response exceeded 8 bytes"):
+        generator.generate_answer("vuot den do", [{"source_name": "source", "text": "muc phat"}])
 
 
 def test_pipeline_does_not_return_success_when_grader_fails() -> None:
@@ -92,16 +114,21 @@ def test_query_endpoint_returns_500_when_pipeline_provider_fails() -> None:
     assert "SUCCESS" not in response.text
 
 
-def _llm_config() -> SimpleNamespace:
+def _llm_config(*, max_response_bytes: int = 1_048_576) -> SimpleNamespace:
     """Return only the settings needed by LLM clients."""
     return SimpleNamespace(
         llm_base_url="http://provider.test/v1",
         llm_api_key="test-key",
         llm_model="test-model",
         llm_timeout_seconds=1,
+        llm_extra_request_body={},
         evaluator_max_output_tokens=1024,
         evaluator_temperature=0.0,
-        max_response_bytes=1_048_576,
+        answer_max_output_tokens=2048,
+        answer_temperature=0.0,
+        query_reformulation_max_output_tokens=512,
+        query_reformulation_temperature=0.3,
+        max_response_bytes=max_response_bytes,
     )
 
 
@@ -138,7 +165,7 @@ def _out_of_range_grading_output(self: object, request: object) -> str:
 class _FailingLlmClient:
     """HTTP client fake that raises provider errors."""
 
-    def post(self, path: str, *, json: dict[str, object]) -> httpx.Response:
+    def stream(self, method: str, path: str, *, json: dict[str, object]) -> object:
         """Fail before a provider response is available."""
         raise httpx.ConnectError("fail")
 
@@ -149,10 +176,17 @@ class _JsonLlmClient:
     def __init__(self, payload: dict[str, object]) -> None:
         self.payload = payload
 
-    def post(self, path: str, *, json: dict[str, object]) -> httpx.Response:
+    @contextmanager
+    def stream(
+        self,
+        method: str,
+        path: str,
+        *,
+        json: dict[str, object],
+    ) -> Iterator[httpx.Response]:
         """Return the configured provider payload."""
-        request = httpx.Request("POST", f"http://provider.test{path}")
-        return httpx.Response(200, json=self.payload, request=request)
+        request = httpx.Request(method, f"http://provider.test{path}")
+        yield httpx.Response(200, json=self.payload, request=request)
 
 
 class _RetrievedChunkStore:

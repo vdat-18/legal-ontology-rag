@@ -5,8 +5,12 @@ from __future__ import annotations
 import asyncio
 import http.client
 import json
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass, field
 from http import HTTPStatus
+from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urlsplit
 
@@ -18,6 +22,81 @@ if TYPE_CHECKING:
     from legal_rag.settings import Settings
 
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
+
+
+@dataclass(slots=True)
+class LLMUsage:
+    """Thread-safe token accounting for the LLM calls made in one evaluation context."""
+
+    call_count: int = 0
+    usage_available_call_count: int = 0
+    usage_unavailable_call_count: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+    models: dict[str, int] = field(default_factory=dict)
+    partial: bool = False
+    _lock: Lock = field(default_factory=Lock, init=False, repr=False)
+
+    def record(self, response: Mapping[str, Any]) -> None:
+        """Add standard OpenAI-compatible usage fields from one successful response."""
+        model = response.get("model")
+        model_name = model if isinstance(model, str) and model else "unknown"
+        usage = response.get("usage")
+        with self._lock:
+            self.call_count += 1
+            self.models[model_name] = self.models.get(model_name, 0) + 1
+            if not isinstance(usage, Mapping):
+                self.usage_unavailable_call_count += 1
+                self.partial = True
+                return
+
+            input_tokens = _optional_token_count(usage.get("prompt_tokens", usage.get("input_tokens")))
+            output_tokens = _optional_token_count(usage.get("completion_tokens", usage.get("output_tokens")))
+            total_tokens = _optional_token_count(usage.get("total_tokens"))
+            if input_tokens is None and output_tokens is None and total_tokens is None:
+                self.usage_unavailable_call_count += 1
+                self.partial = True
+                return
+            if input_tokens is None or output_tokens is None:
+                self.partial = True
+            if total_tokens is None and input_tokens is not None and output_tokens is not None:
+                total_tokens = input_tokens + output_tokens
+            if total_tokens is None:
+                self.partial = True
+
+            self.usage_available_call_count += 1
+            self.input_tokens += input_tokens or 0
+            self.output_tokens += output_tokens or 0
+            self.total_tokens += total_tokens or 0
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a stable JSON-compatible usage summary."""
+        with self._lock:
+            return {
+                "call_count": self.call_count,
+                "usage_available_call_count": self.usage_available_call_count,
+                "usage_unavailable_call_count": self.usage_unavailable_call_count,
+                "input_tokens": self.input_tokens,
+                "output_tokens": self.output_tokens,
+                "total_tokens": self.total_tokens,
+                "models": dict(sorted(self.models.items())),
+                "partial": self.partial,
+            }
+
+
+_LLM_USAGE: ContextVar[LLMUsage | None] = ContextVar("legal_rag_llm_usage", default=None)
+
+
+@contextmanager
+def capture_llm_usage() -> Iterator[LLMUsage]:
+    """Collect token usage for provider calls made in this async/thread context."""
+    usage = LLMUsage()
+    token = _LLM_USAGE.set(usage)
+    try:
+        yield usage
+    finally:
+        _LLM_USAGE.reset(token)
 
 
 class BamlTransportError(ValueError):
@@ -164,11 +243,10 @@ def execute_baml_request(
     if parsed_url.query:
         request_path = f"{request_path}?{parsed_url.query}"
     headers = {name: value for name, value in request.headers.items() if name.lower() != "baml-original-url"}
-    request_body = request.body.json()
+    request_body = dict(extra_request_body or {})
+    request_body.update(request.body.json())
     request_body["stream"] = False
     request_body["response_format"] = {"type": "json_object"}
-    if extra_request_body:
-        request_body.update(extra_request_body)
     try:
         connection.request(
             request.method,
@@ -212,6 +290,9 @@ def _openai_response_content(response_bytes: bytes) -> str:
 
 def _log_token_usage(response: dict[str, Any]) -> None:
     """Log standard OpenAI-compatible token usage for one successful LLM response."""
+    collector = _LLM_USAGE.get()
+    if collector is not None:
+        collector.record(response)
     usage = response.get("usage")
     model = response.get("model", "unknown")
     if not isinstance(usage, dict):
@@ -224,3 +305,17 @@ def _log_token_usage(response: dict[str, Any]) -> None:
         usage.get("completion_tokens"),
         usage.get("total_tokens"),
     )
+
+
+def record_openai_usage(response: Mapping[str, Any]) -> None:
+    """Record one non-BAML OpenAI-compatible response in the active usage context."""
+    collector = _LLM_USAGE.get()
+    if collector is not None:
+        collector.record(response)
+
+
+def _optional_token_count(value: Any) -> int | None:
+    """Return a non-negative provider token count or ``None`` when unavailable."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value

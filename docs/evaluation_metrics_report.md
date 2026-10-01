@@ -1,303 +1,104 @@
-# RAG Evaluation Metrics - Validation Report
+# Shared RAG evaluation metric contract
 
-## Executive Summary
+The evaluation package reports retrieval and answer quality for Naive, Adaptive, Corrective, Graphiti, and Ontology RAG through one artifact schema. This document describes the implemented metrics and how to compare them. It does not contain benchmark results: a full external-infrastructure benchmark has not been executed from this checkout.
 
-**Status:** ✅ **Metrics are CORRECT** according to Ragas/DeepEval standards
+## Retrieval metrics
 
-**Current Implementation (4 metrics):**
-- ✅ Faithfulness (0.0-1.0) - Standard
-- ✅ Correctness (1-5 LLM judge) - Acceptable
-- ✅ Answer Relevancy (1-5 LLM judge) - Acceptable  
-- ✅ Temporal Correctness (binary) - Novel domain-specific (appropriate)
+Retrieval is scored without an LLM. Each backend emits ranked, pipeline-native units plus the source evidence attached to each unit. A unit may be a chunk, a Graphiti fact, an ontology rule, or a bounded structural context. This distinction prevents a graph fact or ontology rule from being presented as if it were one raw chunk.
 
-**Actions Taken:**
-- ✅ Removed QUEST metrics (quality_of_information, understanding_and_reasoning, expression_style, safety_and_harm, trust_and_confidence)
-- ✅ Removed MRR and NDCG from retrieval metrics
-- ✅ Improved Faithfulness prompt with explicit calculation method
-- ✅ Improved Correctness definition with percentage thresholds
+| Metric | Range | Meaning |
+|---|---:|---|
+| `hit_rate` | 0-1 | Fraction of labeled samples with at least one relevant returned unit |
+| `hit_rate_at_k` | 0-1 | Same test within the first `k` units |
+| `precision_at_k` | 0-1 | Relevant native units among the first `k` positions |
+| `recall_at_k` | 0-1 | Gold source evidence covered by the first `k` units |
+| `context_precision` | 0-1 | Precision across the full returned unit list |
+| `context_recall` | 0-1 | Gold source evidence covered by the full returned list |
+| `empty_retrieval_rate` | 0-1 | Fraction of labeled samples with no returned units |
+| `claim_evidence_any_at_k` | 0-1 or null | Mean fraction of required claims with at least one evidence chunk retrieved |
+| `claim_evidence_complete_at_k` | 0-1 or null | Mean fraction of required claims whose complete evidence set was retrieved |
 
----
+The aggregate includes `retrieval_sample_count` and `claim_sample_count` so consumers can see the applicable denominators. Claim metrics are null when no evaluated sample has claim-level evidence labels.
 
-## Metrics Overview
+`--limit` is the per-question native-unit budget. `--max-samples` bounds the loaded evaluation samples after nested conversations are expanded into turns. They are independent controls. Keep `--limit >= max(--k-values)` for an interpretable cutoff comparison.
 
-### Retrieval Metrics (Offline - No LLM)
+## Generation metrics
 
-Located in: `src/legal_rag/evaluation/metrics.py`
+With `legal-evaluate run --generation`, the answer and retrieved context are passed to the BAML judge during the same run. The aggregate is written under `generation`; per-sample scores and coverage are written to `generation.json`.
 
-| Metric | Scale | Description |
-|--------|-------|-------------|
-| **Hit Rate@K** | 0/1 | Binary: found at least 1 relevant chunk in top-K |
-| **Precision@K** | 0.0-1.0 | % relevant chunks in top-K results |
-| **Recall@K** | 0.0-1.0 | % gold chunks found in top-K |
-| **Context Precision** | 0.0-1.0 | Mean precision across all retrieved |
-| **Context Recall** | 0.0-1.0 | Mean recall across all retrieved |
+| Metric | Range | Meaning |
+|---|---:|---|
+| `faithfulness` | 0-1 | Proportion of answer claims supported by retrieved context |
+| `correctness` | 1-5 | Factual agreement with the expected answer |
+| `answer_relevancy` | 1-5 | Whether the answer addresses the question directly |
+| `temporal_correctness` | 0/1 or null | Whether the answer applies the correct legal version; null for an abstention |
+| `answerability_correctness` | 0/1 or null | Whether answering, qualifying, or abstaining matches the gold answerability label; null when the label is absent |
+| `required_claim_coverage` | 0-1 or null | Fraction of required gold claims conveyed correctly; null when required claims are absent |
 
-**Example:**
-```
-Gold chunks: [A, B, C]
-Retrieved: [X, A, Y, B, Z]
+Nullable values are excluded from a metric mean rather than converted to zero. `generation_metric_coverage` reports `scored_count`, `null_count`, and `coverage` for every judge metric. Compare a mean together with its coverage, especially for temporal, answerability, and required-claim scores.
 
-Hit Rate@5 = 1.0 (found A and B)
-Precision@5 = 2/5 = 0.4 (2 correct out of 5)
-Recall@5 = 2/3 = 0.67 (found 2/3 needed chunks)
-```
+Generation scores are comparable only when the answer-model settings and judge model, prompt, batch size, and concurrency match. The comparison command validates these controls when generation metrics are present.
 
----
+## Run artifacts and identity
 
-### Generation Metrics (LLM Judge)
+An end-to-end run writes the following files under its run directory:
 
-Located in: `evaluations/baml/judge.py` + `baml_src/answer_evaluation.baml`
+- `manifest.json`: status, deterministic run ID, experiment identity, and output paths;
+- `predictions.jsonl`: per-sample answer, ranked units, source evidence, latency, and provider usage when available;
+- `metrics.json`: aggregate retrieval metrics, slice metrics, and optional generation aggregate;
+- `generation.json`: per-sample judge report when `--generation` is enabled.
 
-| Metric | Scale | What It Measures | Standard |
-|--------|-------|------------------|----------|
-| **Faithfulness** | 0.0-1.0 | % of claims supported by context | Ragas, DeepEval |
-| **Correctness** | 1-5 | Factual accuracy vs expected answer | Ragas (similar) |
-| **Answer Relevancy** | 1-5 | On-topic vs rambling | Ragas, DeepEval |
-| **Temporal Correctness** | 0/1 | Applies correct law version | Novel (legal domain) |
+Retrieval-only evaluation writes mode-specific predictions and metrics plus a sibling `*.manifest.json`. The manifests fingerprint the ground truth, local corpus, effective settings, relevant source and prompt files, and material run controls. Active datastore preflights reject a missing or stale index before benchmark samples are processed; a local corpus digest by itself does not prove that Milvus or Neo4j contains matching data.
 
----
+Comparison resolves every declared output relative to the manifest that names it and verifies its SHA-256 digest before reading it. For generation runs it also binds per-sample judge IDs to the prediction rows, recomputes aggregate scores and coverage from those rows, and requires the recomputed values to match both `generation.json` and `metrics.json`. Same-pipeline ablations may vary their explicitly selected search or ranker mode; their remaining effective configuration and pipeline answer/planning prompts must match.
 
-## Metric Definitions
+Provider token counters remain unavailable when the provider does not return usage. The comparison report exposes usage-call coverage and does not replace missing counters with zero.
 
-### 1. Faithfulness (0.0-1.0)
+## Example commands
 
-**Definition:** Measures hallucination - percentage of claims in the answer that are grounded in retrieved context.
-
-**Calculation:**
-```
-1. Extract ALL claims from answer
-2. For each claim, check if contexts support it
-3. Score = (supported claims) / (total claims)
-```
-
-**Example:**
-```
-Answer: "Phạt 800k-1tr, tước bằng 1-3 tháng, theo ND168/2024, áp dụng từ 2025"
-Claims extracted: 4
-Claims supported in contexts: 3
-Faithfulness: 3/4 = 0.75
-```
-
-**Why Not 1-5 Scale?**
-- Ragas standard: 0.0-1.0 continuous
-- Natural output of claim ratio calculation
-- Enables statistical operations (mean, std, confidence intervals)
-
----
-
-### 2. Correctness (1-5 Scale)
-
-**Definition:** Measures factual accuracy by comparing answer content with expected reference answer.
-
-**Scale:**
-- 1 = Completely wrong (<30% correct)
-- 2 = Small part correct (30-50%)
-- 3 = About half correct (50-70%)
-- 4 = Mostly correct, minor gaps (70-95%)
-- 5 = Fully correct (95-100%)
-
-**Note:** Only evaluates CONTENT, not wording/style.
-
-**Difference from Faithfulness:**
-| Metric | Compares Against | Measures |
-|--------|-------------------|----------|
-| Faithfulness | Retrieved context | Hallucination |
-| Correctness | Reference answer | Factual accuracy |
-
-**Example:**
-```
-Reference: "Phạt 800.000-1.000.000 đồng"
-Answer: "Phạt tiền từ 800 nghìn đến 1 triệu đồng"
-Correctness: 5 (content matches, different wording OK)
-```
-
----
-
-### 3. Answer Relevancy (1-5 Scale)
-
-**Definition:** Measures if the answer addresses the question's main point.
-
-**Scale:**
-- 1 = Completely off-topic
-- 2 = Missing the main point
-- 3 = Partially addresses main point
-- 4 = Addresses main point but verbose
-- 5 = Addresses main point concisely
-
-**Note:** This measures **relevance**, not correctness. An answer can be highly relevant but factually wrong.
-
-**Example:**
-```
-Question: "Phạt xe máy vượt đèn đỏ bao nhiêu?"
-Answer A: "Phạt 800k-1tr" → Relevancy: 5 (direct answer)
-Answer B: "Luật giao thông quy định..." (long explanation) → Relevancy: 3-4
-Answer C: "Đèn đỏ được phát minh năm 1868..." → Relevancy: 1 (off-topic)
-```
-
----
-
-### 4. Temporal Correctness (Binary 0/1)
-
-**Definition:** Evaluates if the answer applies the correct effective law version.
-
-**Novel Metric:** Not in Ragas/DeepEval, but critical for legal domain.
-
-**What It Checks:**
-- Answer cites correct law version (e.g., ND168/2024)
-- Law version is currently effective (not expired, not future)
-- Applies to the date/context in question
-
-**Example:**
-```
-Question: "Năm 2025, phạt vượt đèn đỏ bao nhiêu?"
-Contexts mention: ND168/2024 (effective 2025-01-01)
-
-Answer A: "Theo Nghị định 168/2024, phạt..." → Temporal Correctness: 1 ✓
-Answer B: "Theo Nghị định 100/2019, phạt..." → Temporal Correctness: 0 ✗ (expired)
-```
-
----
-
-## Why These 4 Metrics?
-
-### Non-Redundant - Each Metric Captures Different Failure Modes
-
-| Failure Mode | Faithfulness | Correctness | Relevancy | Temporal |
-|--------------|--------------|-------------|-----------|----------|
-| Hallucination | ❌ Low | ❌ Low | ➖ N/A | ➖ N/A |
-| Wrong facts (grounded) | ✅ High | ❌ Low | ✅ High | ➖ N/A |
-| Off-topic rambling | ✅ High | ➖ N/A | ❌ Low | ➖ N/A |
-| Wrong law version | ✅ High | ❌ Low | ✅ High | ❌ Zero |
-
-**Example Showing Non-Redundancy:**
-```
-Question: "Phạt vượt đèn đỏ năm 2025?"
-
-Answer A: "Phạt 800k-1tr theo ND168/2024"
-→ Faithfulness: 1.0, Correctness: 5, Relevancy: 5, Temporal: 1 ✓
-
-Answer B: "Phạt 500k theo ND100/2019"
-→ Faithfulness: 1.0, Correctness: 2, Relevancy: 5, Temporal: 0 ✗
-
-Answer C: "Đèn giao thông ra đời năm 1868 tại London..."
-→ Faithfulness: 1.0, Correctness: 1, Relevancy: 1, Temporal: N/A
-
-Answer D: "Phạt 10 triệu đồng" (bịa)
-→ Faithfulness: 0.0, Correctness: 1, Relevancy: 5, Temporal: N/A
-```
-
----
-
-## Comparison with Standards
-
-### Ragas Metrics
-
-| Ragas Metric | Your Equivalent | Status |
-|--------------|-----------------|--------|
-| Faithfulness (0-1) | ✅ Faithfulness (0-1) | ✅ MATCH |
-| Answer Relevance (0-1) | ✅ Answer Relevancy (1-5) | ⚠️ Scale differs |
-| Factual Correctness (0-1 F1) | ✅ Correctness (1-5) | ⚠️ Approach differs |
-| Context Precision (0-1) | ✅ (metrics.py) | ✅ Has offline version |
-| Context Recall (0-1) | ✅ (metrics.py) | ✅ Has offline version |
-
-### DeepEval Metrics
-
-| DeepEval Metric | Your Equivalent | Status |
-|-----------------|-----------------|--------|
-| Faithfulness (0-1) | ✅ Faithfulness (0-1) | ✅ MATCH |
-| Answer Relevancy (0-1) | ✅ Answer Relevancy (1-5) | ⚠️ Scale differs |
-| Hallucination (0-1) | ✅ Faithfulness (inverse) | ✅ Similar concept |
-| Contextual Precision (0-1) | ❌ | ❌ Missing LLM version |
-| Contextual Recall (0-1) | ❌ | ❌ Missing LLM version |
-
----
-
-## Missing Metrics (Consider Adding)
-
-### 1. Contextual Precision (LLM-based)
-
-**Why Important:**
-- Offline Precision@K doesn't capture semantic relevance
-- LLM can judge if top-ranked chunks are truly relevant
-- Measures retriever + re-ranker quality
-
-### 2. Contextual Recall (LLM-based)
-
-**Why Important:**
-- Offline Recall@K is chunk-based
-- LLM can judge if all NEEDED information was retrieved
-- Critical for legal domain (must cite all relevant laws)
-
-### 3. Contextual Relevancy
-
-**Why Important:**
-- Measures signal-to-noise ratio in retrieved context
-- Too much noise → distracted LLM → worse generation
-- Helps optimize chunk selection
-
----
-
-## Implementation Quality
-
-### Strengths
-
-✅ **Faithfulness on correct scale (0.0-1.0)**
-- Follows Ragas standard
-- Enables statistical analysis
-
-✅ **Clear separation of concerns**
-- Offline metrics (deterministic) in `metrics.py`
-- LLM metrics (semantic) in `evaluations/` harness
-
-✅ **Domain-specific metric (Temporal Correctness)**
-- Novel contribution for legal RAG
-- Addresses real failure mode in legal domain
-
-✅ **Non-redundant metrics**
-- Each metric captures different failure mode
-- Comprehensive coverage of RAG quality
-
-### Action Items Completed
-
-✅ Removed QUEST rubric (5 metrics) - too granular
-✅ Removed MRR and NDCG - not critical for RAG
-✅ Improved Faithfulness calculation prompt
-✅ Clarified Correctness scale with percentages
-✅ Documented all metrics with examples
-
----
-
-## Running Evaluation
-
-### Retrieval-Only (No LLM)
+Retrieval-only Naive evaluation:
 
 ```powershell
-python -m legal_rag.evaluation retrieve \
-  --ground-truth data/benchmark_synthesis/groundtruth.jsonl \
+uv run --extra naive-rag legal-evaluate retrieve `
+  --retriever naive `
+  --naive-search-mode hybrid_rerank `
+  --ground-truth data/benchmark_synthesis/groundtruth.jsonl `
+  --max-samples 20 `
+  --limit 10 `
   --k-values 1,3,5,10
 ```
 
-### Full RAG Evaluation (LLM Judge)
+End-to-end Naive evaluation with generation judging:
 
 ```powershell
-uv run legal-evaluate run \
-  --pipeline naive \
-  --limit 100 \
-  --k-values 1,3,5,10
+uv run --extra naive-rag legal-evaluate run `
+  --pipeline naive `
+  --naive-search-mode hybrid_rerank `
+  --ground-truth data/benchmark_synthesis/groundtruth.jsonl `
+  --max-samples 20 `
+  --limit 10 `
+  --k-values 1,3,5,10 `
+  --concurrency 2 `
+  --reference-date 2026-10-01 `
+  --generation `
+  --judge-batch-size 5 `
+  --judge-concurrency 2 `
+  --run-dir data/evaluation/runs/naive_hybrid_rerank_smoke
 ```
 
-Output: `data/evaluation/naive_predictions.jsonl` + `naive_metrics.json`
+Use the `naive-rag` extra for Naive, Adaptive, and Ontology runs and the `corrective-rag` extra for Corrective runs. Graphiti uses the base Graphiti dependency and additionally requires reachable Neo4j state plus a matching `--corpus-config`.
 
----
+Compare completed artifacts by naming each metrics file explicitly:
 
-## Conclusion
+```powershell
+uv run legal-evaluate compare `
+  data/evaluation/runs/naive_hybrid_smoke/metrics.json `
+  data/evaluation/runs/naive_hybrid_rerank_smoke/metrics.json `
+  --output data/evaluation/runs/naive_hybrid_comparison.json
+```
 
-**Metrics Implementation: CORRECT ✅**
+The comparison report validates population and experiment compatibility, then groups native-unit metrics, evidence coverage, generation quality, context budgets, operational observations, and configured slices. It deliberately has no composite score. `--allow-incompatible` returns compatibility diagnostics; it does not make the reported values comparable.
 
-Your implementation follows Ragas/DeepEval standards with appropriate adaptations for legal domain:
-- Faithfulness scale matches standard (0.0-1.0)
-- Correctness and Answer Relevancy use LLM judge (acceptable)
-- Temporal Correctness is novel and valuable addition
-- Offline retrieval metrics provide deterministic baseline
+## External execution boundary
 
-**No critical gaps** - ready for production RAG evaluation.
+Unit and integration tests can verify schemas, aggregation, identity checks, and adapter behavior without claiming external results. Real benchmark execution requires the configured Milvus or Neo4j index, local embedding artifacts, and any answer, rewrite, or judge model endpoints used by the selected pipeline. Record conclusions only from artifacts whose manifest status is `complete`.

@@ -156,8 +156,8 @@ def test_multi_hop_preserves_hierarchical_unit_evidence():
     assert result.sources[0].effective_evidence_chunk_ids == ("seed-1", "neighbor")
 
 
-def test_history_is_rewritten_before_planning_and_generation_keeps_raw_query():
-    """Conversation context affects planning and retrieval but not the user-facing question."""
+def test_history_is_rewritten_before_planning_retrieval_and_generation():
+    """Conversation context resolves the question used by every model-facing pipeline stage."""
     retriever = _FakeRetriever({"standalone question": [_chunk("chunk-1", "context")]})
     planner = _FakePlanner(AdaptiveQueryPlan(AdaptiveRoute.DIRECT))
     generator = _FakeGenerator()
@@ -170,7 +170,7 @@ def test_history_is_rewritten_before_planning_and_generation_keeps_raw_query():
     assert rewriter.calls == [("follow-up", history)]
     assert planner.queries == ["standalone question"]
     assert retriever.calls[0][0] == "standalone question"
-    assert generator.query == "follow-up"
+    assert generator.query == "standalone question"
     assert result.rewritten_query == "standalone question"
 
 

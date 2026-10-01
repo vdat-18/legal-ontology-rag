@@ -6,14 +6,13 @@ Uses sentence-transformers to run inference with the configured local embedding 
 from __future__ import annotations
 
 import gc
-import os
 from collections.abc import Sequence
 
 import torch
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 
-from legal_rag.embedding.encoder import EmbeddingEncoder
+from legal_rag.embedding.encoder import EmbeddingEncoder, embedding_local_files_only
 from legal_rag.embedding.profiles import load_configured_embedding_profile
 
 
@@ -40,12 +39,11 @@ class EmbeddingModel:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         logger.info(f"Initializing SentenceTransformer with '{self.model_id}' on device: {self.device}")
 
-        local_files_only = _read_env_bool("EMBEDDING_LOCAL_FILES_ONLY")
         self.model = SentenceTransformer(
             self.model_id,
             revision=profile.model_revision,
             device=self.device,
-            local_files_only=local_files_only,
+            local_files_only=embedding_local_files_only(),
         )
         self.encoder = EmbeddingEncoder(profile, self.model)
         logger.info("Embedding model loaded successfully.")
@@ -87,8 +85,3 @@ class EmbeddingModel:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         gc.collect()
-
-
-def _read_env_bool(name: str) -> bool:
-    """Read a boolean flag from process environment variables."""
-    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}

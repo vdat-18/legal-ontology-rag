@@ -10,6 +10,7 @@ as fully grounded.
 
 from __future__ import annotations
 
+import unicodedata
 from collections.abc import Sequence
 from typing import Protocol
 
@@ -61,6 +62,13 @@ def _appears_as_complete_span(text: str, candidate: str) -> bool:
     return False
 
 
+def _document_number_identity(document_number: str) -> str:
+    """Return an accent-insensitive identity key for one Vietnamese document number."""
+    decomposed = unicodedata.normalize("NFKD", document_number)
+    without_marks = "".join(character for character in decomposed if not unicodedata.combining(character))
+    return "".join(without_marks.replace("Đ", "D").replace("đ", "d").upper().split())
+
+
 def find_unindexed_document_citations(
     texts: Sequence[str], known_document_numbers: frozenset[str], client: DocumentCitationClient
 ) -> list[str]:
@@ -77,5 +85,13 @@ def find_unindexed_document_citations(
         result is surfaced to the reader as a caveat about the answer's coverage.
     """
     scanned = "\n".join(texts)
-    cited = {number for number in client.extract_citations(scanned) if _appears_as_complete_span(scanned, number)}
-    return sorted(cited - known_document_numbers)
+    cited = sorted(
+        {number for number in client.extract_citations(scanned) if _appears_as_complete_span(scanned, number)}
+    )
+    known_identities = {_document_number_identity(number) for number in known_document_numbers}
+    unindexed_by_identity: dict[str, str] = {}
+    for number in cited:
+        identity = _document_number_identity(number)
+        if identity not in known_identities:
+            unindexed_by_identity.setdefault(identity, number)
+    return sorted(unindexed_by_identity.values())

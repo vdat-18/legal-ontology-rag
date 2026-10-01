@@ -18,11 +18,19 @@ from legal_rag.corrective_rag.generate.pipeline import CorrectiveRAGPipeline
 from legal_rag.corrective_rag.generate.web_search import WebSearchProvider
 
 
+class ConversationTurnRequest(BaseModel):
+    """One earlier question-answer pair supplied with a follow-up."""
+
+    question: str = Field(..., min_length=1)
+    answer: str = Field(..., min_length=1)
+
+
 class QueryRequest(BaseModel):
     """Request body for a CRAG query."""
 
     query: str = Field(..., min_length=1)
     limit: int = Field(5, ge=1, le=20)
+    history: list[ConversationTurnRequest] = Field(default_factory=list)
 
 
 class SearchRequest(BaseModel):
@@ -49,6 +57,7 @@ class QueryResponse(BaseModel):
     """Response body for a full CRAG query."""
 
     query: str
+    rewritten_query: str | None = None
     reformulated_query: str | None
     status: str
     crag_action: str
@@ -207,7 +216,11 @@ def create_app(
         """Run the full Corrective RAG pipeline for one question."""
         request_provider = _get_provider(request.app)
         pipeline = request_provider.get_pipeline()
-        result = await run_in_threadpool(pipeline.run, payload.query, payload.limit)
+        history = tuple((turn.question, turn.answer) for turn in payload.history)
+        if history:
+            result = await run_in_threadpool(pipeline.run, payload.query, payload.limit, history)
+        else:
+            result = await run_in_threadpool(pipeline.run, payload.query, payload.limit)
         return QueryResponse.model_validate(result)
 
     @fastapi_app.post("/crag/search", response_model=SearchResponse)

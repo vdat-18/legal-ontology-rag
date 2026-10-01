@@ -211,6 +211,7 @@ _NAIVE_RAG_TUNABLES: dict[str, Callable[[str], str | bool | float | int | Path]]
     "milvus_nprobe": int,
     "milvus_insert_batch_size": int,
     "milvus_flush_after_insert": _parse_boolean,
+    "answer_max_context_characters": int,
     "answer_max_output_tokens": int,
     "answer_temperature": float,
     "max_response_bytes": int,
@@ -248,6 +249,7 @@ class NaiveRagSettings:
     # DeepSeek spends output tokens on reasoning before the answer, and one context is sent per
     # supporting chunk, so a grounded answer over ten multi-source facts runs close to 3k tokens.
     # Too small a budget truncates the response into an empty string that cannot be parsed.
+    answer_max_context_characters: int = 120_000
     answer_max_output_tokens: int = 16384
     answer_temperature: float = 0.1
     max_response_bytes: int = 1_048_576
@@ -287,6 +289,7 @@ class NaiveRagSettings:
             "milvus_nlist": self.milvus_nlist,
             "milvus_nprobe": self.milvus_nprobe,
             "milvus_insert_batch_size": self.milvus_insert_batch_size,
+            "answer_max_context_characters": self.answer_max_context_characters,
             "answer_max_output_tokens": self.answer_max_output_tokens,
             "max_response_bytes": self.max_response_bytes,
         }

@@ -12,7 +12,13 @@ from loguru import logger
 
 from legal_rag import baml_transport
 from legal_rag.baml_client.sync_client import b
-from legal_rag.baml_transport import BamlRateLimitError, BamlTransportError, build_client_registry
+from legal_rag.baml_transport import (
+    BamlRateLimitError,
+    BamlTransportError,
+    build_client_registry,
+    capture_llm_usage,
+    record_openai_usage,
+)
 
 
 def _request(*, reasoning_effort: baml_transport.ReasoningEffort | None = None) -> object:
@@ -266,6 +272,63 @@ def test_extra_request_body_is_merged_into_the_request() -> None:
     assert sent["stream"] is False
 
 
+def test_extra_request_body_cannot_override_standard_or_bounded_fields() -> None:
+    """Provider extras cannot turn a typed bounded request into a streaming or different request."""
+    sent: dict[str, object] = {}
+
+    class _FakeBody:
+        def json(self) -> dict[str, object]:
+            return {"model": "configured-model", "messages": []}
+
+    class _FakeRequest:
+        url = "http://provider.test/v1/chat/completions"
+        method = "POST"
+        headers: ClassVar[dict[str, str]] = {"Content-Type": "application/json"}
+        body = _FakeBody()
+
+    class _FakeResponse:
+        status = 200
+        reason = "OK"
+
+        def read(self, _size: int) -> bytes:
+            return json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode()
+
+    class _FakeConnection:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def request(self, _method: str, _path: str, body: bytes, headers: dict[str, str]) -> None:
+            sent.update(json.loads(body))
+
+        def getresponse(self) -> _FakeResponse:
+            return _FakeResponse()
+
+        def close(self) -> None:
+            pass
+
+    original = http.client.HTTPConnection
+    http.client.HTTPConnection = _FakeConnection  # type: ignore[misc]
+    try:
+        baml_transport.execute_baml_request(
+            _FakeRequest(),
+            30,
+            1_048_576,
+            {
+                "model": "overridden-model",
+                "stream": True,
+                "response_format": {"type": "text"},
+                "thinking": {"type": "disabled"},
+            },
+        )
+    finally:
+        http.client.HTTPConnection = original  # type: ignore[misc]
+
+    assert sent["model"] == "configured-model"
+    assert sent["stream"] is False
+    assert sent["response_format"] == {"type": "json_object"}
+    assert sent["thinking"] == {"type": "disabled"}
+
+
 def test_no_extra_request_body_leaves_the_request_untouched() -> None:
     """Without configuration nothing provider-specific is added, so other providers still work."""
     sent: dict[str, object] = {}
@@ -328,3 +391,55 @@ def test_a_completed_response_is_returned_unchanged() -> None:
     response = json.dumps({"choices": [{"finish_reason": "stop", "message": {"content": "ok"}}]}).encode()
 
     assert baml_transport._openai_response_content(response) == "ok"
+
+
+def test_usage_capture_aggregates_baml_and_direct_openai_calls() -> None:
+    """One evaluation context receives totals from every compatible provider call."""
+    with capture_llm_usage() as usage:
+        baml_transport._openai_response_content(
+            json.dumps(
+                {
+                    "model": "answer-model",
+                    "usage": {"prompt_tokens": 10, "completion_tokens": 4, "total_tokens": 14},
+                    "choices": [{"message": {"content": "ok"}}],
+                }
+            ).encode()
+        )
+        record_openai_usage(
+            {
+                "model": "answer-model",
+                "usage": {"input_tokens": 7, "output_tokens": 3},
+            }
+        )
+
+    assert usage.to_dict() == {
+        "call_count": 2,
+        "usage_available_call_count": 2,
+        "usage_unavailable_call_count": 0,
+        "input_tokens": 17,
+        "output_tokens": 7,
+        "total_tokens": 24,
+        "models": {"answer-model": 2},
+        "partial": False,
+    }
+
+
+@pytest.mark.parametrize("provider_usage", [None, {}])
+def test_usage_capture_marks_missing_provider_usage_as_partial(provider_usage: dict[str, int] | None) -> None:
+    """Reports disclose when a provider omitted token accounting."""
+    with capture_llm_usage() as usage:
+        response: dict[str, object] = {"model": "opaque-model"}
+        if provider_usage is not None:
+            response["usage"] = provider_usage
+        record_openai_usage(response)
+
+    assert usage.to_dict() == {
+        "call_count": 1,
+        "usage_available_call_count": 0,
+        "usage_unavailable_call_count": 1,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "models": {"opaque-model": 1},
+        "partial": True,
+    }

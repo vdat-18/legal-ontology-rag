@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from legal_rag.baml_client.types import RetrievedChunkContext as BamlRetrievedChunkContext
 from legal_rag.graphiti_rag.generator import generate_answer
 from legal_rag.graphiti_rag.retriever import FactSource, RetrievedFact
@@ -102,3 +104,18 @@ def test_context_falls_back_to_the_fact_when_no_passage_was_stored() -> None:
 
     [(_, chunks)] = client.calls
     assert chunks[0].text == "Phạt tiền từ 4.000.000 đến 6.000.000 đồng."
+
+
+def test_context_labels_the_dates_at_which_a_fused_fact_was_retrieved() -> None:
+    """Generation can associate a graph fact with each version date that returned it."""
+    client = _FakeGenerationClient()
+    fact = RetrievedFact(
+        fact="Quy định chuyển tiếp",
+        sources=(FactSource(chunk_id="chunk-1", source_name="doc.docx"),),
+        as_of_dates=(date(2025, 1, 1), date(2026, 3, 1)),
+    )
+
+    generate_answer("So sánh quy định", [fact], client)
+
+    [(_, chunks)] = client.calls
+    assert chunks[0].text == ("[Có hiệu lực tại mốc truy hồi: 2025-01-01, 2026-03-01]\nQuy định chuyển tiếp")

@@ -821,6 +821,7 @@ dependencies = [
     { name = "olefile" },
     { name = "python-dotenv" },
     { name = "rank-bm25" },
+    { name = "rdflib" },
     { name = "sentence-transformers" },
     { name = "transformers" },
 ]
@@ -843,7 +844,6 @@ dev = [
     { name = "pyshacl" },
     { name = "pytest" },
     { name = "pyyaml" },
-    { name = "rdflib" },
     { name = "ruff" },
 ]
 evaluation = [
@@ -862,7 +862,7 @@ requires-dist = [
     { name = "defusedxml", specifier = "==0.7.1" },
     { name = "fastapi", specifier = ">=0.116" },
     { name = "fastapi", marker = "extra == 'api'", specifier = ">=0.115" },
-    { name = "graphiti-core", extras = ["anthropic"], specifier = ">=0.29" },
+    { name = "graphiti-core", extras = ["anthropic"], specifier = ">=0.29.3,<0.30" },
     { name = "httpx", marker = "extra == 'corrective-rag'", specifier = ">=0.27" },
     { name = "loguru", specifier = ">=0.7" },
     { name = "milvus-lite", marker = "extra == 'naive-rag'", specifier = ">=2.4" },
@@ -875,7 +875,7 @@ requires-dist = [
     { name = "pyyaml", marker = "extra == 'dev'", specifier = ">=6.0" },
     { name = "rank-bm25", specifier = ">=0.2.2" },
     { name = "rapidfuzz", marker = "extra == 'evaluation'", specifier = ">=3.0" },
-    { name = "rdflib", marker = "extra == 'dev'", specifier = ">=7.1,<8" },
+    { name = "rdflib", specifier = ">=7.1,<8" },
     { name = "redis", marker = "extra == 'api'", specifier = ">=5.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = "==0.15.21" },
     { name = "sentence-transformers", specifier = ">=3.0" },

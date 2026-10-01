@@ -20,6 +20,7 @@ def test_naive_rag_settings_load_from_environment() -> None:
     assert settings.milvus_metric_type == "COSINE"
     assert settings.reranker_model_id == "BAAI/bge-reranker-v2-m3"
     assert settings.reranker_pool_multiplier == 5
+    assert settings.answer_max_context_characters == 120_000
     assert settings.chunks_dir == Path("data/processed/groundtruth")
     assert settings.hierarchical_max_chunks_per_unit == 5
     assert settings.hierarchical_max_tokens_per_unit == 2500
@@ -37,6 +38,7 @@ def test_every_declared_tunable_is_overridable_from_the_environment() -> None:
         "milvus_nprobe": "32",
         "milvus_insert_batch_size": "50",
         "milvus_flush_after_insert": "false",
+        "answer_max_context_characters": "64000",
         "answer_max_output_tokens": "2048",
         "answer_temperature": "0.5",
         "max_response_bytes": "2097152",
@@ -71,6 +73,7 @@ def test_every_declared_tunable_is_overridable_from_the_environment() -> None:
         ("milvus_nlist", 0),
         ("milvus_nprobe", -1),
         ("milvus_insert_batch_size", 0),
+        ("answer_max_context_characters", 0),
         ("answer_max_output_tokens", 0),
         ("max_response_bytes", 0),
         ("answer_temperature", 2.1),

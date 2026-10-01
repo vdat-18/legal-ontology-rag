@@ -89,6 +89,38 @@ def test_query_returns_answer_sources_latency(client: TestClient) -> None:
     assert "history_load_ms" in body["latency_ms"]
 
 
+@pytest.mark.usefixtures("_env")
+def test_query_passes_structured_history_to_the_pipeline() -> None:
+    """The API keeps the current question separate from earlier conversation turns."""
+    mock_pipeline = MagicMock()
+    mock_pipeline.run.return_value = _FakeResult()
+    mock_redis = MagicMock()
+    mock_redis.lrange.return_value = [b'{"query":"previous","answer":"previous answer"}']
+
+    with (
+        patch("legal_rag.naive_rag.pipeline.NaiveRAGPipeline", return_value=mock_pipeline),
+        patch("legal_rag.naive_rag_api.redis") as mock_redis_mod,
+    ):
+        mock_redis_mod.from_url.return_value = mock_redis
+        from legal_rag.naive_rag_api import app
+
+        with TestClient(app) as test_client:
+            response = test_client.post(
+                "/query",
+                json={"query": "follow-up"},
+                headers={**_AUTH_HEADER, "X-Session-Id": "s-history"},
+            )
+
+    assert response.status_code == 200
+    mock_pipeline.run.assert_called_once_with(
+        "follow-up",
+        top_k=None,
+        search_mode=None,
+        history=(("previous", "previous answer"),),
+        rewrite_query=True,
+    )
+
+
 def test_query_without_api_key_rejected(client: TestClient) -> None:
     """Query without API key returns 401."""
     response = client.post("/query", json={"query": "test"})

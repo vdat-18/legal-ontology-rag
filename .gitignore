@@ -14,7 +14,7 @@ dist/
 
 .pytest_cache/
 .pytest_cache_local/
-.pytest_tmp/
+.pytest_tmp*/
 .ruff_cache/
 .mypy_cache/
 .pyre/

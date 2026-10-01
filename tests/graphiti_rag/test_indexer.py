@@ -89,15 +89,29 @@ class _FakeEffectiveDateClient:
 
 
 class _FakeNeo4jDriver:
-    """Report a fixed set of (name, group_id) episode keys as already indexed."""
+    """Return persisted episode fields for a fixed set of (name, group_id) keys."""
 
-    def __init__(self, existing_episodes: frozenset[tuple[str, str]] = frozenset()) -> None:
-        self._existing_episodes = existing_episodes
+    def __init__(
+        self,
+        existing_episodes: dict[tuple[str, str], tuple[str, str]] | None = None,
+    ) -> None:
+        self._existing_episodes = existing_episodes or {}
+        self.calls: list[tuple[str, dict[str, object]]] = []
 
-    async def execute_query(self, _query: str, **params: object) -> tuple[list[object], None, None]:
-        """Return one record when the queried (name, group_id) is in the pre-seeded existing set."""
+    async def execute_query(self, query: str, **params: object) -> tuple[list[object], None, None]:
+        """Compare the expected fields with the pre-seeded persisted episode."""
+        self.calls.append((query, params))
         key = (params.get("name"), params.get("group_id"))
-        records = [object()] if key in self._existing_episodes else []
+        persisted = self._existing_episodes.get(key)
+        records: list[object] = []
+        if persisted is not None:
+            persisted_content, persisted_source_description = persisted
+            records.append(
+                {
+                    "content_matches": persisted_content == params.get("content"),
+                    "source_description_matches": persisted_source_description == params.get("source_description"),
+                }
+            )
         return records, None, None
 
 
@@ -153,6 +167,81 @@ def test_load_corpus_metadata_reads_group_id_and_documents(tmp_path: Path) -> No
     assert metadata.documents["168_2024_ND-CP.docx"].effective_date == date(2025, 1, 1)
     assert metadata.documents["238_2026_ND-CP.docx"].effective_date is None
     assert metadata.documents["238_2026_ND-CP.docx"].amends == "168/2024/NĐ-CP"
+
+
+def test_load_corpus_metadata_accepts_selection_only_documents(tmp_path: Path) -> None:
+    """The broad corpus config can omit temporal fields and a formal document number."""
+    corpus_config = tmp_path / "corpus.json"
+    corpus_config.write_text(
+        """
+        {
+          "group_id": "traffic_penalty_groundtruth_v1",
+          "documents": [
+            {
+              "file": "168_2024_ND-CP_619502.docx",
+              "selection_reason": "Core road traffic penalty decree."
+            }
+          ]
+        }
+        """,
+        encoding="utf-8",
+    )
+
+    metadata = load_corpus_metadata(corpus_config)
+
+    document = metadata.documents["168_2024_ND-CP_619502.docx"]
+    assert document.document_number == "168/2024/ND-CP"
+    assert document.effective_date is None
+    assert document.amends is None
+
+
+def test_load_corpus_metadata_prefers_adjacent_validated_document_metadata(tmp_path: Path) -> None:
+    """Prepared metadata supplies the authoritative accented number for selection-only configs."""
+    corpus_config = tmp_path / "corpus.json"
+    corpus_config.write_text(
+        """
+        {
+          "group_id": "traffic_penalty_groundtruth_v1",
+          "documents": [{"file": "168_2024_ND-CP_619502.docx"}]
+        }
+        """,
+        encoding="utf-8",
+    )
+    (tmp_path / "168_2024_ND-CP_619502.document_metadata.jsonl").write_text(
+        '{"document_number":"168/2024/NĐ-CP","schema_version":"1.0.0","valid_from":"2025-01-01","valid_to":null}\n',
+        encoding="utf-8",
+    )
+
+    metadata = load_corpus_metadata(corpus_config)
+
+    document = metadata.documents["168_2024_ND-CP_619502.docx"]
+    assert document.document_number == "168/2024/NĐ-CP"
+    assert document.effective_date == date(2025, 1, 1)
+
+
+def test_load_corpus_metadata_rejects_conflicting_metadata_artifacts(tmp_path: Path) -> None:
+    """Two authoritative artifacts cannot silently identify one source as different documents."""
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    corpus_config = config_dir / "corpus.json"
+    corpus_config.write_text(
+        '{"group_id":"g1","documents":[{"file":"168_2024_ND-CP_619502.docx"}]}',
+        encoding="utf-8",
+    )
+    local_metadata = config_dir / "168_2024_ND-CP_619502.document_metadata.jsonl"
+    local_metadata.write_text(
+        '{"document_number":"168/2024/NĐ-CP","schema_version":"1.0.0","valid_from":"2025-01-01","valid_to":null}\n',
+        encoding="utf-8",
+    )
+    processed_dir = tmp_path / "processed" / "groundtruth"
+    processed_dir.mkdir(parents=True)
+    (processed_dir / local_metadata.name).write_text(
+        '{"document_number":"999/2024/NĐ-CP","schema_version":"1.0.0","valid_from":"2025-01-01","valid_to":null}\n',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="Conflicting document metadata"):
+        load_corpus_metadata(corpus_config)
 
 
 def test_index_chunks_skips_when_source_not_in_corpus_config() -> None:
@@ -235,24 +324,71 @@ def test_index_chunks_adds_one_episode_named_by_its_chunk_id() -> None:
     assert call["edge_types"] is EDGE_TYPES
 
 
+def test_index_chunks_normalizes_undated_fact_edges_from_reference_time() -> None:
+    """Facts without an extracted date inherit their persisted episode reference date."""
+    metadata = CorpusMetadata(
+        group_id="g1",
+        documents={"doc.docx": CorpusDocument(document_number="1/2024", effective_date=date(2025, 1, 1), amends=None)},
+    )
+    chunk = _chunk("chunk-1", "doc.docx")
+    driver = _FakeNeo4jDriver()
+
+    asyncio.run(
+        index_chunks([chunk], metadata, _FakeGraphiti(), driver, _FakeEffectiveDateClient(), _WINDOW_TOKEN_BUDGET)
+    )
+
+    query, params = driver.calls[-1]
+    assert "edge.valid_at IS NULL" in query
+    assert "coalesce(edge.reference_time, episode.valid_at)" in query
+    assert params == {"name": "chunk-1", "group_id": "g1"}
+
+
 def test_index_chunks_skips_when_episode_already_indexed() -> None:
-    """A chunk whose stable chunk_id already exists in the group is skipped."""
+    """A matching persisted episode is skipped without another Graphiti write."""
     metadata = CorpusMetadata(
         group_id="g1",
         documents={"doc.docx": CorpusDocument(document_number="1/2024", effective_date=date(2025, 1, 1), amends=None)},
     )
     chunk = _chunk("chunk-1", "doc.docx", chunk_index=0)
     graphiti = _FakeGraphiti()
-    existing = frozenset({("chunk-1", "g1")})
+    neo4j_driver = _FakeNeo4jDriver({("chunk-1", "g1"): (chunk.text, chunk.source_name)})
 
     summary = asyncio.run(
-        index_chunks(
-            [chunk], metadata, graphiti, _FakeNeo4jDriver(existing), _FakeEffectiveDateClient(), _WINDOW_TOKEN_BUDGET
-        )
+        index_chunks([chunk], metadata, graphiti, neo4j_driver, _FakeEffectiveDateClient(), _WINDOW_TOKEN_BUDGET)
     )
 
     assert summary.indexed == 0
     assert summary.skipped_already_indexed == 1
+    assert graphiti.calls == []
+    query, params = neo4j_driver.calls[0]
+    assert "$name" in query
+    assert "$group_id" in query
+    assert "$content" in query
+    assert "$source_description" in query
+    assert chunk.text not in query
+    assert params == {
+        "name": "chunk-1",
+        "group_id": "g1",
+        "content": chunk.text,
+        "source_description": "doc.docx",
+    }
+
+
+def test_index_chunks_rejects_existing_episode_with_stale_content() -> None:
+    """A reused chunk id cannot silently retain content from an older corpus build."""
+    metadata = CorpusMetadata(
+        group_id="g1",
+        documents={"doc.docx": CorpusDocument(document_number="1/2024", effective_date=date(2025, 1, 1), amends=None)},
+    )
+    chunk = _chunk("chunk-1", "doc.docx", text="Nội dung hiện tại.")
+    graphiti = _FakeGraphiti()
+    neo4j_driver = _FakeNeo4jDriver({("chunk-1", "g1"): ("Nội dung cũ.", "doc.docx")})
+
+    with pytest.raises(ValueError, match=r"chunk-1.*content.*Rebuild the Graphiti index"):
+        asyncio.run(
+            index_chunks([chunk], metadata, graphiti, neo4j_driver, _FakeEffectiveDateClient(), _WINDOW_TOKEN_BUDGET)
+        )
+
     assert graphiti.calls == []
 
 
@@ -336,6 +472,26 @@ def test_index_chunks_concurrent_skips_no_metadata_and_no_date_chunks() -> None:
 
     assert summary.indexed == 1
     assert summary.skipped_no_metadata == 1
+
+
+def test_index_chunks_concurrent_rejects_existing_episode_with_stale_source_description() -> None:
+    """Concurrent workers apply the same provenance freshness check as the serial indexer."""
+    metadata = CorpusMetadata(
+        group_id="g1",
+        documents={"doc.docx": CorpusDocument(document_number="1/2024", effective_date=date(2025, 1, 1), amends=None)},
+    )
+    chunk = _chunk("chunk-1", "doc.docx")
+    client = _FakeGraphiti()
+    neo4j_driver = _FakeNeo4jDriver({("chunk-1", "g1"): (chunk.text, "old-name.docx")})
+
+    with pytest.raises(ValueError, match=r"chunk-1.*source_description.*Rebuild the Graphiti index"):
+        asyncio.run(
+            index_chunks_concurrent(
+                [chunk], metadata, [client], neo4j_driver, _FakeEffectiveDateClient(), _WINDOW_TOKEN_BUDGET
+            )
+        )
+
+    assert client.calls == []
 
 
 def test_index_chunks_concurrent_propagates_a_failing_add_episode() -> None:

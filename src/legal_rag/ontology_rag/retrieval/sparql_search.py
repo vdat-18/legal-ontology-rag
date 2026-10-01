@@ -109,21 +109,25 @@ class SPARQLSearch:
             }}
             FILTER({filters})
         }}
-        LIMIT {_MAX_INSTANCES * 2}
         """
-        labels: dict[object, str] = {}
-        chunk_ids: dict[object, list[str]] = defaultdict(list)
+        labels: dict[object, set[str]] = defaultdict(set)
+        chunk_ids: dict[object, set[str]] = defaultdict(set)
         for row in self._graph.query(query):
-            labels[row.instance] = str(row.label)
+            labels[row.instance].add(str(row.label))
             if row.chunk_id is not None:
-                chunk_ids[row.instance].append(str(row.chunk_id))
+                chunk_ids[row.instance].add(str(row.chunk_id))
 
         scored = [
-            (sum(1 for token in tokens if token in label.lower()), str(uri), uri) for uri, label in labels.items()
+            (
+                max(sum(1 for token in tokens if token in label.lower()) for label in instance_labels),
+                str(uri),
+                uri,
+            )
+            for uri, instance_labels in labels.items()
         ]
         scored.sort(key=lambda item: (-item[0], item[1]))
         instances = [
-            OntologyInstance(uri=uri, type="PenaltyRule", source_chunk_ids=tuple(chunk_ids.get(uri, ())))
+            OntologyInstance(uri=uri, type="PenaltyRule", source_chunk_ids=tuple(sorted(chunk_ids.get(uri, ()))))
             for _, _, uri in scored[:_MAX_INSTANCES]
         ]
         logger.info("SPARQL search found {} instances for keywords: {}", len(instances), keywords)

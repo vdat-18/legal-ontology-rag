@@ -59,7 +59,7 @@ class EvaluationSample:
             or _read_sequence(data, "reference_contexts")
             or _read_sequence(data, "ground_truth_contexts")
         )
-        history = _read_sequence(data, "history")
+        history = _read_first_sequence(data, ("history", "conversation_history"))
 
         return cls(
             question=_read_first_string(data, ("question", "query", "user_input", "input")),
@@ -67,12 +67,21 @@ class EvaluationSample:
             answerability=_read_optional_string(data, ("answerability",)),
             reasoning_hops=_read_optional_int(data, "reasoning_hops"),
             query_style=_read_optional_string(data, ("query_style",)),
-            expected_answer=_read_optional_string(data, ("expected_answer", "ground_truth", "ground_truth_answer")),
+            expected_answer=_read_optional_string(
+                data,
+                ("expected_answer", "reference_answer", "ground_truth", "ground_truth_answer"),
+            ),
             actual_answer=_read_optional_string(data, ("actual_answer", "answer", "response"))
             or _read_optional_string(result, ("answer", "response")),
             expected_chunk_ids=_read_string_tuple(
                 data,
-                ("expected_chunk_ids", "reference_chunk_ids", "ground_truth_chunk_ids", "chunk_ids"),
+                (
+                    "expected_chunk_ids",
+                    "reference_chunk_ids",
+                    "ground_truth_chunk_ids",
+                    "gold_chunk_ids",
+                    "chunk_ids",
+                ),
             )
             or _extract_field_tuple(expected_contexts, ("chunk_id", "id")),
             retrieved_chunk_ids=_read_string_tuple(data, ("retrieved_chunk_ids", "predicted_chunk_ids"))
@@ -88,13 +97,7 @@ class EvaluationSample:
             or _extract_field_tuple(contexts, ("source_name", "source", "name")),
             retrieved_units=_read_retrieved_units(data),
             expected_claims=_read_expected_claims(data),
-            history=tuple(
-                (item["question"], item["answer"])
-                for item in history
-                if isinstance(item, Mapping)
-                and isinstance(item.get("question"), str)
-                and isinstance(item.get("answer"), str)
-            ),
+            history=_read_history(history),
         )
 
 
@@ -166,11 +169,31 @@ def expand_evaluation_row(data: Mapping[str, Any]) -> tuple[Mapping[str, Any], .
         row.update(turn)
         row["history"] = list(history)
         expanded.append(row)
-        question = turn.get("question")
-        answer = turn.get("expected_answer")
+        question = _read_optional_string(turn, ("question", "query"))
+        answer = _read_optional_string(turn, ("expected_answer", "reference_answer"))
         if isinstance(question, str) and isinstance(answer, str):
             history.append({"question": question, "answer": answer})
     return tuple(expanded)
+
+
+def _read_history(items: Sequence[Any]) -> tuple[tuple[str, str], ...]:
+    """Normalize current and legacy conversation-turn field names."""
+    history: list[tuple[str, str]] = []
+    for item in items:
+        if isinstance(item, Mapping):
+            question = _read_optional_string(item, ("question", "query", "user_input"))
+            answer = _read_optional_string(
+                item,
+                ("answer", "response", "actual_answer", "expected_answer", "reference_answer"),
+            )
+        elif isinstance(item, Sequence) and not isinstance(item, str) and len(item) == 2:
+            question = item[0].strip() if isinstance(item[0], str) and item[0].strip() else None
+            answer = item[1].strip() if isinstance(item[1], str) and item[1].strip() else None
+        else:
+            continue
+        if question is not None and answer is not None:
+            history.append((question, answer))
+    return tuple(history)
 
 
 def evaluate_samples(
@@ -359,6 +382,15 @@ def _read_mapping(data: Mapping[str, Any], key: str) -> Mapping[str, Any]:
 def _read_sequence(data: Mapping[str, Any], key: str) -> Sequence[Any]:
     value = data.get(key)
     return value if isinstance(value, Sequence) and not isinstance(value, str) else ()
+
+
+def _read_first_sequence(data: Mapping[str, Any], keys: Sequence[str]) -> Sequence[Any]:
+    """Return the first sequence-valued alias, including an explicitly empty sequence."""
+    for key in keys:
+        value = data.get(key)
+        if isinstance(value, Sequence) and not isinstance(value, str):
+            return value
+    return ()
 
 
 def _read_first_string(data: Mapping[str, Any], keys: Sequence[str]) -> str:

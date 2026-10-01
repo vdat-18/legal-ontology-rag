@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Sequence
+from datetime import date
 
 import pytest
 from loguru import logger
@@ -152,9 +153,9 @@ def test_pipeline_skips_citation_coverage_when_corpus_is_unknown_and_does_not_lo
         "formal legal query",
         "group-1",
         30,
-        {"expand_around_top_fact": True, "rerank_with_cross_encoder": False},
+        {"as_of_dates": (), "expand_around_top_fact": True, "rerank_with_cross_encoder": False},
     )
-    assert generation_client.calls[0][0] == sensitive_query
+    assert generation_client.calls[0][0] == "formal legal query"
     assert len(generation_client.calls[0][1]) == 1
     assert result.unindexed_citations == ()
     assert citation_client.calls == []
@@ -172,3 +173,53 @@ def test_pipeline_checks_citation_coverage_when_corpus_is_known(monkeypatch: pyt
 
     assert result.unindexed_citations == ("100/2019/ND-CP",)
     assert len(citation_client.calls) == 1
+
+
+def test_pipeline_can_skip_product_only_auxiliary_llm_calls(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Evaluation can measure retrieval and answer generation without citation or suggestion calls."""
+    citation_client = _FakeCitationClient(["100/2019/ND-CP"])
+    pipeline, _, _, _, _ = _build_pipeline(monkeypatch, frozenset(), citation_client)
+
+    result = asyncio.run(pipeline.run("query", include_auxiliary_outputs=False))
+
+    assert result.unindexed_citations == ()
+    assert result.suggestions == ()
+    assert citation_client.calls == []
+
+
+def test_pipeline_forwards_as_of_date_to_graph_search(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A date-level control reaches retrieval unchanged after query rewriting."""
+    citation_client = _FakeCitationClient([])
+    pipeline, _, _, _, search_calls = _build_pipeline(monkeypatch, frozenset(), citation_client)
+    as_of_date = date(2024, 12, 31)
+
+    asyncio.run(pipeline.run("query", as_of_date=as_of_date, include_auxiliary_outputs=False))
+
+    assert search_calls[0][-1]["as_of_dates"] == (as_of_date,)
+
+
+def test_pipeline_forwards_multiple_as_of_dates_to_graph_search(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every legal-version target reaches the graph retriever without interval collapsing."""
+    citation_client = _FakeCitationClient([])
+    pipeline, _, _, _, search_calls = _build_pipeline(monkeypatch, frozenset(), citation_client)
+    targets = (date(2025, 1, 1), date(2026, 3, 1))
+
+    asyncio.run(pipeline.run("query", as_of_dates=targets, include_auxiliary_outputs=False))
+
+    assert search_calls[0][-1]["as_of_dates"] == targets
+
+
+def test_pipeline_rejects_singular_and_plural_as_of_dates_together(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Conflicting temporal controls fail before any retrieval call."""
+    citation_client = _FakeCitationClient([])
+    pipeline, _, _, _, _ = _build_pipeline(monkeypatch, frozenset(), citation_client)
+
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        asyncio.run(
+            pipeline.run(
+                "query",
+                as_of_date=date(2025, 1, 1),
+                as_of_dates=(date(2026, 3, 1),),
+                include_auxiliary_outputs=False,
+            )
+        )

@@ -1,18 +1,19 @@
-"""Index mapping chunk IDs to ontology instance URIs."""
+"""Index mapping chunk IDs to penalty-rule URIs."""
 
 from __future__ import annotations
 
 from collections import defaultdict
 
 from loguru import logger
-from rdflib import Graph, URIRef
+from rdflib import DCTERMS, RDF, Graph, Namespace, URIRef
 
-ONTOLOGY_NS = "https://w3id.org/legal-ontology-rag/ontology/source-provenance#"
-DCTERMS_NS = "http://purl.org/dc/terms/"
+LORLC = Namespace("https://w3id.org/legal-ontology-rag/ontology/legal-consequence#")
+LORNR = Namespace("https://w3id.org/legal-ontology-rag/ontology/normative-rule#")
+LORSP = Namespace("https://w3id.org/legal-ontology-rag/ontology/source-provenance#")
 
 
 class ChunkIndex:
-    """Pre-computed mapping from chunk_id to list of instance URIs."""
+    """Pre-computed mapping from chunk IDs to evidenced penalty rules."""
 
     def __init__(self, graph: Graph) -> None:
         """Build chunk-to-instances index from ontology graph."""
@@ -23,22 +24,42 @@ class ChunkIndex:
         )
 
     def _build_index(self) -> dict[str, list[URIRef]]:
-        """Query sourcedFromChunk to build the mapping."""
-        query = """
-        PREFIX lorsp: <https://w3id.org/legal-ontology-rag/ontology/source-provenance#>
-        PREFIX dcterms: <http://purl.org/dc/terms/>
+        """Build the mapping from explicitly typed penalty rules."""
+        index: dict[str, set[URIRef]] = defaultdict(set)
+        rules = sorted(set(self._graph.subjects(RDF.type, LORNR.PenaltyRule)), key=str)
+        for rule in rules:
+            for component in self._rule_components(rule):
+                for chunk in self._graph.objects(component, LORSP.sourcedFromChunk):
+                    for chunk_id in self._graph.objects(chunk, DCTERMS.identifier):
+                        index[str(chunk_id)].add(rule)
+        return {chunk_id: sorted(instance_uris, key=str) for chunk_id, instance_uris in sorted(index.items())}
 
-        SELECT ?instance ?chunk_id WHERE {
-            ?instance lorsp:sourcedFromChunk ?chunk .
-            ?chunk dcterms:identifier ?chunk_id .
-        }
-        """
-        index: dict[str, list[URIRef]] = defaultdict(list)
-        for row in self._graph.query(query):
-            chunk_id = str(row.chunk_id)
-            instance_uri = row.instance
-            index[chunk_id].append(instance_uri)
-        return dict(index)
+    def _rule_components(self, rule: URIRef) -> set[URIRef]:
+        """Return one rule and the evidenced components it owns."""
+        components = {rule}
+        predicates = (
+            LORNR.hasConductSpecification,
+            LORNR.hasApplicability,
+            LORNR.hasException,
+            LORLC.imposesConsequence,
+        )
+        for predicate in predicates:
+            components.update(self._graph.objects(rule, predicate))
+
+        pending = [
+            root
+            for applicability in self._graph.objects(rule, LORNR.hasApplicability)
+            for root in self._graph.objects(applicability, LORNR.hasConditionExpression)
+        ]
+        visited_conditions: set[URIRef] = set()
+        while pending:
+            condition = pending.pop()
+            if condition in visited_conditions:
+                continue
+            visited_conditions.add(condition)
+            components.add(condition)
+            pending.extend(self._graph.objects(condition, LORNR.hasOperand))
+        return components
 
     def get_instances(self, chunk_id: str) -> list[URIRef]:
         """Return list of instance URIs for a chunk ID."""

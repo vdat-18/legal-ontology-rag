@@ -5,11 +5,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Protocol
 
-from baml_py.logging import set_log_level
-
 from legal_rag.baml_client.sync_client import b
 from legal_rag.baml_client.types import RetrievedChunkContext as BamlRetrievedChunkContext
-from legal_rag.baml_transport import build_client_registry, execute_baml_request
+from legal_rag.baml_transport import BamlCaller
 from legal_rag.naive_rag.models import RetrievedChunk
 from legal_rag.settings import NaiveRagSettings, Settings
 
@@ -26,23 +24,18 @@ class BamlGenerationClient:
 
     def __init__(self, settings: Settings, naive_rag_settings: NaiveRagSettings) -> None:
         """Create a runtime BAML client from typed, secret-safe configuration."""
-        set_log_level("OFF")
-        self._registry = build_client_registry(
-            base_url=settings.llm_base_url,
-            api_key=settings.llm_api_key,
-            model=settings.llm_model,
+        self._caller = BamlCaller.from_settings(
+            settings,
             max_output_tokens=naive_rag_settings.answer_max_output_tokens,
             temperature=naive_rag_settings.answer_temperature,
-            timeout_seconds=settings.llm_timeout_seconds,
+            max_response_bytes=naive_rag_settings.max_response_bytes,
         )
-        self._timeout_seconds = settings.llm_timeout_seconds
-        self._max_response_bytes = naive_rag_settings.max_response_bytes
 
     def generate(self, query_vi: str, chunks: Sequence[BamlRetrievedChunkContext]) -> str:
         """Run one bounded BAML call and return the generated answer text."""
-        request = b.request.GenerateAnswer(query_vi, list(chunks), baml_options={"client_registry": self._registry})
-        raw_output = execute_baml_request(request, self._timeout_seconds, self._max_response_bytes)
-        return b.parse.GenerateAnswer(raw_output, baml_options={"client_registry": self._registry}).answer_vi
+        request = b.request.GenerateAnswer(query_vi, list(chunks), baml_options=self._caller.options)
+        raw_output = self._caller.execute(request)
+        return b.parse.GenerateAnswer(raw_output, baml_options=self._caller.options).answer_vi
 
 
 def generate_answer(query: str, hits: Sequence[RetrievedChunk], client: GenerationClient) -> str:

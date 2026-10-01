@@ -5,9 +5,11 @@ Ontology-based RAG system for Vietnamese traffic law, implementing a 4-phase hyb
 ## Architecture Overview
 
 ```
-Query → Triple Retrieval (Vector/BM25L/SPARQL) → RRF Fusion
-     → ChunkLinker → InstanceRetriever → TemporalResolver
-     → ContextBuilder → Generate Answer
+Query → typed rewrite and temporal plan
+     → semantic/BM25L chunk retrieval + direct SPARQL rule search
+     → per-channel RRF → complete PenaltyRule retrieval
+     → certainty-aware temporal resolution → exact source-chunk lookup
+     → structured rule + verbatim source context → answer
 ```
 
 ## Components
@@ -20,10 +22,10 @@ Query → Triple Retrieval (Vector/BM25L/SPARQL) → RRF Fusion
 
 ### Phase 2: Retrieval Modules
 
-- **ChunkLinker**: Links retrieved chunks to ontology instances
-- **InstanceRetriever**: Fetches full PenaltyRule objects via SPARQL
+- **ChunkLinker**: Links retrieved chunk evidence only to explicitly typed penalty rules
+- **InstanceRetriever**: Reads complete multi-valued PenaltyRule objects without flattening RDF joins
 - **SPARQLSearch**: Keyword search against ontology
-- **TemporalResolver**: Filters rules by query date
+- **TemporalResolver**: Classifies rules as valid, invalid, or indeterminate for each query date
 
 ### Phase 3: Fusion
 
@@ -31,25 +33,31 @@ Query → Triple Retrieval (Vector/BM25L/SPARQL) → RRF Fusion
 
 ### Phase 4: Pipeline
 
-- **ContextBuilder**: Builds structured JSON from rules and chunks
+- **ContextBuilder**: Keeps structured applicability, consequences, exceptions, temporal state, and verbatim source text
 - **OntologyRAGPipeline**: End-to-end pipeline orchestrating all modules
 
 ## Usage
 
+Install the retrieval dependencies (and the API dependencies when serving HTTP):
+
+```bash
+uv sync --extra naive-rag --extra api
+```
+
 ### CLI
 
 ```bash
-legal-ontology-rag-query --ontology ontology/rules.ttl "Mức phạt không đội mũ bảo hiểm?"
+legal-ontology-rag-query --ontology path/to/canonical-ontology.ttl "Mức phạt không đội mũ bảo hiểm?"
 ```
 
 Options:
-- `--top-k N`: Override number of retrieved chunks
-- `--query-date YYYY-MM-DD`: Query date for temporal filtering
+- `--top-k N`: Override the number of selected rule units
+- `--query-date YYYY-MM-DD`: Explicit query date; this overrides a date inferred from the question
 
 ### API
 
 ```python
-from legal_rag.ontology_rag import OntologyRAGPipeline
+from legal_rag.ontology_rag.pipeline import OntologyRAGPipeline
 from legal_rag.settings import Settings, MilvusSettings, NaiveRagSettings
 from pathlib import Path
 
@@ -71,7 +79,7 @@ for rule in result.rules:
 Start the API server:
 
 ```bash
-export ONTOLOGY_PATHS="ontology/rules.ttl"
+export ONTOLOGY_PATHS="path/to/canonical-ontology.ttl"
 export RAG_API_KEY="your-key"
 legal-ontology-rag-api
 ```
@@ -87,17 +95,22 @@ curl -X POST http://localhost:8000/query \
 
 ## Data Flow
 
-1. **Query Input**: Vietnamese legal question
+1. **Query Planning**: Rewrite a follow-up as a standalone legal question and identify current, at-date, or comparison intent.
 2. **Triple Retrieval**:
    - Vector search via Milvus (semantic)
    - BM25L search (keyword)
    - SPARQL search (ontology)
-3. **RRF Fusion**: Combine and rank results
-4. **Linking**: Map chunks → ontology instances
-5. **Instance Retrieval**: Fetch full PenaltyRule objects
-6. **Temporal Filtering**: Filter by query_date
-7. **Context Building**: Structure as JSON
-8. **Answer Generation**: LLM generates answer
+3. **RRF Fusion**: Score semantic, keyword, and direct ontology channels independently.
+4. **Instance Retrieval**: Read applicability, all consequences, conditions, exceptions, dates, and component provenance.
+5. **Temporal Resolution**: Resolve all requested dates before applying `top_k`. Validity intervals use `[valid_from, valid_to)`.
+6. **Source Resolution**: Fetch every selected rule's exact source chunks by primary key from the same Milvus collection.
+7. **Context Building**: Exclude fallback evidence for rejected candidate rules, then separate normalized ontology
+   facts from source wording that may be quoted. The character budget reserves one available exact source chunk per
+   selected rule before adding further sources and unrelated fallback chunks in retrieval order.
+8. **Answer Generation**: Generate from selected rules and fallback retrieved chunks.
+
+An absent validity bound remains unknown. Such a rule is marked `indeterminate`; it may be supplied as qualified
+evidence, but the answer must not claim that it is currently effective solely because its end date is absent.
 
 ## Configuration
 
@@ -105,6 +118,8 @@ Environment variables:
 
 - `ONTOLOGY_PATHS`: Comma-separated paths to ontology TTL files
 - `RAG_API_KEY`: API key for FastAPI endpoint
+- `NAIVE_RAG_ANSWER_MAX_CONTEXT_CHARACTERS`: Maximum combined chunk ID, source name, and text characters supplied
+  to answer generation (default `120000`)
 - Standard LLM/Milvus settings from `Settings`, `MilvusSettings`, `NaiveRagSettings`
 
 ## Testing
@@ -113,4 +128,4 @@ Environment variables:
 pytest tests/ontology_rag/ -v
 ```
 
-13 tests covering index, retrieval, fusion, context, and pipeline components.
+The tests cover index, retrieval, fusion, temporal boundaries, context, pipeline, API, CLI, and evaluation contracts.

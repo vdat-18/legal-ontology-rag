@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
-from legal_rag.embedding.encoder import EmbeddingEncoder
+from legal_rag.embedding.encoder import EmbeddingEncoder, embedding_local_files_only
 from legal_rag.embedding.profiles import EmbeddingProfile
 
 
@@ -76,3 +77,44 @@ def test_encode_query_prepends_configured_instruction() -> None:
     encoder.encode_query(["ab"])
 
     assert backend.calls[0]["sentences"] == ["Instruct: ab"]
+
+
+@pytest.mark.parametrize("value", ["1", "true", "YES", "on"])
+def test_embedding_local_files_only_accepts_documented_true_values(value: str) -> None:
+    """The shared embedding loader recognizes the same true values for every pipeline."""
+    assert embedding_local_files_only({"EMBEDDING_LOCAL_FILES_ONLY": value}) is True
+
+
+def test_embedding_local_files_only_defaults_to_false() -> None:
+    """Missing embedding cache configuration permits the pinned model download."""
+    assert embedding_local_files_only({}) is False
+
+
+@pytest.mark.parametrize("value", ["", "0", "false", "NO", "off"])
+def test_embedding_local_files_only_rejects_false_values(value: str) -> None:
+    """False-like values do not accidentally force an offline model load."""
+    assert embedding_local_files_only({"EMBEDDING_LOCAL_FILES_ONLY": value}) is False
+
+
+def test_from_profile_passes_local_files_only_to_sentence_transformers(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The shared loader applies the offline flag used by Naive, Graphiti, and Ontology RAG."""
+    captured: dict[str, object] = {}
+    backend = _FakeEncoderBackend()
+
+    def fake_sentence_transformer(model_id: str, **kwargs: object) -> _FakeEncoderBackend:
+        captured["model_id"] = model_id
+        captured.update(kwargs)
+        return backend
+
+    monkeypatch.setattr("sentence_transformers.SentenceTransformer", fake_sentence_transformer)
+
+    EmbeddingEncoder.from_profile(
+        _profile(None),
+        environment={"EMBEDDING_LOCAL_FILES_ONLY": "true"},
+    )
+
+    assert captured == {
+        "model_id": "test/model",
+        "revision": "abc123",
+        "local_files_only": True,
+    }

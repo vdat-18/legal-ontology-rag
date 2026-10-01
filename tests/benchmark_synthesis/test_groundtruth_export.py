@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+import json
+from dataclasses import replace
+from datetime import date
+from pathlib import Path
+
+import pytest
+
 from legal_rag.benchmark_synthesis.candidate_generation import (
     CandidateDraft,
     ClaimEvidence,
     RequiredClaim,
 )
-from legal_rag.benchmark_synthesis.groundtruth_export import export_ground_truth
+from legal_rag.benchmark_synthesis.groundtruth_export import GROUND_TRUTH_EXPORT_SCHEMA_VERSION, export_ground_truth
+from legal_rag.benchmark_synthesis.models import EvidenceReference, LegalFact
+from legal_rag.benchmark_synthesis.writer import read_legal_facts
 from legal_rag.evaluation.metrics import EvaluationSample
 
 
@@ -60,3 +69,55 @@ def test_export_ground_truth_maps_evaluation_fields_and_preserves_metadata() -> 
     assert "query_type" not in record
     assert "as_of_date" not in record
     assert record["bridge"] == "Cùng hành vi vượt đèn đỏ"
+    assert record["query_dates"] == []
+
+
+def test_export_ground_truth_persists_every_temporal_source_version_date() -> None:
+    """Temporal comparisons carry authoritative version starts for plural retrieval and judging."""
+    candidate = replace(
+        _candidate(),
+        bundle_kind="temporal",
+        query="So sánh quy định cũ và mới",
+        source_fact_ids=("old", "new"),
+    )
+    facts = {
+        fact.fact_id: fact
+        for fact in (
+            LegalFact("old", "old rule", date(2025, 1, 1), None, "old", (EvidenceReference("chunk-1"),)),
+            LegalFact("new", "new rule", date(2026, 3, 1), None, "new", (EvidenceReference("chunk-2"),)),
+        )
+    }
+
+    [record] = export_ground_truth((candidate,), facts)
+
+    assert record["query_dates"] == ["2025-01-01", "2026-03-01"]
+
+
+def test_export_ground_truth_rejects_missing_temporal_source_fact() -> None:
+    """A temporal target cannot silently omit an authoritative source version."""
+    candidate = replace(_candidate(), bundle_kind="temporal", source_fact_ids=("missing",))
+
+    with pytest.raises(ValueError, match="missing source_fact_ids"):
+        export_ground_truth((candidate,), {})
+
+
+def test_default_ground_truth_persists_temporal_source_version_dates() -> None:
+    """The committed benchmark, not only future exports, carries plural temporal targets."""
+    repository_root = Path(__file__).resolve().parents[2]
+    ground_truth_path = repository_root / "data/benchmark_synthesis/groundtruth.jsonl"
+    facts_path = repository_root / "data/benchmark_synthesis/legal_facts.jsonl"
+    rows = [json.loads(line) for line in ground_truth_path.read_text(encoding="utf-8").splitlines()]
+    facts_by_id = {fact.fact_id: fact for fact in read_legal_facts(facts_path)}
+    temporal_rows = [row for row in rows if row.get("bundle_kind") == "temporal"]
+
+    assert temporal_rows
+    assert all(row["schema_version"] == GROUND_TRUTH_EXPORT_SCHEMA_VERSION for row in rows)
+    for row in temporal_rows:
+        persisted = set(row["query_dates"])
+        source_dates = {
+            fact.valid_from.isoformat()
+            for fact_id in row["source_fact_ids"]
+            if (fact := facts_by_id[fact_id]).valid_from is not None
+        }
+        assert source_dates <= persisted
+    assert any(len(row["query_dates"]) > 1 for row in temporal_rows)

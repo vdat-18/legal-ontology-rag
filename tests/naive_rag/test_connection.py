@@ -142,3 +142,43 @@ def test_build_milvus_client_passes_authentication_only_when_configured(
     milvus_module.build_milvus_client(settings)
 
     assert captured_options == expected_options
+
+
+def test_build_milvus_client_closes_client_when_database_selection_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A client created before database setup fails is closed without hiding the setup error."""
+    setup_error = RuntimeError("database selection failed")
+
+    class _FailingMilvusClient:
+        """Fail database selection and record connection cleanup."""
+
+        closed = False
+
+        def list_databases(self) -> list[str]:
+            """Return the configured database as already present."""
+            return ["legal_rag"]
+
+        def use_database(self, database_name: str) -> None:
+            """Fail while selecting the configured database."""
+            assert database_name == "legal_rag"
+            raise setup_error
+
+        def close(self) -> None:
+            """Record cleanup and simulate a secondary close failure."""
+            self.closed = True
+            msg = "client cleanup failed"
+            raise RuntimeError(msg)
+
+    client = _FailingMilvusClient()
+    monkeypatch.setattr(milvus_module, "MilvusClient", lambda **_options: client)
+    settings = MilvusSettings(uri="http://milvus:19530", database="legal_rag")
+
+    with pytest.raises(RuntimeError, match="database selection failed") as captured:
+        milvus_module.build_milvus_client(settings)
+
+    assert captured.value is setup_error
+    assert client.closed
+    assert setup_error.__notes__ == [
+        "Failed to close Milvus client after connection setup failed: RuntimeError('client cleanup failed')"
+    ]

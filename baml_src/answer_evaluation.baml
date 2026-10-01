@@ -4,6 +4,12 @@ class LegalAnswerToEvaluate {
   answer string
   contexts string[]
   reference string?
+  history ConversationTurn[]
+  answerability string?
+  required_claims string[]
+  query_date string? @description("Ngày áp dụng riêng của mẫu, định dạng YYYY-MM-DD; ưu tiên hơn reference_date.")
+  query_dates string[] @description("Các mốc phiên bản pháp luật cần chấm, định dạng YYYY-MM-DD.")
+  reference_date string? @description("Ngày tham chiếu cố định của chiến dịch đánh giá, định dạng YYYY-MM-DD.")
 }
 
 class LegalAnswerEvaluation {
@@ -51,6 +57,18 @@ class LegalAnswerEvaluation {
     null nếu câu trả lời từ chối trả lời hoặc không khẳng định bất kỳ quy định
     pháp luật nào (không có version luật nào để đánh giá tính temporal).
   "#)
+  answerability_correctness bool? @description(#"
+    Đánh giá câu trả lời có xử lý đúng mức độ answerability kỳ vọng hay không:
+    - answerable: phải đưa ra câu trả lời nội dung, không từ chối vô căn cứ;
+    - partially_answerable: phải trả lời phần có căn cứ và nêu rõ phần chưa thể kết luận;
+    - unanswerable: phải từ chối kết luận dứt khoát hoặc yêu cầu thông tin còn thiếu.
+    null khi đầu vào không có nhãn answerability.
+  "#)
+  required_claim_coverage float? @description(#"
+    Tỷ lệ 0.0-1.0 các required_claims được câu trả lời truyền đạt đúng về nội dung.
+    Chấp nhận cách diễn đạt tương đương. Một claim sai về điều kiện, đối tượng, mức xử lý
+    hoặc thời điểm thì không được tính là đã phủ. null khi không có required_claims.
+  "#)
 }
 
 function EvaluateAnswers(items: LegalAnswerToEvaluate[]) -> LegalAnswerEvaluation[] {
@@ -61,8 +79,9 @@ function EvaluateAnswers(items: LegalAnswerToEvaluate[]) -> LegalAnswerEvaluatio
     Bạn là giám khảo pháp lý, đánh giá câu trả lời của hệ thống hỏi-đáp luật
     giao thông đường bộ Việt Nam. Với MỖI mục trong danh sách dưới đây, chấm
     từng tiêu chí một cách độc lập và khách quan, chỉ dựa trên câu hỏi, câu
-    trả lời, ngữ cảnh được truy hồi và đáp án chuẩn (nếu có). Đánh giá từng
-    mục độc lập, không để mục này ảnh hưởng tới mục khác.
+    trả lời, lịch sử hội thoại, ngữ cảnh được truy hồi, mức answerability kỳ vọng,
+    các ý bắt buộc và đáp án chuẩn (nếu có). Đánh giá từng mục độc lập, không để
+    mục này ảnh hưởng tới mục khác.
 
     Tiêu chí đánh giá:
     1. faithfulness (0.0-1.0): Tỷ lệ khẳng định trong câu trả lời có bằng chứng trong ngữ cảnh.
@@ -78,22 +97,69 @@ function EvaluateAnswers(items: LegalAnswerToEvaluate[]) -> LegalAnswerEvaluatio
        - Không đánh giá đúng/sai, chỉ đánh giá relevance
     
     4. temporal_correctness (true/false/null): Áp dụng đúng luật đang hiệu lực không?
+        - Nếu có query_dates, phải chấm tất cả các mốc đó và không được thu gọn thành một mốc
+        - Nếu không có query_dates, dùng query_date; nếu câu hỏi tự nêu ngày thì theo phạm vi trong câu hỏi
+        - Chỉ dùng reference_date cho câu hỏi hiện tại/không nêu phạm vi thời gian riêng
+        - Không tự suy ra ngày hiện tại từ thời gian chạy hoặc kiến thức bên ngoài đầu vào
         - Kiểm tra năm hiệu lực, số hiệu văn bản
         - false nếu dùng luật đã hết hiệu lực hoặc chưa có hiệu lực
         - null nếu câu trả lời từ chối trả lời hoặc không trích dẫn/khẳng định bất kỳ quy định pháp luật nào
+
+    5. answerability_correctness (true/false/null): Cách trả lời có phù hợp với nhãn answerability không?
+       - answerable: phải trả lời nội dung thay vì từ chối vô căn cứ
+       - partially_answerable: trả lời phần có căn cứ và nêu rõ giới hạn/phần thiếu
+       - unanswerable: không bịa kết luận; phải từ chối hoặc yêu cầu thông tin cần thiết
+       - null nếu mục không có nhãn answerability
+
+    6. required_claim_coverage (0.0-1.0/null): Tỷ lệ các ý bắt buộc được trả lời đúng.
+       - Chấm từng required_claim độc lập theo nội dung, chấp nhận diễn đạt tương đương
+       - Claim chỉ được tính khi không làm sai điều kiện, đối tượng, mức xử lý hay thời điểm
+       - null nếu mục không có required_claims
 
     Trả về đúng một kết quả cho mỗi mục, giữ nguyên sample_id để đối chiếu.
 
     {% for item in items %}
     ---
     sample_id: {{ item.sample_id }}
+    {% if item.history %}
+    Lịch sử hội thoại trước câu hỏi cần chấm:
+    {% for turn in item.history %}
+    - Người dùng: {{ turn.question }}
+      Trợ lý: {{ turn.answer }}
+    {% endfor %}
+    {% endif %}
     Câu hỏi: {{ item.question }}
     Câu trả lời: {{ item.answer }}
+    {% if item.query_dates %}
+    Các mốc phiên bản pháp luật cần chấm (query_dates):
+    {% for target_date in item.query_dates %}
+    - {{ target_date }}
+    {% endfor %}
+    {% endif %}
+    {% if item.query_date %}Ngày áp dụng riêng của mẫu (query_date): {{ item.query_date }}{% endif %}
+    {% if item.reference_date %}Ngày tham chiếu cố định của chiến dịch (reference_date): {{ item.reference_date }}{% endif %}
+    {% if item.query_dates %}
+    Chấm temporal_correctness tại toàn bộ query_dates ở trên và giữ đúng quan hệ mốc thời gian với từng quy định.
+    {% elif item.query_date %}
+    Ngày hiệu lực dùng để chấm temporal_correctness: {{ item.query_date }} (query_date được ưu tiên).
+    {% elif item.reference_date %}
+    Nếu câu hỏi nêu ngày hoặc so sánh phiên bản, dùng phạm vi thời gian trong câu hỏi. Nếu không, dùng
+    {{ item.reference_date }} làm ngày hiện tại cố định của chiến dịch.
+    {% else %}
+    Không có ngày hiệu lực đầu vào; không được tự dùng ngày hiện tại của hệ thống.
+    {% endif %}
     Ngữ cảnh được truy hồi:
     {% for context in item.contexts %}
     - {{ context }}
     {% endfor %}
     {% if item.reference %}Đáp án chuẩn: {{ item.reference }}{% endif %}
+    {% if item.answerability %}Mức answerability kỳ vọng: {{ item.answerability }}{% endif %}
+    {% if item.required_claims %}
+    Các ý bắt buộc:
+    {% for claim in item.required_claims %}
+    - {{ claim }}
+    {% endfor %}
+    {% endif %}
     ---
     {% endfor %}
 

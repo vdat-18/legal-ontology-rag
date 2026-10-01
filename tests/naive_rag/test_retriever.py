@@ -116,6 +116,22 @@ def test_retrieve_encodes_the_query_with_query_side_instruction(tmp_path: Path) 
     assert backend.calls == [["QUERY: Mức phạt vượt đèn đỏ"]]
 
 
+def test_fetch_by_ids_returns_persisted_chunks_in_requested_order(tmp_path: Path) -> None:
+    """Ontology provenance can resolve exact source chunks without another similarity search."""
+    chunks = (_chunk("chunk-1", "Căn cứ thứ nhất."), _chunk("chunk-2", "Căn cứ thứ hai."))
+    encoder = EmbeddingEncoder(_profile(), _FakeEncoderBackend())
+    settings = _settings()
+    client = MilvusClient(uri=str(tmp_path / "naive_rag.db"))
+    index_chunks(chunks, encoder, client, settings)
+    retriever = Retriever(encoder, client, settings)
+
+    hits = retriever.fetch_by_ids(("chunk-2", "missing", "chunk-1", "chunk-2"))
+
+    assert [hit.chunk_id for hit in hits] == ["chunk-2", "chunk-1"]
+    assert [hit.text for hit in hits] == ["Căn cứ thứ hai.", "Căn cứ thứ nhất."]
+    assert all(hit.source_name == "168_2024_ND-CP.docx" for hit in hits)
+
+
 def test_hierarchical_retrieval_expands_a_milvus_seed_from_local_chunks(tmp_path: Path) -> None:
     """Milvus identity metadata safely connects one seed to its local article context."""
     first = _chunk("chunk-1", "Điều 7. Nội dung thứ nhất.")

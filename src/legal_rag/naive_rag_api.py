@@ -106,17 +106,6 @@ def _load_turns(session_id: str) -> list[HistoryTurn]:
     return [HistoryTurn(**json.loads(raw.decode("utf-8"))) for raw in raw_items]
 
 
-def _build_contextual_query(query: str, history: list[HistoryTurn]) -> str:
-    """Prepend conversation history to the current query for multi-turn context."""
-    if not history:
-        return query
-    lines: list[str] = []
-    for turn in history:
-        lines.append(f"User: {turn.query}")
-        lines.append(f"Assistant: {turn.answer}")
-    return "Conversation history:\n" + "\n".join(lines) + f"\n\nCurrent question: {query}"
-
-
 @asynccontextmanager
 async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Build the pipeline and connect to Redis at startup."""
@@ -184,11 +173,13 @@ def query(
     latency["history_load_ms"] = (time.perf_counter() - t0) * 1000
 
     t0 = time.perf_counter()
-    contextual_query = _build_contextual_query(request.query, history)
-    latency["context_build_ms"] = (time.perf_counter() - t0) * 1000
-
-    t0 = time.perf_counter()
-    result = _state.pipeline.run(contextual_query, top_k=request.top_k, search_mode=request.search_mode)
+    result = _state.pipeline.run(
+        request.query,
+        top_k=request.top_k,
+        search_mode=request.search_mode,
+        history=tuple((turn.query, turn.answer) for turn in history),
+        rewrite_query=True,
+    )
     latency["pipeline_ms"] = (time.perf_counter() - t0) * 1000
 
     t0 = time.perf_counter()

@@ -12,11 +12,12 @@ dependencies = [
     "baml-py==0.223.0",
     "defusedxml==0.7.1",
     "fastapi>=0.116",
-    "graphiti-core[anthropic]>=0.29",
+    "graphiti-core[anthropic]>=0.29.3,<0.30",
     "loguru>=0.7",
     "olefile==0.47",
     "python-dotenv>=1.0",
     "rank-bm25>=0.2.2",
+    "rdflib>=7.1,<8",
     "sentence-transformers>=3.0",
     "transformers==5.14.1",
 ]
@@ -29,7 +30,6 @@ dev = [
     "pyshacl>=0.30,<0.31",
     "pytest>=8.0",
     "pyyaml>=6.0",
-    "rdflib>=7.1,<8",
     "ruff==0.15.21",
 ]
 naive-rag = ["pymilvus>=3.0", "milvus-lite>=2.4", "sentence-transformers>=3.0"]
@@ -94,9 +94,26 @@ legal-assemble-groundtruth = "legal_rag.groundtruth_assembly_cli:main"
 legal-naive-rag-index = "legal_rag.naive_rag_index_cli:main"
 legal-naive-rag-query = "legal_rag.naive_rag_query_cli:main"
 legal-ontology-rag-query = "legal_rag.ontology_rag_query_cli:main"
+legal-ontology-rag-api = "legal_rag.ontology_rag_api:main"
 legal-graphiti-index = "legal_rag.graphiti_index_cli:main"
 legal-graphiti-query = "legal_rag.graphiti_query_cli:main"
 legal-graphiti-api = "legal_rag.graphiti_rag.api.server:main"
+
+[tool.hatch.build]
+artifacts = ["/src/legal_rag/baml_client/*.py"]
+
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "/.packaging_verify*",
+    "/.pytest_tmp*",
+    "/.tmp",
+    "/data",
+    "/docs/references",
+    "/tmp",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/legal_rag"]

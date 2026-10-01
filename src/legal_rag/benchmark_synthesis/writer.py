@@ -91,6 +91,8 @@ from legal_rag.benchmark_synthesis.multi_turn_candidate_generation import (
 from legal_rag.benchmark_synthesis.scenario_sampling import SCENARIO_SCHEMA_VERSION, Scenario
 from legal_rag.io_utils import write_json_atomic, write_jsonl_atomic
 
+_LEGACY_MULTI_TURN_CANDIDATE_SCHEMA_VERSION = "1.0.0"
+
 
 def write_chunk_screening(output_path: Path, records: Sequence[ChunkScreeningRecord]) -> None:
     """Atomically replace one UTF-8 JSONL output with chunk-screening records."""
@@ -299,9 +301,7 @@ def write_scenarios(output_path: Path, scenarios: Sequence[Scenario]) -> None:
     write_jsonl_atomic(output_path, (scenario.to_dict() for scenario in scenarios))
 
 
-def write_conversation_scenarios(
-    output_path: Path, conversations: Sequence[ConversationScenario]
-) -> None:
+def write_conversation_scenarios(output_path: Path, conversations: Sequence[ConversationScenario]) -> None:
     """Atomically replace one UTF-8 JSONL output with conversation-scenario records."""
     write_jsonl_atomic(output_path, (conversation.to_dict() for conversation in conversations))
 
@@ -341,9 +341,7 @@ def _parse_turn_spec(payload: dict[str, object]) -> TurnSpec:
     )
 
 
-def write_multi_turn_candidates(
-    output_path: Path, conversations: Sequence[MultiTurnCandidateDraft]
-) -> None:
+def write_multi_turn_candidates(output_path: Path, conversations: Sequence[MultiTurnCandidateDraft]) -> None:
     """Atomically replace one UTF-8 JSONL output with multi-turn candidate records."""
     write_jsonl_atomic(output_path, (conversation.to_dict() for conversation in conversations))
 
@@ -377,14 +375,36 @@ def read_reviewed_history_candidates(
 
 def read_multi_turn_candidates(input_path: Path) -> tuple[MultiTurnCandidateDraft, ...]:
     """Read a multi-turn candidates JSONL file back into typed records."""
+    return _read_multi_turn_candidates(input_path, allow_legacy_export_schema=False)
+
+
+def read_multi_turn_candidates_for_export(input_path: Path) -> tuple[MultiTurnCandidateDraft, ...]:
+    """Read current candidates or legacy 1.0 candidates for ground-truth export."""
+    return _read_multi_turn_candidates(input_path, allow_legacy_export_schema=True)
+
+
+def _read_multi_turn_candidates(
+    input_path: Path,
+    *,
+    allow_legacy_export_schema: bool,
+) -> tuple[MultiTurnCandidateDraft, ...]:
+    """Read multi-turn candidates under the explicitly selected schema policy."""
     conversations: list[MultiTurnCandidateDraft] = []
     with input_path.open(encoding="utf-8") as source_file:
         for line in source_file:
             payload = json.loads(line)
-            if payload["schema_version"] != MULTI_TURN_CANDIDATE_SCHEMA_VERSION:
+            schema_version = payload["schema_version"]
+            if schema_version != MULTI_TURN_CANDIDATE_SCHEMA_VERSION and not (
+                allow_legacy_export_schema and schema_version == _LEGACY_MULTI_TURN_CANDIDATE_SCHEMA_VERSION
+            ):
                 msg = f"Unsupported multi-turn candidate schema: {payload['schema_version']}"
                 raise ValueError(msg)
-            conversations.append(_parse_multi_turn_candidate(payload))
+            conversations.append(
+                _parse_multi_turn_candidate(
+                    payload,
+                    allow_legacy_export_schema=allow_legacy_export_schema,
+                )
+            )
     return tuple(conversations)
 
 
@@ -413,23 +433,37 @@ def read_multi_turn_progress(input_path: Path) -> tuple[MultiTurnProgressRecord,
     return tuple(records)
 
 
-def _parse_multi_turn_candidate(payload: dict[str, object]) -> MultiTurnCandidateDraft:
+def _parse_multi_turn_candidate(
+    payload: dict[str, object],
+    *,
+    allow_legacy_export_schema: bool = False,
+) -> MultiTurnCandidateDraft:
     """Parse one complete multi-turn candidate payload."""
-    if payload["schema_version"] != MULTI_TURN_CANDIDATE_SCHEMA_VERSION:
+    schema_version = payload["schema_version"]
+    is_legacy_export_schema = (
+        allow_legacy_export_schema and schema_version == _LEGACY_MULTI_TURN_CANDIDATE_SCHEMA_VERSION
+    )
+    if schema_version != MULTI_TURN_CANDIDATE_SCHEMA_VERSION and not is_legacy_export_schema:
         msg = f"Unsupported multi-turn candidate schema: {payload['schema_version']}"
         raise ValueError(msg)
     return MultiTurnCandidateDraft(
         conversation_id=payload["conversation_id"],
         persona=payload["persona"],
         conversation_length=payload["conversation_length"],
-        turns=tuple(_parse_conversation_turn(turn) for turn in payload["turns"]),
+        turns=tuple(
+            _parse_conversation_turn(turn, legacy_export_schema=is_legacy_export_schema) for turn in payload["turns"]
+        ),
         gold_chunk_ids=tuple(payload["gold_chunk_ids"]),
         generator_model=payload["generator_model"],
         prompt_version=payload["prompt_version"],
     )
 
 
-def _parse_conversation_turn(payload: dict[str, object]) -> ConversationTurnDraft:
+def _parse_conversation_turn(
+    payload: dict[str, object],
+    *,
+    legacy_export_schema: bool = False,
+) -> ConversationTurnDraft:
     """Parse the ConversationTurnDraft portion of one multi-turn record."""
     return ConversationTurnDraft(
         turn_number=payload["turn_number"],
@@ -438,10 +472,12 @@ def _parse_conversation_turn(payload: dict[str, object]) -> ConversationTurnDraf
         answerability=payload["answerability"],
         anchor_scenario_id=payload["anchor_scenario_id"],
         query=payload["query"],
-        standalone_query=payload["standalone_query"],
+        standalone_query=payload.get("standalone_query", "") if legacy_export_schema else payload["standalone_query"],
         reference_answer=payload["reference_answer"],
         reasoning=payload["reasoning"],
-        missing_information=payload["missing_information"],
+        missing_information=payload.get("missing_information")
+        if legacy_export_schema
+        else payload["missing_information"],
         required_claims=tuple(
             RequiredClaim(
                 claim=claim["claim"],

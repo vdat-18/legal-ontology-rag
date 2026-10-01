@@ -112,8 +112,9 @@ def test_query_cli_with_query_date(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert call_kwargs["query_date"] == date(2025, 6, 1)
 
 
-def test_query_cli_invalid_query_date(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Invalid query_date logs error and returns."""
+@pytest.mark.parametrize("query_date", ["invalid", "20250601", "2025-06-01T00:00:00", "2025-6-1"])
+def test_query_cli_invalid_query_date(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, query_date: str) -> None:
+    """Invalid or noncanonical query dates are rejected by argparse."""
     mock_pipeline = MagicMock()
 
     monkeypatch.setenv("LLM_BASE_URL", "http://localhost/v1")
@@ -130,17 +131,19 @@ def test_query_cli_invalid_query_date(tmp_path: Path, monkeypatch: pytest.Monkey
     monkeypatch.setattr(
         sys,
         "argv",
-        ["legal-ontology-rag-query", "--ontology", str(ontology_file), "--query-date", "invalid", "test query"],
+        ["legal-ontology-rag-query", "--ontology", str(ontology_file), "--query-date", query_date, "test query"],
     )
 
-    messages: list[str] = []
-    sink_id = logger.add(lambda message: messages.append(str(message)), level="ERROR")
+    with (
+        patch.object(pipeline_module, "OntologyRAGPipeline", return_value=mock_pipeline),
+        pytest.raises(SystemExit),
+    ):
+        ontology_rag_query_cli.main()
 
-    try:
-        with patch.object(pipeline_module, "OntologyRAGPipeline", return_value=mock_pipeline):
-            ontology_rag_query_cli.main()
-    finally:
-        logger.remove(sink_id)
-
-    assert any("Invalid query_date format" in message for message in messages)
     mock_pipeline.run.assert_not_called()
+
+
+def test_query_cli_rejects_non_positive_top_k() -> None:
+    """The query CLI rejects an empty retrieval budget at its boundary."""
+    with pytest.raises(SystemExit):
+        ontology_rag_query_cli._parser().parse_args(["--ontology", "test.ttl", "--top-k", "0", "test query"])

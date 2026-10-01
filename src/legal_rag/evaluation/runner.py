@@ -8,12 +8,16 @@ import inspect
 import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass
+from datetime import date
 from pathlib import Path
+from time import perf_counter
 from typing import Any, Protocol
 
 from loguru import logger
 
+from legal_rag.baml_transport import LLMUsage, capture_llm_usage
 from legal_rag.evaluation.metrics import EvaluationSample, expand_evaluation_row
+from legal_rag.temporal import resolve_temporal_targets
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,6 +26,9 @@ class EvaluationRecord:
 
     raw: Mapping[str, Any]
     sample: EvaluationSample
+    query_date: date | None = None
+    query_dates: tuple[date, ...] = ()
+    temporal_comparison: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +91,9 @@ class EvaluationBackend(Protocol):
     async def predict(self, question: str, limit: int) -> PipelinePrediction:
         """Run one question and return the shared prediction contract."""
 
+    async def preflight_corpus(self) -> Mapping[str, Any]:
+        """Validate and fingerprint the active retrieval backend before evaluation."""
+
     async def close(self) -> None:
         """Release external resources owned by the pipeline."""
 
@@ -143,6 +153,11 @@ class NaiveEvaluationBackend:
         """Close the naive pipeline's Milvus connection."""
         self._pipeline.close()
 
+    async def preflight_corpus(self) -> Mapping[str, Any]:
+        """Verify and fingerprint the active Naive Milvus collection."""
+        fingerprint = await asyncio.to_thread(self._pipeline.preflight_corpus)
+        return fingerprint.to_dict()
+
 
 class AdaptiveEvaluationBackend:
     """Adapt one-shot adaptive RAG to the shared evaluation contract."""
@@ -192,19 +207,43 @@ class AdaptiveEvaluationBackend:
         """Close the adaptive pipeline's Milvus connection."""
         self._pipeline.close()
 
+    async def preflight_corpus(self) -> Mapping[str, Any]:
+        """Verify and fingerprint the active shared Naive Milvus collection."""
+        fingerprint = await asyncio.to_thread(self._pipeline.preflight_corpus)
+        return fingerprint.to_dict()
+
 
 class CorrectiveEvaluationBackend:
     """Adapt Corrective RAG while separating retrieval labels from generation context."""
 
     name = "corrective"
 
-    def __init__(self, pipeline: Any) -> None:
-        """Store the Corrective RAG pipeline."""
+    def __init__(self, pipeline: Any, chunks_dir: Path = Path("data/processed/groundtruth")) -> None:
+        """Store the Corrective RAG pipeline and the corpus its active index must match."""
         self._pipeline = pipeline
+        self._chunks_dir = chunks_dir
 
     async def predict(self, question: str, limit: int) -> PipelinePrediction:
         """Run CRAG and retain both initial retrieval and corrected knowledge."""
-        result = await asyncio.to_thread(self._pipeline.run, question, limit=limit)
+        return await self._predict(question, limit)
+
+    async def predict_with_history(
+        self, question: str, limit: int, history: tuple[tuple[str, str], ...]
+    ) -> PipelinePrediction:
+        """Run CRAG with earlier conversation turns used to resolve the current question."""
+        return await self._predict(question, limit, history)
+
+    async def _predict(
+        self,
+        question: str,
+        limit: int,
+        history: tuple[tuple[str, str], ...] = (),
+    ) -> PipelinePrediction:
+        """Run the blocking CRAG pipeline off the event loop."""
+        run_kwargs: dict[str, Any] = {"limit": limit}
+        if history:
+            run_kwargs["history"] = history
+        result = await asyncio.to_thread(self._pipeline.run, question, **run_kwargs)
         graded_chunks = _mapping_sequence(result.get("graded_chunks"))
         generation_contexts = _mapping_sequence(result.get("generation_contexts"))
         contexts = tuple(
@@ -239,6 +278,7 @@ class CorrectiveEvaluationBackend:
             metadata={
                 "status": result.get("status"),
                 "crag_action": result.get("crag_action"),
+                "rewritten_query": result.get("rewritten_query"),
                 "reformulated_query": result.get("reformulated_query"),
                 "web_search_count": result.get("web_search_count"),
                 "graded_chunks": graded_chunks,
@@ -248,6 +288,11 @@ class CorrectiveEvaluationBackend:
     async def close(self) -> None:
         """Close all Corrective RAG clients."""
         self._pipeline.close()
+
+    async def preflight_corpus(self) -> Mapping[str, Any]:
+        """Verify and fingerprint the active Corrective Milvus collection."""
+        fingerprint = await asyncio.to_thread(self._pipeline.preflight_corpus, self._chunks_dir)
+        return fingerprint.to_dict()
 
 
 class OntologyEvaluationBackend:
@@ -259,33 +304,68 @@ class OntologyEvaluationBackend:
 
     name = "ontology"
 
-    def __init__(self, pipeline: Any, rewrite_query: bool = False) -> None:
+    def __init__(
+        self,
+        pipeline: Any,
+        rewrite_query: bool = False,
+        reference_date: date | None = None,
+    ) -> None:
         """Store the ontology RAG pipeline.
 
         Args:
             pipeline: The OntologyRAGPipeline instance.
             rewrite_query: Whether to rewrite queries before retrieval.
+            reference_date: Optional fixed current date for reproducible evaluation.
         """
         self._pipeline = pipeline
         self._rewrite_query = rewrite_query
+        self._reference_date = reference_date
 
-    async def predict(self, question: str, limit: int) -> PipelinePrediction:
+    async def predict(
+        self,
+        question: str,
+        limit: int,
+        query_date: date | None = None,
+        query_dates: tuple[date, ...] = (),
+    ) -> PipelinePrediction:
         """Run ontology RAG and expose selected rules with source-chunk provenance."""
-        return await self._predict(question, limit)
+        return await self._predict(question, limit, query_date=query_date, query_dates=query_dates)
 
     async def predict_with_history(
-        self, question: str, limit: int, history: tuple[tuple[str, str], ...]
+        self,
+        question: str,
+        limit: int,
+        history: tuple[tuple[str, str], ...],
+        query_date: date | None = None,
+        query_dates: tuple[date, ...] = (),
     ) -> PipelinePrediction:
         """Run ontology RAG with earlier conversation turns."""
-        return await self._predict(question, limit, history=history)
+        return await self._predict(
+            question,
+            limit,
+            history=history,
+            query_date=query_date,
+            query_dates=query_dates,
+        )
 
     async def _predict(
-        self, question: str, limit: int, history: tuple[tuple[str, str], ...] = ()
+        self,
+        question: str,
+        limit: int,
+        history: tuple[tuple[str, str], ...] = (),
+        query_date: date | None = None,
+        query_dates: tuple[date, ...] = (),
     ) -> PipelinePrediction:
         """Run ontology RAG while passing only arguments it supports."""
         run_kwargs = {"top_k": limit, "rewrite_query": self._rewrite_query}
         if history:
             run_kwargs["history"] = history
+        if query_date is not None:
+            run_kwargs["query_date"] = query_date
+        if query_dates:
+            run_kwargs["query_dates"] = query_dates
+        if self._reference_date is not None:
+            run_kwargs["reference_date"] = self._reference_date
         supported_kwargs = {
             key: value for key, value in run_kwargs.items() if key in inspect.signature(self._pipeline.run).parameters
         }
@@ -303,7 +383,11 @@ class OntologyEvaluationBackend:
             )
             for context in result.answer_contexts
         )
-        source_names = {source.chunk_id: source.source_name for source in result.sources}
+        source_names = {
+            context.chunk_id: context.source_name
+            for context in (*result.sources, *result.answer_contexts)
+            if context.chunk_id and context.source_name
+        }
         units = tuple(
             RetrievedUnit(
                 unit_id=str(rule.uri),
@@ -323,14 +407,17 @@ class OntologyEvaluationBackend:
             answer=result.answer,
             retrieved_units=units,
             retrieved_contexts=contexts,
-            metadata=_with_optional_value(
-                {"rule_count": len(result.rules)}, "rewritten_query", getattr(result, "rewritten_query", None)
-            ),
+            metadata=_ontology_result_metadata(result, query_date, query_dates),
         )
 
     async def close(self) -> None:
         """Close the ontology pipeline's Milvus connection."""
         await asyncio.to_thread(self._pipeline.close)
+
+    async def preflight_corpus(self) -> Mapping[str, Any]:
+        """Verify and fingerprint the active fallback Milvus collection."""
+        fingerprint = await asyncio.to_thread(self._pipeline.preflight_corpus)
+        return fingerprint.to_dict()
 
 
 class GraphitiEvaluationBackend:
@@ -338,38 +425,101 @@ class GraphitiEvaluationBackend:
 
     name = "graphiti"
 
-    def __init__(self, pipeline: Any) -> None:
-        """Store the Graphiti RAG pipeline."""
+    def __init__(
+        self,
+        pipeline: Any,
+        *,
+        neo4j_settings: Any | None = None,
+        group_id: str | None = None,
+        expected_chunks: Sequence[Any] = (),
+        expected_source_dates: Mapping[str, date] | None = None,
+        embedding_profile: Any | None = None,
+        reference_date: date | None = None,
+    ) -> None:
+        """Store the pipeline and exact local corpus used to validate its graph group."""
         self._pipeline = pipeline
+        self._neo4j_settings = neo4j_settings
+        self._group_id = group_id
+        self._expected_chunks = tuple(expected_chunks)
+        self._expected_source_dates = dict(expected_source_dates or {})
+        self._embedding_profile = embedding_profile
+        self._reference_date = reference_date
 
-    async def predict(self, question: str, limit: int) -> PipelinePrediction:
+    async def predict(
+        self,
+        question: str,
+        limit: int,
+        query_date: date | None = None,
+        query_dates: tuple[date, ...] = (),
+        temporal_comparison: bool = False,
+    ) -> PipelinePrediction:
         """Run Graphiti RAG and preserve ranked facts with chunk provenance."""
-        return await self._predict(question, limit)
+        return await self._predict(
+            question,
+            limit,
+            query_date=query_date,
+            query_dates=query_dates,
+            temporal_comparison=temporal_comparison,
+        )
 
     async def predict_with_history(
-        self, question: str, limit: int, history: tuple[tuple[str, str], ...]
+        self,
+        question: str,
+        limit: int,
+        history: tuple[tuple[str, str], ...],
+        query_date: date | None = None,
+        query_dates: tuple[date, ...] = (),
+        temporal_comparison: bool = False,
     ) -> PipelinePrediction:
         """Run Graphiti RAG with earlier conversation turns."""
-        return await self._predict(question, limit, history=history)
+        return await self._predict(
+            question,
+            limit,
+            history=history,
+            query_date=query_date,
+            query_dates=query_dates,
+            temporal_comparison=temporal_comparison,
+        )
 
     async def _predict(
-        self, question: str, limit: int, history: tuple[tuple[str, str], ...] = ()
+        self,
+        question: str,
+        limit: int,
+        history: tuple[tuple[str, str], ...] = (),
+        query_date: date | None = None,
+        query_dates: tuple[date, ...] = (),
+        temporal_comparison: bool = False,
     ) -> PipelinePrediction:
         """Run Graphiti RAG with typed conversation history."""
         from legal_rag.baml_client.types import ConversationTurn
         from legal_rag.graphiti_rag.generator import format_fact_context
 
         typed_history = tuple(ConversationTurn(question=item[0], answer=item[1]) for item in history)
-        run_kwargs = {"max_facts": limit, "history": typed_history}
-        supported_kwargs = {
-            key: value for key, value in run_kwargs.items() if key in inspect.signature(self._pipeline.run).parameters
+        run_kwargs = {
+            "max_facts": limit,
+            "history": typed_history,
+            "include_auxiliary_outputs": False,
         }
+        as_of_dates = resolve_temporal_targets(
+            question,
+            query_dates=query_dates,
+            query_date=query_date,
+            reference_date=self._reference_date,
+            temporal_comparison=temporal_comparison,
+        )
+        run_parameters = inspect.signature(self._pipeline.run).parameters
+        if as_of_dates:
+            if "as_of_dates" in run_parameters:
+                run_kwargs["as_of_dates"] = as_of_dates
+            elif len(as_of_dates) == 1 and "as_of_date" in run_parameters:
+                run_kwargs["as_of_date"] = as_of_dates[0]
+        supported_kwargs = {key: value for key, value in run_kwargs.items() if key in run_parameters}
         result = await self._pipeline.run(question, **supported_kwargs)
         contexts = tuple(
             PredictionContext(
                 chunk_id=source.chunk_id,
                 source_name=source.source_name,
-                text=format_fact_context(fact.fact, source.text),
+                text=format_fact_context(fact.fact, source.text, fact.as_of_dates),
                 kind="graph_fact",
             )
             for fact in result.sources
@@ -387,20 +537,57 @@ class GraphitiEvaluationBackend:
             )
             for fact in result.sources
         )
+        metadata = {
+            "rewritten_query": result.rewritten_query,
+            "unindexed_citations": list(result.unindexed_citations),
+            "suggestions": list(result.suggestions),
+        }
+        if as_of_dates:
+            metadata["as_of_dates"] = [item.isoformat() for item in as_of_dates]
+            if len(as_of_dates) == 1:
+                metadata["as_of_date"] = as_of_dates[0].isoformat()
         return PipelinePrediction(
             answer=result.answer,
             retrieved_units=units,
             retrieved_contexts=contexts,
-            metadata={
-                "rewritten_query": result.rewritten_query,
-                "unindexed_citations": list(result.unindexed_citations),
-                "suggestions": list(result.suggestions),
-            },
+            metadata=metadata,
         )
 
     async def close(self) -> None:
         """Close the Graphiti/Neo4j connection."""
         await self._pipeline.close()
+
+    async def preflight_corpus(self) -> Mapping[str, Any]:
+        """Validate the active Neo4j group and return its deterministic snapshot."""
+        if (
+            self._neo4j_settings is None
+            or self._group_id is None
+            or not self._expected_chunks
+            or self._embedding_profile is None
+        ):
+            msg = "Graphiti evaluation requires Neo4j settings, a group id, expected local chunks, and an embedding profile"
+            raise ValueError(msg)
+        from legal_rag.datastores.neo4j import build_neo4j_driver
+        from legal_rag.graphiti_rag.index_metadata import validate_graphiti_index_metadata
+        from legal_rag.graphiti_rag.snapshot import snapshot_graphiti_group
+
+        driver = build_neo4j_driver(self._neo4j_settings)
+        try:
+            embedding_metadata = await validate_graphiti_index_metadata(
+                driver,
+                self._group_id,
+                self._embedding_profile,
+            )
+            snapshot = await snapshot_graphiti_group(
+                driver,
+                self._group_id,
+                expected_chunks=self._expected_chunks,
+                expected_source_dates=self._expected_source_dates,
+            )
+            snapshot.validate_for_evaluation()
+            return {**snapshot.to_dict(), "embedding_metadata": asdict(embedding_metadata)}
+        finally:
+            await driver.close()
 
 
 def load_evaluation_records(path: Path) -> list[EvaluationRecord]:
@@ -415,8 +602,7 @@ def load_evaluation_records(path: Path) -> list[EvaluationRecord]:
                 msg = f"Expected a JSON object at {path}:{line_number}"
                 raise TypeError(msg)
             records.extend(
-                EvaluationRecord(raw=dict(item), sample=EvaluationSample.from_mapping(item))
-                for item in expand_evaluation_row(row)
+                _evaluation_record(item, path=path, line_number=line_number) for item in expand_evaluation_row(row)
             )
     return records
 
@@ -438,15 +624,41 @@ async def run_evaluation(
     list keeps the input record order.
     """
     semaphore = asyncio.Semaphore(concurrency)
+    active_predictions: set[asyncio.Task[Any]] = set()
 
     async def _predict_record(index: int, record: EvaluationRecord) -> dict[str, Any]:
         async with semaphore:
-            logger.info("Evaluating {} sample {}/{}", backend.name, index + 1, len(records))
-            predict_with_history = getattr(backend, "predict_with_history", None)
-            if record.sample.history and callable(predict_with_history):
-                prediction = await predict_with_history(record.sample.question, limit, record.sample.history)
-            else:
-                prediction = await backend.predict(record.sample.question, limit)
+            current_task = asyncio.current_task()
+            if current_task is not None:
+                active_predictions.add(current_task)
+            try:
+                logger.info("Evaluating {} sample {}/{}", backend.name, index + 1, len(records))
+                started_at = perf_counter()
+                with capture_llm_usage() as usage:
+                    predict_with_history = getattr(backend, "predict_with_history", None)
+                    if record.sample.history and callable(predict_with_history):
+                        prediction = await _predict_with_optional_temporal_scope(
+                            predict_with_history,
+                            record.sample.question,
+                            limit,
+                            record.sample.history,
+                            query_date=record.query_date,
+                            query_dates=record.query_dates,
+                            temporal_comparison=record.temporal_comparison,
+                        )
+                    else:
+                        prediction = await _predict_with_optional_temporal_scope(
+                            backend.predict,
+                            record.sample.question,
+                            limit,
+                            query_date=record.query_date,
+                            query_dates=record.query_dates,
+                            temporal_comparison=record.temporal_comparison,
+                        )
+                latency_ms = (perf_counter() - started_at) * 1000
+            finally:
+                if current_task is not None:
+                    active_predictions.discard(current_task)
         row = dict(record.raw)
         row.update(
             {
@@ -458,6 +670,7 @@ async def run_evaluation(
                 "retrieved_source_names": list(prediction.retrieved_source_names),
                 "retrieved_contexts": [asdict(context) for context in prediction.retrieved_contexts],
                 "pipeline_metadata": dict(prediction.metadata),
+                "evaluation_metadata": _evaluation_metadata(prediction, latency_ms, usage),
             }
         )
         return row
@@ -484,10 +697,25 @@ async def run_evaluation(
                 rows.append(row)
                 next_index += 1
     finally:
-        for future in pending:
-            future.cancel()
-        await backend.close()
+        await _finish_evaluation_tasks(pending, active_predictions, backend)
     return rows
+
+
+async def _finish_evaluation_tasks(
+    pending: set[asyncio.Future[dict[str, Any]]],
+    active_predictions: set[asyncio.Task[Any]],
+    backend: EvaluationBackend,
+) -> None:
+    """Stop queued work and let started pipeline calls finish before closing resources."""
+    active = [future for future in pending if future in active_predictions]
+    waiting = [future for future in pending if future not in active_predictions]
+    for future in waiting:
+        future.cancel()
+    if waiting:
+        await asyncio.gather(*waiting, return_exceptions=True)
+    if active:
+        await asyncio.gather(*active, return_exceptions=True)
+    await backend.close()
 
 
 def _mapping_sequence(value: Any) -> list[Mapping[str, Any]]:
@@ -508,6 +736,19 @@ def _retrieved_unit_dict(unit: RetrievedUnit) -> dict[str, Any]:
     }
 
 
+def _evaluation_metadata(prediction: PipelinePrediction, latency_ms: float, usage: LLMUsage) -> dict[str, Any]:
+    """Describe the measured work behind one prediction without changing retrieval scores."""
+    evidence_ids = {evidence.chunk_id for unit in prediction.retrieved_units for evidence in unit.evidence}
+    return {
+        "latency_ms": latency_ms,
+        "retrieved_unit_count": len(prediction.retrieved_units),
+        "unique_evidence_chunk_count": len(evidence_ids),
+        "generation_context_count": len(prediction.retrieved_contexts),
+        "generation_context_characters": sum(len(context.text) for context in prediction.retrieved_contexts),
+        "usage": usage.to_dict(),
+    }
+
+
 def _optional_float(value: Any) -> float | None:
     """Normalize one optional numeric score."""
     if isinstance(value, bool) or not isinstance(value, int | float):
@@ -524,6 +765,106 @@ def _with_optional_value(metadata: dict[str, Any], key: str, value: Any) -> dict
     """Add optional pipeline metadata only when the pipeline returned it."""
     if value is not None:
         metadata[key] = value
+    return metadata
+
+
+async def _predict_with_optional_temporal_scope(
+    predict: Callable[..., Any],
+    *args: Any,
+    query_date: date | None,
+    query_dates: tuple[date, ...],
+    temporal_comparison: bool,
+) -> PipelinePrediction:
+    """Pass ground-truth temporal controls only to backends that expose them."""
+    kwargs = {}
+    parameters = inspect.signature(predict).parameters
+    if query_date is not None and not query_dates and "query_date" in parameters:
+        kwargs["query_date"] = query_date
+    if query_dates and "query_dates" in parameters:
+        kwargs["query_dates"] = query_dates
+    if temporal_comparison and "temporal_comparison" in parameters:
+        kwargs["temporal_comparison"] = True
+    return await predict(*args, **kwargs)
+
+
+def _evaluation_record(item: Mapping[str, Any], *, path: Path, line_number: int) -> EvaluationRecord:
+    """Build one typed record, letting canonical plural dates supersede the legacy scalar."""
+    query_date = _optional_query_date(item.get("query_date"), path=path, line_number=line_number)
+    query_dates = _optional_query_dates(item.get("query_dates"), path=path, line_number=line_number)
+    if query_date is not None and query_dates and query_date not in query_dates:
+        msg = f"query_date must be included in query_dates at {path}:{line_number}"
+        raise ValueError(msg)
+    return EvaluationRecord(
+        raw=dict(item),
+        sample=EvaluationSample.from_mapping(item),
+        query_date=None if query_dates else query_date,
+        query_dates=query_dates,
+        temporal_comparison=item.get("bundle_kind") == "temporal",
+    )
+
+
+def _optional_query_date(value: Any, *, path: Path, line_number: int) -> date | None:
+    """Parse an optional ground-truth date using the exact persisted ISO format."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        msg = f"query_date must be an ISO date string at {path}:{line_number}"
+        raise TypeError(msg)
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError as error:
+        msg = f"Invalid query_date at {path}:{line_number}: {value!r}; expected YYYY-MM-DD"
+        raise ValueError(msg) from error
+    if parsed.isoformat() != value:
+        msg = f"Invalid query_date at {path}:{line_number}: {value!r}; expected YYYY-MM-DD"
+        raise ValueError(msg)
+    return parsed
+
+
+def _optional_query_dates(value: Any, *, path: Path, line_number: int) -> tuple[date, ...]:
+    """Parse unique plural temporal targets from the persisted evaluation schema."""
+    if value is None:
+        return ()
+    if not isinstance(value, Sequence) or isinstance(value, str):
+        msg = f"query_dates must be an array of ISO date strings at {path}:{line_number}"
+        raise TypeError(msg)
+    parsed = tuple(_optional_query_date(item, path=path, line_number=line_number) for item in value)
+    if any(item is None for item in parsed):
+        msg = f"query_dates must not contain null at {path}:{line_number}"
+        raise ValueError(msg)
+    dates = tuple(item for item in parsed if item is not None)
+    if len(set(dates)) != len(dates):
+        msg = f"query_dates must not contain duplicates at {path}:{line_number}"
+        raise ValueError(msg)
+    return dates
+
+
+def _ontology_result_metadata(
+    result: Any,
+    requested_query_date: date | None,
+    requested_query_dates: Sequence[date] = (),
+) -> dict[str, Any]:
+    """Serialize temporal decisions and candidate accounting returned by ontology RAG."""
+    metadata: dict[str, Any] = {"rule_count": len(result.rules)}
+    _with_optional_value(metadata, "rewritten_query", getattr(result, "rewritten_query", None))
+    if requested_query_date is not None:
+        metadata["requested_query_date"] = requested_query_date.isoformat()
+    if requested_query_dates:
+        metadata["requested_query_dates"] = [item.isoformat() for item in requested_query_dates]
+
+    temporal_mode = getattr(result, "temporal_mode", None)
+    if temporal_mode is not None:
+        metadata["temporal_mode"] = str(temporal_mode)
+    query_dates = getattr(result, "query_dates", None)
+    if query_dates is not None:
+        metadata["query_dates"] = [item.isoformat() if isinstance(item, date) else str(item) for item in query_dates]
+    temporal_status = getattr(result, "temporal_status", None)
+    if isinstance(temporal_status, Mapping):
+        metadata["temporal_status"] = {str(key): str(value) for key, value in temporal_status.items()}
+    for field_name in ("candidate_count", "invalid_rule_count", "indeterminate_rule_count"):
+        value = getattr(result, field_name, None)
+        if value is not None:
+            metadata[field_name] = value
     return metadata
 
 

@@ -144,6 +144,81 @@ def test_load_jsonl_samples_accepts_pipeline_result_shape(tmp_path) -> None:
     ]
 
 
+def test_load_jsonl_samples_expands_legacy_multiturn_aliases(tmp_path) -> None:
+    """Legacy nested turns retain their answers, gold chunks, and preceding conversation."""
+    path = tmp_path / "legacy_conversation.jsonl"
+    row = {
+        "conversation_id": "conversation-1",
+        "turns": [
+            {
+                "turn_number": 1,
+                "query": "Câu hỏi đầu tiên",
+                "reference_answer": "Câu trả lời đầu tiên",
+                "gold_chunk_ids": ["chunk-1"],
+            },
+            {
+                "turn_number": 2,
+                "query": "Còn trường hợp này?",
+                "reference_answer": "Câu trả lời tiếp theo",
+                "gold_chunk_ids": ["chunk-2"],
+            },
+        ],
+    }
+    path.write_text(json.dumps(row, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    samples = load_jsonl_samples(path)
+
+    assert samples == [
+        EvaluationSample(
+            question="Câu hỏi đầu tiên",
+            expected_answer="Câu trả lời đầu tiên",
+            expected_chunk_ids=("chunk-1",),
+        ),
+        EvaluationSample(
+            question="Còn trường hợp này?",
+            expected_answer="Câu trả lời tiếp theo",
+            expected_chunk_ids=("chunk-2",),
+            history=(("Câu hỏi đầu tiên", "Câu trả lời đầu tiên"),),
+        ),
+    ]
+
+
+def test_mapping_accepts_legacy_history_aliases() -> None:
+    """Already-flat legacy rows can carry query/reference_answer history entries."""
+    sample = EvaluationSample.from_mapping(
+        {
+            "query": "Câu hỏi hiện tại",
+            "reference_answer": "Câu trả lời hiện tại",
+            "gold_chunk_ids": ["chunk-current"],
+            "history": [{"query": "Câu hỏi trước", "reference_answer": "Câu trả lời trước"}],
+        }
+    )
+
+    assert sample.expected_answer == "Câu trả lời hiện tại"
+    assert sample.expected_chunk_ids == ("chunk-current",)
+    assert sample.history == (("Câu hỏi trước", "Câu trả lời trước"),)
+
+
+def test_mapping_accepts_conversation_history_pairs_and_answer_aliases() -> None:
+    """Shared evaluation normalizes the same legacy history shapes as generation judging."""
+    sample = EvaluationSample.from_mapping(
+        {
+            "question": "Câu hỏi hiện tại",
+            "conversation_history": [
+                {"user_input": "Câu hỏi một", "actual_answer": "Câu trả lời một"},
+                ["Câu hỏi hai", "Câu trả lời hai"],
+                {"query": "Câu hỏi ba", "response": "Câu trả lời ba"},
+            ],
+        }
+    )
+
+    assert sample.history == (
+        ("Câu hỏi một", "Câu trả lời một"),
+        ("Câu hỏi hai", "Câu trả lời hai"),
+        ("Câu hỏi ba", "Câu trả lời ba"),
+    )
+
+
 def test_native_fact_with_multiple_chunks_counts_as_one_retrieval_unit() -> None:
     """A graph fact is one ranked result even when several chunks support it."""
     sample = EvaluationSample(

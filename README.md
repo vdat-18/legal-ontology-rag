@@ -6,6 +6,7 @@ This repository provides multiple retrieval backends over the same versioned leg
 - Naive RAG uses Milvus with semantic dense-vector search (default), BM25 keyword search, hybrid RRF, Cross-Encoder reranking, or bounded article-level hierarchical expansion selected by `NAIVE_RAG_SEARCH_MODE`.
 - Adaptive RAG uses one LLM planning call to select direct or one-shot multi-hop retrieval, reuses a configured Naive search mode for every leg, and fuses multi-hop results with RRF before one answer-generation call.
 - Corrective RAG uses Milvus retrieval plus CRAG grading, refinement, optional web search, and answer generation.
+- Ontology RAG combines ontology rule retrieval with Naive semantic/BM25 fallback and preserves source-chunk provenance for shared scoring.
 - Attu is an optional Milvus administration UI; it is not part of the application data path.
 
 ## Local Infrastructure
@@ -19,12 +20,14 @@ docker compose --profile attu up -d attu
 ```
 
 Compose waits for etcd and MinIO before starting Milvus, and waits for Milvus before starting Attu. Published ports bind to `127.0.0.1` by default. Override `INFRA_HOST_BIND` only when remote access is intentionally protected by a firewall or private network.
+The MinIO service uses a digest-pinned Chainguard image and retains the previous container's root UID so existing named volumes remain readable.
 
 The `app` image is a batch CLI image, not a daemon. Start the required backend first, then run a command explicitly:
 
 ```powershell
-docker compose --profile milvus run --rm app legal-naive-rag-index data/chunks
-docker compose --profile neo4j run --rm app legal-graphiti-index data/chunks --corpus-config data/corpus.json
+docker compose --profile milvus run --rm app legal-naive-rag-index data/processed/groundtruth
+docker compose --profile neo4j run --rm app legal-graphiti-index data/processed/groundtruth `
+  --corpus-config data/config/groundtruth_corpus_v1.json
 ```
 
 The image contains LibreOffice for legacy DOC/XLS attachment conversion. Pass `--renderer-executable /usr/bin/soffice` to parsing commands that need it. Source code is built into the image so the generated BAML client is not hidden by a host bind mount; rebuild the image after code changes.
@@ -42,10 +45,9 @@ The `hierarchical` Naive mode keeps the same Milvus rows. It uses hybrid RRF see
 Adaptive RAG does not create another Milvus collection. It defaults to `hybrid_rerank`, always retrieves the original question, and adds two or more standalone subquery legs only when the planner selects `multi_hop`. The planner route and subqueries are stored in evaluation prediction metadata for audit. Run it through the shared evaluation command:
 
 ```powershell
-New-Item -ItemType Directory -Force data/evaluation/smoke | Out-Null
-Get-Content data/benchmark_synthesis/groundtruth.jsonl -TotalCount 20 |
-  Set-Content data/evaluation/smoke/groundtruth_20.jsonl -Encoding utf8
-uv run legal-evaluate run --pipeline adaptive --ground-truth data/evaluation/smoke/groundtruth_20.jsonl --limit 10
+uv run --extra naive-rag legal-evaluate run --pipeline adaptive `
+  --max-samples 20 --limit 10 --reference-date 2026-10-01 `
+  --run-dir data/evaluation/runs/adaptive_smoke
 ```
 
 Existing naive collections that still contain the former `embedding_text`, `record_scope`, or `chunk_index` fields must be dropped and rebuilt once with the current schema.
@@ -141,6 +143,67 @@ Invoke-RestMethod `
 ```
 
 Inside the full CRAG pipeline, web search is used only for `INCORRECT` and `AMBIGUOUS` retrieval actions. A `CORRECT` retrieval intentionally keeps `web_search_count` at `0`.
+
+## Comparing RAG variants
+
+Use `legal-evaluate run` for the common end-to-end contract. `--max-samples` limits the number of ground-truth rows; `--limit` is the maximum number of pipeline-native retrieval units supplied per question. Keep `--limit`, `--k-values`, `--concurrency`, `--reference-date`, the answer model, embedding profile, corpus snapshot, and optional judge settings equal across compared runs.
+
+Naive, Adaptive, and Ontology need the `naive-rag` extra. Corrective needs `corrective-rag`; Graphiti dependencies are part of the base install. Query rewriting for multi-turn rows is enabled by default. `--no-rewrite-query` is an explicit ablation for Naive, Adaptive, and Ontology. Graphiti and Corrective always use their intrinsic history handling.
+
+```powershell
+$common = @(
+  "--ground-truth", "data/benchmark_synthesis/groundtruth.jsonl",
+  "--max-samples", "20",
+  "--limit", "10",
+  "--k-values", "1,3,5,10",
+  "--concurrency", "1",
+  "--reference-date", "2026-10-01"
+)
+
+uv run --extra naive-rag legal-evaluate run --pipeline naive --naive-search-mode hybrid @common `
+  --run-dir data/evaluation/runs/naive_hybrid_smoke
+uv run --extra naive-rag legal-evaluate run --pipeline adaptive @common `
+  --run-dir data/evaluation/runs/adaptive_smoke
+uv run --extra corrective-rag legal-evaluate run --pipeline corrective @common `
+  --run-dir data/evaluation/runs/corrective_closed_smoke
+uv run legal-evaluate run --pipeline graphiti @common `
+  --group-id traffic_penalty_groundtruth_v1 `
+  --corpus-config data/config/groundtruth_corpus_v1.json `
+  --run-dir data/evaluation/runs/graphiti_smoke
+uv run --extra naive-rag legal-evaluate run --pipeline ontology @common `
+  --ontology-paths data/ontology/exception/graphs/traffic_penalty_v0.5.ttl `
+  --run-dir data/evaluation/runs/ontology_smoke
+```
+
+Add `--generation` to every run when comparing the six judge metrics: faithfulness, correctness, answer relevancy, temporal correctness, answerability correctness, and required-claim coverage. Judge calls are scored after prediction and are not included in prediction-stage latency or token usage. Graphiti evaluation also omits product-only citation diagnostics and follow-up suggestions from those operational measurements.
+
+Run Corrective twice when web search is part of the study, once with `CRAG_WEB_SEARCH_ENABLED=false` and once with `true`. The comparison command deliberately treats live-web and closed-corpus runs as incompatible because web content is not a frozen evidence snapshot.
+
+```powershell
+uv run legal-evaluate compare `
+  data/evaluation/runs/naive_hybrid_smoke/metrics.json `
+  data/evaluation/runs/adaptive_smoke/metrics.json `
+  data/evaluation/runs/corrective_closed_smoke/metrics.json `
+  data/evaluation/runs/graphiti_smoke/metrics.json `
+  data/evaluation/runs/ontology_smoke/metrics.json `
+  --output data/evaluation/rag_variant_comparison.json
+```
+
+Comparison validates the evaluated sample set and shared experiment controls before reporting native-unit retrieval metrics, source-evidence coverage, generation metrics, context budget, latency, and provider-reported token usage. History resolution must be enabled consistently across variants. Each pipeline's more specific rewrite policy is recorded and compared within that pipeline because Naive, Adaptive, Corrective, Graphiti, and Ontology implement history resolution differently by design. The report does not create a composite score. `--allow-incompatible` only writes diagnostics; it does not make incompatible results fair to rank.
+
+The current committed ontology runtime graph is partial. The CLI records coverage of gold chunk provenance and warns when coverage is incomplete. Treat its result as an ontology-assisted hybrid result with fallback context, not as evidence that a full-corpus ontology has been completed. The Graphiti corpus config is required so the indexed group and source-document boundary can be validated.
+
+For multi-turn evaluation, export one of the versioned conversation artifacts first:
+
+```powershell
+uv run legal-export-groundtruth --multi-turn `
+  data/benchmark_synthesis/multi_turn_candidates_1k_luna_high_v1_2.jsonl `
+  data/evaluation/groundtruth_multi_turn.jsonl `
+  --scenarios data/benchmark_synthesis/scenarios.jsonl `
+  --legal-facts data/benchmark_synthesis/legal_facts.jsonl
+```
+
+The scenarios artifact supplies the target's reviewed `bundle_kind`; the exporter never infers a temporal comparison merely because required facts have different effective dates. For a temporal target, `query_dates` comes only from the final target's required-claim facts plus explicit dates in its standalone question. Dates from history and unused scenario facts are excluded. Legacy schema `1.0.0` exports preserve gold prior answers as oracle history; they cannot reconstruct `standalone_question` or `missing_information`, so those fields remain null. Keep single-turn and oracle-history multi-turn reports separate.
 
 ## Ontology Population
 
@@ -248,8 +311,9 @@ OWL 2 DL import closure, runs HermiT, audits unsatisfiable classes and unintende
 ROBOT quality report, and records traceability/CQ coverage. The report is written before the command fails an open gate.
 The report also binds its result to a SHA-256 digest of the complete semantic input closure, so a report becomes stale
 when an ontology module, SHACL graph, CQ query, fixture, registry, catalog, policy, or semantic contract changes.
-The frozen V0.1 ontology passes every semantic gate, including ROBOT's ontology-license rule. The internal archive does
-not require namespace deployment; public W3ID publication remains an optional later workflow.
+The command produces the semantic report required by the packaging step. No semantic QA report or packaged release is
+currently committed under `data/ontology/`; do not describe a local ontology build as released until these gates have
+been run for that exact input closure.
 
 After every semantic gate passes, build the immutable V0.1 distribution with:
 

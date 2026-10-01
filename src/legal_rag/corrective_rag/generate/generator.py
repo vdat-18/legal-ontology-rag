@@ -5,6 +5,7 @@ Formulates answers from refined internal and external knowledge items.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, is_dataclass
 from typing import Any
@@ -12,6 +13,7 @@ from typing import Any
 import httpx
 from loguru import logger
 
+from legal_rag.baml_transport import record_openai_usage
 from legal_rag.corrective_rag.generate.config import RAGConfig
 
 
@@ -27,8 +29,20 @@ class ResponseGenerator:
             timeout=self.config.llm_timeout_seconds,
         )
 
-    def generate_answer(self, query: str, relevant_chunks: Sequence[Mapping[str, Any] | Any]) -> str:
-        """Generate a Vietnamese legal answer from refined knowledge."""
+    def generate_answer(
+        self,
+        query: str,
+        relevant_chunks: Sequence[Mapping[str, Any] | Any],
+        *,
+        original_query: str | None = None,
+    ) -> str:
+        """Generate a Vietnamese legal answer from refined knowledge.
+
+        ``query`` is the standalone question used throughout retrieval. For a
+        context-dependent follow-up, ``original_query`` preserves the user's
+        wording so generation answers that intent without treating chat history
+        as legal evidence.
+        """
         if not relevant_chunks:
             return (
                 "Rat tiec, toi khong tim thay thong tin hoac quy dinh phap luat phu hop "
@@ -49,18 +63,22 @@ class ResponseGenerator:
             "Do not answer about unrelated conduct just because it appears in the context. "
             "If the provided knowledge is insufficient, say that the available documents do not contain enough information."
         )
-        user_prompt = f"REFERENCE KNOWLEDGE:\n{context}\n\nQUESTION:\n{query}"
+        question_prompt = f"QUESTION:\n{query}"
+        if original_query and original_query != query:
+            question_prompt = (
+                f"ORIGINAL USER QUESTION:\n{original_query}\n\nSTANDALONE QUESTION RESOLVED FROM CONVERSATION:\n{query}"
+            )
+        user_prompt = f"REFERENCE KNOWLEDGE:\n{context}\n\n{question_prompt}"
 
-        payload = {
-            "model": self.config.llm_model,
-            "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
-            "temperature": 0.0,
-        }
+        payload = self._completion_payload(
+            model=self.config.llm_model,
+            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
+            temperature=self.config.answer_temperature,
+            max_tokens=self.config.answer_max_output_tokens,
+        )
 
         logger.info("Requesting answer generation from LLM...")
-        response = self.client.post("/chat/completions", json=payload)
-        response.raise_for_status()
-        response_json = response.json()
+        response_json = self._post_completion(payload, "generation")
         answer = _message_content(response_json, "generation")
         logger.info("Answer generated successfully.")
         return answer
@@ -75,22 +93,49 @@ class ResponseGenerator:
         )
         user_prompt = f"Rewrite this question as legal search keywords: {query}"
 
-        payload = {
-            "model": self.config.llm_model,
-            "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
-            "temperature": 0.3,
-        }
+        payload = self._completion_payload(
+            model=self.config.llm_model,
+            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
+            temperature=self.config.query_reformulation_temperature,
+            max_tokens=self.config.query_reformulation_max_output_tokens,
+        )
 
         logger.info("Triggering query reformulation.")
-        response = self.client.post("/chat/completions", json=payload)
-        response.raise_for_status()
-        response_json = response.json()
+        response_json = self._post_completion(payload, "query reformulation")
         new_query = _message_content(response_json, "query reformulation").strip("\"'")
         if not new_query:
             msg = "LLM query reformulation response was empty after trimming quotes."
             raise ValueError(msg)
         logger.info("Query reformulation completed.")
         return new_query
+
+    def _completion_payload(self, **standard_fields: object) -> dict[str, object]:
+        """Build one bounded request while preserving configured provider fields."""
+        payload = dict(self.config.llm_extra_request_body)
+        payload.update(standard_fields)
+        payload["stream"] = False
+        return payload
+
+    def _post_completion(self, payload: Mapping[str, object], context: str) -> dict[str, object]:
+        """Post one completion and read at most the configured response size."""
+        response_body = bytearray()
+        with self.client.stream("POST", "/chat/completions", json=payload) as response:
+            response.raise_for_status()
+            for chunk in response.iter_bytes():
+                if len(chunk) > self.config.max_response_bytes - len(response_body):
+                    msg = f"LLM {context} response exceeded {self.config.max_response_bytes} bytes."
+                    raise ValueError(msg)
+                response_body.extend(chunk)
+        try:
+            response_json = json.loads(response_body)
+        except json.JSONDecodeError as error:
+            msg = f"LLM {context} response was not valid JSON."
+            raise ValueError(msg) from error
+        if not isinstance(response_json, dict):
+            msg = f"LLM {context} response must be a JSON object."
+            raise TypeError(msg)
+        record_openai_usage(response_json)
+        return response_json
 
     def close(self) -> None:
         """Close the HTTP client connection."""
@@ -112,7 +157,11 @@ def _message_content(response_json: dict[str, object], context: str) -> str:
     if not isinstance(choices, list) or not choices:
         msg = f"LLM {context} response did not include choices."
         raise ValueError(msg)
-    message = choices[0].get("message") if isinstance(choices[0], dict) else None
+    choice = choices[0]
+    if isinstance(choice, dict) and choice.get("finish_reason") == "length":
+        msg = f"LLM {context} response stopped at the configured output-token limit."
+        raise ValueError(msg)
+    message = choice.get("message") if isinstance(choice, dict) else None
     content = message.get("content") if isinstance(message, dict) else None
     if not isinstance(content, str) or not content.strip():
         msg = f"LLM {context} response did not include message content."

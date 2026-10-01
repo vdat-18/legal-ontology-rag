@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import os
+from collections.abc import Mapping, Sequence
 from typing import Protocol
 
 import numpy as np
@@ -32,11 +33,20 @@ class EmbeddingEncoder:
         self._model = model
 
     @classmethod
-    def from_profile(cls, profile: EmbeddingProfile) -> EmbeddingEncoder:
+    def from_profile(
+        cls,
+        profile: EmbeddingProfile,
+        *,
+        environment: Mapping[str, str] | None = None,
+    ) -> EmbeddingEncoder:
         """Load the sentence-transformers model pinned by an embedding profile."""
         from sentence_transformers import SentenceTransformer
 
-        model = SentenceTransformer(profile.model_id, revision=profile.model_revision)
+        model = SentenceTransformer(
+            profile.model_id,
+            revision=profile.model_revision,
+            local_files_only=embedding_local_files_only(environment),
+        )
         return cls(profile, model)
 
     def encode(self, texts: Sequence[str]) -> np.ndarray:
@@ -49,3 +59,9 @@ class EmbeddingEncoder:
             return self.encode(texts)
         instructed = [self.profile.query_instruction + text for text in texts]
         return self.encode(instructed)
+
+
+def embedding_local_files_only(environment: Mapping[str, str] | None = None) -> bool:
+    """Return whether embedding models must be loaded only from the local cache."""
+    values = os.environ if environment is None else environment
+    return values.get("EMBEDDING_LOCAL_FILES_ONLY", "").strip().lower() in {"1", "true", "yes", "on"}

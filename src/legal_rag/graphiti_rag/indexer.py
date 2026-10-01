@@ -14,6 +14,7 @@ from graphiti_core.nodes import EpisodeType
 from loguru import logger
 from neo4j import AsyncDriver
 
+from legal_rag.benchmark_synthesis.writer import read_document_metadata
 from legal_rag.chunker.models import Chunk
 from legal_rag.graphiti_rag.effective_date import EffectiveDateClient, extract_effective_date
 from legal_rag.graphiti_rag.ontology import EDGE_TYPE_MAP, EDGE_TYPES, ENTITY_TYPES
@@ -49,32 +50,127 @@ class IndexingSummary:
 def load_corpus_metadata(corpus_config_path: Path) -> CorpusMetadata:
     """Read a ground-truth corpus config into its shared group id and per-document metadata."""
     config = json.loads(corpus_config_path.read_text(encoding="utf-8"))
-    documents = {
-        document["file"]: CorpusDocument(
-            document_number=document["so_hieu"],
-            effective_date=date.fromisoformat(document["effective_date"]) if document["effective_date"] else None,
-            amends=document["amends"],
+    documents: dict[str, CorpusDocument] = {}
+    for document in config["documents"]:
+        source_name = document["file"]
+        effective_date_value = document.get("effective_date")
+        authoritative_number, authoritative_valid_from = _load_document_metadata(corpus_config_path, source_name)
+        documents[source_name] = CorpusDocument(
+            document_number=authoritative_number
+            or document.get("so_hieu")
+            or _document_number_from_filename(source_name),
+            effective_date=(
+                date.fromisoformat(effective_date_value) if effective_date_value else authoritative_valid_from
+            ),
+            amends=document.get("amends"),
         )
-        for document in config["documents"]
-    }
     return CorpusMetadata(group_id=config["group_id"], documents=documents)
 
 
-async def _episode_already_indexed(neo4j_driver: AsyncDriver, name: str, group_id: str) -> bool:
-    """Return whether an Episodic node with this *name* in *group_id* already exists.
+def _load_document_metadata(corpus_config_path: Path, source_name: str) -> tuple[str | None, date | None]:
+    """Load authoritative document number and validity from prepared metadata when available.
+
+    Ground-truth corpus configs select source files but do not always duplicate their legal
+    document numbers or effective dates. Preparation writes those authoritative values beside
+    processed chunks.
+    Support both a config-local artifact and the repository's ``data/processed/groundtruth``
+    layout so copied/self-contained configs continue to work.
+    """
+    metadata_name = f"{Path(source_name).stem}.document_metadata.jsonl"
+    candidate_paths = (
+        corpus_config_path.parent / metadata_name,
+        corpus_config_path.parent.parent / "processed" / "groundtruth" / metadata_name,
+    )
+    existing_paths = tuple(dict.fromkeys(path for path in candidate_paths if path.is_file()))
+    if not existing_paths:
+        return None, None
+
+    records = tuple(read_document_metadata(path) for path in existing_paths)
+    document_numbers = {record.document_number.strip() for record in records}
+    if "" in document_numbers:
+        msg = f"Document metadata for {source_name!r} has a blank document_number."
+        raise ValueError(msg)
+    valid_from_values = {record.valid_from for record in records}
+    if len(document_numbers) != 1 or len(valid_from_values) != 1:
+        rendered = ", ".join(sorted(f"{record.document_number.strip()}@{record.valid_from}" for record in records))
+        msg = f"Conflicting document metadata for {source_name!r}: {rendered}"
+        raise ValueError(msg)
+    return document_numbers.pop(), valid_from_values.pop()
+
+
+def _document_number_from_filename(source_name: str) -> str:
+    """Recover the conventional legal number from repository document filenames."""
+    parts = Path(source_name).stem.split("_")
+    if len(parts) > 1 and parts[-1].isdigit():
+        parts.pop()
+    if len(parts) > 1 and parts[-1] == "m":
+        parts.pop()
+    return "/".join(parts)
+
+
+async def _episode_already_indexed(neo4j_driver: AsyncDriver, chunk: Chunk, group_id: str) -> bool:
+    """Return whether a current Episodic node for *chunk* already exists in *group_id*.
 
     Graphiti has no upsert-by-uuid for new episodes: passing ``uuid=`` to ``add_episode``
     means "re-fetch this existing episode", and raises ``NodeNotFoundError`` if it is not
     already present. So the idempotency check has to key on something set before the episode
     exists — the chunk's stable ``chunk_id`` this indexer uses as the episode name, scoped to
-    the corpus group.
+    the corpus group. A stable id alone is insufficient when the chunk corpus has been rebuilt:
+    accepting stale content or provenance would silently mix corpus versions in one graph.
     """
     records, _, _ = await neo4j_driver.execute_query(
-        "MATCH (e:Episodic {name: $name, group_id: $group_id}) RETURN e.uuid LIMIT 1",
-        name=name,
+        """
+        MATCH (e:Episodic {name: $name, group_id: $group_id})
+        RETURN e.uuid AS uuid,
+               e.content = $content AS content_matches,
+               e.source_description = $source_description AS source_description_matches
+        LIMIT 1
+        """,
+        name=chunk.chunk_id,
+        group_id=group_id,
+        content=chunk.text,
+        source_description=chunk.source_name,
+    )
+    if not records:
+        return False
+
+    record = records[0]
+    mismatched_fields = [
+        field
+        for field, matches in (
+            ("content", record["content_matches"]),
+            ("source_description", record["source_description_matches"]),
+        )
+        if matches is not True
+    ]
+    if mismatched_fields:
+        fields = ", ".join(mismatched_fields)
+        msg = (
+            f"Graphiti episode {chunk.chunk_id!r} in group {group_id!r} does not match the current chunk "
+            f"({fields}). Rebuild the Graphiti index for this group before indexing the updated corpus."
+        )
+        raise ValueError(msg)
+    return True
+
+
+async def _normalize_fact_effective_dates(neo4j_driver: AsyncDriver, chunk: Chunk, group_id: str) -> None:
+    """Persist the episode date on facts whose extraction did not identify a narrower date.
+
+    Graphiti records ``reference_time`` for every extracted fact, while ``valid_at`` remains
+    optional when the fact text contains no explicit timestamp. Retrieval filters on
+    ``valid_at``, so leaving it null would silently hide ordinary legal facts from every as-of
+    query. The supporting episode's legal effective date is the final fallback.
+    """
+    await neo4j_driver.execute_query(
+        """
+        MATCH (episode:Episodic {name: $name, group_id: $group_id})
+        MATCH ()-[edge:RELATES_TO {group_id: $group_id}]->()
+        WHERE episode.uuid IN edge.episodes AND edge.valid_at IS NULL
+        SET edge.valid_at = coalesce(edge.reference_time, episode.valid_at)
+        """,
+        name=chunk.chunk_id,
         group_id=group_id,
     )
-    return len(records) > 0
 
 
 def _resolve_effective_dates(
@@ -171,12 +267,14 @@ async def index_chunks(
     skipped_already_indexed = 0
 
     for chunk in eligible:
-        if await _episode_already_indexed(neo4j_driver, chunk.chunk_id, corpus_metadata.group_id):
+        if await _episode_already_indexed(neo4j_driver, chunk, corpus_metadata.group_id):
+            await _normalize_fact_effective_dates(neo4j_driver, chunk, corpus_metadata.group_id)
             skipped_already_indexed += 1
             continue
 
         reference_time = datetime.combine(effective_dates[chunk.source_name], time.min, tzinfo=UTC)
         await _add_episode(graphiti_client, chunk, reference_time, corpus_metadata.group_id)
+        await _normalize_fact_effective_dates(neo4j_driver, chunk, corpus_metadata.group_id)
         indexed += 1
 
     return IndexingSummary(
@@ -216,11 +314,13 @@ async def index_chunks_concurrent(
 
     async def worker(graphiti_client: Graphiti) -> None:
         for chunk in backlog:
-            if await _episode_already_indexed(neo4j_driver, chunk.chunk_id, corpus_metadata.group_id):
+            if await _episode_already_indexed(neo4j_driver, chunk, corpus_metadata.group_id):
+                await _normalize_fact_effective_dates(neo4j_driver, chunk, corpus_metadata.group_id)
                 counts["skipped_already_indexed"] += 1
                 continue
             reference_time = datetime.combine(effective_dates[chunk.source_name], time.min, tzinfo=UTC)
             await _add_episode(graphiti_client, chunk, reference_time, corpus_metadata.group_id)
+            await _normalize_fact_effective_dates(neo4j_driver, chunk, corpus_metadata.group_id)
             counts["indexed"] += 1
 
     tasks = [asyncio.create_task(worker(client)) for client in graphiti_clients]

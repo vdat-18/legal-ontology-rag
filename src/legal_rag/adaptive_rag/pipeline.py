@@ -9,7 +9,7 @@ from loguru import logger
 
 from legal_rag.adaptive_rag.models import AdaptiveQueryPlan, AdaptiveRAGResult, AdaptiveRoute
 from legal_rag.adaptive_rag.planner import AdaptivePlanner, BamlAdaptivePlanner
-from legal_rag.datastores.milvus import build_milvus_client
+from legal_rag.datastores.milvus import MilvusCorpusFingerprint, build_milvus_client
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.embedding.profiles import load_configured_embedding_profile
 from legal_rag.naive_rag.generator import BamlGenerationClient, GenerationClient, generate_answer
@@ -65,7 +65,7 @@ class AdaptiveRAGPipeline:
         plan = self._planner.plan(retrieval_query)
         mode = SearchMode(self.settings.base_search_mode)
         hits = self._retrieve_plan(retrieval_query, plan, k, mode)
-        answer = generate_answer(query, hits, self._generation_client)
+        answer = generate_answer(retrieval_query, hits, self._generation_client)
         logger.info(
             "Adaptive pipeline completed: route={}, subqueries={}, sources={}",
             plan.route.value,
@@ -103,6 +103,10 @@ class AdaptiveRAGPipeline:
             rrf_k=self.settings.rrf_k,
         )
         return [replace(result.item, score=result.score) for result in fused[:top_k]]
+
+    def preflight_corpus(self) -> MilvusCorpusFingerprint:
+        """Verify that the active Milvus collection matches the configured local corpus."""
+        return self._retriever.preflight_corpus()
 
     def close(self) -> None:
         """Close the owned Milvus retrieval connection."""

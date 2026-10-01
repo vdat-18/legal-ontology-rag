@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import date
 
 from loguru import logger
 
@@ -14,7 +15,8 @@ from legal_rag.graphiti_rag.client import build_graphiti
 from legal_rag.graphiti_rag.generator import generate_answer
 from legal_rag.graphiti_rag.provenance import BamlDocumentCitationClient, find_unindexed_document_citations
 from legal_rag.graphiti_rag.query_rewriter import BamlQueryRewriteClient
-from legal_rag.graphiti_rag.retriever import RetrievedFact, search_facts
+from legal_rag.graphiti_rag.retriever import RetrievedFact
+from legal_rag.graphiti_rag.retriever import search_facts_at_dates as search_facts
 from legal_rag.graphiti_rag.suggestions import BamlFollowUpClient
 from legal_rag.naive_rag.generator import BamlGenerationClient
 from legal_rag.settings import GraphitiSettings, Neo4jSettings, Settings
@@ -79,6 +81,10 @@ class GraphitiRAGPipeline:
         query: str,
         max_facts: int | None = None,
         history: Sequence[ConversationTurn] = (),
+        *,
+        as_of_date: date | None = None,
+        as_of_dates: Sequence[date] = (),
+        include_auxiliary_outputs: bool = True,
     ) -> GraphitiRAGResult:
         """Execute the full pipeline for a single query.
 
@@ -88,16 +94,25 @@ class GraphitiRAGPipeline:
                 positive when given.
             history: Earlier turns of this conversation, oldest first. A follow-up question is
                 resolved against them before the graph is searched.
+            as_of_date: Restrict retrieved facts to those effective at the end of this UTC date.
+            as_of_dates: Search each relevant legal-version date and fuse their rankings. This is
+                mutually exclusive with ``as_of_date``.
+            include_auxiliary_outputs: Generate product-only citation diagnostics and follow-up
+                suggestions. Evaluation disables these calls so answer latency and token usage
+                cover the same retrieval-and-answer scope as the other pipelines.
 
         Returns:
             Result containing the answer, the facts it was grounded in, and any citations to
             documents outside the indexed corpus.
 
         Raises:
-            ValueError: If *max_facts* is given but not positive.
+            ValueError: If *max_facts* is not positive or singular/plural dates are both supplied.
         """
         if max_facts is not None and max_facts < 1:
             msg = f"max_facts must be positive, got {max_facts}"
+            raise ValueError(msg)
+        if as_of_date is not None and as_of_dates:
+            msg = "as_of_date and as_of_dates are mutually exclusive"
             raise ValueError(msg)
 
         rewritten_query = await self._query_rewrite_client.rewrite(query, history)
@@ -109,12 +124,22 @@ class GraphitiRAGPipeline:
             rewritten_query,
             self._group_id,
             self._settings.search_num_results,
+            as_of_dates=tuple(as_of_dates) if as_of_dates else ((as_of_date,) if as_of_date is not None else ()),
             expand_around_top_fact=self._settings.expand_around_top_fact,
             rerank_with_cross_encoder=self._settings.rerank_with_cross_encoder,
         )
         fact_budget = self._settings.max_context_facts if max_facts is None else max_facts
         selected = candidates[:fact_budget]
-        answer = await asyncio.to_thread(generate_answer, query, selected, self._generation_client)
+        answer = await asyncio.to_thread(generate_answer, rewritten_query, selected, self._generation_client)
+
+        if not include_auxiliary_outputs:
+            logger.info("Graphiti pipeline completed")
+            return GraphitiRAGResult(
+                query=query,
+                rewritten_query=rewritten_query,
+                answer=answer,
+                sources=tuple(selected),
+            )
 
         # Both only need the finished answer, so the second one is free in wall-clock terms.
         citation_task = (

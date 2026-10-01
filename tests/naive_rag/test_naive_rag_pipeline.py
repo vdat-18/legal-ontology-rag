@@ -184,3 +184,26 @@ def test_pipeline_generates_from_expanded_hierarchical_context() -> None:
     assert query == "question"
     assert contexts[0].text == hit.text
     assert result.sources == (hit,)
+
+
+def test_pipeline_generates_with_the_history_resolved_query() -> None:
+    """A follow-up is resolved before both retrieval and answer generation."""
+    hit = RetrievedChunk("chunk-1", "context", "doc.docx", "paragraph_group", 0.5)
+    retriever = MagicMock()
+    retriever.retrieve.return_value = [hit]
+    generation_client = MagicMock()
+    generation_client.generate.return_value = "answer"
+    query_rewriter = MagicMock()
+    query_rewriter.rewrite.return_value = SimpleNamespace(rewritten="standalone question")
+    pipeline = NaiveRAGPipeline.__new__(NaiveRAGPipeline)
+    pipeline.settings = SimpleNamespace(top_k=1, search_mode="semantic")
+    pipeline._retriever = retriever
+    pipeline._generation_client = generation_client
+    pipeline._query_rewriter = query_rewriter
+
+    result = pipeline.run("follow-up", history=(("previous", "answer"),))
+
+    retriever.retrieve.assert_called_once_with("standalone question", top_k=1, mode=None)
+    assert generation_client.generate.call_args.args[0] == "standalone question"
+    assert result.query == "follow-up"
+    assert result.rewritten_query == "standalone question"

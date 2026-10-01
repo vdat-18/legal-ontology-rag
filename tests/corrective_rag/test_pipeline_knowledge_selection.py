@@ -5,11 +5,14 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
+
 from legal_rag.corrective_rag.generate.actions import ActionTrigger
 from legal_rag.corrective_rag.generate.grader import RelevanceEvaluation
 from legal_rag.corrective_rag.generate.models import KnowledgeItem
 from legal_rag.corrective_rag.generate.pipeline import CorrectiveRAGPipeline
 from legal_rag.corrective_rag.generate.refiner import KnowledgeRefiner
+from legal_rag.query_rewriting import RewrittenQuery
 
 
 def test_correct_branch_generates_from_only_correct_internal_knowledge() -> None:
@@ -100,6 +103,59 @@ def test_incorrect_branch_generates_from_only_usable_external_knowledge() -> Non
     assert pipeline.web_search.queries == ["rewritten q"]
 
 
+def test_multi_turn_uses_standalone_question_across_the_crag_pipeline() -> None:
+    """A follow-up is resolved before retrieval, grading, refinement, and generation."""
+    pipeline = _pipeline(
+        chunks=[_chunk("correct internal", "correct-source")],
+        scores={"correct internal": 0.9},
+    )
+    rewriter = _FakeQueryRewriter("standalone legal question")
+    pipeline._query_rewriter = rewriter
+    history = (("previous question", "previous answer"),)
+
+    result = pipeline.run("follow-up", history=history)
+
+    assert rewriter.calls == [("follow-up", history)]
+    assert pipeline.db.queries == [("standalone legal question", 5)]
+    assert pipeline.grader.queries == ["standalone legal question", "standalone legal question"]
+    assert pipeline.generator.answer_query == "standalone legal question"
+    assert pipeline.generator.original_query == "follow-up"
+    assert result["query"] == "follow-up"
+    assert result["rewritten_query"] == "standalone legal question"
+
+
+def test_single_turn_keeps_the_original_question_without_rewriting() -> None:
+    """Existing single-turn CRAG behavior does not add an unnecessary LLM call."""
+    pipeline = _pipeline(
+        chunks=[_chunk("correct internal", "correct-source")],
+        scores={"correct internal": 0.9},
+    )
+    rewriter = _FakeQueryRewriter("should not be used")
+    pipeline._query_rewriter = rewriter
+
+    result = pipeline.run("original question")
+
+    assert rewriter.calls == []
+    assert pipeline.db.queries == [("original question", 5)]
+    assert pipeline.generator.answer_query == "original question"
+    assert pipeline.generator.original_query is None
+    assert result["rewritten_query"] is None
+
+
+def test_multi_turn_rejects_an_empty_standalone_question() -> None:
+    """Malformed rewrite output fails before retrieval rather than querying with empty text."""
+    pipeline = _pipeline(
+        chunks=[_chunk("correct internal", "correct-source")],
+        scores={"correct internal": 0.9},
+    )
+    pipeline._query_rewriter = _FakeQueryRewriter("   ")
+
+    with pytest.raises(ValueError, match="empty standalone question"):
+        pipeline.run("follow-up", history=(("previous question", "previous answer"),))
+
+    assert pipeline.db.queries == []
+
+
 def _pipeline(
     *,
     chunks: list[dict[str, Any]],
@@ -164,9 +220,11 @@ class _FakeVectorDb:
 
     def __init__(self, chunks: list[dict[str, Any]]) -> None:
         self.chunks = chunks
+        self.queries: list[tuple[str, int]] = []
 
     def search(self, query: str, limit: int) -> list[dict[str, Any]]:
         """Return configured chunks up to the requested limit."""
+        self.queries.append((query, limit))
         return self.chunks[:limit]
 
 
@@ -175,9 +233,11 @@ class _FakeGrader:
 
     def __init__(self, scores: dict[str, float]) -> None:
         self.scores = scores
+        self.queries: list[str] = []
 
     def score_document(self, query: str, document_text: str) -> RelevanceEvaluation:
         """Return the configured score for one document text."""
+        self.queries.append(query)
         return RelevanceEvaluation(score=self.scores[document_text], rationale="")
 
 
@@ -186,15 +246,38 @@ class _FakeGenerator:
 
     def __init__(self) -> None:
         self.knowledge: list[KnowledgeItem] = []
+        self.answer_query = ""
+        self.original_query: str | None = None
 
     def reformulate_query(self, query: str) -> str:
         """Return a stable rewritten query."""
         return f"rewritten {query}"
 
-    def generate_answer(self, query: str, relevant_chunks: list[KnowledgeItem]) -> str:
+    def generate_answer(
+        self,
+        query: str,
+        relevant_chunks: list[KnowledgeItem],
+        *,
+        original_query: str | None = None,
+    ) -> str:
         """Capture knowledge passed to generation."""
+        self.answer_query = query
+        self.original_query = original_query
         self.knowledge = list(relevant_chunks)
         return "answer"
+
+
+class _FakeQueryRewriter:
+    """Query rewriter fake returning one standalone question."""
+
+    def __init__(self, rewritten: str) -> None:
+        self.rewritten = rewritten
+        self.calls: list[tuple[str, tuple[tuple[str, str], ...]]] = []
+
+    def rewrite(self, query: str, history: tuple[tuple[str, str], ...]) -> RewrittenQuery:
+        """Record structured history and return the configured rewrite."""
+        self.calls.append((query, history))
+        return RewrittenQuery(original=query, rewritten=self.rewritten)
 
 
 class _FakeWebSearch:

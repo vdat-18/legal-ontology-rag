@@ -31,6 +31,22 @@ def test_returns_empty_when_all_citations_are_known() -> None:
     assert result == []
 
 
+@pytest.mark.parametrize(
+    ("known", "cited", "text"),
+    [
+        ("168/2024/ND-CP", "168/2024/NĐ-CP", "Nghị định 168/2024/NĐ-CP."),
+        ("9303/QĐ-BCA", "9303/QD-BCA", "Quyết định 9303/QD-BCA."),
+    ],
+)
+def test_matches_document_numbers_accent_insensitively(known: str, cited: str, text: str) -> None:
+    """ASCII filename fallbacks and Vietnamese legal abbreviations identify the same document."""
+    client = _FakeDocumentCitationClient([cited])
+
+    result = find_unindexed_document_citations([text], frozenset({known}), client)
+
+    assert result == []
+
+
 def test_flags_a_citation_not_in_the_known_set() -> None:
     """A document number not in the known document-number set is flagged."""
     client = _FakeDocumentCitationClient(["100/2019/NĐ-CP"])
@@ -49,6 +65,17 @@ def test_deduplicates_and_sorts_citations_across_multiple_texts() -> None:
     )
 
     assert result == ["100/2019/NĐ-CP", "65/2024/TT-BCA"]
+
+
+def test_deduplicates_accent_variants_by_document_identity() -> None:
+    """Two spellings of one unknown document produce one coverage caveat."""
+    client = _FakeDocumentCitationClient(["9303/QD-BCA", "9303/QĐ-BCA"])
+
+    result = find_unindexed_document_citations(
+        ["Quyết định 9303/QD-BCA (còn viết là 9303/QĐ-BCA)."], frozenset(), client
+    )
+
+    assert result == ["9303/QD-BCA"]
 
 
 def test_scans_all_texts_in_one_call() -> None:

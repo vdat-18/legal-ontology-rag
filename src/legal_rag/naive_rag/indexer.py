@@ -11,6 +11,7 @@ from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusClient
 
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import read_chunks
+from legal_rag.datastores.milvus import MilvusCorpusFingerprint, build_milvus_corpus_fingerprint
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.settings import NaiveRagSettings
 
@@ -52,6 +53,13 @@ _METADATA_FIELDS = (
     "embedding_profile_id",
     "embedding_model_id",
     "embedding_model_revision",
+)
+_CORPUS_FIELDS = (
+    "chunk_id",
+    "text",
+    "source_name",
+    "kind",
+    *_METADATA_FIELDS[1:],
 )
 
 
@@ -190,6 +198,22 @@ def _read_existing_metadata(client: MilvusClient, settings: NaiveRagSettings) ->
     return rows
 
 
+def _read_corpus_rows(client: MilvusClient, settings: NaiveRagSettings) -> dict[str, dict[str, Any]]:
+    """Read every persisted non-vector field needed for an evaluation preflight."""
+    iterator = client.query_iterator(
+        collection_name=settings.milvus_collection_name,
+        batch_size=settings.milvus_insert_batch_size,
+        output_fields=list(_CORPUS_FIELDS),
+    )
+    rows: dict[str, dict[str, Any]] = {}
+    try:
+        while batch := iterator.next():
+            rows.update((str(row["chunk_id"]), row) for row in batch)
+    finally:
+        iterator.close()
+    return rows
+
+
 def _chunk_metadata(chunk: Chunk, encoder: EmbeddingEncoder) -> dict[str, str]:
     """Return persisted identity metadata used to detect stale embeddings."""
     return {
@@ -198,6 +222,17 @@ def _chunk_metadata(chunk: Chunk, encoder: EmbeddingEncoder) -> dict[str, str]:
         "embedding_profile_id": encoder.profile.profile_id,
         "embedding_model_id": encoder.profile.model_id,
         "embedding_model_revision": encoder.profile.model_revision,
+    }
+
+
+def _persisted_corpus_fields(chunk: Chunk, encoder: EmbeddingEncoder) -> dict[str, Any]:
+    """Return the exact non-vector fields expected in the active collection."""
+    return {
+        "chunk_id": chunk.chunk_id,
+        "text": _truncate_varchar(chunk.text),
+        "source_name": chunk.source_name,
+        "kind": chunk.kind,
+        **_chunk_metadata(chunk, encoder),
     }
 
 
@@ -225,13 +260,62 @@ def _validate_existing_metadata(
 def _row(chunk: Chunk, vector: Sequence[float], encoder: EmbeddingEncoder) -> dict[str, Any]:
     """Build one Milvus row from a chunk and its embedding."""
     return {
-        "chunk_id": chunk.chunk_id,
         "vector": list(vector),
-        "text": _truncate_varchar(chunk.text),
-        "source_name": chunk.source_name,
-        "kind": chunk.kind,
-        **_chunk_metadata(chunk, encoder),
+        **_persisted_corpus_fields(chunk, encoder),
     }
+
+
+def preflight_collection_corpus(
+    chunks: Sequence[Chunk],
+    encoder: EmbeddingEncoder,
+    milvus_client: MilvusClient,
+    settings: NaiveRagSettings,
+) -> MilvusCorpusFingerprint:
+    """Verify that the active collection exactly matches the configured local corpus."""
+    if not chunks:
+        msg = "Configured local corpus contains no chunks"
+        raise ValueError(msg)
+    chunks_by_id = {chunk.chunk_id: chunk for chunk in chunks}
+    if len(chunks_by_id) != len(chunks):
+        msg = "Configured local corpus contains duplicate chunk_id values"
+        raise ValueError(msg)
+    if not milvus_client.has_collection(settings.milvus_collection_name):
+        msg = f"Milvus collection '{settings.milvus_collection_name}' does not exist; index the configured corpus"
+        raise ValueError(msg)
+
+    _validate_collection(milvus_client, settings, encoder.profile.dimensions)
+    rows = _read_corpus_rows(milvus_client, settings)
+    expected_ids = chunks_by_id.keys()
+    indexed_ids = rows.keys()
+    persisted_count = int(milvus_client.get_collection_stats(settings.milvus_collection_name)["row_count"])
+    if persisted_count != len(rows) or indexed_ids != expected_ids:
+        missing_ids = sorted(expected_ids - indexed_ids)
+        unexpected_ids = sorted(indexed_ids - expected_ids)
+        msg = (
+            f"Milvus collection '{settings.milvus_collection_name}' does not match the configured corpus; "
+            f"rows={persisted_count}, expected={len(chunks)}, missing={missing_ids[:5]}, unexpected={unexpected_ids[:5]}"
+        )
+        raise ValueError(msg)
+
+    verified_rows: list[dict[str, Any]] = []
+    for chunk_id in sorted(chunks_by_id):
+        expected = _persisted_corpus_fields(chunks_by_id[chunk_id], encoder)
+        row = rows[chunk_id]
+        mismatched_fields = [name for name, value in expected.items() if row.get(name) != value]
+        if mismatched_fields:
+            fields = ", ".join(mismatched_fields)
+            msg = f"Milvus chunk '{chunk_id}' does not match the configured corpus ({fields}); rebuild the collection"
+            raise ValueError(msg)
+        verified_rows.append({name: row[name] for name in expected})
+
+    profile = encoder.profile
+    return build_milvus_corpus_fingerprint(
+        settings.milvus_collection_name,
+        verified_rows,
+        embedding_profile_id=profile.profile_id,
+        embedding_model_id=profile.model_id,
+        embedding_model_revision=profile.model_revision,
+    )
 
 
 def index_chunks(
@@ -263,7 +347,9 @@ def index_chunks(
         data = [_row(item, vectors[offset].tolist(), encoder) for offset, item in enumerate(batch)]
         milvus_client.insert(collection_name=settings.milvus_collection_name, data=data)
         total_inserted += len(data)
-        logger.info("Inserted {}/{} chunks (batch {}/{})", total_inserted, len(missing_chunks), batch_index, total_batches)
+        logger.info(
+            "Inserted {}/{} chunks (batch {}/{})", total_inserted, len(missing_chunks), batch_index, total_batches
+        )
 
     if total_inserted and settings.milvus_flush_after_insert:
         milvus_client.flush(settings.milvus_collection_name)

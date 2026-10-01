@@ -11,8 +11,9 @@ from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusClient
 
 from legal_rag.chunker.models import Chunk
 from legal_rag.chunker.writer import read_chunks
-from legal_rag.corrective_rag.generate.config import RAGConfig
+from legal_rag.corrective_rag.generate.config import CorrectiveRetrievalConfig, RAGConfig
 from legal_rag.corrective_rag.retrieval.embeddings import EmbeddingModel
+from legal_rag.datastores.milvus import MilvusCorpusFingerprint, build_milvus_corpus_fingerprint
 
 _MAX_VARCHAR_BYTES = 65_535
 _CHUNK_ID_MAX_LENGTH = 256
@@ -76,12 +77,13 @@ _SEARCH_OUTPUT_FIELDS = (
     "previous_chunk_id",
     "next_chunk_id",
 )
+_CORPUS_FIELDS = tuple(name for name in _EXPECTED_FIELD_TYPES if name != "vector")
 
 
 class LegalVectorDB:
     """Manages the Milvus collection, document indexing, and similarity search."""
 
-    def __init__(self, config: RAGConfig, embedding_model: EmbeddingModel) -> None:
+    def __init__(self, config: RAGConfig | CorrectiveRetrievalConfig, embedding_model: EmbeddingModel) -> None:
         """Initialize the Milvus database adapter.
 
         Args:
@@ -103,12 +105,19 @@ class LegalVectorDB:
         if self.config.milvus_token is not None:
             connection_options["token"] = self.config.milvus_token
         self.client = MilvusClient(**connection_options)
-        if self.config.milvus_database not in self.client.list_databases():
-            self.client.create_database(self.config.milvus_database)
-        self.client.use_database(self.config.milvus_database)
+        try:
+            if self.config.milvus_database not in self.client.list_databases():
+                self.client.create_database(self.config.milvus_database)
+            self.client.use_database(self.config.milvus_database)
 
-        self.collection_name = self.config.milvus_collection_name
-        self._ensure_collection()
+            self.collection_name = self.config.milvus_collection_name
+            self._ensure_collection()
+        except BaseException as error:
+            try:
+                self.client.close()
+            except BaseException as cleanup_error:
+                error.add_note(f"Failed to close Milvus client after Corrective RAG setup failed: {cleanup_error!r}")
+            raise
 
     def _ensure_collection(self) -> None:
         """Create the collection or validate its existing schema and vector index."""
@@ -166,31 +175,64 @@ class LegalVectorDB:
             )
             raise ValueError(msg)
 
-    def index_processed_data(self, processed_dir: str = "data/processed/groundtruth") -> int:
+    def index_processed_data(self, processed_dir: str | Path = "data/processed/groundtruth") -> int:
         """Index all chunk files in the processed folder.
 
         Args:
             processed_dir: Path to directory containing chunk JSONL files.
         """
-        path = Path(processed_dir)
-        if not path.exists():
-            msg = f"Processed data directory does not exist: {processed_dir}"
-            raise FileNotFoundError(msg)
-
-        chunk_files = sorted(path.glob("*.chunks.jsonl"))
-        if not chunk_files:
-            msg = f"No *.chunks.jsonl files found in {processed_dir}"
-            raise ValueError(msg)
-
-        logger.info(f"Found {len(chunk_files)} chunk files to index.")
-        chunks: list[Chunk] = []
-        for file_path in chunk_files:
-            chunks.extend(read_chunks(file_path))
-
-        total = self.index_chunks(tuple(chunks))
+        chunks = _load_chunks(Path(processed_dir))
+        total = self.index_chunks(chunks)
 
         logger.info("Indexing process completed.")
         return total
+
+    def preflight_corpus(self, processed_dir: str | Path = "data/processed/groundtruth") -> MilvusCorpusFingerprint:
+        """Verify that the active CRAG collection exactly matches a local chunk corpus."""
+        chunks = _load_chunks(Path(processed_dir))
+        if not chunks:
+            msg = "Configured local corpus contains no chunks"
+            raise ValueError(msg)
+        chunks_by_id = {chunk.chunk_id: chunk for chunk in chunks}
+        if len(chunks_by_id) != len(chunks):
+            msg = "Configured local corpus contains duplicate chunk_id values"
+            raise ValueError(msg)
+
+        self._validate_collection()
+        rows = self._read_corpus_rows()
+        expected_ids = chunks_by_id.keys()
+        indexed_ids = rows.keys()
+        persisted_count = int(self.client.get_collection_stats(self.collection_name)["row_count"])
+        if persisted_count != len(rows) or indexed_ids != expected_ids:
+            missing_ids = sorted(expected_ids - indexed_ids)
+            unexpected_ids = sorted(indexed_ids - expected_ids)
+            msg = (
+                f"Milvus collection '{self.collection_name}' does not match the configured corpus; "
+                f"rows={persisted_count}, expected={len(chunks)}, missing={missing_ids[:5]}, "
+                f"unexpected={unexpected_ids[:5]}"
+            )
+            raise ValueError(msg)
+
+        verified_rows: list[dict[str, Any]] = []
+        for chunk_id in sorted(chunks_by_id):
+            expected = _persisted_corpus_fields(chunks_by_id[chunk_id], self.embedder)
+            row = rows[chunk_id]
+            mismatched_fields = [name for name, value in expected.items() if row.get(name) != value]
+            if mismatched_fields:
+                fields = ", ".join(mismatched_fields)
+                msg = (
+                    f"Milvus chunk '{chunk_id}' does not match the configured corpus ({fields}); rebuild the collection"
+                )
+                raise ValueError(msg)
+            verified_rows.append({name: row[name] for name in expected})
+
+        return build_milvus_corpus_fingerprint(
+            self.collection_name,
+            verified_rows,
+            embedding_profile_id=self.embedder.profile_id,
+            embedding_model_id=self.embedder.model_id,
+            embedding_model_revision=self.embedder.model_revision,
+        )
 
     def index_chunks(self, chunks: Sequence[Chunk]) -> int:
         """Index missing chunks and reject incompatible existing rows."""
@@ -260,6 +302,21 @@ class LegalVectorDB:
         try:
             while batch := iterator.next():
                 rows.update((row["chunk_id"], row) for row in batch)
+        finally:
+            iterator.close()
+        return rows
+
+    def _read_corpus_rows(self) -> dict[str, dict[str, Any]]:
+        """Read every persisted non-vector field needed for an evaluation preflight."""
+        iterator = self.client.query_iterator(
+            collection_name=self.collection_name,
+            batch_size=max(1, self.config.index_batch_size),
+            output_fields=list(_CORPUS_FIELDS),
+        )
+        rows: dict[str, dict[str, Any]] = {}
+        try:
+            while batch := iterator.next():
+                rows.update((str(row["chunk_id"]), row) for row in batch)
         finally:
             iterator.close()
         return rows
@@ -376,6 +433,23 @@ def _chunk_metadata(chunk: Chunk, embedder: EmbeddingModel) -> dict[str, str]:
     }
 
 
+def _persisted_corpus_fields(chunk: Chunk, embedder: EmbeddingModel) -> dict[str, Any]:
+    """Return the exact non-vector fields expected in the active collection."""
+    return {
+        "chunk_id": chunk.chunk_id,
+        "text": _truncate_varchar(chunk.text),
+        "embedding_text": _truncate_varchar(chunk.embedding_text),
+        "source_name": chunk.source_name,
+        "kind": chunk.kind,
+        "record_scope": chunk.record_scope,
+        "scope_id": chunk.scope_id,
+        "chunk_index": chunk.chunk_index,
+        "previous_chunk_id": chunk.previous_chunk_id or "",
+        "next_chunk_id": chunk.next_chunk_id or "",
+        **_chunk_metadata(chunk, embedder),
+    }
+
+
 def _validate_existing_metadata(
     chunks_by_id: Mapping[str, Chunk],
     existing_rows: Mapping[str, Mapping[str, Any]],
@@ -400,19 +474,30 @@ def _validate_existing_metadata(
 def _row(chunk: Chunk, vector: Sequence[float], embedder: EmbeddingModel) -> dict[str, Any]:
     """Build one Milvus row from a chunk and its embedding."""
     return {
-        "chunk_id": chunk.chunk_id,
         "vector": list(vector),
-        "text": _truncate_varchar(chunk.text),
-        "embedding_text": _truncate_varchar(chunk.embedding_text),
-        "source_name": chunk.source_name,
-        "kind": chunk.kind,
-        "record_scope": chunk.record_scope,
-        "scope_id": chunk.scope_id,
-        "chunk_index": chunk.chunk_index,
-        "previous_chunk_id": chunk.previous_chunk_id or "",
-        "next_chunk_id": chunk.next_chunk_id or "",
-        **_chunk_metadata(chunk, embedder),
+        **_persisted_corpus_fields(chunk, embedder),
     }
+
+
+def _load_chunks(processed_dir: Path) -> tuple[Chunk, ...]:
+    """Load one non-empty configured chunk corpus in deterministic file order."""
+    if not processed_dir.exists():
+        msg = f"Processed data directory does not exist: {processed_dir}"
+        raise FileNotFoundError(msg)
+
+    chunk_files = sorted(processed_dir.glob("*.chunks.jsonl"))
+    if not chunk_files:
+        msg = f"No *.chunks.jsonl files found in {processed_dir}"
+        raise ValueError(msg)
+
+    logger.info("Found {} chunk files in configured corpus", len(chunk_files))
+    chunks: list[Chunk] = []
+    for file_path in chunk_files:
+        chunks.extend(read_chunks(file_path))
+    if not chunks:
+        msg = "Configured local corpus contains no chunks"
+        raise ValueError(msg)
+    return tuple(chunks)
 
 
 def _truncate_varchar(text: str, max_bytes: int = _MAX_VARCHAR_BYTES) -> str:

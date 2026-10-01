@@ -9,7 +9,9 @@ from loguru import logger
 from pymilvus import MilvusClient
 
 from legal_rag.benchmark_synthesis.vietnamese_lexical import VietnameseWordSegmenter
+from legal_rag.datastores.milvus import MilvusCorpusFingerprint
 from legal_rag.embedding.encoder import EmbeddingEncoder
+from legal_rag.naive_rag.indexer import load_chunks, preflight_collection_corpus
 from legal_rag.naive_rag.models import RetrievedChunk, SearchMode
 from legal_rag.naive_rag.reranker import ChunkReranker, CrossEncoderReranker
 from legal_rag.naive_rag.structure import ChunkCatalog
@@ -43,6 +45,11 @@ class Retriever:
         self._reranker_lock = Lock()
         self._chunk_catalog = chunk_catalog
         self._chunk_catalog_lock = Lock()
+
+    def preflight_corpus(self) -> MilvusCorpusFingerprint:
+        """Verify that this retriever's active collection matches its configured chunk corpus."""
+        chunks = load_chunks(self.settings.chunks_dir)
+        return preflight_collection_corpus(chunks, self.encoder, self.client, self.settings)
 
     def _ensure_bm25_index(self) -> None:
         """Build the BM25L index lazily from Milvus on first keyword or hybrid query."""
@@ -260,6 +267,41 @@ class Retriever:
 
         logger.debug("Retrieved {} chunks via {} search", len(hits), active_mode.value)
         return hits
+
+    def fetch_by_ids(self, chunk_ids: list[str] | tuple[str, ...]) -> list[RetrievedChunk]:
+        """Fetch persisted source chunks by primary key, preserving caller order."""
+        ordered_ids = tuple(dict.fromkeys(chunk_ids))
+        if not ordered_ids:
+            return []
+        rows = self.client.get(
+            collection_name=self.settings.milvus_collection_name,
+            ids=list(ordered_ids),
+            output_fields=[
+                "chunk_id",
+                "text",
+                "source_name",
+                "kind",
+                "content_sha256",
+                "chunker_config_sha256",
+            ],
+        )
+        rows_by_id = {str(row["chunk_id"]): row for row in rows}
+        missing = [chunk_id for chunk_id in ordered_ids if chunk_id not in rows_by_id]
+        if missing:
+            logger.warning("{} ontology source chunks are missing from Milvus", len(missing))
+        return [
+            RetrievedChunk(
+                chunk_id=chunk_id,
+                text=str(rows_by_id[chunk_id]["text"]),
+                source_name=str(rows_by_id[chunk_id]["source_name"]),
+                kind=str(rows_by_id[chunk_id]["kind"]),
+                score=1.0,
+                content_sha256=rows_by_id[chunk_id].get("content_sha256"),
+                chunker_config_sha256=rows_by_id[chunk_id].get("chunker_config_sha256"),
+            )
+            for chunk_id in ordered_ids
+            if chunk_id in rows_by_id
+        ]
 
     def close(self) -> None:
         """Close the Milvus client."""

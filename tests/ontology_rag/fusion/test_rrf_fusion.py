@@ -52,3 +52,35 @@ def test_rrf_empty_sources() -> None:
     fusion = RRFFusion()
     ranked = fusion.fuse([], [], [])
     assert len(ranked) == 0
+
+
+def test_rrf_scores_distinct_channels_and_merges_provenance() -> None:
+    """Only direct matches receive ontology weight and repeated URIs merge."""
+    semantic_only = OntologyInstance(
+        uri=URIRef("urn:semantic"), type="PenaltyRule", source_chunk_ids=("semantic-source",)
+    )
+    keyword_only = OntologyInstance(uri=URIRef("urn:keyword"), type="PenaltyRule", source_chunk_ids=("keyword-source",))
+    direct_only = OntologyInstance(uri=URIRef("urn:direct"), type="PenaltyRule", source_chunk_ids=("direct-source",))
+    shared_semantic = OntologyInstance(
+        uri=URIRef("urn:shared"), type="PenaltyRule", source_chunk_ids=("shared-semantic",)
+    )
+    shared_keyword = OntologyInstance(
+        uri=URIRef("urn:shared"), type="PenaltyRule", source_chunk_ids=("shared-keyword",)
+    )
+    shared_direct = OntologyInstance(uri=URIRef("urn:shared"), type="PenaltyRule", source_chunk_ids=("shared-direct",))
+
+    ranked = RRFFusion(k=60, ontology_weight=2.0).fuse(
+        [],
+        [],
+        [direct_only, shared_direct],
+        semantic_instances=[semantic_only, shared_semantic],
+        keyword_instances=[keyword_only, shared_keyword],
+    )
+
+    assert [str(instance.uri) for instance in ranked] == [
+        "urn:shared",
+        "urn:direct",
+        "urn:keyword",
+        "urn:semantic",
+    ]
+    assert ranked[0].source_chunk_ids == ("shared-semantic", "shared-keyword", "shared-direct")

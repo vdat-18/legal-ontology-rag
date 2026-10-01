@@ -18,23 +18,19 @@ class ChunkLinker:
         self._chunk_index = chunk_index
 
     def link(self, chunks: list[RetrievedChunk]) -> list[OntologyInstance]:
-        """Link chunks to their ontology instances."""
-        instances: list[OntologyInstance] = []
+        """Link ranked chunks to unique, explicitly typed penalty rules."""
+        source_ids_by_uri: dict[URIRef, list[str]] = {}
         for chunk in chunks:
-            instance_uris = self._chunk_index.get_instances(chunk.chunk_id)
-            for uri in instance_uris:
-                instance = OntologyInstance(uri=uri, type=self._get_type(uri), source_chunk_ids=(chunk.chunk_id,))
-                instances.append(instance)
+            for chunk_id in chunk.effective_evidence_chunk_ids:
+                for uri in self._chunk_index.get_instances(chunk_id):
+                    source_ids_by_uri.setdefault(uri, []).append(chunk_id)
+        instances = [
+            OntologyInstance(
+                uri=uri,
+                type="PenaltyRule",
+                source_chunk_ids=tuple(dict.fromkeys(source_chunk_ids)),
+            )
+            for uri, source_chunk_ids in source_ids_by_uri.items()
+        ]
         logger.debug("Linked {} chunks to {} instances", len(chunks), len(instances))
         return instances
-
-    def _get_type(self, uri: URIRef) -> str:
-        """Extract type from URI fragment."""
-        uri_str = str(uri)
-        if "PenaltyRule" in uri_str or "/rule/" in uri_str:
-            return "PenaltyRule"
-        if "/condition/" in uri_str:
-            return "Condition"
-        if "/consequence/" in uri_str:
-            return "Consequence"
-        return "Unknown"

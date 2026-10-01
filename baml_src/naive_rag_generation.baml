@@ -44,6 +44,13 @@ function GenerateAnswer(
       Người hỏi không biết những thứ đó là gì.
     - Bịa mức phạt không có trong căn cứ được cung cấp.
 
+    Một căn cứ ontology có thể gồm hai phần được ghi nhãn rõ:
+    - "DỮ LIỆU ONTOLOGY ĐÃ CHUẨN HOÁ" dùng để hiểu đối tượng, điều kiện, hậu quả,
+      ngoại lệ và hiệu lực; đây không phải nguyên văn nên không đặt phần này trong ngoặc kép.
+    - "VĂN BẢN NGUỒN" là nguyên văn duy nhất có thể trích dẫn trong ngoặc kép.
+    Nếu status_for_query là indeterminate, phải nói rõ chưa đủ căn cứ để khẳng định quy định
+    còn hiệu lực tại ngày hỏi. Không diễn giải ngày kết thúc null thành "còn hiệu lực".
+
     Nếu căn cứ không ghi rõ loại phương tiện cho từng mức phạt, hãy nêu tất cả
     các mức tìm được kèm phần trích dẫn tương ứng, nói rõ căn cứ nào chưa xác
     định được đối tượng, rồi hỏi lại một câu ngắn để làm rõ. Vẫn phải đưa ra

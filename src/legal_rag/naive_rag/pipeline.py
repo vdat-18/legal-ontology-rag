@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from loguru import logger
 
-from legal_rag.datastores.milvus import build_milvus_client
+from legal_rag.datastores.milvus import MilvusCorpusFingerprint, build_milvus_client
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.embedding.profiles import load_configured_embedding_profile
 from legal_rag.naive_rag.generator import BamlGenerationClient, generate_answer
@@ -73,10 +73,10 @@ class NaiveRAGPipeline:
             result = self._query_rewriter.rewrite(query, tuple(history))
             rewritten_query = result.rewritten
             if rewritten_query != query:
-                logger.debug("Query rewritten: '{}' -> '{}'", query, rewritten_query)
+                logger.debug("Context-dependent query rewritten")
 
         hits = self._retriever.retrieve(rewritten_query, top_k=k, mode=mode)
-        answer = generate_answer(query, hits, self._generation_client)
+        answer = generate_answer(rewritten_query, hits, self._generation_client)
         active = search_mode or self.settings.search_mode
         logger.info("Pipeline completed: {} sources, {} search", len(hits), active)
         return RAGResult(
@@ -85,6 +85,10 @@ class NaiveRAGPipeline:
             answer=answer,
             sources=tuple(hits),
         )
+
+    def preflight_corpus(self) -> MilvusCorpusFingerprint:
+        """Verify that the active Milvus collection matches the configured local corpus."""
+        return self._retriever.preflight_corpus()
 
     def close(self) -> None:
         """Close the underlying retrieval connection."""

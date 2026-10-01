@@ -10,9 +10,11 @@ import pytest
 from pymilvus import MilvusClient
 
 from legal_rag.chunker.models import Chunk
+from legal_rag.chunker.writer import write_chunks
 from legal_rag.embedding.encoder import EmbeddingEncoder
 from legal_rag.embedding.profiles import EmbeddingProfile
 from legal_rag.naive_rag.indexer import _truncate_varchar, _validate_field_schema, index_chunks
+from legal_rag.naive_rag.retriever import Retriever
 from legal_rag.settings import NaiveRagSettings
 
 
@@ -293,3 +295,52 @@ def test_index_chunks_rejects_an_empty_corpus(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="no chunks"):
         index_chunks((), encoder, client, settings)
+
+
+def test_retriever_preflight_fingerprints_the_verified_active_collection(tmp_path: Path) -> None:
+    """The manifest fingerprint comes from the active rows after exact corpus validation."""
+    chunks_dir = tmp_path / "chunks"
+    chunks_dir.mkdir()
+    chunks = (
+        _chunk("chunk-2", "Second chunk.", content_sha256="second-hash"),
+        _chunk("chunk-1", "First chunk."),
+    )
+    write_chunks(chunks_dir / "corpus.chunks.jsonl", chunks)
+    settings = replace(_settings(), chunks_dir=chunks_dir)
+    encoder = EmbeddingEncoder(_profile(), _FakeEncoderBackend())
+    client = MilvusClient(uri=_milvus_uri(tmp_path))
+    index_chunks(chunks, encoder, client, settings)
+
+    fingerprint = Retriever(encoder, client, settings).preflight_corpus()
+
+    assert fingerprint.collection_name == settings.milvus_collection_name
+    assert fingerprint.row_count == 2
+    assert fingerprint.embedding_profile_id == "test-profile"
+    assert fingerprint.embedding_model_id == "test/model"
+    assert fingerprint.embedding_model_revision == "abc123"
+    assert len(fingerprint.corpus_sha256) == 64
+    assert fingerprint.to_dict()["corpus_sha256"] == fingerprint.corpus_sha256
+
+
+@pytest.mark.parametrize(
+    "changed_chunk",
+    [
+        replace(_chunk("chunk-1", "Original text."), text="Changed text."),
+        replace(_chunk("chunk-1", "Original text."), source_name="different.docx"),
+    ],
+)
+def test_retriever_preflight_rejects_content_not_covered_by_index_metadata(
+    tmp_path: Path,
+    changed_chunk: Chunk,
+) -> None:
+    """Exact stored fields catch stale text and provenance even when declared hashes are unchanged."""
+    chunks_dir = tmp_path / "chunks"
+    chunks_dir.mkdir()
+    settings = replace(_settings(), chunks_dir=chunks_dir)
+    encoder = EmbeddingEncoder(_profile(), _FakeEncoderBackend())
+    client = MilvusClient(uri=_milvus_uri(tmp_path))
+    index_chunks((_chunk("chunk-1", "Original text."),), encoder, client, settings)
+    write_chunks(chunks_dir / "corpus.chunks.jsonl", (changed_chunk,))
+
+    with pytest.raises(ValueError, match="does not match the configured corpus"):
+        Retriever(encoder, client, settings).preflight_corpus()
