@@ -24,6 +24,17 @@ class AdaptiveQueryPlan:
 
 
 @dataclass(frozen=True, slots=True)
+class AdaptiveRetrievalResult:
+    """Ranked evidence and the planner decision used to retrieve it."""
+
+    query: str
+    rewritten_query: str | None = None
+    sources: tuple[RetrievedChunk, ...] = ()
+    route: AdaptiveRoute = AdaptiveRoute.DIRECT
+    subqueries: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class AdaptiveRAGResult:
     """Answer, retrieval provenance, and the planner decision used to produce it."""
 

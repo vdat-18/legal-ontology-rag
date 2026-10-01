@@ -50,6 +50,22 @@ uv run --extra naive-rag legal-evaluate run --pipeline adaptive `
   --run-dir data/evaluation/runs/adaptive_smoke
 ```
 
+When only retrieval metrics are needed, skip answer generation while preserving the same planner,
+retrieval legs, and RRF fusion:
+
+```powershell
+uv run legal-evaluate retrieve `
+  --retriever adaptive `
+  --ground-truth data/evaluation/smoke/groundtruth_20.jsonl `
+  --limit 10 `
+  --k-values 1,3,5,10 `
+  --predictions-output data/evaluation/smoke/adaptive_retrieval.jsonl `
+  --metrics-output data/evaluation/smoke/adaptive_retrieval_metrics.json
+```
+
+This command still makes one planner LLM call per question and runs the configured base retriever;
+it only removes answer generation.
+
 Existing naive collections that still contain the former `embedding_text`, `record_scope`, or `chunk_index` fields must be dropped and rebuilt once with the current schema.
 
 Collections created before this metadata was introduced are intentionally incompatible. Back them up, then configure the shared `MILVUS_DATABASE` and a method-specific collection name, or explicitly drop and rebuild the old collection.

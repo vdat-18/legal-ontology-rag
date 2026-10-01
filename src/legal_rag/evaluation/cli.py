@@ -236,7 +236,7 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
 
-    retrieve_parser = subparsers.add_parser("retrieve", help="Run retrieval-only evaluation without LLM calls.")
+    retrieve_parser = subparsers.add_parser("retrieve", help="Run evaluation without answer generation.")
     retrieve_parser.add_argument(
         "--ground-truth",
         type=Path,
@@ -254,9 +254,9 @@ def _parser() -> argparse.ArgumentParser:
     )
     retrieve_parser.add_argument(
         "--retriever",
-        choices=("vector", "naive", "graph"),
+        choices=("vector", "naive", "adaptive", "graph"),
         default="vector",
-        help="Which retriever to score: the CRAG vector baseline, Naive RAG, or Graphiti.",
+        help="Which retrieval strategy to score; Adaptive still uses its planner LLM.",
     )
     retrieve_parser.add_argument(
         "--naive-search-mode",
@@ -873,7 +873,9 @@ def _query_rewrite_policy(args: argparse.Namespace) -> str:
 
 def _retrieval_run_identity(args: argparse.Namespace, ground_truth_path: Path) -> dict[str, Any]:
     """Build a reproducible identity for retrieval-only artifacts."""
-    pipeline = {"vector": "corrective_vector", "naive": "naive", "graph": "graphiti"}[args.retriever]
+    pipeline = {"vector": "corrective_vector", "naive": "naive", "adaptive": "adaptive", "graph": "graphiti"}[
+        args.retriever
+    ]
     effective_config = _effective_retrieval_config(args)
     corpus_config = None
     if args.retriever == "graph" and args.corpus_config is not None:
@@ -883,6 +885,7 @@ def _retrieval_run_identity(args: argparse.Namespace, ground_truth_path: Path) -
     source_modules = {
         "vector": ("legal_rag.corrective_rag.retrieval",),
         "naive": ("legal_rag.naive_rag.retriever",),
+        "adaptive": ("legal_rag.adaptive_rag", "legal_rag.naive_rag.retriever"),
         "graph": ("legal_rag.graphiti_rag.retriever",),
     }[args.retriever]
     return {
@@ -937,6 +940,10 @@ def _effective_retrieval_config(args: argparse.Namespace) -> dict[str, Any]:
         naive_config = _json_compatible(asdict(settings))
         naive_config.pop("chunks_dir", None)
         config["naive_rag"] = naive_config
+    elif args.retriever == "adaptive":
+        adaptive_args = argparse.Namespace(**vars(args), pipeline="adaptive")
+        config.update(_effective_run_config(adaptive_args))
+        config["planner_prompt_sha256"] = _baml_runtime_source_sha256("adaptive_query_planning.baml")
     elif args.retriever == "graph" and os.environ.get("EMBEDDING_PROFILE"):
         from legal_rag.settings import GraphitiSettings
 
@@ -1014,6 +1021,7 @@ def _run_identity(args: argparse.Namespace, ground_truth_path: Path) -> dict[str
         "history_resolution_enabled": _history_resolution_enabled(args),
         "query_rewrite_policy": _query_rewrite_policy(args),
         "adaptive_config": adaptive_config,
+        "corrective_config": effective_config.get("corrective_rag"),
         "generation": args.generation,
         "judge_model": args.judge_model or os.environ.get("LLM_MODEL"),
         "judge_batch_size": args.judge_batch_size if args.generation else None,
@@ -1634,6 +1642,7 @@ def _handle_retrieve(args: argparse.Namespace) -> None:
     retrieve = {
         "vector": _retrieve_with_vector,
         "naive": _retrieve_with_naive,
+        "adaptive": _retrieve_with_adaptive,
         "graph": _retrieve_with_graph,
     }[args.retriever]
     identity = _retrieval_run_identity(args, ground_truth_path)
@@ -1673,7 +1682,9 @@ def _handle_retrieve(args: argparse.Namespace) -> None:
     metrics_payload = {
         "schema_version": _PREDICTION_SCHEMA_VERSION,
         "run_id": run_id,
-        "pipeline": {"vector": "corrective_vector", "naive": "naive", "graph": "graphiti"}[args.retriever],
+        "pipeline": {"vector": "corrective_vector", "naive": "naive", "adaptive": "adaptive", "graph": "graphiti"}[
+            args.retriever
+        ],
         "retriever": args.retriever,
         "search_mode": args.naive_search_mode if args.retriever == "naive" else None,
         "ground_truth_sha256": _sha256_file(ground_truth_path),
@@ -2016,6 +2027,44 @@ def _retrieve_with_naive(
             )
     finally:
         retriever.close()
+    return _RetrievalExecution(rows=rows, active_backend_fingerprint=fingerprint)
+
+
+def _retrieve_with_adaptive(
+    records: Sequence[EvaluationRecord | EvaluationSample], args: argparse.Namespace
+) -> _RetrievalExecution:
+    """Score Adaptive planning and retrieval without running answer generation."""
+    from legal_rag.adaptive_rag.pipeline import AdaptiveRAGPipeline
+    from legal_rag.settings import AdaptiveRagSettings, MilvusSettings, NaiveRagSettings, Settings
+
+    pipeline = AdaptiveRAGPipeline(
+        Settings.from_environment(),
+        MilvusSettings.from_environment(),
+        NaiveRagSettings.from_environment(),
+        AdaptiveRagSettings.from_environment(),
+    )
+    rows: list[dict[str, Any]] = []
+    try:
+        fingerprint = pipeline.preflight_corpus().to_dict()
+        for index, item in enumerate(records, 1):
+            record = _as_retrieval_record(item)
+            logger.info("Retrieving adaptive sample {}/{}", index, len(records))
+            started_at = perf_counter()
+            result = pipeline.retrieve(record.sample.question, top_k=args.limit, rewrite_query=False)
+            row = _retrieval_prediction_row(
+                record.sample,
+                [_naive_hit_mapping(hit) for hit in result.sources],
+                raw=record.raw,
+                latency_ms=(perf_counter() - started_at) * 1000,
+            )
+            row["pipeline_metadata"] = {
+                "base_search_mode": pipeline.settings.base_search_mode,
+                "route": result.route.value,
+                "subqueries": list(result.subqueries),
+            }
+            rows.append(row)
+    finally:
+        pipeline.close()
     return _RetrievalExecution(rows=rows, active_backend_fingerprint=fingerprint)
 
 

@@ -210,6 +210,84 @@ def test_ontology_run_identity_hashes_runtime_prompts_outside_repo_cwd(
     )
 
 
+def test_corrective_run_identity_contains_effective_secret_free_configuration(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Corrective resumes are tied to effective grading, refinement, and retrieval settings."""
+    from dataclasses import replace
+
+    from legal_rag.corrective_rag.generate.config import RAGConfig
+
+    ground_truth = tmp_path / "groundtruth.jsonl"
+    ground_truth.write_text("{}\n", encoding="utf-8")
+    private_value = "private-test-value"
+    config = replace(
+        RAGConfig.from_env(
+            {
+                "LLM_BASE_URL": "https://provider.example/v1",
+                "LLM_API_KEY": "test-key",
+                "LLM_MODEL": "test-model",
+                "LLM_TIMEOUT_SECONDS": "30",
+            }
+        ),
+        llm_model="provider/model",
+        llm_api_key=private_value,
+        milvus_token=private_value,
+        embedding_profile="bge_m3",
+        milvus_database="legal_rag",
+        milvus_collection_name="legal_chunks",
+        milvus_index_type="IVF_FLAT",
+        milvus_metric_type="COSINE",
+        milvus_nlist=128,
+        milvus_nprobe=8,
+        evaluator_max_output_tokens=512,
+        evaluator_temperature=0.0,
+        evaluator_upper_threshold=0.8,
+        evaluator_lower_threshold=0.3,
+        max_response_bytes=262_144,
+        refinement_max_strips_per_chunk=6,
+        refinement_strip_max_chars=700,
+        refinement_top_internal_strips=4,
+        refinement_top_external_strips=3,
+        refinement_decompose_mode="excerption",
+        web_search_enabled=False,
+        web_search_max_results=3,
+        web_search_allowed_domains=("moj.gov.vn",),
+    )
+    monkeypatch.setattr(RAGConfig, "from_env", classmethod(lambda _cls: config))
+    arguments = cli._parser().parse_args(["run", "--pipeline", "corrective"])
+
+    identity = cli._run_identity(arguments, ground_truth)
+
+    expected = {
+        "llm_model": "provider/model",
+        "embedding_profile": "bge_m3",
+        "milvus_database": "legal_rag",
+        "milvus_collection_name": "legal_chunks",
+        "milvus_index_type": "IVF_FLAT",
+        "milvus_metric_type": "COSINE",
+        "milvus_nlist": 128,
+        "milvus_nprobe": 8,
+        "evaluator_max_output_tokens": 512,
+        "evaluator_temperature": 0.0,
+        "evaluator_upper_threshold": 0.8,
+        "evaluator_lower_threshold": 0.3,
+        "max_response_bytes": 262_144,
+        "refinement_max_strips_per_chunk": 6,
+        "refinement_strip_max_chars": 700,
+        "refinement_top_internal_strips": 4,
+        "refinement_top_external_strips": 3,
+        "refinement_decompose_mode": "excerption",
+        "web_search_enabled": False,
+        "web_search_max_results": 3,
+        "web_search_allowed_domains": ["moj.gov.vn"],
+    }
+    assert {key: identity["corrective_config"][key] for key in expected} == expected
+    json.dumps(identity)
+    assert "llm_api_key" not in identity["corrective_config"]
+    assert "milvus_token" not in identity["corrective_config"]
+
+
 def test_builds_adaptive_backend_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     """The adaptive CLI branch wires all four settings objects into its pipeline."""
     from legal_rag.adaptive_rag import pipeline as pipeline_module
@@ -691,6 +769,13 @@ def test_compare_writes_a_validated_report(monkeypatch: pytest.MonkeyPatch, tmp_
     assert json.loads(output.read_text(encoding="utf-8")) == expected
 
 
+def test_retrieve_accepts_adaptive_without_answer_generation() -> None:
+    """Adaptive planning and retrieval are exposed independently of answer generation."""
+    arguments = cli._parser().parse_args(["retrieve", "--retriever", "adaptive"])
+
+    assert arguments.retriever == "adaptive"
+
+
 @pytest.mark.parametrize("mode", ["hybrid_rerank", "hierarchical"])
 def test_evaluation_parsers_accept_naive_variants(mode: str) -> None:
     """Both retrieval-only and end-to-end evaluation expose each Naive variant."""
@@ -701,10 +786,11 @@ def test_evaluation_parsers_accept_naive_variants(mode: str) -> None:
     assert run.naive_search_mode == mode
 
 
-def test_retrieve_runs_naive_without_llm_and_uses_mode_specific_outputs(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+@pytest.mark.parametrize("retriever", ["naive", "adaptive"])
+def test_retrieve_writes_and_replays_identity_addressed_outputs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, retriever: str
 ) -> None:
-    """A bounded Naive run dispatches directly to retrieval and does not overwrite another mode."""
+    """Bounded retrieval validates its backend and replays only identical completed artifacts."""
     ground_truth = tmp_path / "groundtruth.jsonl"
     ground_truth.write_text(
         "".join(
@@ -758,13 +844,13 @@ def test_retrieve_runs_naive_without_llm_and_uses_mode_specific_outputs(
             active_backend_fingerprint={"corpus_sha256": "active-corpus"},
         )
 
-    monkeypatch.setattr(cli, "_retrieve_with_naive", retrieve)
+    monkeypatch.setattr(cli, f"_retrieve_with_{retriever}", retrieve)
     monkeypatch.chdir(tmp_path)
     arguments = cli._parser().parse_args(
         [
             "retrieve",
             "--retriever",
-            "naive",
+            retriever,
             "--naive-search-mode",
             "hybrid",
             "--max-samples",
@@ -795,9 +881,9 @@ def test_retrieve_runs_naive_without_llm_and_uses_mode_specific_outputs(
     assert {path: path.read_bytes() for path in first_artifacts} == first_artifacts
     report = json.loads(metrics.read_text(encoding="utf-8"))
     manifest_report = json.loads(manifest.read_text(encoding="utf-8"))
-    assert report["retriever"] == "naive"
-    assert report["pipeline"] == "naive"
-    assert report["search_mode"] == "hybrid"
+    assert report["retriever"] == retriever
+    assert report["pipeline"] == retriever
+    assert report["search_mode"] == ("hybrid" if retriever == "naive" else None)
     assert report["sample_count"] == 1
     assert report["claim_sample_count"] == 1
     assert report["claim_evidence_complete_at_k"] == {"1": 1.0}
@@ -808,7 +894,13 @@ def test_retrieve_runs_naive_without_llm_and_uses_mode_specific_outputs(
     assert report["slices"]["query_style"]["standard"]["sample_count"] == 1
     assert manifest_report["status"] == "complete"
     assert manifest_report["run_id"] == report["run_id"]
-    assert manifest_report["identity"]["naive_search_mode"] == "hybrid"
+    assert manifest_report["identity"]["naive_search_mode"] == ("hybrid" if retriever == "naive" else None)
+    if retriever == "adaptive":
+        assert "legal_rag.adaptive_rag" in manifest_report["identity"]["source_sha256"]
+        assert report["effective_config"]["adaptive_rag"]["base_search_mode"] == "hybrid_rerank"
+        assert report["effective_config"]["planner_prompt_sha256"] == cli._baml_runtime_source_sha256(
+            "adaptive_query_planning.baml"
+        )
     assert manifest_report["output_sha256"] == {
         "predictions": cli._sha256_file(predictions),
         "metrics": cli._sha256_file(metrics),
@@ -932,6 +1024,83 @@ def test_retrieve_with_naive_forwards_mode_and_closes_retriever(monkeypatch: pyt
     assert row["retrieved_units"][0]["unit_id"] == "chunk-1"
     assert execution.active_backend_fingerprint == {"corpus_sha256": "active-corpus"}
     assert fake_retrievers[0].closed is True
+
+
+def test_retrieve_with_adaptive_preserves_plan_metadata_and_closes_pipeline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Adaptive retrieval emits auditable plans and never invokes its full run method."""
+    from types import SimpleNamespace
+
+    from legal_rag.adaptive_rag import pipeline as pipeline_module
+    from legal_rag.adaptive_rag.models import AdaptiveRetrievalResult, AdaptiveRoute
+    from legal_rag.settings import AdaptiveRagSettings, MilvusSettings, NaiveRagSettings, Settings
+
+    class FakePipeline:
+        """Return one retrieval result while rejecting accidental answer generation."""
+
+        def __init__(self, *settings: object) -> None:
+            self.settings = SimpleNamespace(base_search_mode="hybrid_rerank")
+            self.closed = False
+            pipelines.append(self)
+
+        def retrieve(self, question: str, top_k: int, rewrite_query: bool) -> AdaptiveRetrievalResult:
+            assert (question, top_k, rewrite_query) == ("question", 3, False)
+            return AdaptiveRetrievalResult(
+                query=question,
+                sources=(
+                    SimpleNamespace(
+                        chunk_id="chunk-1",
+                        source_name="document.docx",
+                        text="context",
+                        kind="paragraph_group",
+                        score=0.5,
+                        effective_unit_id="chunk-1",
+                        unit_kind="chunk",
+                        effective_evidence_chunk_ids=("chunk-1",),
+                    ),
+                ),
+                route=AdaptiveRoute.MULTI_HOP,
+                subqueries=("subquery one", "subquery two"),
+            )
+
+        def preflight_corpus(self) -> object:
+            """Return the validated collection identity."""
+            return SimpleNamespace(to_dict=lambda: {"corpus_sha256": "active-corpus"})
+
+        def close(self) -> None:
+            self.closed = True
+
+    pipelines: list[FakePipeline] = []
+    monkeypatch.setattr(pipeline_module, "AdaptiveRAGPipeline", FakePipeline)
+    monkeypatch.setattr(Settings, "from_environment", classmethod(lambda _cls: object()))
+    monkeypatch.setattr(MilvusSettings, "from_environment", classmethod(lambda _cls: object()))
+    monkeypatch.setattr(NaiveRagSettings, "from_environment", classmethod(lambda _cls: object()))
+    monkeypatch.setattr(AdaptiveRagSettings, "from_environment", classmethod(lambda _cls: object()))
+    arguments = cli._parser().parse_args(["retrieve", "--retriever", "adaptive", "--limit", "3"])
+
+    preflight = cli._retrieve_with_adaptive((), arguments)
+    assert preflight.rows == []
+    execution = cli._retrieve_with_adaptive(
+        [
+            EvaluationRecord(
+                raw={"question_id": "q-1", "question": "question"}, sample=EvaluationSample(question="question")
+            )
+        ],
+        arguments,
+    )
+    [row] = execution.rows
+    assert row["question_id"] == "q-1"
+    assert row["evaluation_metadata"]["latency_ms"] >= 0
+    assert execution.active_backend_fingerprint == preflight.active_backend_fingerprint
+
+    assert row["retrieved_chunk_ids"] == ["chunk-1"]
+    assert row["pipeline_metadata"] == {
+        "base_search_mode": "hybrid_rerank",
+        "route": "multi_hop",
+        "subqueries": ["subquery one", "subquery two"],
+    }
+    assert all(pipeline.closed for pipeline in pipelines)
 
 
 def test_retrieval_prediction_row_preserves_grouped_evidence() -> None:

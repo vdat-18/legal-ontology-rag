@@ -135,6 +135,21 @@ def test_multi_hop_route_fuses_original_and_subquery_rankings():
     assert generator.query == "question"
 
 
+def test_retrieve_executes_adaptive_plan_without_answer_generation():
+    """Retrieval-only evaluation reuses adaptive routing without calling the generator."""
+    hit = _chunk("chunk-1", "context", 0.8)
+    retriever = _FakeRetriever({"question": [hit]})
+    generator = _FakeGenerator()
+    pipeline = _pipeline(retriever, _FakePlanner(AdaptiveQueryPlan(AdaptiveRoute.DIRECT)), generator)
+
+    result = pipeline.retrieve("question", top_k=3, rewrite_query=False)
+
+    assert result.sources == (hit,)
+    assert result.route == AdaptiveRoute.DIRECT
+    assert generator.query == ""
+    assert generator.chunks == []
+
+
 def test_multi_hop_preserves_hierarchical_unit_evidence():
     """Article units fuse by effective unit ID without losing source chunk provenance."""
     first = _chunk(

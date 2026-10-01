@@ -1,4 +1,5 @@
 {
+  "completed_at": "2026-09-15T05:52:48.479718+00:00",
   "failed_at": "2026-09-15T02:07:36.768217+00:00",
   "identity": {
     "adaptive_config": {
@@ -35,9 +36,14 @@
     "retrieval_limit": 10,
     "rewrite_query": false
   },
+  "outputs": {
+    "generation": null,
+    "metrics": "data/evaluation/smoke/adaptive/metrics.json",
+    "predictions": "data/evaluation/smoke/adaptive/predictions.jsonl"
+  },
   "resumed_at": "2026-09-15T03:02:45.606588+00:00",
   "run_id": "1b21d1e50990cb7ed15d",
   "schema_version": "1.0.0",
   "started_at": "2026-09-15T00:18:15.090774+00:00",
-  "status": "running"
+  "status": "complete"
 }

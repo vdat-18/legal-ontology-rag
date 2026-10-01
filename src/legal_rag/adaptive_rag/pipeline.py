@@ -7,7 +7,12 @@ from dataclasses import replace
 
 from loguru import logger
 
-from legal_rag.adaptive_rag.models import AdaptiveQueryPlan, AdaptiveRAGResult, AdaptiveRoute
+from legal_rag.adaptive_rag.models import (
+    AdaptiveQueryPlan,
+    AdaptiveRAGResult,
+    AdaptiveRetrievalResult,
+    AdaptiveRoute,
+)
 from legal_rag.adaptive_rag.planner import AdaptivePlanner, BamlAdaptivePlanner
 from legal_rag.datastores.milvus import MilvusCorpusFingerprint, build_milvus_client
 from legal_rag.embedding.encoder import EmbeddingEncoder
@@ -56,6 +61,31 @@ class AdaptiveRAGPipeline:
         rewrite_query: bool = True,
     ) -> AdaptiveRAGResult:
         """Plan retrieval, fuse multi-hop evidence when needed, and generate an answer."""
+        retrieval = self.retrieve(query, top_k=top_k, history=history, rewrite_query=rewrite_query)
+        answer = generate_answer(retrieval.rewritten_query or query, retrieval.sources, self._generation_client)
+        logger.info(
+            "Adaptive pipeline completed: route={}, subqueries={}, sources={}",
+            retrieval.route.value,
+            len(retrieval.subqueries),
+            len(retrieval.sources),
+        )
+        return AdaptiveRAGResult(
+            query=query,
+            rewritten_query=retrieval.rewritten_query,
+            answer=answer,
+            sources=retrieval.sources,
+            route=retrieval.route,
+            subqueries=retrieval.subqueries,
+        )
+
+    def retrieve(
+        self,
+        query: str,
+        top_k: int | None = None,
+        history: Sequence[tuple[str, str]] = (),
+        rewrite_query: bool = True,
+    ) -> AdaptiveRetrievalResult:
+        """Plan and execute adaptive retrieval without generating an answer."""
         k = top_k or self._default_top_k
         retrieval_query = query
         if rewrite_query and history:
@@ -65,17 +95,15 @@ class AdaptiveRAGPipeline:
         plan = self._planner.plan(retrieval_query)
         mode = SearchMode(self.settings.base_search_mode)
         hits = self._retrieve_plan(retrieval_query, plan, k, mode)
-        answer = generate_answer(retrieval_query, hits, self._generation_client)
         logger.info(
-            "Adaptive pipeline completed: route={}, subqueries={}, sources={}",
+            "Adaptive retrieval completed: route={}, subqueries={}, sources={}",
             plan.route.value,
             len(plan.subqueries),
             len(hits),
         )
-        return AdaptiveRAGResult(
+        return AdaptiveRetrievalResult(
             query=query,
             rewritten_query=retrieval_query if retrieval_query != query else None,
-            answer=answer,
             sources=tuple(hits),
             route=plan.route,
             subqueries=plan.subqueries,
