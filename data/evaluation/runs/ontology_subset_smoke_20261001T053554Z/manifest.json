@@ -1,0 +1,116 @@
+{
+  "completed_at": "2026-10-01T05:51:38.915074+00:00",
+  "identity": {
+    "active_backend_fingerprint": {
+      "collection_name": "ontology_smoke_20261001_053554",
+      "corpus_sha256": "a805ce2a86da16522d5dcec4fa27f217fb6a12b4f329e74af8fe60f64b0f78bd",
+      "embedding_model_id": "BAAI/bge-m3",
+      "embedding_model_revision": "5617a9f61b028005a4858fdac845db406aefb181",
+      "embedding_profile_id": "bge_m3",
+      "fingerprint_version": "1",
+      "row_count": 168
+    },
+    "active_backend_validated": true,
+    "adaptive_config": null,
+    "answer_model": "gpt-5.6-luna",
+    "concurrency": 1,
+    "corpus_chunks_sha256": "b479ed2ce1858986bd42dc0c85e57644973aa45d235c1b9a03dd2d149bdf8d37",
+    "cross_encoder": null,
+    "effective_config": {
+      "embedding_profile": "bge_m3",
+      "embedding_profile_sha256": "eeb398bad20cdb653d21132684993fa9a9fd51c14df43c8c09979f233de567a1",
+      "llm_base_url_sha256": "4908bdb5c5107a3c315e76dbce9cebd050e4d0fe90ab417d8fe01f84ddc067a4",
+      "llm_extra_request_body_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "llm_model": "gpt-5.6-luna",
+      "llm_timeout_seconds": 300.0,
+      "milvus_database": "legal_rag",
+      "naive_rag": {
+        "answer_max_context_characters": 120000,
+        "answer_max_output_tokens": 16384,
+        "answer_temperature": 0.1,
+        "bm25_b": 0.75,
+        "bm25_delta": 0.5,
+        "bm25_k1": 1.5,
+        "chunks_sha256": "b479ed2ce1858986bd42dc0c85e57644973aa45d235c1b9a03dd2d149bdf8d37",
+        "embedding_profile": "bge_m3",
+        "hierarchical_max_chunks_per_unit": 5,
+        "hierarchical_max_tokens_per_unit": 2500,
+        "hybrid_pool_multiplier": 3,
+        "hybrid_rrf_k": 60,
+        "keyword_max_candidates_per_fact": 10,
+        "keyword_retrieval_pool_size": 100,
+        "max_response_bytes": 1048576,
+        "milvus_collection_name": "ontology_smoke_20261001_053554",
+        "milvus_flush_after_insert": true,
+        "milvus_index_type": "IVF_FLAT",
+        "milvus_insert_batch_size": 200,
+        "milvus_metric_type": "COSINE",
+        "milvus_nlist": 128,
+        "milvus_nprobe": 16,
+        "reranker_batch_size": 16,
+        "reranker_model_id": "BAAI/bge-reranker-v2-m3",
+        "reranker_model_revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+        "reranker_pool_multiplier": 5,
+        "search_mode": "semantic",
+        "top_k": 10
+      }
+    },
+    "embedding_profile": "bge_m3",
+    "embedding_profile_sha256": "eeb398bad20cdb653d21132684993fa9a9fd51c14df43c8c09979f233de567a1",
+    "external_evidence_policy": "closed_corpus",
+    "generation": true,
+    "graph_expansion": null,
+    "graphiti_corpus": null,
+    "ground_truth_sha256": "8d6bdcf6553b20a035e483101daab91054fc838b00c3f4bd220ea55a9c1467e6",
+    "group_id": null,
+    "history_resolution_enabled": true,
+    "judge_batch_size": 3,
+    "judge_concurrency": 1,
+    "judge_model": "gpt-5.6-luna",
+    "k_values": [
+      1,
+      3,
+      5,
+      10
+    ],
+    "llm_base_url_sha256": "4908bdb5c5107a3c315e76dbce9cebd050e4d0fe90ab417d8fe01f84ddc067a4",
+    "llm_extra_request_body_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "max_samples": 3,
+    "naive_search_mode": null,
+    "ontology_runtime": {
+      "generation_prompt_sha256": "2c5491b97b434dd97045523e968a921fc65c653bd7e180709a46b64a7b69b686",
+      "query_planner_sha256": "239da08f2756332034672562eef323d4e1cb124f089fc2636d0428b9841d4a47",
+      "reference_date": "2026-10-01"
+    },
+    "ontology_sha256": [
+      "c5bd4a33a10a6ae4d1917abce9b3aa27801ad238b06d540db6a2c5fcc5b0aef1"
+    ],
+    "pipeline": "ontology",
+    "prompt_sha256": {
+      "answer_evaluation.baml": "de59179643c8038862d4a74d2ba9174cab248e689b66c825293e9db35ef7e1d5",
+      "naive_rag_generation.baml": "2c5491b97b434dd97045523e968a921fc65c653bd7e180709a46b64a7b69b686",
+      "ontology_query_planning.baml": "239da08f2756332034672562eef323d4e1cb124f089fc2636d0428b9841d4a47",
+      "query_rewrite.baml": "253d4fa0e28b432907eb497aaa455183465b5a86e841f9c4cc46a04422578aa0"
+    },
+    "query_rewrite_policy": "enabled_when_history_present",
+    "reference_date": "2026-10-01",
+    "retrieval_limit": 10,
+    "rewrite_query": true,
+    "source_sha256": {
+      "legal_rag.evaluation.generation.judge": "707f408ff191da1d4c2e4804d170a5e6f1a04538c1e4d0b7fa159a4bb7cc07ab",
+      "legal_rag.evaluation.metrics": "7735fe88f174e4f39575d9a83d1980ec3aad931be30143c0213cb4831248d1e7",
+      "legal_rag.evaluation.runner": "19b47ec4a5f17840cebe5ab796afb1f4af5096bc9d638ed7df41fde085886474",
+      "legal_rag.naive_rag": "a3d3dcc53d4abfa0aae162421475527ab7cb1c723ee15a993f5748795e1ddd2d",
+      "legal_rag.ontology_rag": "0da1153535d325b9955f5e3745061882a16741b523113d424a55e479c996af48"
+    }
+  },
+  "outputs": {
+    "generation": "D:/NexgenBros/legal-ontology-rag/data/evaluation/runs/ontology_subset_smoke_20261001T053554Z/generation.json",
+    "metrics": "D:/NexgenBros/legal-ontology-rag/data/evaluation/runs/ontology_subset_smoke_20261001T053554Z/metrics.json",
+    "predictions": "D:/NexgenBros/legal-ontology-rag/data/evaluation/runs/ontology_subset_smoke_20261001T053554Z/predictions.jsonl"
+  },
+  "run_id": "bb378bcf863b98b28b52",
+  "schema_version": "1.0.0",
+  "started_at": "2026-10-01T05:49:57.422608+00:00",
+  "status": "complete"
+}

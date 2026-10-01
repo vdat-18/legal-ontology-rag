@@ -1,0 +1,590 @@
+{
+  "active_backend_fingerprint": {
+    "collection_name": "ontology_smoke_20261001_053554",
+    "corpus_sha256": "a805ce2a86da16522d5dcec4fa27f217fb6a12b4f329e74af8fe60f64b0f78bd",
+    "embedding_model_id": "BAAI/bge-m3",
+    "embedding_model_revision": "5617a9f61b028005a4858fdac845db406aefb181",
+    "embedding_profile_id": "bge_m3",
+    "fingerprint_version": "1",
+    "row_count": 168
+  },
+  "active_backend_validated": true,
+  "answer_model": "gpt-5.6-luna",
+  "claim_evidence_any_at_k": {
+    "1": 0.16666666666666666,
+    "10": 0.8333333333333334,
+    "3": 0.3333333333333333,
+    "5": 0.6666666666666666
+  },
+  "claim_evidence_complete_at_k": {
+    "1": 0.0,
+    "10": 0.3333333333333333,
+    "3": 0.0,
+    "5": 0.3333333333333333
+  },
+  "claim_sample_count": 3,
+  "concurrency": 1,
+  "context_precision": 0.26666666666666666,
+  "context_recall": 0.7111111111111111,
+  "corpus_chunks_sha256": "b479ed2ce1858986bd42dc0c85e57644973aa45d235c1b9a03dd2d149bdf8d37",
+  "embedding_profile": "bge_m3",
+  "embedding_profile_sha256": "eeb398bad20cdb653d21132684993fa9a9fd51c14df43c8c09979f233de567a1",
+  "empty_retrieval_rate": 0.0,
+  "external_evidence_policy": "closed_corpus",
+  "generation": {
+    "answer_relevancy": 4.666666666666667,
+    "answerability_correctness": 0.6666666666666666,
+    "correctness": 3.0,
+    "faithfulness": 0.84,
+    "required_claim_coverage": 0.3333333333333333,
+    "temporal_correctness": 1.0
+  },
+  "generation_metric_coverage": {
+    "answer_relevancy": {
+      "coverage": 1.0,
+      "null_count": 0,
+      "scored_count": 3
+    },
+    "answerability_correctness": {
+      "coverage": 1.0,
+      "null_count": 0,
+      "scored_count": 3
+    },
+    "correctness": {
+      "coverage": 1.0,
+      "null_count": 0,
+      "scored_count": 3
+    },
+    "faithfulness": {
+      "coverage": 1.0,
+      "null_count": 0,
+      "scored_count": 3
+    },
+    "required_claim_coverage": {
+      "coverage": 1.0,
+      "null_count": 0,
+      "scored_count": 3
+    },
+    "temporal_correctness": {
+      "coverage": 1.0,
+      "null_count": 0,
+      "scored_count": 3
+    }
+  },
+  "ground_truth_sha256": "8d6bdcf6553b20a035e483101daab91054fc838b00c3f4bd220ea55a9c1467e6",
+  "history_resolution_enabled": true,
+  "hit_rate": 1.0,
+  "hit_rate_at_k": {
+    "1": 0.3333333333333333,
+    "10": 1.0,
+    "3": 0.6666666666666666,
+    "5": 1.0
+  },
+  "judge_batch_size": 3,
+  "judge_concurrency": 1,
+  "judge_model": "gpt-5.6-luna",
+  "judge_prompt_sha256": "de59179643c8038862d4a74d2ba9174cab248e689b66c825293e9db35ef7e1d5",
+  "k_values": [
+    1,
+    3,
+    5,
+    10
+  ],
+  "llm_base_url_sha256": "4908bdb5c5107a3c315e76dbce9cebd050e4d0fe90ab417d8fe01f84ddc067a4",
+  "llm_extra_request_body_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "max_samples": 3,
+  "ontology_coverage": {
+    "by_bundle_kind": {
+      "multi_hop": {
+        "covered_gold_chunk_reference_count": 5,
+        "covered_unique_gold_chunk_count": 5,
+        "gold_chunk_reference_count": 5,
+        "gold_chunk_reference_coverage": 1.0,
+        "sample_any_coverage": 1.0,
+        "sample_complete_coverage": 1.0,
+        "sample_count": 1,
+        "samples_with_any_ontology_gold": 1,
+        "samples_with_complete_ontology_gold": 1,
+        "samples_with_gold": 1,
+        "unique_gold_chunk_count": 5,
+        "unique_gold_chunk_coverage": 1.0
+      },
+      "single_hop": {
+        "covered_gold_chunk_reference_count": 2,
+        "covered_unique_gold_chunk_count": 2,
+        "gold_chunk_reference_count": 2,
+        "gold_chunk_reference_coverage": 1.0,
+        "sample_any_coverage": 1.0,
+        "sample_complete_coverage": 1.0,
+        "sample_count": 1,
+        "samples_with_any_ontology_gold": 1,
+        "samples_with_complete_ontology_gold": 1,
+        "samples_with_gold": 1,
+        "unique_gold_chunk_count": 2,
+        "unique_gold_chunk_coverage": 1.0
+      },
+      "temporal": {
+        "covered_gold_chunk_reference_count": 3,
+        "covered_unique_gold_chunk_count": 3,
+        "gold_chunk_reference_count": 3,
+        "gold_chunk_reference_coverage": 1.0,
+        "sample_any_coverage": 1.0,
+        "sample_complete_coverage": 1.0,
+        "sample_count": 1,
+        "samples_with_any_ontology_gold": 1,
+        "samples_with_complete_ontology_gold": 1,
+        "samples_with_gold": 1,
+        "unique_gold_chunk_count": 3,
+        "unique_gold_chunk_coverage": 1.0
+      }
+    },
+    "covered_gold_chunk_reference_count": 10,
+    "covered_unique_gold_chunk_count": 10,
+    "gold_chunk_reference_count": 10,
+    "gold_chunk_reference_coverage": 1.0,
+    "ontology_provenance_chunk_count": 168,
+    "sample_any_coverage": 1.0,
+    "sample_complete_coverage": 1.0,
+    "sample_count": 3,
+    "samples_with_any_ontology_gold": 3,
+    "samples_with_complete_ontology_gold": 3,
+    "samples_with_gold": 3,
+    "unique_gold_chunk_count": 10,
+    "unique_gold_chunk_coverage": 1.0
+  },
+  "pipeline": "ontology",
+  "precision_at_k": {
+    "1": 0.3333333333333333,
+    "10": 0.26666666666666666,
+    "3": 0.4444444444444444,
+    "5": 0.39999999999999997
+  },
+  "query_rewrite_policy": "enabled_when_history_present",
+  "recall_at_k": {
+    "1": 0.1111111111111111,
+    "10": 0.7111111111111111,
+    "3": 0.24444444444444446,
+    "5": 0.5777777777777778
+  },
+  "reference_date": "2026-10-01",
+  "retrieval_limit": 10,
+  "retrieval_sample_count": 3,
+  "run_id": "bb378bcf863b98b28b52",
+  "sample_count": 3,
+  "schema_version": "2.0.0",
+  "slices": {
+    "answerability": {
+      "answerable": {
+        "claim_evidence_any_at_k": {
+          "1": 0.25,
+          "10": 0.75,
+          "3": 0.25,
+          "5": 0.75
+        },
+        "claim_evidence_complete_at_k": {
+          "1": 0.0,
+          "10": 0.5,
+          "3": 0.0,
+          "5": 0.5
+        },
+        "claim_sample_count": 2,
+        "context_precision": 0.3,
+        "context_recall": 0.6666666666666666,
+        "empty_retrieval_rate": 0.0,
+        "hit_rate": 1.0,
+        "hit_rate_at_k": {
+          "1": 0.5,
+          "10": 1.0,
+          "3": 0.5,
+          "5": 1.0
+        },
+        "k_values": [
+          1,
+          3,
+          5,
+          10
+        ],
+        "precision_at_k": {
+          "1": 0.5,
+          "10": 0.3,
+          "3": 0.5,
+          "5": 0.5
+        },
+        "recall_at_k": {
+          "1": 0.16666666666666666,
+          "10": 0.6666666666666666,
+          "3": 0.16666666666666666,
+          "5": 0.6666666666666666
+        },
+        "retrieval_sample_count": 2,
+        "sample_count": 2
+      },
+      "partially_answerable": {
+        "claim_evidence_any_at_k": {
+          "1": 0.0,
+          "10": 1.0,
+          "3": 0.5,
+          "5": 0.5
+        },
+        "claim_evidence_complete_at_k": {
+          "1": 0.0,
+          "10": 0.0,
+          "3": 0.0,
+          "5": 0.0
+        },
+        "claim_sample_count": 1,
+        "context_precision": 0.2,
+        "context_recall": 0.8,
+        "empty_retrieval_rate": 0.0,
+        "hit_rate": 1.0,
+        "hit_rate_at_k": {
+          "1": 0.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "k_values": [
+          1,
+          3,
+          5,
+          10
+        ],
+        "precision_at_k": {
+          "1": 0.0,
+          "10": 0.2,
+          "3": 0.3333333333333333,
+          "5": 0.2
+        },
+        "recall_at_k": {
+          "1": 0.0,
+          "10": 0.8,
+          "3": 0.4,
+          "5": 0.4
+        },
+        "retrieval_sample_count": 1,
+        "sample_count": 1
+      }
+    },
+    "bundle_kind": {
+      "multi_hop": {
+        "claim_evidence_any_at_k": {
+          "1": 0.0,
+          "10": 1.0,
+          "3": 0.5,
+          "5": 0.5
+        },
+        "claim_evidence_complete_at_k": {
+          "1": 0.0,
+          "10": 0.0,
+          "3": 0.0,
+          "5": 0.0
+        },
+        "claim_sample_count": 1,
+        "context_precision": 0.2,
+        "context_recall": 0.8,
+        "empty_retrieval_rate": 0.0,
+        "hit_rate": 1.0,
+        "hit_rate_at_k": {
+          "1": 0.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "k_values": [
+          1,
+          3,
+          5,
+          10
+        ],
+        "precision_at_k": {
+          "1": 0.0,
+          "10": 0.2,
+          "3": 0.3333333333333333,
+          "5": 0.2
+        },
+        "recall_at_k": {
+          "1": 0.0,
+          "10": 0.8,
+          "3": 0.4,
+          "5": 0.4
+        },
+        "retrieval_sample_count": 1,
+        "sample_count": 1
+      },
+      "single_hop": {
+        "claim_evidence_any_at_k": {
+          "1": 0.0,
+          "10": 1.0,
+          "3": 0.0,
+          "5": 1.0
+        },
+        "claim_evidence_complete_at_k": {
+          "1": 0.0,
+          "10": 1.0,
+          "3": 0.0,
+          "5": 1.0
+        },
+        "claim_sample_count": 1,
+        "context_precision": 0.3,
+        "context_recall": 1.0,
+        "empty_retrieval_rate": 0.0,
+        "hit_rate": 1.0,
+        "hit_rate_at_k": {
+          "1": 0.0,
+          "10": 1.0,
+          "3": 0.0,
+          "5": 1.0
+        },
+        "k_values": [
+          1,
+          3,
+          5,
+          10
+        ],
+        "precision_at_k": {
+          "1": 0.0,
+          "10": 0.3,
+          "3": 0.0,
+          "5": 0.4
+        },
+        "recall_at_k": {
+          "1": 0.0,
+          "10": 1.0,
+          "3": 0.0,
+          "5": 1.0
+        },
+        "retrieval_sample_count": 1,
+        "sample_count": 1
+      },
+      "temporal": {
+        "claim_evidence_any_at_k": {
+          "1": 0.5,
+          "10": 0.5,
+          "3": 0.5,
+          "5": 0.5
+        },
+        "claim_evidence_complete_at_k": {
+          "1": 0.0,
+          "10": 0.0,
+          "3": 0.0,
+          "5": 0.0
+        },
+        "claim_sample_count": 1,
+        "context_precision": 0.3,
+        "context_recall": 0.3333333333333333,
+        "empty_retrieval_rate": 0.0,
+        "hit_rate": 1.0,
+        "hit_rate_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "k_values": [
+          1,
+          3,
+          5,
+          10
+        ],
+        "precision_at_k": {
+          "1": 1.0,
+          "10": 0.3,
+          "3": 1.0,
+          "5": 0.6
+        },
+        "recall_at_k": {
+          "1": 0.3333333333333333,
+          "10": 0.3333333333333333,
+          "3": 0.3333333333333333,
+          "5": 0.3333333333333333
+        },
+        "retrieval_sample_count": 1,
+        "sample_count": 1
+      }
+    },
+    "query_style": {
+      "keyword_style": {
+        "claim_evidence_any_at_k": {
+          "1": 0.25,
+          "10": 0.75,
+          "3": 0.5,
+          "5": 0.5
+        },
+        "claim_evidence_complete_at_k": {
+          "1": 0.0,
+          "10": 0.0,
+          "3": 0.0,
+          "5": 0.0
+        },
+        "claim_sample_count": 2,
+        "context_precision": 0.25,
+        "context_recall": 0.5666666666666667,
+        "empty_retrieval_rate": 0.0,
+        "hit_rate": 1.0,
+        "hit_rate_at_k": {
+          "1": 0.5,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "k_values": [
+          1,
+          3,
+          5,
+          10
+        ],
+        "precision_at_k": {
+          "1": 0.5,
+          "10": 0.25,
+          "3": 0.6666666666666666,
+          "5": 0.4
+        },
+        "recall_at_k": {
+          "1": 0.16666666666666666,
+          "10": 0.5666666666666667,
+          "3": 0.3666666666666667,
+          "5": 0.3666666666666667
+        },
+        "retrieval_sample_count": 2,
+        "sample_count": 2
+      },
+      "standard": {
+        "claim_evidence_any_at_k": {
+          "1": 0.0,
+          "10": 1.0,
+          "3": 0.0,
+          "5": 1.0
+        },
+        "claim_evidence_complete_at_k": {
+          "1": 0.0,
+          "10": 1.0,
+          "3": 0.0,
+          "5": 1.0
+        },
+        "claim_sample_count": 1,
+        "context_precision": 0.3,
+        "context_recall": 1.0,
+        "empty_retrieval_rate": 0.0,
+        "hit_rate": 1.0,
+        "hit_rate_at_k": {
+          "1": 0.0,
+          "10": 1.0,
+          "3": 0.0,
+          "5": 1.0
+        },
+        "k_values": [
+          1,
+          3,
+          5,
+          10
+        ],
+        "precision_at_k": {
+          "1": 0.0,
+          "10": 0.3,
+          "3": 0.0,
+          "5": 0.4
+        },
+        "recall_at_k": {
+          "1": 0.0,
+          "10": 1.0,
+          "3": 0.0,
+          "5": 1.0
+        },
+        "retrieval_sample_count": 1,
+        "sample_count": 1
+      }
+    },
+    "reasoning_hops": {
+      "1": {
+        "claim_evidence_any_at_k": {
+          "1": 0.0,
+          "10": 1.0,
+          "3": 0.0,
+          "5": 1.0
+        },
+        "claim_evidence_complete_at_k": {
+          "1": 0.0,
+          "10": 1.0,
+          "3": 0.0,
+          "5": 1.0
+        },
+        "claim_sample_count": 1,
+        "context_precision": 0.3,
+        "context_recall": 1.0,
+        "empty_retrieval_rate": 0.0,
+        "hit_rate": 1.0,
+        "hit_rate_at_k": {
+          "1": 0.0,
+          "10": 1.0,
+          "3": 0.0,
+          "5": 1.0
+        },
+        "k_values": [
+          1,
+          3,
+          5,
+          10
+        ],
+        "precision_at_k": {
+          "1": 0.0,
+          "10": 0.3,
+          "3": 0.0,
+          "5": 0.4
+        },
+        "recall_at_k": {
+          "1": 0.0,
+          "10": 1.0,
+          "3": 0.0,
+          "5": 1.0
+        },
+        "retrieval_sample_count": 1,
+        "sample_count": 1
+      },
+      "2": {
+        "claim_evidence_any_at_k": {
+          "1": 0.25,
+          "10": 0.75,
+          "3": 0.5,
+          "5": 0.5
+        },
+        "claim_evidence_complete_at_k": {
+          "1": 0.0,
+          "10": 0.0,
+          "3": 0.0,
+          "5": 0.0
+        },
+        "claim_sample_count": 2,
+        "context_precision": 0.25,
+        "context_recall": 0.5666666666666667,
+        "empty_retrieval_rate": 0.0,
+        "hit_rate": 1.0,
+        "hit_rate_at_k": {
+          "1": 0.5,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "k_values": [
+          1,
+          3,
+          5,
+          10
+        ],
+        "precision_at_k": {
+          "1": 0.5,
+          "10": 0.25,
+          "3": 0.6666666666666666,
+          "5": 0.4
+        },
+        "recall_at_k": {
+          "1": 0.16666666666666666,
+          "10": 0.5666666666666667,
+          "3": 0.3666666666666667,
+          "5": 0.3666666666666667
+        },
+        "retrieval_sample_count": 2,
+        "sample_count": 2
+      }
+    }
+  }
+}

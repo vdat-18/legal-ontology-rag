@@ -1,0 +1,16 @@
+{
+  "expected_row_count": 8351,
+  "stderr": "D:\\NexgenBros\\legal-ontology-rag\\data\\evaluation\\runs\\naive_full_index_20261001T1405Z\\stderr.log",
+  "command": "legal-naive-rag-index data/processed/groundtruth",
+  "pid": 2404,
+  "initial_row_count": 800,
+  "stdout": "D:\\NexgenBros\\legal-ontology-rag\\data\\evaluation\\runs\\naive_full_index_20261001T1405Z\\stdout.log",
+  "started_at": "2026-10-01T06:52:27.6714924Z",
+  "confirmed_row_count": 800,
+  "confirmed_at": "2026-10-01T07:02:29.843665+00:00",
+  "status": "running",
+  "readable_row_count": 1000,
+  "persisted_stats_row_count": 800,
+  "completed_batches": 1,
+  "total_batches": 38
+}

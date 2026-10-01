@@ -1,0 +1,185 @@
+{
+  "answer": "Ngày 2026-08-14, người điều khiển xe ô tô kinh doanh vận tải hành khách không lắp thiết bị giám sát hành trình bị phạt từ 3.000.000 đồng đến 5.000.000 đồng và bị trừ 02 điểm giấy phép lái xe, theo điểm đ khoản 6 và điểm a khoản 10 Điều 20 Nghị định 168/2024/NĐ-CP. Căn cứ nguyên văn: \"đ) Điều khiển xe kinh doanh vận tải hành khách không lắp thiết bị giám sát hành trình của xe theo quy định hoặc có lắp thiết bị giám sát hành trình của xe nhưng thiết bị không hoạt động theo quy định hoặc làm sai lệch dữ liệu của thiết bị giám sát hành trình của xe ô tô;\" và \"a) Thực hiện hành vi quy định tại điểm c, điểm d, điểm e khoản 3; điểm a, điểm b, điểm c, điểm d, điểm đ, điểm e, điểm g, điểm h, điểm i, điểm k, điểm m khoản 5; khoản 6; khoản 7 Điều này bị trừ điểm giấy phép lái xe 02 điểm;\". Quy định này áp dụng từ ngày 01/01/2025 và theo dữ liệu được cung cấp còn xác định là có hiệu lực ngày 2026-08-14.\n\nĐối với xe vận tải nội bộ vào ngày 2026-08-14, căn cứ được cung cấp chưa xác định mức phạt tiền cụ thể cho hành vi không lắp thiết bị giám sát hành trình; phần quy định của Nghị định 168/2024/NĐ-CP chỉ nêu xe kinh doanh vận tải hành khách. Vì vậy, chưa thể khẳng định mức phạt, điểm trừ hoặc hình phạt bổ sung đối với xe vận tải nội bộ trong ngày này.\n\nNgày 2026-08-15, Nghị định 238/2026/NĐ-CP được dữ liệu ghi nhận bắt đầu áp dụng, nhưng trạng thái hiệu lực tại ngày này là “indeterminate”; do đó chưa đủ căn cứ để khẳng định quy định còn hiệu lực tại ngày hỏi. Văn bản này sửa điểm đ khoản 6 Điều 20, quy định: \"đ) Điều khiển xe kinh doanh vận tải hành khách, xe vận tải nội bộ không lắp thiết bị giám sát hành trình của xe theo quy định hoặc có lắp thiết bị giám sát hành trình của xe nhưng thiết bị không hoạt động theo quy định hoặc làm sai lệch dữ liệu của thiết bị giám sát hành trình của xe ô tô;\" Tuy nhiên, căn cứ cung cấp chỉ dẫn chiếu áp dụng mức phạt theo khoản 6 Điều 20, không nêu số tiền; cũng không nêu trừ điểm, tước giấy phép lái xe hay tạm giữ phương tiện. Nghị định 168/2024/NĐ-CP được xác định không còn hiệu lực từ ngày 2026-08-15.\n\nTóm lại:\n- Ngày 2026-08-14, xe kinh doanh vận tải hành khách: phạt 3-5 triệu đồng, trừ 02 điểm giấy phép lái xe.\n- Ngày 2026-08-14, xe vận tải nội bộ: chưa đủ căn cứ xác định mức phạt.\n- Ngày 2026-08-15, cả hai loại xe: chưa đủ căn cứ xác định mức phạt và chưa đủ căn cứ khẳng định quy định còn hiệu lực; căn cứ được cung cấp không nêu tước giấy phép hoặc tạm giữ phương tiện.",
+  "candidate_count": 635,
+  "indeterminate_rule_count": 24,
+  "invalid_rule_count": 0,
+  "query": "So sánh mức phạt đối với người điều khiển xe ô tô kinh doanh vận tải hành khách hoặc vận tải nội bộ không lắp thiết bị giám sát hành trình vào ngày 2026-08-14 và ngày 2026-08-15.",
+  "query_dates": [
+    "2026-08-14",
+    "2026-08-15"
+  ],
+  "reference_date": "2026-10-01",
+  "retrieval_query": "So sánh mức xử phạt đối với người điều khiển xe ô tô kinh doanh vận tải hành khách hoặc vận tải nội bộ không lắp đặt thiết bị giám sát hành trình theo quy định áp dụng vào ngày 2026-08-14 và ngày 2026-08-15.",
+  "selected_rules": [
+    {
+      "conduct_label_vi": "Sử dụng xe kinh doanh vận tải hành khách theo hợp đồng mà trên xe không có hợp đồng vận tải, danh sách hành khách kèm theo, thiết bị để truy cập nội dung hợp đồng điện tử và danh sách hành khách theo quy định hoặc có các giấy tờ, thiết bị này nhưng không bảo đảm yêu cầu theo quy định",
+      "currency": "VND",
+      "document_number": "168/2024/NĐ-CP",
+      "monetary_penalty_max": "6000000.0",
+      "monetary_penalty_min": "5000000.0",
+      "point_value": 2,
+      "provision_path": "Chương II > Mục 4 > Điều 26 > Khoản 7 > Điểm e",
+      "source_chunk_ids": [
+        "c372081f327aaf3843380c93bf15ff2c6345d0b03d395e2d6a28984d1951e611",
+        "d63b0891e1e60cbd143f8b185986be6ada372f1a9a2e3e895d71b590267c9e55",
+        "e0e6de425fee819511c6e6bd300e2660141b6fff7dc01d23cb1a9dcefa325472"
+      ],
+      "temporal_status": "2026-08-14=valid;2026-08-15=invalid",
+      "uri": "https://w3id.org/legal-ontology-rag/data/rule/44361b61f90a7bb1bebbd302fb1932f1e5fd509ffcd940a1f5fc13e52c8cf8ab",
+      "valid_from": "2025-01-01",
+      "valid_to": "2026-08-15"
+    },
+    {
+      "conduct_label_vi": "Điều khiển xe ô tô kinh doanh vận tải hành khách từ 08 chỗ trở lên, không kể chỗ của người lái xe, có lắp thiết bị ghi nhận hình ảnh khoang chở khách nhưng thiết bị không có tác dụng trong quá trình xe tham gia giao thông theo quy định",
+      "currency": null,
+      "document_number": "238/2026/NĐ-CP",
+      "monetary_penalty_max": null,
+      "monetary_penalty_min": null,
+      "point_value": null,
+      "provision_path": "Điều 20 > Khoản 5 > Điểm n",
+      "source_chunk_ids": [
+        "b561c5e84585a46d57e529d653b3c4685c4402bde299a4b0a913253509bf4e76"
+      ],
+      "temporal_status": "2026-08-14=invalid;2026-08-15=indeterminate",
+      "uri": "https://w3id.org/legal-ontology-rag/data/rule/01da4553168d92b79e74e5477fff1939b89b5bba31d2101ed13f4f0e93ed310d",
+      "valid_from": "2026-08-15",
+      "valid_to": null
+    },
+    {
+      "conduct_label_vi": "Sử dụng xe kinh doanh vận tải hành khách theo hợp đồng mà trên xe không có hợp đồng vận tải, danh sách hành khách kèm theo, thiết bị để truy cập nội dung hợp đồng điện tử và danh sách hành khách theo quy định hoặc có các giấy tờ, thiết bị này nhưng không bảo đảm yêu cầu theo quy định",
+      "currency": "VND",
+      "document_number": "168/2024/NĐ-CP",
+      "monetary_penalty_max": "6000000.0",
+      "monetary_penalty_min": "5000000.0",
+      "point_value": null,
+      "provision_path": "Chương II > Mục 4 > Điều 26 > Khoản 7 > Điểm e",
+      "source_chunk_ids": [
+        "c372081f327aaf3843380c93bf15ff2c6345d0b03d395e2d6a28984d1951e611",
+        "e0e6de425fee819511c6e6bd300e2660141b6fff7dc01d23cb1a9dcefa325472"
+      ],
+      "temporal_status": "2026-08-14=valid;2026-08-15=invalid",
+      "uri": "https://w3id.org/legal-ontology-rag/data/rule/475ff93841c1535f6eee2ed19138417da4d19e42e2f5d37dce733f5fbbae735b",
+      "valid_from": "2025-01-01",
+      "valid_to": "2026-08-15"
+    },
+    {
+      "conduct_label_vi": "Điều khiển xe kinh doanh vận tải hành khách, xe vận tải nội bộ không lắp thiết bị giám sát hành trình của xe theo quy định",
+      "currency": null,
+      "document_number": "238/2026/NĐ-CP",
+      "monetary_penalty_max": null,
+      "monetary_penalty_min": null,
+      "point_value": null,
+      "provision_path": "Điều 20 > Khoản 6 > Điểm đ",
+      "source_chunk_ids": [
+        "b561c5e84585a46d57e529d653b3c4685c4402bde299a4b0a913253509bf4e76"
+      ],
+      "temporal_status": "2026-08-14=invalid;2026-08-15=indeterminate",
+      "uri": "https://w3id.org/legal-ontology-rag/data/rule/098933ca8b09fb7e8d6b4c5c70bb85210a84c947171e303d8d65063dc077f099",
+      "valid_from": "2026-08-15",
+      "valid_to": null
+    },
+    {
+      "conduct_label_vi": "Sử dụng xe kinh doanh vận tải hành khách theo hợp đồng mà trên xe không có hợp đồng vận tải, danh sách hành khách kèm theo, thiết bị để truy cập nội dung hợp đồng điện tử và danh sách hành khách theo quy định hoặc có các giấy tờ, thiết bị này nhưng không bảo đảm yêu cầu theo quy định",
+      "currency": "VND",
+      "document_number": "168/2024/NĐ-CP",
+      "monetary_penalty_max": "12000000.0",
+      "monetary_penalty_min": "10000000.0",
+      "point_value": null,
+      "provision_path": "Chương II > Mục 4 > Điều 26 > Khoản 7 > Điểm e",
+      "source_chunk_ids": [
+        "c372081f327aaf3843380c93bf15ff2c6345d0b03d395e2d6a28984d1951e611",
+        "e0e6de425fee819511c6e6bd300e2660141b6fff7dc01d23cb1a9dcefa325472"
+      ],
+      "temporal_status": "2026-08-14=valid;2026-08-15=invalid",
+      "uri": "https://w3id.org/legal-ontology-rag/data/rule/515a9b396f1172ccd0da20c7abe71f6bcc4795ce1606b4c9451c5337b94e4252",
+      "valid_from": "2025-01-01",
+      "valid_to": "2026-08-15"
+    },
+    {
+      "conduct_label_vi": "Điều khiển xe kinh doanh vận tải hành khách, xe vận tải nội bộ có lắp thiết bị giám sát hành trình của xe nhưng thiết bị không hoạt động theo quy định",
+      "currency": null,
+      "document_number": "238/2026/NĐ-CP",
+      "monetary_penalty_max": null,
+      "monetary_penalty_min": null,
+      "point_value": null,
+      "provision_path": "Điều 20 > Khoản 6 > Điểm đ",
+      "source_chunk_ids": [
+        "b561c5e84585a46d57e529d653b3c4685c4402bde299a4b0a913253509bf4e76"
+      ],
+      "temporal_status": "2026-08-14=invalid;2026-08-15=indeterminate",
+      "uri": "https://w3id.org/legal-ontology-rag/data/rule/14712dcb0829ac3c09ca944cef224fc9f9dab3afd763997522723a7eca2b1085",
+      "valid_from": "2026-08-15",
+      "valid_to": null
+    },
+    {
+      "conduct_label_vi": "Điều khiển xe ô tô chở người từ 08 chỗ trở lên (không kể chỗ của người lái xe) kinh doanh vận tải hành khách có lắp thiết bị ghi nhận hình ảnh người lái xe nhưng không có tác dụng trong quá trình xe tham gia giao thông theo quy định",
+      "currency": "VND",
+      "document_number": "168/2024/NĐ-CP",
+      "monetary_penalty_max": "2000000.0",
+      "monetary_penalty_min": "1000000.0",
+      "point_value": 2,
+      "provision_path": "Chương II > Mục 4 > Điều 20 > Khoản 5 > Điểm l",
+      "source_chunk_ids": [
+        "286bf3097863f0afcff956219abb12cb6b2d9b702076d74391217167a0cb6974",
+        "495998c895f5cc715d5ae30c14934ea847c09788258de663f777e5c75deb202b",
+        "61723ada7348c51a47dbce8c64c0b9f1918efbc84336759af747d7b4c81e0bf6"
+      ],
+      "temporal_status": "2026-08-14=valid;2026-08-15=invalid",
+      "uri": "https://w3id.org/legal-ontology-rag/data/rule/2ef79153d32ea3bf69d6482bf5dbe3e12eaf6d6ffd12652ea9b3ec29f3c94690",
+      "valid_from": "2025-01-01",
+      "valid_to": "2026-08-15"
+    },
+    {
+      "conduct_label_vi": "Điều khiển xe kinh doanh vận tải hành khách, xe vận tải nội bộ có lắp thiết bị ghi nhận hình ảnh người lái xe nhưng thiết bị không có tác dụng trong quá trình xe tham gia giao thông theo quy định",
+      "currency": null,
+      "document_number": "238/2026/NĐ-CP",
+      "monetary_penalty_max": null,
+      "monetary_penalty_min": null,
+      "point_value": null,
+      "provision_path": "Điều 20 > Khoản 5 > Điểm l",
+      "source_chunk_ids": [
+        "b561c5e84585a46d57e529d653b3c4685c4402bde299a4b0a913253509bf4e76"
+      ],
+      "temporal_status": "2026-08-14=invalid;2026-08-15=indeterminate",
+      "uri": "https://w3id.org/legal-ontology-rag/data/rule/6dd70476e92927bcecf1965b9653ba903b861477177f1c305883b6c80911a9a7",
+      "valid_from": "2026-08-15",
+      "valid_to": null
+    },
+    {
+      "conduct_label_vi": "Điều khiển xe kinh doanh vận tải hành khách không lắp thiết bị giám sát hành trình của xe theo quy định",
+      "currency": "VND",
+      "document_number": "168/2024/NĐ-CP",
+      "monetary_penalty_max": "5000000.0",
+      "monetary_penalty_min": "3000000.0",
+      "point_value": 2,
+      "provision_path": "Chương II > Mục 4 > Điều 20 > Khoản 6 > Điểm đ",
+      "source_chunk_ids": [
+        "286bf3097863f0afcff956219abb12cb6b2d9b702076d74391217167a0cb6974",
+        "61723ada7348c51a47dbce8c64c0b9f1918efbc84336759af747d7b4c81e0bf6"
+      ],
+      "temporal_status": "2026-08-14=valid;2026-08-15=invalid",
+      "uri": "https://w3id.org/legal-ontology-rag/data/rule/25acf90071e780c4cae239255ad77fb0e9f35463224b24b2181c57a6e44cc5e2",
+      "valid_from": "2025-01-01",
+      "valid_to": "2026-08-15"
+    },
+    {
+      "conduct_label_vi": "Sử dụng phương tiện kinh doanh vận tải không lắp thiết bị giám sát hành trình của xe đối với hình thức kinh doanh vận tải có quy định phương tiện phải lắp thiết bị",
+      "currency": "VND",
+      "document_number": "168/2024/NĐ-CP",
+      "monetary_penalty_max": "6000000.0",
+      "monetary_penalty_min": "5000000.0",
+      "point_value": null,
+      "provision_path": "Chương II > Mục 4 > Điều 26 > Khoản 7 > Điểm c",
+      "source_chunk_ids": [
+        "c372081f327aaf3843380c93bf15ff2c6345d0b03d395e2d6a28984d1951e611",
+        "d63b0891e1e60cbd143f8b185986be6ada372f1a9a2e3e895d71b590267c9e55",
+        "e0e6de425fee819511c6e6bd300e2660141b6fff7dc01d23cb1a9dcefa325472"
+      ],
+      "temporal_status": "2026-08-14=indeterminate;2026-08-15=indeterminate",
+      "uri": "https://w3id.org/legal-ontology-rag/data/rule/0176ec5360f3892367b206d85b4b14d28eccd329e98e505c578e4d20e8286330",
+      "valid_from": "2025-01-01",
+      "valid_to": null
+    }
+  ],
+  "temporal_mode": "compare_dates"
+}

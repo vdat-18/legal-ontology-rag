@@ -1,0 +1,30 @@
+{
+  "corpus_path": "data/evaluation/smoke/ontology_subset_20261001T053554Z/corpus/ontology_provenance.chunks.jsonl",
+  "created_at": "2026-10-01T05:36:05.140937+00:00",
+  "ontology_chunk_count": 168,
+  "ontology_path": "data/ontology/exception/graphs/traffic_penalty_v0.5.ttl",
+  "selected_samples": [
+    {
+      "answerability": "answerable",
+      "bundle_kind": "single_hop",
+      "gold_chunk_count": 2,
+      "question": "Xe đạp không chấp hành hiệu lệnh bị phạt gì?",
+      "question_id": "50f5a50b945ef6ca4c5e54a16e81ad71fdc009ab5cbe3a97e0d11635b8b58940"
+    },
+    {
+      "answerability": "partially_answerable",
+      "bundle_kind": "multi_hop",
+      "gold_chunk_count": 5,
+      "question": "Điểm h khoản 14 Điều 32 Nghị định 168/2024/NĐ-CP, chưa rõ người lái là chủ phương tiện, hậu quả",
+      "question_id": "ff09e9f5e0488af3fc94510c8aba35c7c5b99b577309243d1a8a91ebdc3c640a"
+    },
+    {
+      "answerability": "answerable",
+      "bundle_kind": "temporal",
+      "gold_chunk_count": 3,
+      "question": "Người điều khiển phương tiện kinh doanh vận tải không xuất trình giấy phép lái xe khi kiểm tra nhưng xuất trình trong thời hạn hẹn đến giải quyết vụ việc ghi trong biên bản vi phạm hành chính xử phạt người điều khiển và chủ phương tiện theo Nghị định 168/2024 và 336/2025",
+      "question_id": "77754a6647187d5164a1d3c1faec30cc05eaaabb4ac7ea3d5039efd8f5815104"
+    }
+  ],
+  "source_ground_truth": "data/benchmark_synthesis/groundtruth.jsonl"
+}

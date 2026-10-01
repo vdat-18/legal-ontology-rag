@@ -1,0 +1,72 @@
+{
+  "aggregate": {
+    "answer_relevancy": 4.666666666666667,
+    "answerability_correctness": 0.6666666666666666,
+    "correctness": 3.0,
+    "faithfulness": 0.84,
+    "required_claim_coverage": 0.3333333333333333,
+    "temporal_correctness": 1.0
+  },
+  "metric_coverage": {
+    "answer_relevancy": {
+      "coverage": 1.0,
+      "null_count": 0,
+      "scored_count": 3
+    },
+    "answerability_correctness": {
+      "coverage": 1.0,
+      "null_count": 0,
+      "scored_count": 3
+    },
+    "correctness": {
+      "coverage": 1.0,
+      "null_count": 0,
+      "scored_count": 3
+    },
+    "faithfulness": {
+      "coverage": 1.0,
+      "null_count": 0,
+      "scored_count": 3
+    },
+    "required_claim_coverage": {
+      "coverage": 1.0,
+      "null_count": 0,
+      "scored_count": 3
+    },
+    "temporal_correctness": {
+      "coverage": 1.0,
+      "null_count": 0,
+      "scored_count": 3
+    }
+  },
+  "per_sample": [
+    {
+      "answer_relevancy": 4.0,
+      "answerability_correctness": 1.0,
+      "correctness": 5.0,
+      "faithfulness": 0.94,
+      "required_claim_coverage": 1.0,
+      "sample_id": "50f5a50b945ef6ca4c5e54a16e81ad71fdc009ab5cbe3a97e0d11635b8b58940",
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "answerability_correctness": 0.0,
+      "correctness": 2.0,
+      "faithfulness": 0.86,
+      "required_claim_coverage": 0.0,
+      "sample_id": "ff09e9f5e0488af3fc94510c8aba35c7c5b99b577309243d1a8a91ebdc3c640a",
+      "temporal_correctness": 1.0
+    },
+    {
+      "answer_relevancy": 5.0,
+      "answerability_correctness": 1.0,
+      "correctness": 2.0,
+      "faithfulness": 0.72,
+      "required_claim_coverage": 0.0,
+      "sample_id": "77754a6647187d5164a1d3c1faec30cc05eaaabb4ac7ea3d5039efd8f5815104",
+      "temporal_correctness": 1.0
+    }
+  ],
+  "sample_count": 3
+}
